@@ -30,6 +30,14 @@ class LinearConstraints:
     def rank(self) -> int:
         return int(np.linalg.matrix_rank(self.C.toarray()))
 
+    def stack(self, other: "LinearConstraints") -> "LinearConstraints":
+        if self.C.shape[1] != other.C.shape[1]:
+            raise ValueError("stacked constraints must have equal column counts")
+        return LinearConstraints(
+            sparse.vstack((self.C, other.C), format="csr"),
+            np.concatenate((self.d, other.d)),
+        )
+
 
 def two_pin_constraints(
     n_vertices: int, vertices: list[int] | NDArray[np.int64], targets: FloatArray
