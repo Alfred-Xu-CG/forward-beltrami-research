@@ -17,6 +17,7 @@ import torch
 from ..autograd import lbs_from_raw, lsqc_from_raw
 from ..beltrami import face_beltrami, qc_dilation
 from ..constraints import rectangle_sliding_constraints, two_pin_constraints
+from ..energies import symmetric_dirichlet_energy, torch_face_jacobians
 from ..injectivity import audit_injectivity
 from ..mesh import structured_rectangle
 from ..optimize import OptimizationResult, run_direct_optimization, run_mu_optimization
@@ -30,6 +31,7 @@ def run_i_to_s(
     ny: int = 20,
     iterations: int = 100,
     seed: int = 20260828,
+    mu_regularizer_weight: float = 0.002,
     make_figure: bool = True,
 ) -> list[dict[str, object]]:
     output = Path(output_directory)
@@ -45,6 +47,11 @@ def run_i_to_s(
     def data_loss(uv: torch.Tensor) -> torch.Tensor:
         return registration_loss(source_values, s_field(uv))
 
+    def mu_loss(uv: torch.Tensor) -> torch.Tensor:
+        return data_loss(uv) + mu_regularizer_weight * symmetric_dirichlet_energy(
+            torch_face_jacobians(mesh, uv)
+        )
+
     results: dict[str, OptimizationResult] = {}
     raw_initial = torch.zeros(mesh.n_faces, 2, dtype=torch.double)
     fixed_constraints = rectangle_sliding_constraints(mesh)
@@ -52,7 +59,7 @@ def run_i_to_s(
         mesh,
         raw_initial,
         lambda raw: lbs_from_raw(raw, mesh, fixed_constraints, k_max=0.92),
-        data_loss,
+        mu_loss,
         iterations=iterations,
         learning_rate=0.08,
         rectangle=True,
@@ -68,7 +75,7 @@ def run_i_to_s(
         lambda raw: lsqc_from_raw(
             raw, mesh, free_constraints, k_max=0.92, weighted=False
         ),
-        data_loss,
+        mu_loss,
         iterations=iterations,
         learning_rate=0.08,
         rectangle=False,
@@ -97,6 +104,8 @@ def run_i_to_s(
             "seed": seed,
             "source": "analytic_thick_I",
             "target": "analytic_thick_S",
+            "mu_map_regularizer": "symmetric_dirichlet",
+            "mu_map_regularizer_weight": mu_regularizer_weight,
         },
         "methods": metrics,
     }

@@ -35,4 +35,6 @@ def test_reduced_i_to_s_benchmark_runs_all_methods_and_saves_evidence(tmp_path):
     assert (tmp_path / "comparison.png").is_file()
     saved = json.loads((tmp_path / "metrics.json").read_text(encoding="utf-8"))
     assert saved["configuration"]["seed"] == 5
+    assert saved["configuration"]["mu_map_regularizer"] == "symmetric_dirichlet"
+    assert saved["configuration"]["mu_map_regularizer_weight"] > 0.0
     assert len(saved["methods"]) == 6

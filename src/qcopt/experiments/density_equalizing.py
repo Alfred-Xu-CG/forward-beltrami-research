@@ -24,6 +24,7 @@ from ..density import (
     stress_area_target,
     torch_area_ratios,
 )
+from ..energies import symmetric_dirichlet_energy, torch_face_jacobians
 from ..injectivity import audit_injectivity
 from ..mesh import structured_rectangle
 from ..optimize import OptimizationResult, run_direct_optimization, run_mu_optimization
@@ -36,6 +37,7 @@ def run_density_equalizing(
     ny: int = 16,
     iterations: int = 100,
     seed: int = 20260828,
+    mu_regularizer_weight: float = 0.002,
     target_names: tuple[str, ...] = ("manufactured", "checkerboard", "spike", "random"),
     make_figure: bool = True,
 ) -> list[dict[str, object]]:
@@ -55,12 +57,19 @@ def run_density_equalizing(
         def loss_function(uv: torch.Tensor, factors=target_tensor) -> torch.Tensor:
             return area_loss(torch_area_ratios(mesh, uv), factors)
 
+        def mu_loss_function(uv: torch.Tensor, factors=target_tensor) -> torch.Tensor:
+            return area_loss(
+                torch_area_ratios(mesh, uv), factors
+            ) + mu_regularizer_weight * symmetric_dirichlet_energy(
+                torch_face_jacobians(mesh, uv)
+            )
+
         methods: dict[str, OptimizationResult] = {}
         methods["mu_lbs_fixed"] = run_mu_optimization(
             mesh,
             raw_initial,
             lambda raw: lbs_from_raw(raw, mesh, constraints, k_max=0.92),
-            loss_function,
+            mu_loss_function,
             iterations=iterations,
             learning_rate=0.06,
             rectangle=True,
@@ -87,6 +96,8 @@ def run_density_equalizing(
             "iterations": iterations,
             "seed": seed,
             "targets": list(target_names),
+            "mu_map_regularizer": "symmetric_dirichlet",
+            "mu_map_regularizer_weight": mu_regularizer_weight,
         },
         "results": metrics,
     }
@@ -98,6 +109,7 @@ def run_density_equalizing(
         f"{target}__{method}": result.uv
         for (target, method), result in all_results.items()
     }
+    arrays.update({f"target_factors__{target.name}": target.factors for target in targets})
     np.savez_compressed(
         output / "maps.npz", vertices=mesh.vertices, faces=mesh.faces, **arrays
     )

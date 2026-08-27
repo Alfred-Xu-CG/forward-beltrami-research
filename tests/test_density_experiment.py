@@ -36,3 +36,5 @@ def test_reduced_density_benchmark_saves_method_and_feasibility_evidence(tmp_pat
         assert (tmp_path / filename).is_file()
     payload = json.loads((tmp_path / "metrics.json").read_text(encoding="utf-8"))
     assert payload["configuration"]["seed"] == 9
+    assert payload["configuration"]["mu_map_regularizer"] == "symmetric_dirichlet"
+    assert payload["configuration"]["mu_map_regularizer_weight"] > 0.0
