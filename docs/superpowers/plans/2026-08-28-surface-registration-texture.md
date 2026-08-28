@@ -4,9 +4,9 @@
 
 **Goal:** Render dense source textures and inverse-map error fields on fixed high-genus target meshes for saved registration trials.
 
-**Architecture:** A focused experiment module reconstructs the perturbation prefix from the saved full and correction histories, applies inverse flows at target vertices, transfers locations through the paired common refinement, and renders reusable Matplotlib panels. A small CLI loads the same official/synthetic cases as the experiment runner and writes images plus machine-readable metrics beside each trial.
+**Architecture:** A focused experiment module reconstructs the perturbation prefix from the saved full and correction histories, applies inverse flows at target face centroids, transfers locations through the paired common refinement, and evaluates one source-defined texture on fixed target geometry. A small CLI loads the same official/synthetic cases as the experiment runner and writes static Matplotlib evidence, a rotatable Plotly HTML comparison, and machine-readable metrics beside each trial.
 
-**Tech Stack:** Python, NumPy, SciPy surface locator, Matplotlib Agg, pytest.
+**Tech Stack:** Python, NumPy, SciPy surface locator, Matplotlib Agg, Plotly, pytest.
 
 ---
 
@@ -28,7 +28,7 @@ Expected: collection fails because `qcopt.experiments.surface_registration_textu
 
 - [ ] **Step 3: Implement minimal primitives**
 
-Add `split_perturbation_history`, `pullback_source_positions`, `source_texture_rgb`, and dataclasses carrying locator/flow diagnostics. Use `points_at_vertices`, `FlowHistory.inverse`, and `SurfaceLocator.locate_many`; transfer each located common-target face/barycentric coordinate to `common.source`.
+Add `split_perturbation_history`, `pullback_source_positions`, `source_texture_rgb`, and dataclasses carrying locator/flow diagnostics. Use `points_at_face_centroids`, `FlowHistory.inverse`, and `SurfaceLocator.locate_many`; transfer each located common-target face/barycentric coordinate to `common.source`. A regression test must fail if the implementation samples P2-fixed mesh vertices instead.
 
 - [ ] **Step 4: Verify GREEN**
 
@@ -44,7 +44,7 @@ Expected: all focused tests pass.
 
 - [ ] **Step 1: Add a failing image-output test**
 
-Construct a small synthetic genus-2 case with identity histories, render both figures into a temporary directory, and assert nonempty PNGs plus a JSON record with zero pullback error.
+Construct a small closed case with identity histories, render all artifacts into a temporary directory, and assert nonempty PNGs, a parseable Plotly HTML file containing four 3D scenes, plus a JSON record with zero pullback error.
 
 - [ ] **Step 2: Verify RED**
 
@@ -52,13 +52,13 @@ Run the focused test and confirm it fails because the rendering entry point is a
 
 - [ ] **Step 3: Implement rendering and CLI**
 
-Add PCA display alignment, face-color conversion, fixed-camera `Poly3DCollection` panels, shared-scale error heatmaps, JSON serialization, case loading, and CLI arguments `--case`, `--run-directory`, `--data-root`, and optional output paths.
+Add PCA display alignment, per-face texture conversion, fixed-camera `Poly3DCollection` panels, shared-scale error heatmaps, Plotly `Mesh3d` panels with linked target cameras, JSON serialization, case loading, and CLI arguments `--case`, `--run-directory`, `--data-root`, and optional output paths.
 
 - [ ] **Step 4: Verify GREEN**
 
 Run the complete focused test file and confirm all assertions pass.
 
-### Task 3: Real-data artifacts and method comparison
+### Task 3: Real-data artifacts
 
 **Files:**
 - Create generated PNG/JSON files below representative `artifacts/high_genus_registration_*` trial directories.
@@ -68,15 +68,11 @@ Run the complete focused test file and confirm all assertions pass.
 
 Run the CLI for synthetic genus-2 combined seed 3, official genus-3 landmark seed 3, official genus-5 landmark seed 29, and official pretzel genus-3 landmark seed 3.
 
-- [ ] **Step 2: Render method comparison**
-
-Load official genus-3 seed 3 landmark, curvature, and combined histories and produce one common-camera comparison image.
-
-- [ ] **Step 3: Inspect every generated image**
+- [ ] **Step 2: Inspect every generated image**
 
 Open each PNG at original detail, verify readable texture isolines, identical target views, non-clipped titles/colorbars, and visibly distinct initial/refined fields.
 
-- [ ] **Step 4: Document how to read and reproduce the figures**
+- [ ] **Step 3: Document how to read and reproduce the figures**
 
 Add the exact inverse-pullback definition, representative artifact paths, CLI commands, and the caveat about published-map reference truth.
 

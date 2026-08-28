@@ -130,3 +130,68 @@ entries unless `--allow-incomplete` is explicitly supplied.
 Each trial directory referenced by `independent_audit.json` contains
 `metrics.json`, `surface_points.npz`, `flow_history.npz`, `correspondence.png`,
 and `objective.png`, with SHA-256 values recomputed by the independent auditor.
+
+## Dense texture-map visualization
+
+The original correspondence figures contain only 192 colored samples and do
+not make the full registration map visually legible.  The texture renderer
+now evaluates every target **face centroid**.  For a target point `y` and saved
+map `F = Phi o F0`, it computes `Phi^-1(y)`, locates that point on the target
+side of the published common refinement, transfers the identical overlay
+face/barycentric coordinates to the source side, and samples the source
+texture there.  The target geometry is held fixed in the last three panels;
+only the pulled-back texture changes.
+
+Face centroids are essential.  The intrinsic P2 velocity field vanishes at PL
+cone vertices to guarantee edge compatibility, so a target-vertex texture
+sample would falsely show every nontrivial flow as stationary.  A regression
+test now covers observable face-interior motion.
+
+The four panels mean:
+
+1. source surface with its source texture;
+2. target surface textured by the published/base map `F0` (reference, not an
+   optimizer prediction);
+3. the same target surface textured through the perturbed initialization;
+4. the same target surface textured through the refined registration.
+
+Official cases use the per-face-corner UV coordinates published in each
+source `A.obj`, including their genuine UV seams.  The generated genus-2 case
+has no supplied UV map and uses discrete seam-free 3D coordinate cells.  The
+HTML files contain four rotatable Plotly `mesh3d` surfaces; rotating any target
+panel synchronizes all three target cameras.
+
+| representative trial | target faces | initial texture RMSE | final texture RMSE | improvement |
+|---|---:|---:|---:|---:|
+| synthetic genus-2, combined, seed 3 | 2,904 | 0.2859 | 0.2642 | 7.6% |
+| official genus-3, landmark, seed 3 | 1,310 | 0.3887 | 0.2963 | 23.8% |
+| official genus-5, landmark, seed 29 | 3,818 | 0.3383 | 0.3157 | 6.7% |
+| official pretzel genus-3, landmark, seed 3 | 9,124 | 0.2130 | 0.2032 | 4.6% |
+
+Texture RMSE is a separate dense diagnostic: source-preimage displacement at
+all target face centroids, normalized by the **source** median edge length.  It
+must not be numerically conflated with the primary 192-sample error normalized
+by target median edge length.  Both diagnostics improve for these four
+representative trials, but the genus-5 and pretzel improvements are visibly
+and numerically modest.
+
+- [Synthetic genus-2 interactive texture map](../artifacts/high_genus_registration_stage3_smooth_g2_seed3/synthetic_genus2/seed_003/combined/texture_registration.html)
+- [Official genus-3 interactive texture map](../artifacts/high_genus_registration_stage1/official_genus3/seed_003/landmark/texture_registration.html)
+- [Official genus-5 interactive texture map](../artifacts/high_genus_registration_stage2_genus5/official_genus5/seed_029/landmark/texture_registration.html)
+- [Official pretzel genus-3 interactive texture map](../artifacts/high_genus_registration_stage1/official_pretzel_genus3/seed_003/landmark/texture_registration.html)
+
+Reproduce one visualization from its saved histories without rerunning the
+registration optimizer:
+
+```powershell
+$env:PYTHONPATH='src'
+python -m qcopt.experiments.surface_registration_texture `
+  --case official_genus3 `
+  --data-root external_data/s2020-intersurfacemaps-data `
+  --run-directory artifacts/high_genus_registration_stage1/official_genus3/seed_003/landmark
+```
+
+The official paper's first-page figure uses the same diagnostic principle: a
+recognizable source texture is transported to the target so continuity and
+distortion are visible.  Our colors and interactivity are new visualization
+assets; they do not reproduce the paper's copyrighted texture image.
