@@ -91,3 +91,41 @@ The defensible next paper direction is not “optimize μ because direct-f folds
 > Exact implicit QC reconstruction provides a residual-controlled geometry layer and a useful distortion parameterization; its value appears when the task needs explicit control or regularization in Beltrami space, repeated map reconstruction under structured boundary/atlas constraints, and an auditable relationship between local distortion and global topology. Direct-map barrier methods remain essential baselines and can be superior for some objectives.
 
 The most promising follow-up is a three-way study of exact adjoints, learned SBN surrogates, and safeguarded direct-f solvers at much larger meshes, with identical stopping criteria and downstream losses.
+
+## Native high-genus multi-chart surface registration
+
+A second implementation path now represents a mapped point globally as a
+target face id plus barycentric coordinates and transports tangent updates
+through adjacent triangle charts by intrinsic edge unfolding.  It does not cut
+the surface into a fundamental polygon and does not use a Poincare disk or
+universal cover.
+
+The primary matrix contains 4 cases, 3 perturbation seeds, and 3 objective
+modes (36 trials).  All 36 saved flow histories were independently reloaded and
+replayed; 36/36 numerical homeomorphism audits passed.  Held-out dense error
+improved in 25/36 trials: 9/9 on the generated exact-genus-2 double torus and
+16/27 on the three published real high-genus pairs.
+
+| case | genus | landmark | curvature-only | combined |
+|---|---:|---:|---:|---:|
+| published genus pair | 3 | 3/3 (`+23.4%`) | 0/3 (`-11.4%`) | 3/3 (`+14.9%`) |
+| published genus pair | 5 | 3/3 (`+9.6%`) | 0/3 (`-3.4%`) | 2/3 (`+1.2%`) |
+| published pretzel pair | 3 | 3/3 (`+8.6%`) | 0/3 (`-16.5%`) | 2/3 (`-0.5%` mean) |
+| generated smooth double torus | 2 | 3/3 (`+16.7%`) | 3/3 (`+8.3%`) | 3/3 (`+13.1%`) |
+
+Parentheses report mean held-out dense-error improvement; a negative value is
+worse.  The worst certificate values across all trials were orientation ratio
+`0.245905`, forward/inverse error `0.0036298` minimum target edges, CFL ratio
+`0.149974`, overlay projection error `8.22e-7`, and exact saved-flow replay
+error `9.18e-16` in target coordinate units.
+
+This establishes that native dynamic chart transitions and topology-preserving
+flow refinement are viable on genus 2, 3, and 5.  It does **not** establish
+automatic registration from unrelated raw meshes: the experiments start from
+a perturbed topology-valid common map.  It also gives a useful negative result:
+smoothed Gaussian/mean curvature alone is not a correspondence-identifying
+objective on the real pairs.
+
+See [the detailed validation report](high_genus_registration_results.md),
+[dataset inventory](high_genus_dataset_inventory.md), and the generated
+[`research_report.md`](../artifacts/high_genus_registration_final/research_report.md).

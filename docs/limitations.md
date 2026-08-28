@@ -2,7 +2,8 @@
 
 ## Location and environment
 
-- The requested `D:\QC_optimization` directory is owned by `BUILTIN\Administrators`; the current user has read/execute only. Development therefore lives at `C:\Users\xuzhehao\Documents\Codex\QC_optimization`. The code is relocatable, but final copying to D remains blocked by the external NTFS ACL.
+- Development and validation now run directly in `D:\QC_optimization`; the
+  earlier NTFS permission blocker has been resolved.
 - The validated Anaconda environment contains two incompatible Intel OpenMP runtimes. Reproducible commands set `MKL_THREADING_LAYER=SEQUENTIAL` before process start. This makes the reference stable but prevents multithreaded MKL timing conclusions.
 
 ## Solver and gradients
@@ -28,10 +29,41 @@
 
 ## Multi-chart scope
 
-- The implemented experiment has two matched charts with identical triangulation and known overlap correspondences. It does not solve atlas discovery, nonmatching mesh interpolation, or unknown surface correspondence.
-- Affine target transitions are enforced exactly. Nonlinear transitions currently have tested residual/Jacobian and Gauss-Newton primitives but are not yet used in the full surface experiment.
-- The cylinder is represented through planar chart coordinates and transitions; no extrinsic 3D curvature estimator or real scanned surface dataset is included.
-- Seam C0 compatibility and Beltrami covariance are tested separately. Higher-order seamlessness, holonomy around many-chart cycles, and topology beyond this two-chart cylinder remain future work.
+- The older cylinder experiment still has two pre-matched disk charts and is
+  only a transition-formula baseline.  The new high-genus path instead uses
+  every target triangle as a native PL chart and stores one global surface
+  point `(face id, barycentric coordinates)`, so it does not need a fixed
+  source-chart/target-chart assignment or a cut seam.
+- The new method is a **refinement method**.  It requires a topology-valid
+  initial homeomorphism `F0`.  Official experiments obtain `F0` and held-out
+  truth from the published common-refinement map, then perturb it by a smooth
+  diffeomorphic flow.  Automatically finding the correct homotopy class and a
+  base homeomorphism between unrelated raw meshes remains unsolved here.
+- The official landmark pairs are deterministic synthetic samples of the
+  published correspondence, not independently annotated semantic landmarks.
+  They validate recovery and flow mechanics, not landmark detection.
+- Curvature-only matching is not identifiable on the heterogeneous published
+  pairs: it reduces its own descriptor residual but worsens held-out dense
+  correspondence in all 9 real trials.  More discriminative intrinsic
+  descriptors, functional-map initialization, or learned features are needed.
+- The numerical homeomorphism certificate samples face-chart orientation and
+  checks CFL, forward/inverse replay, topology, and overlay projection.  Its
+  `degree_one` result is an isotopy inference from the supplied base
+  homeomorphism; it is not an exact preimage-counting degree proof.
+- The reported CFL check is a shared numerical policy based on a
+  first-percentile representative face scale.  It was conservative in a direct
+  genus-5 P2-field Jacobian sampling check, but it is not a proof-grade bound
+  for every possible sliver triangle.
+- A sharp three-edge connected-sum genus-2 stress construction exposes a PL
+  cone/seam failure.  The primary exact-genus-2 benchmark therefore uses a
+  smoothed implicit double torus and the stress failure is retained rather
+  than silently counted as a success.
+- The official archive supplies genus-3 and genus-5 meshes but no genus-2 real
+  pair.  Exact genus-2 evidence is manufactured, while real-data evidence is
+  genuinely higher genus but not genus 2.
+- Curvature smoothing, field construction, and the independent audit are CPU
+  reference implementations.  The largest genus-5 trials take minutes, and
+  the audit should be parallelized/cached before interactive use.
 
 ## Scientific claims not supported
 

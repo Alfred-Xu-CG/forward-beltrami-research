@@ -14,6 +14,10 @@ It is intentionally positioned as an **exact sparse baseline**, not as the first
 - LIM-, SLIM/symmetric-Dirichlet-, and AMIPS-style direct-map baselines with certified line search.
 - Analytic I-to-S registration and prescribed-area benchmarks.
 - Matched multi-chart LSQC with explicit source/target affine transitions, nonlinear transition Jacobians, and conformal Beltrami covariance diagnostics.
+- Native PL-atlas registration for closed genus-2, genus-3, and genus-5
+  surfaces: global `(target face id, barycentric coordinates)` map state,
+  dynamic edge crossing, landmark/curvature refinement, reversible flow
+  history, and an independent numerical homeomorphism audit.
 - Independent result recomputation, artifact hashes, and negative corruption tests.
 
 ## Runtime
@@ -51,6 +55,25 @@ $env:PYTHONPATH='src'
 & 'C:\Users\xuzhehao\anaconda3\python.exe' -m qcopt.experiments.run_all --output artifacts
 ```
 
+High-genus native multi-chart suite (requires the separately downloaded
+official archive described in
+[the dataset inventory](docs/high_genus_dataset_inventory.md)):
+
+```powershell
+$env:MKL_THREADING_LAYER='SEQUENTIAL'
+$env:PYTHONPATH='src'
+& 'C:\Users\xuzhehao\anaconda3\python.exe' -m qcopt.experiments.high_genus_registration `
+  --preset primary-2026-08-28 `
+  --data-root external_data/s2020-intersurfacemaps-data `
+  --output artifacts/high_genus_registration
+```
+
+Every trial stores its surface-point states and reversible flow history.  Use
+`qcopt.experiments.audit_high_genus_registration` with explicit trial
+directories to reload and recompute the states, objectives, certificate, and
+artifact hashes.  The accepted 36-trial matrix and exact commands are recorded
+in [the high-genus validation report](docs/high_genus_registration_results.md).
+
 The runner writes experiment configurations, JSON metrics, CSV trajectories/scaling, maps, figures, an independent `audit.json`, environment information, and SHA-256 hashes in `manifest.json`.
 
 ## Deliver to the requested D-drive directory
@@ -87,6 +110,8 @@ assert raw_mu.grad.shape == (mesh.n_faces, 2)
 ## Evidence and interpretation
 
 - [Verified numerical results](docs/results.md)
+- [High-genus registration validation](docs/high_genus_registration_results.md)
+- [Official high-genus dataset inventory](docs/high_genus_dataset_inventory.md)
 - [Limitations and unresolved research questions](docs/limitations.md)
 - [Design specification](docs/superpowers/specs/2026-08-28-variable-mu-qc-design.md)
 - [Implementation plans](docs/superpowers/plans/2026-08-28-core-variable-mu.md)
