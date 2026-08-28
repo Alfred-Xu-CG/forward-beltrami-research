@@ -53,6 +53,16 @@ $env:PYTHONPATH='src'
 
 The runner writes experiment configurations, JSON metrics, CSV trajectories/scaling, maps, figures, an independent `audit.json`, environment information, and SHA-256 hashes in `manifest.json`.
 
+## Deliver to the requested D-drive directory
+
+After granting the current Windows account Modify permission on `D:\QC_optimization`, run:
+
+```powershell
+& .\scripts\sync_delivery.ps1
+```
+
+The delivery script refuses a nonempty unrelated target, copies hidden Git state as well as source/tests/artifacts, verifies every artifact byte count and SHA-256 entry in `artifacts/manifest.json`, and verifies the destination Git HEAD when both repositories are valid.
+
 ## Minimal differentiable-layer example
 
 ```python
