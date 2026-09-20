@@ -28,7 +28,7 @@ import psutil
 import scipy
 import torch
 
-from qcopt.forward.mbm_lbs import _structured_geometry, solve_mbm_lbs
+from qcopt.forward.mbm_lbs import _conductivity_tensor, _structured_geometry, solve_mbm_lbs
 from qcopt.forward.mbm_lbs_implicit import mbm_lbs_torch_implicit
 
 
@@ -54,6 +54,25 @@ def _induced_face_mu_accuracy(coefficient: np.ndarray, independent) -> dict[str,
         "induced_mu_rmse": float(np.sqrt(np.mean(np.abs(difference) ** 2))),
         "induced_mu_max_error": float(np.max(np.abs(difference))),
         "induced_mu_max_abs": float(np.max(np.abs(induced))),
+    }
+
+
+def _mapped_face_metrics(coefficient: np.ndarray, mapped: torch.Tensor) -> dict[str, float]:
+    """Evaluate conjugacy and Jacobian directly on the implicit output tensor."""
+    triangles, gradients, _areas, face_mu = _structured_geometry(coefficient)
+    faces = np.asarray(triangles, dtype=np.int64)
+    values = mapped.detach().cpu().numpy().reshape(-1, 2)
+    local = values[faces]
+    grad_u = np.einsum("fi,fij->fj", local[..., 0], gradients)
+    grad_v = np.einsum("fi,fij->fj", local[..., 1], gradients)
+    tensors = np.stack([_conductivity_tensor(value) for value in face_mu])
+    flux = np.einsum("fij,fj->fi", tensors, grad_u)
+    target = np.stack((-flux[:, 1], flux[:, 0]), axis=1)
+    residual = np.linalg.norm(grad_v - target, axis=1)
+    determinant = grad_u[:, 0] * grad_v[:, 1] - grad_u[:, 1] * grad_v[:, 0]
+    return {
+        "implicit_conjugacy_residual": float(np.max(residual)),
+        "implicit_min_face_determinant": float(np.min(determinant)),
     }
 
 def _cpu_name() -> str:
@@ -101,13 +120,15 @@ def run(n: int) -> dict[str, object]:
     rss_after = process.memory_info().rss
     independent = solve_mbm_lbs(coefficient)
     induced_accuracy = _induced_face_mu_accuracy(coefficient, independent)
+    mapped_metrics = _mapped_face_metrics(coefficient, mapped)
     return {
         "n_vertices_per_axis": n,
         "forward_seconds": forward_seconds,
         "backward_seconds": backward_seconds,
         "rss_delta_bytes": int(rss_after - rss_before),
-        "conjugacy_residual": independent.conjugacy_residual,
-        "minimum_normalized_face_determinant": independent.min_triangle_determinant,
+        **mapped_metrics,
+        "reference_conjugacy_residual": independent.conjugacy_residual,
+        "reference_min_face_determinant": independent.min_triangle_determinant,
         **induced_accuracy,
         "finite_output": bool(torch.isfinite(mapped).all()),
         "finite_gradient": bool(torch.isfinite(real.grad).all() and torch.isfinite(imag.grad).all()),

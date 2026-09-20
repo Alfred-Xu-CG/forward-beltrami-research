@@ -1,8 +1,9 @@
 # Anisotropic \(P_1\) stiffness, Delaunay conditions, and \(M\)-matrices
 
-Status: builder derivation complete; the local/global distinction is
-independently checked in `tmp/phase3_correction_checker.md`. A larger mesh
-benchmark and an implementation-level checker remain open.
+Status: builder derivation and the local/global distinction are independently
+checked in `tmp/phase3_correction_checker.md` and
+`tmp/phase3_anisotropic_edge_checker.md`; the larger-mesh implementation
+stress test is recorded below.
 
 ## 1. Discrete diffusion operator
 
@@ -15,11 +16,14 @@ domain. On a triangle \(T\), let \(A_T=A_T^T\succ0\) be constant and let
 \]
 
 For an interior edge \(e=(i,j)\) shared by \(T_1,T_2\), only these two
-triangles contribute to \(K_{ij}\). A discrete maximum principle for the
-homogeneous operator requires, in addition to positive diagonal and the usual
-row/irreducibility conditions, \(K_{ij}\le0\) for every \(i\ne j\).
-Calling the whole matrix an \(M\)-matrix is therefore stronger than checking
-a single local angle: it includes sign, nonsingularity, and connectivity.
+triangles contribute to \(K_{ij}\). A standard sufficient certificate for a
+discrete maximum principle is a symmetric irreducible \(Z\)-matrix: positive
+diagonal, \(K_{ij}\le0\) for every \(i\ne j\), appropriate row sums, and a
+Dirichlet set that makes the free block nonsingular. Calling the whole matrix
+an \(M\)-matrix therefore includes sign, nonsingularity, and connectivity; a
+particular DMP or ordered trace may hold by another argument even when this
+certificate is unavailable. We do not claim \(K_{ij}\le0\) is a universal
+necessary condition for every possible monotonicity proof.
 
 ## 2. Local anisotropic nonobtuse condition
 

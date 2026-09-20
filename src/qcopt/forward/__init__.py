@@ -52,7 +52,12 @@ from .mmatrix import (
     spectral_conductances,
 )
 from .anisotropic_hodge import DiamondStencilResult, diamond_stencil_decomposition
-from .discrete_conjugacy import assemble_facewise_conductivity, p1_conjugacy_residual
+from .discrete_conjugacy import (
+    DiscreteStreamResult,
+    assemble_facewise_conductivity,
+    integrate_stream_from_face_flux,
+    p1_conjugacy_residual,
+)
 from .electrical_rectangle import (
     ElectricalRectangleResult,
     solve_isotropic_electrical_rectangle,
@@ -175,6 +180,8 @@ __all__ = [
     "diamond_stencil_decomposition",
     "assemble_facewise_conductivity",
     "p1_conjugacy_residual",
+    "DiscreteStreamResult",
+    "integrate_stream_from_face_flux",
     "ElectricalRectangleResult",
     "solve_isotropic_electrical_rectangle",
     "solve_weighted_electrical_rectangle",

@@ -18,9 +18,13 @@ The discrete conductivity and conjugacy equations are
 r_T=J A_Tp_T,\qquad J=\begin{pmatrix}0&-1\\1&0\end{pmatrix}.
 \tag{DC-1}
 \]
-The facewise Beltrami coefficient is then the unique coefficient satisfying
+For a nondegenerate affine face (in particular, when its Jacobian determinant
+is positive), the facewise Beltrami coefficient is the unique ratio
+\(\mu_T=f_{\bar z}/f_z\), so it satisfies
 \(f_{\bar z}=\mu_T f_z\) for \(f_h=u_h+\mathrm{i}v_h\), and positivity of
-\(\det Df_h\) is checked face by face.
+\(\det Df_h\) is checked face by face. If \(Df_h=0\), the equation is
+vacuous and \(\mu_T\) is not identifiable; all exact-conjugacy statements
+below include this nondegeneracy/positive-determinant hypothesis.
 
 ## 2. Why compatibility implies the primary weak equation
 
@@ -111,19 +115,30 @@ B_1B_0=0.
 Let \(H_A\) be a positive (possibly block) discrete Hodge star on primal edge
 one-forms. The primal potential and flux equations are
 \[
-q=H_A B_0u,qquad B_1q=0.
+q=H_A B_0u,\qquad (B_0^{\mathsf T}q)_I=0
 \tag{DC-2}
 \]
-On a simply connected dual complex, let \(\widetilde B_0\) be the dual
-vertex-to-edge incidence. A stream coordinate is obtained by solving
+The equation \(B_0^{\mathsf T}q=0\) is Kirchhoff conservation on interior
+primal vertices; boundary rows encode the prescribed Neumann or Dirichlet
+data. The chain identity \(B_1B_0=0\) instead says that a primal gradient has
+zero circulation, not that the flux \(q\) is conserved.
+
+There are two equivalent ways to represent the stream differential. If \(Rq\)
+is placed on dual edges, let \(\widetilde B_0\) and \(\widetilde B_1\) be the
+dual vertex-to-edge and dual edge-to-face incidence matrices. A stream
+coordinate is obtained by solving
 \[
 \widetilde B_0v=R q,
 \tag{DC-3}
 \]
-where \(R\) rotates the oriented primal flux into the dual orientation. A
-solution exists exactly when the right side has zero sum around every dual
-cycle; this is the discrete exactness condition. One additive constant is fixed
-as the gauge, and boundary dual edges encode the Neumann/Dirichlet side data.
+where \(R\) rotates/reindexes the oriented primal flux into the dual
+orientation. Compatibility is \(\widetilde B_1Rq=0\) on every dual face
+(equivalently, zero circulation on every dual cycle); on a simply connected
+dual complex this gives exactness up to one additive gauge. If \(Rq\) is
+represented directly as a primal-edge stream one-form \(\delta\), the
+corresponding equations are \(\delta=Rq=B_0v\) and \(B_1\delta=0\).
+Boundary dual edges encode the Neumann/Dirichlet side data in either
+representation.
 
 The present code does **not** claim to implement (DC-2)--(DC-3) on an
 arbitrary mesh. It implements the compatible \(P_1\) route above, where

@@ -25,6 +25,10 @@ class _MBMLBSFunction(torch.autograd.Function):
     def forward(ctx, mu_real: torch.Tensor, mu_imag: torch.Tensor) -> torch.Tensor:
         if mu_real.ndim != 2 or mu_imag.shape != mu_real.shape:
             raise ValueError("mu_real and mu_imag must be matching 2D tensors")
+        if mu_real.shape[0] < 3 or mu_real.shape[1] < 3:
+            raise ValueError("mu_real and mu_imag must have both axes at least three")
+        if mu_real.device != mu_imag.device:
+            raise ValueError("mu_real and mu_imag must be on the same device")
         if not torch.is_floating_point(mu_real) or not torch.is_floating_point(mu_imag):
             raise ValueError("mu_real and mu_imag must be floating point tensors")
         real = mu_real.detach().cpu().numpy().astype(np.float64, copy=False)

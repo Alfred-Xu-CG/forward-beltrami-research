@@ -393,3 +393,45 @@ Receipt audit: independently compared the four matched-control JSON receipts,
 the anisotropic edge-audit maximum error, and the 513-vertex fill counts with
 their CSV rows; all 30 rows have 18 fields and the values agree within the CSV
 rounding precision.
+
+## T+22h — Independent final mathematical review
+
+The independent continuum checker found CQ1/CQ2, the conditional P1 sampling
+lemma, electrical reference, M-matrix edge formulas, and fixed-P1 counterexample
+scope sound, but identified four repairs: facewise Beltrami nondegeneracy,
+weaker M-matrix necessity wording, compatible certified norms in the sampling
+bound, and the primal/dual incidence orientation. These were corrected in
+Sections 01, 02, and 04; the fixes are recorded as FINAL-MATH-R1--R4 in
+`07_independent_checks.md`.
+
+## T+22.5h — Independent final code review and closure fixes
+
+The independent code checker reviewed the public MBM input contract, benchmark
+metric provenance, stream API surface, fair-control semantics, and sparse-fill
+receipt provenance. Four concrete issues were fixed: rank/size/device checks
+were added to the implicit layer; direct-output metrics were separated from the
+reference solve; the compatible stream prototype was exported; and the scope
+heading, fair-control topology field, and fill hardware/software metadata were
+corrected. Focused tests passed after the fixes. The checker also recorded a
+scope block: no universal arbitrary-coefficient hard-bijective production
+claim is justified by these prototypes.
+
+## T+24h — Final decision after verification closure
+
+Question: after all routes, independent checks, and realistic-resolution
+receipts, does any route meet the requested universal fast hard-bijective
+neural-layer target?
+
+Finding: no. The final decision document separates the closed continuum
+theorem, exact electrical identities, compatible-discrete conditions, local
+edge-sign certificate, explicit counterexamples, route-specific prototypes,
+and unresolved topology/compatibility/GPU/memory requirements. Directed Tutte
+is the best conditional engineering candidate; MBM is the strongest continuum
+prototype but has residual and factor-fill bottlenecks. Beurling and BHF remain
+supporting directions only.
+
+Verification: after the final code fixes, the full suite reports 318 passed and
+one external deprecation warning; the CSV has 30 rows with 18 fields each; all
+four MBM v2 direct/reference metric comparisons pass. Final synthesis is in
+docs/research_phase3/08_final_decision.md. No further success claim is made
+beyond the documented conditional scope.

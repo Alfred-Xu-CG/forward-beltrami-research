@@ -126,7 +126,7 @@ the implementation's weakly convex rectangle subdivision is treated as a
 specialized boundary parameterization rather than silently identified with a
 strictly convex vertex polygon.
 
-## 8. Same-resolution production-feasibility comparison
+## 8. Same-resolution prototype cost comparison
 
 On the same CPU process and zero-logit square boundary, the directed Tutte
 layer completed a forward and implicit backward pass in 0.8651 s and 0.4131 s
@@ -137,14 +137,17 @@ at 129x129 vertices, with minimum face determinant
 121.4 MB. A separate CPU implicit VJP prototype was measured in separate fresh
 processes on the same smooth
 coefficient: at 65x65 it took
-0.7575 s forward, 0.7517 s backward, and increased process RSS by 18.52 MB;
-at 129x129 it took 3.2267 s, 3.0190 s, and 59.85 MB; at 257x257 it took
-14.1279 s, 12.1254 s, and 247.25 MB. Its gradients were finite, and an
+0.78013 s forward, 0.77766 s backward, and increased process RSS by 18.30912 MB;
+at 129x129 it took 3.17149 s, 3.00769 s, and 59.015625 MB; at 257x257 it took
+14.06027 s, 12.22195 s, and 245.375 MB. Its gradients were finite, and an
 independent 7x7 directional finite-difference check had relative error
 9.37e-10. Independently recomputed fixed-\(P_1\) conjugacy residuals were
 0.02416, 0.02366, and 0.02352 at 65, 129, and 257 respectively. The
 prototype is differentiable on CPU, but this does not establish exact
-discrete conjugacy or GPU readiness. The MBM VJP rows and separate 7x7
+discrete conjugacy or GPU readiness. The benchmark now reports both
+`implicit_conjugacy_residual` and `implicit_min_face_determinant` evaluated
+directly on the returned implicit tensor and the corresponding values from a
+separate reference `solve_mbm_lbs` call. The MBM VJP rows and separate 7x7
 finite-difference row can be reproduced with
 `src/qcopt/experiments/phase3_mbm_vjp_benchmark.py`; each resolution was run
 once in a fresh process with `OMP_NUM_THREADS=1` and no warm-up repetition.
@@ -152,6 +155,13 @@ The normalized MBM face determinants are not directly comparable to the raw
 Tutte triangle areas. RSS means the process-resident-set increase sampled
 before/after the isolated run, not allocator peak. The CPU was an Intel i7-4770
 with one OpenMP thread (NumPy 1.26.4, SciPy 1.13.1, PyTorch 2.5.1+cpu).
+After separating the metrics, fresh direct-output evaluations at 65, 129, 257,
+and 513 vertices gave implicit conjugacy residuals
+0.0241576615892872, 0.0236592776014027, 0.0235197043999121, and
+0.0235535168306092; the independently assembled reference solve differed by
+less than (1.2\times10^{-13}) at every listed resolution. The corresponding
+implicit minimum face determinants were 0.5347667852, 0.5244463349,
+0.5147213295, and 0.5053765488, again matching the reference to roundoff.
 These are an unmatched prototype cost contrast: Tutte and MBM use different
 inputs, boundary parameterizations, and sparse systems, and the MBM timings
 include geometry and stiffness assembly. They are not a production GPU
@@ -206,8 +216,8 @@ injectivity audit found zero flips and no boundary intersections, and the
 minimum signed-area ratios were 1.3282e-3 and 2.5495e-12 respectively. The
 second value is effectively a near-singular conditioning margin even though
 the audit still certifies this particular run. The MBM VJP at 513x513 vertices
-took 75.141 s forward and 48.455 s backward in the latest isolated process,
-increased process RSS by about 1,289.2 MB, remained finite, and had normalized
+took 69.09319 s forward and 48.66864 s backward in the latest isolated process,
+increased process RSS by about 1,230.8 MB, remained finite, and had normalized
 minimum face determinant 0.50538 with conjugacy residual 0.02355. An independent
 face-gradient evaluation of the same P1 output gave induced Beltrami RMSE
 2.6822e-4 and maximum absolute complex error 1.0087e-2 against the arithmetic
@@ -255,8 +265,9 @@ not imply a million-vertex differentiable layer is memory-feasible. The
 receipt is `tmp/phase3_mbm_fill_audit.json`; it is a CPU/SuperLU reference and
 does not establish an asymptotic bound for a different ordering or an
 iterative/matrix-free implementation. The 513 row is in
-`tmp/phase3_mbm_fill_audit_513.json`; all timings are machine-specific and the
-receipt omits a commit hash.
+`tmp/phase3_mbm_fill_audit_513.json`; the receipts include CPU/Python/NumPy/
+SciPy/OMP provenance but omit a commit hash, and all timings are
+machine-specific.
 
 As a nonuniform-mesh stress test, a Delaunay triangulation with 4,056
 vertices, 7,854 faces, and 256 boundary samples was decoded twice. With

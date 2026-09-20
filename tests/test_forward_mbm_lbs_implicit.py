@@ -40,3 +40,13 @@ def test_mbm_implicit_vjp_matches_directional_finite_difference() -> None:
         abs(finite_difference), 1e-12
     )
     assert relative_error < 1e-6
+
+
+def test_mbm_implicit_rejects_small_grids_and_mismatched_devices() -> None:
+    with np.testing.assert_raises(ValueError):
+        mbm_lbs_torch_implicit(torch.zeros((2, 3)), torch.zeros((2, 3)))
+    with np.testing.assert_raises(ValueError):
+        mbm_lbs_torch_implicit(torch.zeros((3, 3)), torch.zeros((3, 4)))
+    if torch.cuda.is_available():
+        with np.testing.assert_raises(ValueError):
+            mbm_lbs_torch_implicit(torch.zeros((3, 3)), torch.zeros((3, 3), device="cuda"))

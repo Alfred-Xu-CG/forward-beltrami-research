@@ -5,12 +5,14 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
 import time
 
 if "OMP_NUM_THREADS" not in os.environ:
     os.environ["OMP_NUM_THREADS"] = "1"
 
 import numpy as np
+import scipy
 from scipy.sparse import lil_matrix
 from scipy.sparse.linalg import splu
 
@@ -72,6 +74,11 @@ def _one(n: int) -> dict[str, object]:
         "assembly_seconds": assembly,
         "systems": rows,
         "ordering": "COLAMD; SciPy SuperLU; CPU reference; one OpenMP thread",
+        "cpu": platform.processor() or platform.uname().processor,
+        "python": platform.python_version(),
+        "numpy": np.__version__,
+        "scipy": scipy.__version__,
+        "omp_num_threads": os.environ["OMP_NUM_THREADS"],
     }
 
 

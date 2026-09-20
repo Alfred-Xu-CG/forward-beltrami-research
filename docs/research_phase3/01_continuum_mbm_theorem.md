@@ -253,8 +253,11 @@ m_T=\inf_{x\in T}\sigma_{\min}(Df(x)),\qquad
 M_T=\sup_{x\in T}\|D^2f(x)\|,
 \]
 
-and let \(\lambda_{T,i}\) be its barycentric basis functions. Define the
-computable shape-weighted error bound
+and let \(\lambda_{T,i}\) be its barycentric basis functions. Fix one
+subordinate operator norm on \(2\times2\) matrices and its compatible vector
+norm. The quantities \(m_T\) and \(M_T\) below must be certified lower/upper
+bounds in these same norms (not merely point samples). Define the computable
+shape-weighted error bound
 
 \[
 \eta_T=\frac{M_T}{2}\sum_{i=1}^3
@@ -262,7 +265,8 @@ computable shape-weighted error bound
 \tag{MB3-9}
 \]
 
-where \(a_i\) are the vertices of \(T\). Taylor's theorem and
+where \(a_i\) are the vertices of \(T\), and \(M_T\) bounds the corresponding
+induced Hessian norm. Taylor's theorem and
 \(\sum_i(a_i-x)\otimes\nabla\lambda_{T,i}=I\) give
 
 \[
