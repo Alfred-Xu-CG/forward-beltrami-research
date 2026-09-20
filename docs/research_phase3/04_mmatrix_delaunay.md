@@ -134,10 +134,10 @@ block-Hodge option; it still lacks a scalable global dual complex.
 ## 7. Independent-check status
 
 The two-face obtuse-angle calculation and the C7 anisotropic counterexample
-were recomputed without calling the production helper. Remaining work is a
-realistic-resolution sparse assembly benchmark reporting the fraction of
-positive off-diagonals, factorization cost, and sensitivity under coefficient
-perturbations.
+were recomputed without calling the production helper. A nonuniform Tutte
+stress benchmark is now recorded in `05_tutte_neural_layer.md`; the remaining
+implementation gap is a scalable assembled-edge certificate for arbitrary
+anisotropic meshes.
 
 ## 8. Mixed-boundary monotonicity: theorem search and exhaustive tiny search
 
@@ -178,11 +178,13 @@ produced middle row
 
 Every face tensor is SPD with determinant one. This is a decisive
 fixed-(P_1) counterexample, not evidence that the continuum canonical QC map
-loses its boundary order. A valid restricted theorem would need an assembled
-(M)-matrix/ordered-trace condition, or a compatible primal--dual construction
-that prevents the independent complementary solve from leaving the stream
-space. The continuum monotonicity question is therefore left explicitly open
-rather than incorrectly promoted or rejected by the discrete search.
+loses its boundary order. Under the corrected CQ1 closure-homeomorphism
+theorem, the canonical continuum map has ordered marked-side traces; what
+remains open is the weaker statement that uniform ellipticity or an arbitrary
+independent fixed-P1 complementary solve alone enforces that order. A valid
+discrete theorem would need an assembled (M)-matrix/ordered-trace condition,
+or a compatible primal--dual construction that prevents the independent solve
+from leaving the stream space.
 
 As a restricted positive check, the same (2\times2)-cell triangulation was
 exhaustively tested with scalar face conductances in
