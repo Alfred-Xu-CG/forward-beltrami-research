@@ -338,3 +338,14 @@ simple orientation-preserving boundary trace, degree one gives global
 homeomorphism. The measurable (L^\infty)-Beltrami theorem supplies neither
 the (C^2) Hessian bound nor an automatic mesh certificate, so this closes a
 sufficient special case only and does not upgrade MBM to a universal solver.
+
+## T+19.5h — Independent anisotropic edge-sign audit
+
+Question: Does the stated metric-Delaunay / weighted-cotangent condition exactly
+predict the assembled shared-edge stiffness sign, including heterogeneous face tensors?
+Exact claim: for two P1 faces sharing an edge, the weighted cotangent sum is
+nonnegative iff the off-diagonal stiffness entry is nonpositive.
+Falsifier: a direct-gradient stiffness calculation disagreeing with the metric formula.
+Smallest decisive test: random two-triangle quadrilaterals with fixed and
+face-dependent determinant-one tensors, plus a local-obtuse/global-good case.
+Next: run the independent script and record the numerical tolerances and prior-art link.

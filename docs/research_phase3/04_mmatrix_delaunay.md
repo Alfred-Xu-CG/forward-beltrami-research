@@ -54,6 +54,15 @@ of the Delaunay condition. With face-dependent tensors there is generally no
 single metric shared across the edge; the weighted cotangent sum itself is
 the condition to test.
 
+This is also the edge condition derived in Huang, *Discrete maximum principle
+and a Delaunay-type mesh condition for linear finite element approximations of
+two-dimensional anisotropic diffusion problems*, [arXiv:1008.0562](https://arxiv.org/abs/1008.0562), Theorem 4.1 and Eq. (33). In that notation the
+condition is written with an `arccot` and a determinant ratio; rearranging it
+gives exactly the weighted cotangent inequality above. A Beltrami tensor from
+Section 1 has \(\det A_T=1\), so the determinant weights cancel even when the
+metric angle is different on the two faces. For a general SPD diffusion field
+with varying determinants, the weights cannot be dropped.
+
 The local nonobtuse test implies the edge test, but not conversely. An
 independent isotropic example uses opposite angles \(120^\circ\) and
 \(30^\circ\): the two local entries are \(+0.288675\) and \(-0.866025\),
@@ -138,6 +147,29 @@ were recomputed without calling the production helper. A nonuniform Tutte
 stress benchmark is now recorded in `05_tutte_neural_layer.md`; the remaining
 implementation gap is a scalable assembled-edge certificate for arbitrary
 anisotropic meshes.
+
+### 7.1 Direct shared-edge formula audit
+
+An independent script,
+`src/qcopt/experiments/phase3_anisotropic_edge_audit.py`, generated 20,000
+nondegenerate two-triangle quadrilaterals with seed `20260921`. It computed
+the shared-edge entry directly from barycentric gradients and separately from
+
+\[
+K_{ij}=-\frac12\left(\sqrt{\det A_1}\cot\theta_1
+                         +\sqrt{\det A_2}\cot\theta_2\right).
+\]
+
+For determinant-one Beltrami tensors, the largest absolute disagreement was
+`3.73e-11`, with zero sign mismatches for both the common-metric and
+face-dependent-metric cases. The sweep found 2,352 cases in which one metric
+opposite angle was obtuse but the assembled edge coefficient was still
+nonpositive, directly demonstrating that local nonobtuse is not necessary.
+As a separate general-SPD control (not restricted to Beltrami tensors), the
+weighted condition still had zero sign mismatches, while an unweighted angle
+sum misclassified 325/20,000 cases. The receipt is
+`tmp/phase3_anisotropic_edge_audit.json`; these are formula checks, not a
+global M-matrix or homeomorphism proof.
 
 ## 8. Mixed-boundary monotonicity: theorem search and exhaustive tiny search
 
