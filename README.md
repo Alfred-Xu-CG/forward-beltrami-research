@@ -151,3 +151,14 @@ machine-dependent.
 - [Implementation plans](docs/superpowers/plans/2026-08-28-core-variable-mu.md)
 
 The word "certified" in metrics means the documented floating-point discrete audit passed. It is not an exact-predicate or formal topological proof, and it does not imply a good lower bound on area or distortion.
+
+## Forward Beltrami research archive
+
+The ongoing forward-Beltrami exploration is synchronized to the private
+[forward-beltrami-research GitHub repository](https://github.com/Alfred-Xu-CG/forward-beltrami-research).
+The self-contained route summary starts at
+[`docs/forward_beltrami/summary/00_executive_answer.md`](docs/forward_beltrami/summary/00_executive_answer.md),
+and the repository workflow is documented in
+[`RESEARCH_REPOSITORY.md`](RESEARCH_REPOSITORY.md). Use
+`powershell -ExecutionPolicy Bypass -File scripts/sync_research.ps1` after a
+reviewed change to synchronize compact receipts and documentation.
