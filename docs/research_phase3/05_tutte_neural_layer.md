@@ -183,6 +183,14 @@ than separate forward/backward or RSS-delta measurements. These larger runs
 strengthen the practical memory warning but remain machine-specific numerical
 evidence, not a universal complexity theorem.
 
+Across the four MBM resolutions, doubling the axis resolution (approximately
+quadrupling the vertex count) multiplied backward time by about 4.02, 4.02,
+and 4.00, while forward time multiplied by 4.26, 4.38, and 5.32. The sampled
+RSS deltas multiplied by 3.23, 4.13, and 5.21. These ratios are consistent with
+backward work close to linear in the number of vertices, but superlinear setup
+and memory growth at the largest run; they are only empirical slopes over four
+points and must not be read as an asymptotic theorem.
+
 As a nonuniform-mesh stress test, a Delaunay triangulation with 4,056
 vertices, 7,854 faces, and 256 boundary samples was decoded twice. With
 directed-logit spreads 1 and 3, the forward-plus-backward times were 1.772 s

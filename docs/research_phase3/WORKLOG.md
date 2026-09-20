@@ -271,6 +271,21 @@ combined forward-plus-backward passes; its minimum signed-area ratio dropped to
 2.5495e-12 at spread 3. This is a conditional numerical pass with a clear
 memory/conditioning warning, not a production-layer conclusion.
 
+## T+16.5h — Regression environment audit
+
+The first full-suite invocation aborted in `tests/test_beltrami.py` with Intel
+OpenMP error #15 because Anaconda MKL and PyTorch loaded duplicate OpenMP
+runtimes. This reproduced in the focused test and disappeared when the
+documented `MKL_THREADING_LAYER=SEQUENTIAL` and `OMP_NUM_THREADS=1` variables
+were set before Python startup. With that explicit environment the complete
+suite initially passed: 312 tests, one unrelated Paramiko Blowfish deprecation
+warning, 129.15 s. After adding the induced-mu regression test, the complete
+suite passed again with 313 tests and the same one warning in 125.57 s. No
+source fix for the OpenMP issue was needed.
+The four-resolution MBM timing ratios were also computed: backward ratios
+under axis doubling were 4.02, 4.02, 4.00; forward ratios 4.26, 4.38, 5.32;
+RSS ratios 3.23, 4.13, 5.21. These are empirical scaling observations only.
+
 ## T+17h — Independent induced-Beltrami accuracy
 
 Question: Does the MBM P1 output approximate the prescribed face coefficient,
@@ -282,13 +297,3 @@ the independent complex face-gradient path gives RMSE 2.1288e-3, 1.0675e-3,
 refinement trend is reproducible, but max error is boundary/corner dominated
 (about 1.0e-2 at all resolutions), and the conjugacy residual stays about
 0.024 to 0.0235. This is approximation evidence, not exact discrete recovery.
-
-## T+16.5h — Regression environment audit
-
-The first full-suite invocation aborted in `tests/test_beltrami.py` with Intel
-OpenMP error #15 because Anaconda MKL and PyTorch loaded duplicate OpenMP
-runtimes. This reproduced in the focused test and disappeared when the
-documented `MKL_THREADING_LAYER=SEQUENTIAL` and `OMP_NUM_THREADS=1` variables
-were set before Python startup. With that explicit environment the complete
-suite passed: 312 tests, one unrelated Paramiko Blowfish deprecation warning,
-129.15 s. No source fix was needed.
