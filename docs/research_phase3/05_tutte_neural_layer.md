@@ -168,9 +168,16 @@ injectivity audit found zero flips and no boundary intersections, and the
 minimum signed-area ratios were 1.3282e-3 and 2.5495e-12 respectively. The
 second value is effectively a near-singular conditioning margin even though
 the audit still certifies this particular run. The MBM VJP at 513x513 vertices
-took 70.961 s forward and 46.875 s backward, increased process RSS by about
-1,290.8 MB, remained finite, and had normalized minimum face determinant
-0.50538 with conjugacy residual 0.02355. The MBM run was isolated with
+took 75.141 s forward and 48.455 s backward in the latest isolated process,
+increased process RSS by about 1,289.2 MB, remained finite, and had normalized
+minimum face determinant 0.50538 with conjugacy residual 0.02355. An independent
+face-gradient evaluation of the same P1 output gave induced Beltrami RMSE
+2.6822e-4 and maximum absolute complex error 1.0087e-2 against the arithmetic
+nodal-average target on all 524,288 faces. The RMSE values at 65, 129, and 257
+vertices were 2.1288e-3, 1.0675e-3, and 5.3513e-4, respectively, approximately
+halving under each refinement; the maximum error is boundary/corner dominated
+and does not halve uniformly. These are approximation statistics, not an exact
+discrete conjugacy theorem. The MBM run was isolated with
 `OMP_NUM_THREADS=1`; the Tutte script reports combined elapsed time rather
 than separate forward/backward or RSS-delta measurements. These larger runs
 strengthen the practical memory warning but remain machine-specific numerical

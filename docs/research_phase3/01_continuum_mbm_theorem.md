@@ -6,7 +6,8 @@ checker report `tmp/phase3_continuum_checker.md`.
 ## 1. Geometric and analytic setting
 
 Let \(\Omega\subset\mathbb R^2\simeq\mathbb C\) be a bounded simply connected
-Lipschitz quadrilateral. Its boundary is the cyclic union
+Lipschitz **Jordan quadrilateral**: its boundary is a Jordan curve that is the
+cyclic union
 \[
 \partial\Omega=\Gamma_B\cup\Gamma_R\cup\Gamma_T\cup\Gamma_L,
 \]
@@ -87,8 +88,10 @@ This is the standard planar conductivity--Beltrami correspondence.
 
 On \(\Gamma_B\cup\Gamma_T\), (MB3-2) and (MB3-3) imply, as a distributional
 arc identity in the appropriate \(H^{-1/2}\) trace space, that the tangential
-derivative of \(v\) is zero. Thus \(v\) has a constant trace on each connected
-Neumann arc. Write these constants as \(v_B\) and \(v_T\). On
+derivative of \(v\) is zero. Thus the trace of \(v\) is constant almost
+everywhere on each open connected Neumann arc; write these constants as \(v_B\)
+and \(v_T\). The continuous representatives supplied later by the QC closure
+theorem identify these a.e. constants with pointwise side values. On
 \(\Gamma_L\cup\Gamma_R\), \(u\) is constant. Since a symmetric
 determinant-one matrix obeys
 \[
@@ -103,7 +106,7 @@ Beltrami convention.
 ## 4. Continuum rectangle theorem
 
 **Theorem (weak mixed MBM closure).** Under the setting of Sections 1--3, the
-stream map \(f=u+iv\), after adding a constant to \(v\), is the unique
+stream map \(f=u+iv\), normalized by \(v_B=0\), is the unique
 orientation-preserving quasiconformal homeomorphism
 \[
 f:\Omega\longrightarrow (0,1)\times(0,M)
@@ -118,12 +121,13 @@ rectangle sides and satisfies (MB3-4) in \(\Omega\). Here \(M=v_T-v_B>0\).
 1. Extend \(\mu\) by zero outside \(\Omega\). The measurable Riemann mapping
    theorem supplies a normalized global quasiconformal homeomorphism \(F\)
    solving the extended Beltrami equation.
-2. Since \(\Omega\) is a Jordan domain, \(F(\Omega)\) is a Jordan domain and
-   the boundary correspondence is continuous. Map the image quadrilateral
-   conformally to a Euclidean rectangle, sending the four marked boundary
-   arcs to its four sides. Scale the horizontal coordinate so the left/right
-   values are 0 and 1. The conformal postcomposition does not change
-   \(\mu\), so the resulting map \(g=U+iV\) still satisfies (MB3-4).
+2. Since \(\Omega\) is a Jordan domain, \(F(\Omega)\) is a Jordan domain.
+   By Carathéodory's theorem, the conformal map from \(F(\Omega)\) to a
+   Euclidean rectangle has a homeomorphic extension to the closures and sends
+   the four marked boundary arcs to the four closed rectangle sides. Scale the
+   horizontal coordinate so the left/right values are 0 and 1. The conformal
+   postcomposition does not change \(\mu\), so the resulting map \(g=U+iV\)
+   still satisfies (MB3-4).
 3. The conductivity--Beltrami correspondence gives
    \(\nabla\cdot(A\nabla U)=0\) and \(\nabla V=JA\nabla U\). Because \(U\)
    is constant on the vertical sides and \(V\) is constant on the horizontal
@@ -170,7 +174,7 @@ preserving and the right side has a positive total stream-coordinate change;
 no pointwise inequality \(q\cdot n\ge0\) is asserted. Since the target
 rectangle has width one and height \(M\), the stream-coordinate identity gives
 \[
-M=E_A(u)=\int_{\Gamma_R}q\cdot n\,ds.
+M=E_A(u)=\langle q\cdot n,1\rangle_{H^{-1/2}(\Gamma_R),H^{1/2}(\Gamma_R)}.
 \tag{MB3-7}
 \]
 This is a continuum identity. A fixed P1 code must validate its flux, energy,

@@ -28,8 +28,33 @@ import psutil
 import scipy
 import torch
 
-from qcopt.forward.mbm_lbs import solve_mbm_lbs
+from qcopt.forward.mbm_lbs import _structured_geometry, solve_mbm_lbs
 from qcopt.forward.mbm_lbs_implicit import mbm_lbs_torch_implicit
+
+
+def _induced_face_mu_accuracy(coefficient: np.ndarray, independent) -> dict[str, float]:
+    """Measure induced P1 Beltrami error against face-averaged input data.
+
+    This deliberately uses an independent vectorized face-gradient path rather
+    than the conjugacy residual accumulated inside ``solve_mbm_lbs``.
+    """
+    triangles, gradients, _areas, face_mu = _structured_geometry(coefficient)
+    faces = np.asarray(triangles, dtype=np.int64)
+    u_local = independent.u.reshape(-1)[faces]
+    v_local = independent.v.reshape(-1)[faces]
+    grad_u = np.einsum("fi,fij->fj", u_local, gradients)
+    grad_v = np.einsum("fi,fij->fj", v_local, gradients)
+    ux, uy = grad_u[:, 0], grad_u[:, 1]
+    vx, vy = grad_v[:, 0], grad_v[:, 1]
+    fz = 0.5 * ((ux + vy) + 1j * (vx - uy))
+    fbar = 0.5 * ((ux - vy) + 1j * (vx + uy))
+    induced = fbar / fz
+    difference = induced - np.asarray(face_mu, dtype=np.complex128)
+    return {
+        "induced_mu_rmse": float(np.sqrt(np.mean(np.abs(difference) ** 2))),
+        "induced_mu_max_error": float(np.max(np.abs(difference))),
+        "induced_mu_max_abs": float(np.max(np.abs(induced))),
+    }
 
 def _cpu_name() -> str:
     if platform.system() == "Windows":
@@ -75,6 +100,7 @@ def run(n: int) -> dict[str, object]:
     backward_seconds = time.perf_counter() - started
     rss_after = process.memory_info().rss
     independent = solve_mbm_lbs(coefficient)
+    induced_accuracy = _induced_face_mu_accuracy(coefficient, independent)
     return {
         "n_vertices_per_axis": n,
         "forward_seconds": forward_seconds,
@@ -82,6 +108,7 @@ def run(n: int) -> dict[str, object]:
         "rss_delta_bytes": int(rss_after - rss_before),
         "conjugacy_residual": independent.conjugacy_residual,
         "minimum_normalized_face_determinant": independent.min_triangle_determinant,
+        **induced_accuracy,
         "finite_output": bool(torch.isfinite(mapped).all()),
         "finite_gradient": bool(torch.isfinite(real.grad).all() and torch.isfinite(imag.grad).all()),
         "cpu": _cpu_name(),

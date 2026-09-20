@@ -271,6 +271,18 @@ combined forward-plus-backward passes; its minimum signed-area ratio dropped to
 2.5495e-12 at spread 3. This is a conditional numerical pass with a clear
 memory/conditioning warning, not a production-layer conclusion.
 
+## T+17h — Independent induced-Beltrami accuracy
+
+Question: Does the MBM P1 output approximate the prescribed face coefficient,
+separately from the solver's conjugacy residual?
+
+Finding: using all (2(n-1)^2) faces and arithmetic nodal-average target data,
+the independent complex face-gradient path gives RMSE 2.1288e-3, 1.0675e-3,
+5.3513e-4, and 2.6822e-4 at 65, 129, 257, and 513 vertices. The first-order
+refinement trend is reproducible, but max error is boundary/corner dominated
+(about 1.0e-2 at all resolutions), and the conjugacy residual stays about
+0.024 to 0.0235. This is approximation evidence, not exact discrete recovery.
+
 ## T+16.5h — Regression environment audit
 
 The first full-suite invocation aborted in `tests/test_beltrami.py` with Intel
