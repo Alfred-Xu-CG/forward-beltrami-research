@@ -151,6 +151,14 @@ GPU comparison: Tutte has the cheaper backward path and lower RSS at 257x257,
 while MBM retains the stronger continuum interpretation but still lacks a
 structure-preserving global discrete certificate.
 
+Both prototypes are unbatched. Passing a leading batch dimension is rejected
+by the public APIs, so a neural training batch would currently require a Python
+loop or a new batched sparse-solve implementation. The Tutte implicit VJP also
+copies tensors to NumPy/SciPy and back on every pass; the MBM VJP does the same.
+CUDA was unavailable in the local measurement environment, and the remote GPU
+probe showed occupied devices, so no CPU-to-GPU transfer or GPU kernel result
+is claimed here.
+
 At 129x129 with 128 logits per side, the learnable-modulus boundary helper
 composed with the same implicit solve in 0.9229 s forward and 0.4133 s
 backward. The modulus-logit gradient of the squared-coordinate loss was

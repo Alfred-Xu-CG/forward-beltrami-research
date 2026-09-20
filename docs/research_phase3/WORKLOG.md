@@ -136,6 +136,63 @@ Prior work: CQ1-CQ4, `mbm_lbs_torch_implicit`, independent `solve_mbm_lbs` resid
 
 Finding: VJP is finite and FD-consistent (relative error 9.37e-10), but 257x257 costs 14.586 s forward + 11.954 s backward and 249.13 MB RSS; conjugacy residual remains 0.02352. This upgrades MBM from “no VJP prototype” to “differentiable CPU reference, not production candidate.”
 
+## T+11h — batching and accelerator boundary audit
+
+Question: Are the two candidates already usable as batched GPU neural layers?
+Exact claim: no; both public prototypes are unbatched CPU/SciPy layers with host-device copies in the VJP path.
+Assumptions: current public APIs, local Windows environment, read-only remote GPU availability probe.
+What would falsify it: accepted leading batch dimensions and a measured GPU solve without host copies.
+Smallest decisive test: pass a `(batch,ny,nx)` MBM tensor and a batched boundary to Tutte; inspect CUDA availability.
+Prior work: CQ11-CQ12 implementation audit.
+
+Finding: both reject batch dimensions; local CUDA is unavailable, and the remote GPUs were occupied. GPU and batched-solve work remain open engineering tasks.
+
+## T+12h — mandatory midpoint review
+
+This is a checkpoint, not a final decision.
+
+1. **Theorem overclaim audit.** The continuum MBM result is now stated for a
+   bounded simply connected Jordan quadrilateral with an open rectangular image
+   and a separate closure homeomorphism. Its proof uses the measurable Riemann
+   mapping theorem, conformal rectangle uniformization, conductivity--Beltrami
+   correspondence, and mixed-problem uniqueness. It is not a theorem about a
+   fixed P1 mesh. The exact P1 result is conditional on an already compatible
+   piecewise-affine homeomorphism. Directed Tutte is conditional on a simple
+   weakly convex boundary, positive weights, and a boundary-reachable
+   3-connected graph; the implementation checks only the boundary part. No
+   document may call either decoder universal for arbitrary μ.
+
+2. **Numerical self-consistency audit.** The electrical rectangle tests now use
+   independent graph energy, boundary flux, and dual tiling-area paths, including
+   2x2, 3x2, 3x3, 9x7, and a nonuniform grid. The MBM smooth experiment reports
+   the raw right-flux mismatch (2.0163e-3 at 129x129) instead of treating the
+   same stiffness quadratic form as an independent flux certificate. The new
+   MBM VJP benchmark uses a separate directional finite-difference test and a
+   separate P1 residual evaluator. The full regression run after the code audit
+   is `312 passed, 1 warning` in 126.49 s; the warning is an external Paramiko
+   deprecation.
+
+3. **Negative-route audit.** The anisotropic counterexample falsifies only a
+   fixed facewise P1 complementary solve and the fixed four-direction positive
+   stencil. It does not falsify adaptive rotated directions, anisotropic
+   Delaunay meshes, or a fully specified block Hodge/de Rham construction. The
+   Beurling experiment establishes a periodized-FFT versus free-space boundary
+   discrepancy, not impossibility of every NUFFT/treecode method. BHF remains a
+   frozen supporting branch under the authoritative plan rather than silently
+   being declared mathematically impossible.
+
+4. **Open question not bypassed.** Continuum canonical-map monotonicity of the
+   free-side trace is still unresolved; the fixed-P1 3x3 negative increment is
+   explicitly not used as a continuum counterexample. Also open are a scalable
+   structure-preserving primal--dual complex, an enforced graph certificate for
+   Tutte, arbitrary-μ exactness, batched/GPU solves, and peak allocator memory.
+
+5. **Remaining budget.** The next block should use an independent checker to
+   adjudicate the continuum monotonicity statement and the new MBM benchmark,
+   then stress the strongest surviving candidates at the existing realistic
+   resolutions. No final ranking or `08_final_decision.md` is permitted before
+   the T+22h review window.
+
 ## T+6h — C10/C12 expressivity and medium benchmark
 
 Question: Does the directed Tutte layer remain accurate, fold-free, and differentiable at realistic resolution?
