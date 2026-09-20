@@ -134,22 +134,42 @@ at 129x129 vertices, with minimum face determinant
 \(6.1035\times10^{-5}\). At 257x257 vertices the corresponding times were
 4.0842 s and 1.8012 s, with minimum *raw* triangle signed area
 \(1.5259\times10^{-5}=2/256^2\); the measured resident-set increase was about
-121.4 MB. The MBM face-averaged reference on the same smooth coefficient took
-4.5419 s at 129x129 and 17.2574 s at 257x257. A separate CPU implicit VJP
-prototype was measured on the same smooth coefficient: at 65x65 it took
-0.7952 s forward, 0.7381 s backward, and increased process RSS by 18.28 MB;
-at 129x129 it took 3.2033 s, 3.0516 s, and 43.42 MB; at 257x257 it took
-14.5863 s, 11.9542 s, and 249.13 MB. Its gradients were finite, and an
+121.4 MB. A separate CPU implicit VJP prototype was measured in separate fresh
+processes on the same smooth
+coefficient: at 65x65 it took
+0.7575 s forward, 0.7517 s backward, and increased process RSS by 18.52 MB;
+at 129x129 it took 3.2267 s, 3.0190 s, and 59.85 MB; at 257x257 it took
+14.1279 s, 12.1254 s, and 247.25 MB. Its gradients were finite, and an
 independent 7x7 directional finite-difference check had relative error
 9.37e-10. Independently recomputed fixed-(P_1) conjugacy residuals were
 0.02416, 0.02366, and 0.02352 at 65, 129, and 257 respectively. The
 prototype is differentiable on CPU, but this does not establish exact
-discrete conjugacy or GPU readiness;
+discrete conjugacy or GPU readiness. The MBM VJP rows and separate 7x7
+finite-difference row can be reproduced with
+`src/qcopt/experiments/phase3_mbm_vjp_benchmark.py`; each resolution was run
+once in a fresh process with `OMP_NUM_THREADS=1` and no warm-up repetition.
 The normalized MBM face determinants are not directly comparable to the raw
-Tutte triangle areas. These are prototype CPU measurements, not a production
-GPU comparison: Tutte has the cheaper backward path and lower RSS at 257x257,
-while MBM retains the stronger continuum interpretation but still lacks a
-structure-preserving global discrete certificate.
+Tutte triangle areas. RSS means the process-resident-set increase sampled
+before/after the isolated run, not allocator peak. The CPU was an Intel i7-4770
+with one OpenMP thread (NumPy 1.26.4, SciPy 1.13.1, PyTorch 2.5.1+cpu).
+These are an unmatched prototype cost contrast: Tutte and MBM use different
+inputs, boundary parameterizations, and sparse systems, and the MBM timings
+include geometry and stiffness assembly. They are not a production GPU
+comparison. Within this limited contrast, Tutte has the cheaper backward path
+and lower RSS at 257x257, while MBM retains the stronger continuum
+interpretation but still lacks a structure-preserving global discrete
+certificate.
+
+As a nonuniform-mesh stress test, a Delaunay triangulation with 4,056
+vertices, 7,854 faces, and 256 boundary samples was decoded twice. With
+directed-logit spreads 1 and 3, the forward-plus-backward times were 1.772 s
+and 1.611 s, respectively; gradients and outputs were finite, and the
+independent injectivity audit found zero flipped faces and no boundary
+intersections. The minimum signed-area ratios were (3.4651\\times10^{-3}) and
+(5.5470\\times10^{-11}). The second value is a severe conditioning warning,
+not a robust topology margin. This is realistic unstructured stress evidence
+under the caller's graph certificate, not a proof for arbitrary Delaunay
+meshes or arbitrary Beltrami fields.
 
 Both prototypes are unbatched. Passing a leading batch dimension is rejected
 by the public APIs, so a neural training batch would currently require a Python
@@ -189,8 +209,9 @@ period (L); it is not an exact bounded-domain boundary condition. On a
 (radius 0.34), periodic FFT and padding-factor-2 differed by 5.19% in the
 central radius-0.18 region and 27.5% in the outer annulus. Padding factors 4
 and 8 changed the central result by only (2.03\times10^{-4}) relative to
-the factor-8 result, while the periodic result remained 5.53% away. Runtime
-grew from 0.0202 s (factor 2) to 0.325 s (factor 8) on this CPU.
+the factor-8 result; periodic versus the factor-8 result still differed by
+5.53% centrally and 29.5% in the outer annulus. Runtime grew from 0.0202 s
+(factor 2) to 0.325 s (factor 8) on this CPU.
 
 On a general nonuniform mesh there is no exact uniform-grid FFT diagonalization.
 The direct quadrature reference in `beurling_direct.py` costs (O(N^2)); a
@@ -200,3 +221,29 @@ Neither the periodic nor the zero-padded Beurling prototype currently supplies
 a hard piecewise-affine homeomorphism certificate. This is why the route is
 supporting evidence rather than a surviving production candidate in this
 phase.
+
+## 10. Legacy BHF/multilevel status (supporting only)
+
+The earlier BHF prototype evolves a piecewise-affine map by explicit steps
+
+$$
+U^{k+1}=U^k+\tau_k V(U^k;\nu),
+$$
+
+where `V` is assembled from near-field singular quadrature and blocked
+far-field interactions. A determinant-margin step controller and replay-based
+VJP were implemented, and a coarse-to-fine schedule used
+
+$$
+U_{\mathrm{out}}=\Phi_f^{s_f}\,P\,\Phi_c^{s_c}(U_0).
+$$
+
+Legacy measurements on jittered meshes reached 16,641 and 66,049 vertices with
+zero observed flips; the 32-to-128 coarse-to-fine prototype used about 4.91 GB
+peak CUDA allocation and matched a four-step fine reference to relative map
+error \(1.80\times10^{-7}\). A 64-to-256 attempt used about 24 GB and did not
+finish. These are valuable multilevel engineering clues, but no Phase III
+proof establishes a bounded-domain principal-value identity, arbitrary-mesh
+homeomorphism, smooth active-set differentiation, or production memory bound.
+Accordingly BHF/FMM/GPU remains a supporting branch, not a certified candidate
+or a route closed by the failed large run.

@@ -138,6 +138,20 @@ pointwise derivatives at corners or a classical Neumann condition, stronger
 boundary and coefficient regularity is required; that is a regularity
 corollary, not part of the topological statement.
 
+### 4.1 Boundary-trace monotonicity (continuum only)
+
+Because the closure extension is an orientation-preserving homeomorphism and
+maps each marked boundary arc to one rectangle side, each side restriction is
+a homeomorphism of compact intervals. Therefore its nonconstant coordinate is
+strictly monotone on the open arc. With positive counter-clockwise boundary
+orientation, the order is: bottom side \(u\) increases from 0 to 1; right side
+\(v\) increases from \(v_B\) to \(v_T\); top side \(u\) decreases from 1 to 0;
+and left side \(v\) decreases from \(v_T\) to \(v_B\). In particular,
+\(M=v_T-v_B>0\). This is a topological consequence of the canonical QC map
+and does not assert a pointwise sign for \(q\cdot n\). It also does not imply
+that an independently solved fixed-P1 complementary problem has ordered side
+traces.
+
 ## 5. Modulus, energy, and flux
 
 The energy is
@@ -214,7 +228,10 @@ not an exact affine test when \(\operatorname{Im}\mu\ne0\).
 
 - It does not prove that a sampled P1 interpolation is fold-free.
 - It does not make arbitrary facewise \(\mu_T\) fixed-P1 realizable.
-- It does not prove monotonicity of independently solved discrete side traces.
+- It proves continuum side-trace monotonicity only through the closure
+  homeomorphism; monotonicity of independently solved discrete side traces is
+  not implied and is false for the fixed-P1 counterexample recorded in
+  `04_mmatrix_delaunay.md` and `00_correction_audit.md`.
 - It does not provide a fast factorization when \(A(\mu)\) changes with every
   neural sample.
 
@@ -228,7 +245,27 @@ not an exact affine test when \(\operatorname{Im}\mu\ne0\).
 | Rectangle homeomorphism after QC existence and conformal uniformization | continuum theorem under stated Jordan assumptions |
 | \(M=E_A(u)=\) right flux | continuum identity |
 | Same-\(A\) complementary problem and reciprocal energy | continuum identity |
+| Marked-side trace ordering | continuum consequence of the closure homeomorphism |
 | Independent fixed-P1 complementary solve equals the stream coordinate | open/false in general |
+
+### Continuum manufactured monotonicity check
+
+For an explicit sanity case on the unit square, let
+
+\[
+f_\varepsilon(x,y)=x+\varepsilon\sin(\pi x)\sin(\pi y)+\mathrm{i}y,
+\qquad 0<\varepsilon<1/\pi.
+\]
+
+Its Jacobian determinant is
+\(1+\varepsilon\pi\cos(\pi x)\sin(\pi y)>0\), and its exact coefficient
+\(\mu=f_{\bar z}/f_z\) satisfies \(\lVert\mu\rVert_\infty<1\). At
+\(\varepsilon=0.2\), a dense-grid check gives minimum determinant
+approximately 0.37168 and maximum coefficient magnitude approximately 0.45806.
+Here \(u=x+\varepsilon\sin(\pi x)\sin(\pi y)\) and \(v=y\), so the right
+side trace increases and the left-side trace decreases exactly as in the
+continuum ordering above. This is a manufactured check of the canonical-map
+statement, not a validation of an independent fixed-P1 complementary solve.
 
 ### Fixed-mesh numerical stress check
 

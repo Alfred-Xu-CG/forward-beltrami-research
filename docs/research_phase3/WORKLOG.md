@@ -132,9 +132,9 @@ Exact claim: the CPU implicit prototype can backpropagate through two sparse P1 
 Assumptions: smooth coefficient (0.25e^{-r^2/.18}e^{0.7i}), 65/129/257 structured vertices, one CPU process.
 What would falsify it: nonfinite gradients, finite-difference disagreement, or unbounded memory at the tested sizes.
 Smallest decisive test: directional FD on 7x7 plus RSS/timing at all three resolutions.
-Prior work: CQ1-CQ4, `mbm_lbs_torch_implicit`, independent `solve_mbm_lbs` residual evaluator.
+Prior work: CQ1-CQ4, `mbm_lbs_torch_implicit`, `phase3_mbm_vjp_benchmark.py`, independent `solve_mbm_lbs` residual evaluator.
 
-Finding: VJP is finite and FD-consistent (relative error 9.37e-10), but 257x257 costs 14.586 s forward + 11.954 s backward and 249.13 MB RSS; conjugacy residual remains 0.02352. This upgrades MBM from “no VJP prototype” to “differentiable CPU reference, not production candidate.”
+Finding: VJP is finite and FD-consistent (relative error 9.37e-10), but isolated 257x257 costs 14.128 s forward + 12.125 s backward and 247.25 MB RSS; conjugacy residual remains 0.02352. This upgrades MBM from “no VJP prototype” to “differentiable CPU reference, not production candidate.”
 
 ## T+11h — batching and accelerator boundary audit
 
@@ -146,6 +146,17 @@ Smallest decisive test: pass a `(batch,ny,nx)` MBM tensor and a batched boundary
 Prior work: CQ11-CQ12 implementation audit.
 
 Finding: both reject batch dimensions; local CUDA is unavailable, and the remote GPUs were occupied. GPU and batched-solve work remain open engineering tasks.
+
+## T+13h — unstructured Tutte stress
+
+Question: Does the directed layer retain finite VJPs and fold-free output on a realistic nonuniform mesh?
+Exact claim: finite stress evidence may support the conditional theorem, but cannot replace a graph/topology certificate or a uniform conditioning bound.
+Assumptions: Delaunay mesh with 4,056 vertices/7,854 faces, 256 boundary vertices, fixed affine boundary, logit spreads 1 and 3.
+What would falsify it: flipped faces, boundary intersections, or nonfinite VJP.
+Smallest decisive test: independent injectivity audit after both forward/backward passes.
+Prior work: CQ9-CQ12 and `tutte_directed_unstructured_audit.py`.
+
+Finding: both runs had zero flips/intersections and finite gradients, but the minimum signed-area ratio dropped to (5.547e{-11}) at spread 3. This is a conditioning warning and confirms the need for a quantitative margin certificate.
 
 ## T+12h — mandatory midpoint review
 
