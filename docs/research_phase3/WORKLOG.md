@@ -349,3 +349,34 @@ Falsifier: a direct-gradient stiffness calculation disagreeing with the metric f
 Smallest decisive test: random two-triangle quadrilaterals with fixed and
 face-dependent determinant-one tensors, plus a local-obtuse/global-good case.
 Next: run the independent script and record the numerical tolerances and prior-art link.
+
+## T+20h — Matched constant-coefficient architecture control
+
+Question: Are the MBM and directed-Tutte prototype timings comparable when the
+input, boundary target, and exact solution are literally the same?
+Finding: on the constant real (a=0.3) affine target, both candidates recovered
+the map to below (4.3\times10^{-13}) RMSE and unit normalized face margin at
+129 and 257 vertices; fresh-process forward/backward/RSS values are recorded
+in `05_tutte_neural_layer.md` and `06_results.csv`.
+Scope: this closes only a matched affine sanity control; it does not close
+varying-coefficient accuracy or universal topology.
+
+## T+20.5h — MBM sparse-factor fill audit
+
+Question: Which part of the MBM memory cost comes from the sparse stiffness
+matrix and which part comes from the direct-solve factors retained for VJP?
+Exact claim: the matrix is sparse, but a 2-D direct factorization can have
+substantially more nonzeros than the assembled matrix.
+Falsifier: factor nonzero counts remaining at the same order as the matrix on
+the measured structured grids.
+Smallest decisive test: independent assembly plus SciPy `splu` at 129 and 257
+vertices, reporting both systems used by the mixed solve; 513 is optional only
+if the local memory budget remains safe.
+
+Finding: at 129 vertices the free matrix has 113,659 nonzeros while one
+primary factor has 1,776,480 and one complementary factor 1,725,390; at 257
+the corresponding counts are 456,699 versus 9,612,312 and 9,580,596; at 513
+they are 1,830,907 versus 53,221,022 and 53,887,458. The implicit
+implementation retains both systems and transpose factors, so factor fill—not
+only matrix assembly—is the immediate memory bottleneck. These are structural
+nonzero ratios from one SuperLU ordering, not byte or peak-RSS measurements.

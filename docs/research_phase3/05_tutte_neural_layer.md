@@ -160,6 +160,44 @@ and lower RSS at 257x257, while MBM retains the stronger continuum
 interpretation but still lacks a structure-preserving global discrete
 certificate.
 
+### 8.1 Same-target constant-μ control
+
+To remove the input/boundary mismatch above, a separate control used the same
+analytic target for both prototypes. For (a=0.3), the unit-square solution
+with constant real Beltrami coefficient is
+
+\[
+f_\star(x,y)=\left(x,\frac{1-a}{1+a}y\right),
+\qquad \frac{1-a}{1+a}=0.5384615385.
+\]
+
+The MBM layer received the constant (a) field; directed Tutte received the
+four sides of this exact affine rectangle and zero interior logits. Each
+candidate was run in a fresh process on the same Intel i7-4770 CPU with one
+OpenMP thread, PyTorch 2.5.1+cpu, NumPy 1.26.4, and SciPy 1.13.1. The face
+margin is the signed double area divided by the exact affine target's signed
+double area, so a value of one is the analytic reference. Results:
+
+| vertices per axis | candidate | forward (s) | backward (s) | RSS delta (MB) | map RMSE | min face-area ratio | finite gradients |
+|---:|---|---:|---:|---:|---:|---:|---|
+| 129 | MBM implicit | 2.985 | 2.860 | 48.57 | (1.16\times10^{-13}) | 1.000000 | yes |
+| 129 | directed Tutte | 6.155 | 0.428 | 21.52 | (3.15\times10^{-14}) | 1.000000 | yes |
+| 257 | MBM implicit | 13.778 | 12.570 | 193.92 | (4.29\times10^{-13}) | 1.000000 | yes |
+| 257 | directed Tutte | 25.667 | 1.683 | 119.43 | (1.31\times10^{-13}) | 1.000000 | yes |
+
+This is a genuinely matched sanity control, not a universal benchmark: it
+uses a constant coefficient and an affine target for which both methods are
+expected to be exact. It confirms that the two differentiable prototypes can
+share a target and remain fold-free in this special case. It does not remove
+the MBM nonzero residual on varying coefficients, the Tutte conditioning
+problem at large logit spreads, or either method's batch/GPU limitations. The
+two candidates still receive different layer inputs (a coefficient field for
+MBM versus an exact boundary polygon and zero logits for Tutte), so this is a
+same-analytic-target control rather than a common-input optimization benchmark.
+The reproducible runner is
+`src/qcopt/experiments/phase3_fair_constant_mu_benchmark.py`; JSON receipts
+are under `tmp/phase3_fair_constant_mu/`.
+
 The next same-machine stress point used 513x513 vertices (the Tutte command
 uses 512x512 cells and therefore 263,169 vertices). The directed Tutte layer
 completed two forward-plus-backward passes in 117.990 s and 118.219 s for
@@ -190,6 +228,35 @@ RSS deltas multiplied by 3.23, 4.13, and 5.21. These ratios are consistent with
 backward work close to linear in the number of vertices, but superlinear setup
 and memory growth at the largest run; they are only empirical slopes over four
 points and must not be read as an asymptotic theorem.
+
+### 8.2 Sparse matrix versus factor memory
+
+The MBM implementation stores direct sparse factorizations for two mixed
+systems and their transpose solves. To separate assembly sparsity from fill-in,
+`src/qcopt/experiments/phase3_mbm_fill_audit.py` independently assembled the
+same structured matrices and ran SciPy SuperLU with `COLAMD` ordering. One
+primary or complementary factor has the following measured size:
+
+| vertices per axis | free-system dimension | matrix nonzeros | primary (L+U) nonzeros | fill ratio | complementary (L+U) nonzeros | fill ratio |
+|---:|---:|---:|---:|---:|---:|---:|
+| 129 | 16,383 | 113,659 | 1,776,480 | 15.63 | 1,725,390 | 15.18 |
+| 257 | 65,535 | 456,699 | 9,612,312 | 21.05 | 9,580,596 | 20.98 |
+| 513 | 262,143 | 1,830,907 | 53,221,022 | 29.07 | 53,887,458 | 29.43 |
+
+The assembled full matrices had 115,457, 460,289, and 1,838,081 nonzeros at
+129, 257, and 513 vertices respectively;
+the factor counts are already one order of magnitude larger. The actual
+implicit layer retains factors for both mixed systems and for their transpose
+operations, so these counts are a lower bound on the factor-storage burden,
+not a peak-memory measurement. The ratios above are structural nonzero ratios,
+not bytes, RSS, allocator peaks, or asymptotic complexity. This explains why
+“the matrix is sparse” does
+not imply a million-vertex differentiable layer is memory-feasible. The
+receipt is `tmp/phase3_mbm_fill_audit.json`; it is a CPU/SuperLU reference and
+does not establish an asymptotic bound for a different ordering or an
+iterative/matrix-free implementation. The 513 row is in
+`tmp/phase3_mbm_fill_audit_513.json`; all timings are machine-specific and the
+receipt omits a commit hash.
 
 As a nonuniform-mesh stress test, a Delaunay triangulation with 4,056
 vertices, 7,854 faces, and 256 boundary samples was decoded twice. With
