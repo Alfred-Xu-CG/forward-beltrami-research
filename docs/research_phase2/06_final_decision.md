@@ -92,9 +92,12 @@ decoder, not yet an anisotropic QC layer.
 4. **Not established:** natural mixed FEM boundary conditions alone imply a
    globally ordered rectangle boundary. Random positive-conductance searches
    found no small counterexample, but that is evidence, not a theorem.
-5. **Not established:** every valid PL homeomorphism or every prescribed
-   Beltrami field has a strictly-positive directed Tutte representation. The
-   local 16-by-16 expressivity experiment is positive evidence only.
+5. **Qualified theorem:** every valid straight-line embedding of a fixed disk
+   triangulation with a strictly convex boundary has a strictly-positive
+   directed Tutte representation, by the angular-star and substochastic
+   uniqueness argument in `04_tutte_latent.md`. This does not establish a
+   direct representation for every prescribed Beltrami field, non-convex
+   target, or degenerate face margin.
 
 ## 5. Frozen routes for this phase
 

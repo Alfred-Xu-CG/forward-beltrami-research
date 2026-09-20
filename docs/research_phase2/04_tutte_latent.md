@@ -88,7 +88,67 @@ implicit solve. All 128 face determinants were positive and both boundary
 logit and interior-row logit gradients were finite. This is a composition
 test, not a universal theorem beyond the stated Tutte hypotheses.
 
-## 3. Linear algebra and implicit differentiation
+## 3. Universality theorem for a fixed valid PL embedding
+
+There is a useful theorem that is stronger than the earlier local
+expressivity experiment, but its assumptions must be stated exactly.
+
+**Theorem (strict directed barycentric representation).** Let \(T\) be a
+connected triangulation of a topological disk. Assume its boundary cycle is
+mapped to the vertices of a strictly convex polygon in counter-clockwise
+order. Let \(Y:V(T)\to\mathbb R^2\) be a straight-line embedding with the same
+boundary and with
+\[
+\operatorname{cross}(Y_j-Y_i,Y_k-Y_i)>0
+\]
+for every oriented face \((i,j,k)\). Then there are numbers
+\[
+p_{ij}>0,\qquad \sum_{j\in N(i)}p_{ij}=1
+\]
+for every interior vertex \(i\) such that
+\[
+Y_i=\sum_{j\in N(i)}p_{ij}Y_j.
+\tag{T-8}
+\]
+If every interior vertex is connected to the boundary (which holds for a
+connected disk triangulation), this positive directed system has \(Y\) as its
+unique solution with the prescribed boundary values.
+
+**Proof.** Fix an interior vertex \(i\) and list its neighbors cyclically as
+\(j_1,\ldots,j_d\). Set \(r_k=Y_{j_k}-Y_i\). The positively oriented
+triangles in the star imply that the angle from \(r_k\) to \(r_{k+1}\) is
+strictly between \(0\) and \(\pi\), and the angles sum to \(2\pi\). Hence the
+rays \(r_k\) are not contained in any closed half-plane through the origin.
+Equivalently, \(0\) is in the relative interior of their convex hull. The
+strict barycentric-coordinate lemma then gives coefficients
+\(p_{ij_k}>0\) with \(\sum_k p_{ij_k}=1\) and
+\(\sum_k p_{ij_k}r_k=0\), which is exactly (T-8).
+
+Let \(P_{II}\) be the interior-to-interior submatrix of these rows. It is
+nonnegative and substochastic; rows adjacent to the boundary lose positive
+mass to boundary columns. Because the undirected triangulation is connected
+and every directed neighbor edge has positive weight, every interior state
+can reach a deficient row and then the boundary. Therefore
+\(\rho(P_{II})<1\), so \(I-P_{II}\) is nonsingular. The prescribed \(Y\)
+satisfies the linear equations, hence it is the unique solution. \(\square\)
+
+This theorem is a genuine global parameterization result for the set of valid
+straight-line embeddings with a fixed strictly convex boundary. It does not
+say that the weights are unique: each interior point generally has many
+positive barycentric representations. It also does not say that a prescribed
+facewise Beltrami field is realizable, that a non-convex target boundary is
+safe, or that the positive weights remain well-conditioned as a face area
+tends to zero. The theorem is therefore exactly the right scope for a
+hard-bijective directed-Tutte layer, while QC fidelity remains an objective or
+an additional representation question.
+
+The logit parameterization is surjective onto the strictly positive rows:
+given any row \(p_i>0\), take \(\ell_{ij}=\log p_{ij}\) plus an arbitrary row
+constant. A differentiable inverse selection of \(p_i\) is possible locally
+away from degeneracy, for example by choosing the unique maximum-entropy
+strict barycentric solution; the layer itself need not perform this inverse.
+
+## 4. Linear algebra and implicit differentiation
 
 Order the interior vertices first. Let \(P_{II}\) contain the coefficients
 from interior neighbors to interior vertices, and \(P_{IB}\) contain the
@@ -122,7 +182,7 @@ The boundary derivative is the direct boundary loss plus
 one forward sparse solve and one transpose sparse solve, rather than unrolling
 iterations.
 
-## 4. Hard-topology theorem and its exact scope
+## 5. Hard-topology theorem and its exact scope
 
 A directed Tutte theorem gives the following conditional statement. If the
 embedded plane graph is connected to the boundary in the required
@@ -151,26 +211,22 @@ The theorem does not imply:
 Therefore this route is a map-primary hard decoder, not by itself a
 Beltrami-equation solver.
 
-## 5. Expressivity question
+## 6. Expressivity question
 
-For a fixed valid embedding \(Y\), an interior vertex must lie in the convex
-hull of its neighbors for a positive-row representation to exist. If it lies
-strictly inside that hull, one can often construct positive directed weights,
-but this needs to be checked for the chosen graph and cannot be replaced by
-the statement that every arbitrary embedding is representable.
-
-The useful research question is therefore:
+The theorem in Section 3 resolves the fixed-convex-boundary case: every valid
+straight-line embedding of that triangulation has a strictly positive directed
+representation. The remaining expressivity question is different:
 
 \[
-\text{valid target PL homeomorphism}
+\text{arbitrary Beltrami field or non-convex target}
 \longrightarrow
 \text{strictly positive local barycentric rows?}
 \]
 
-The answer is graph- and embedding-dependent. A positive Tutte latent is
-expressive enough for a broad family of convex-boundary disk embeddings, but
-there is no evidence yet that it can represent every arbitrary Beltrami field
-without increasing graph connectivity or changing the boundary.
+The answer is not supplied by the theorem. The input field must first produce a
+valid target embedding with the same convex boundary; a direct \(\mu\)-to-logit
+map, a non-convex target, or a target with a vanishing face margin can fall
+outside the theorem.
 
 As a direct local expressivity test, a 16x16 structured triangulation was given
 a boundary-fixed smooth deformation with amplitude 0.12. For every one of its
@@ -182,7 +238,7 @@ that reproduced the target vertex exactly. The smallest maximin row weight was
 not an expressivity counterexample; the target itself was no longer a valid QC
 homeomorphism.
 
-## 6. Conditioning and neural usability
+## 7. Conditioning and neural usability
 
 The hard-topology theorem is qualitative. If logits have a large spread, one
 weight approaches one and the others approach zero. The equilibrium remains
@@ -203,7 +259,7 @@ conditioning certificate:
 \text{forward/backward residuals}.
 \]
 
-## 7. Existing project evidence
+## 8. Existing project evidence
 
 Legacy audits in docs/forward_beltrami already contain realistic-resolution
 directed-Tutte experiments on structured 256-squared grids and a nonuniform
@@ -216,12 +272,12 @@ The current Phase II work will reuse those artifacts without re-running them
 just to fill a ledger. The next new experiment should vary graph connectivity
 and boundary latent parameterization, not repeat the same fixed-boundary audit.
 
-## 8. Prior art
+## 9. Prior art
 
 - [Haas et al., directed Tutte theorem](https://www.cs.tufts.edu/research/geometry/pdf/haas04planar.pdf) — positive directed equilibrium weights and non-overlapping convex cells under explicit plane-graph and boundary hypotheses.
 - [An elementary proof of Tutte's planar embedding theorem](https://www.cs.harvard.edu/~sjg/papers/tutte.pdf) — positive convex-combination embeddings and the role of a convex boundary.
 
-## 9. Preliminary decision
+## 10. Preliminary decision
 
 Layer B is currently the strongest hard-bijection candidate because its
 topology certificate is structural and its backward pass is an adjoint sparse
