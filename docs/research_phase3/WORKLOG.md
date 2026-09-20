@@ -297,3 +297,18 @@ the independent complex face-gradient path gives RMSE 2.1288e-3, 1.0675e-3,
 refinement trend is reproducible, but max error is boundary/corner dominated
 (about 1.0e-2 at all resolutions), and the conjugacy residual stays about
 0.024 to 0.0235. This is approximation evidence, not exact discrete recovery.
+
+## T+18h — Explicit discrete stream integration
+
+Question: Can the structure-preserving route reconstruct the stream coordinate
+from compatible face fluxes without an independent complementary solve?
+
+Finding: `integrate_stream_from_face_flux` computes signed edge increments from
+\(J A_T\nabla u_h\), measures incident-face mismatch, integrates a spanning
+tree, and checks all cycle edges. The layered manufactured map reconstructs
+the stream exactly up to gauge (both diagnostics below 1e-12); a random
+incompatible P1 potential is rejected. The independent code checker confirmed
+the canonical edge sign and direct affine cases; boundary singleton edges have
+zero face-mismatch by definition and tree-edge residuals vanish by construction.
+This closes only a compatibility diagnostic, not the general dual-Hodge/neural
+solver.

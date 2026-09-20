@@ -132,6 +132,39 @@ The incidence/Hodge equations identify the missing data structures for a
 future matrix-free layer and explain why an independent complementary solve is
 not automatically a stream integration.
 
+### Edge-integrated stream prototype
+
+The repository now contains a deliberately small diagnostic implementation,
+`integrate_stream_from_face_flux`. For every oriented primal edge
+\(e=(x_i,x_j)\) on a face \(T\), it forms the predicted stream increment
+
+\[
+\delta_e^T=(J A_T\nabla u_h|_T)\cdot(x_j-x_i).
+\tag{DC-4}
+\]
+
+The two incident faces must give the same signed value; their maximum spread is
+the **edge-inconsistency** statistic. Boundary edges have a single incident
+face and therefore contribute zero to this particular mismatch statistic. The
+mean edge value is then integrated on a spanning tree after fixing one gauge
+vertex \(v_{i_0}=0\). Every non-tree edge supplies a cycle equation
+
+\[
+v_j-v_i=\bar\delta_{ij}.
+\tag{DC-5}
+\]
+
+and the maximum violation is the **cycle residual**; tree-edge residuals vanish
+by construction, so the non-tree edges carry the cycle information. The returned boolean is
+true only when both quantities are below the requested tolerance. On the
+layered manufactured homeomorphism, both are below \(10^{-12}\) and the
+reconstructed stream agrees with \(v_h\) up to its additive gauge. For a
+random incompatible \(P_1\) potential with \(A_T=I\), the diagnostic rejects
+the field. This is evidence that a structure-preserving decoder can integrate
+a compatible flux without solving an independent complementary Dirichlet
+problem; it is not yet a general dual-complex Hodge star, boundary treatment,
+or million-vertex neural layer.
+
 ## 6. Current conclusion
 
 The compatible \(P_1\) route can produce an exact piecewise-affine
