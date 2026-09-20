@@ -5,18 +5,18 @@ claims are conditional and remain under large-mesh benchmarking.
 
 ## 1. Directed barycentric system
 
-Let (G=(V,E)) be a triangulated disk with boundary cycle (B) and interior
-vertices (I). For every interior vertex (i), choose positive directed
-weights (p_{ij}>0) on graph neighbors with (sum_jp_{ij}=1). Given boundary
-coordinates (y_binmathbb R^2), the decoder solves
+Let \(G=(V,E)\) be a triangulated disk with boundary cycle \(B\) and interior
+vertices \(I\). For every interior vertex \(i\), choose positive directed
+weights \(p_{ij}>0\) on graph neighbors with \(\sum_jp_{ij}=1\). Given boundary
+coordinates \(y_b\in\mathbb R^2\), the decoder solves
 \[
 x_i-\sum_{j\in I}p_{ij}x_j=\sum_{b\in B}p_{ib}y_b,
 \qquad i\in I.
 \tag{T-1}
 \]
-In block form (M x_I=C y_B). If every interior support path reaches the
-boundary, (M) is a nonsingular irreducible (M)-matrix and the forward map is
-unique. A sparse factorization or iterative solve supplies (x_I).
+In block form \(M x_I=C y_B\). If every interior support path reaches the
+boundary, \(M\) is a nonsingular irreducible \(M\)-matrix and the forward map
+is unique. A sparse factorization or iterative solve supplies \(x_I\).
 
 ## 2. What the directed Tutte theorem actually says
 
@@ -44,7 +44,7 @@ polygon theorem to a vertex list containing collinear triples.
 
 ## 3. Learnable rectangle modulus
 
-For logits (z\in\mathbb R^{4\times m}), each side uses a softmax vector of
+For logits \(z\in\mathbb R^{4\times m}\), each side uses a softmax vector of
 positive segment lengths. The side sums are width, height, width, height, so
 the final implicit segment closes the rectangle exactly. The new helper uses
 \[
@@ -53,18 +53,18 @@ H(m)=\varepsilon+\operatorname{softplus}(m)>0
 as a tensor-valued height. If width is also a tensor, both aspect ratio and
 boundary sampling have a gradient path; Python float defaults remain constants.
 
-The independent finite-difference check at (m=-0.3) gave
+The independent finite-difference check at \(m=-0.3\) gave
 \[
 \partial_m\sum_k\|y_k\|^2=1.651961931851348,
 \quad
 \text{central difference}=1.651961931692370,
 \]
-with absolute discrepancy (1.6\times10^{-10}). Side closure was exact to
+with absolute discrepancy \(1.6\times10^{-10}\). Side closure was exact to
 roundoff. This validates the latent parameterization, not the topology theorem.
 
 ## 4. Backward pass
 
-For a loss (L(x_I,y_B)), solve the transpose system
+For a loss \(L(x_I,y_B)\), solve the transpose system
 \[
 M^T\lambda=\partial L/\partial x_I.
 \]
@@ -74,7 +74,7 @@ d x_I=M^{-1}(dC\,y_B+C\,d y_B-dM\,x_I),
 \]
 or its adjoint contraction. The implementation differentiates through the
 sparse solve without storing an unrolled iteration history. It still stores the
-factorization and the interior solution, so memory is (O(|E|)) for sparse
+factorization and the interior solution, so memory is \(O(|E|)\) for sparse
 factorization but can be much larger due to fill-in.
 
 ## 5. Expressivity statement
@@ -94,7 +94,7 @@ and a learnable rectangle modulus. Its hard-bijective guarantee is conditional
 on boundary and graph certificates that are not currently enforced by the
 generic API. Therefore it cannot yet be called a universal fold-free forward
 Beltrami solver; a fair benchmark must report certificate failures, solve cost,
-VJP error, and peak memory rather than only determinant statistics.
+VJP error, and explicit memory semantics rather than only determinant statistics.
 
 ## 7. Expressivity stress experiment
 
@@ -141,7 +141,7 @@ coefficient: at 65x65 it took
 at 129x129 it took 3.2267 s, 3.0190 s, and 59.85 MB; at 257x257 it took
 14.1279 s, 12.1254 s, and 247.25 MB. Its gradients were finite, and an
 independent 7x7 directional finite-difference check had relative error
-9.37e-10. Independently recomputed fixed-(P_1) conjugacy residuals were
+9.37e-10. Independently recomputed fixed-\(P_1\) conjugacy residuals were
 0.02416, 0.02366, and 0.02352 at 65, 129, and 257 respectively. The
 prototype is differentiable on CPU, but this does not establish exact
 discrete conjugacy or GPU readiness. The MBM VJP rows and separate 7x7
@@ -193,7 +193,7 @@ The whole-plane Beurling transform is
 (Bg)(z)=-\frac1\pi\operatorname{p.v.}\int_{\mathbb C}
 \frac{g(w)}{(z-w)^2}\,dA(w).
 \]
-An (N_x\times N_y) FFT does not evaluate this integral on a bounded domain
+An \(N_x\times N_y\) FFT does not evaluate this integral on a bounded domain
 directly. It diagonalizes the *periodized* convolution on a flat torus: the
 kernel is replaced by the lattice sum
 \[
@@ -204,7 +204,7 @@ coefficient to zero outside the computational window removes the physical
 coefficient there, but it does not remove the periodic image interactions.
 
 Centered zero-padding approximates the free-space operator by increasing the
-period (L); it is not an exact bounded-domain boundary condition. On a
+period \(L\); it is not an exact bounded-domain boundary condition. On a
 128x128 uniform grid with a smooth coefficient supported in a central disk
 (radius 0.34), periodic FFT and padding-factor-2 differed by 5.19% in the
 central radius-0.18 region and 27.5% in the outer annulus. Padding factors 4

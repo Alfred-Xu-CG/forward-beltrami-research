@@ -21,7 +21,7 @@ and bottom rows are natural. The free vertex equations are the sparse weighted
 graph Laplacian equations \(Lu=0\). Strict positivity of all conductances and
 the two Dirichlet sides give a unique solution.
 
-For a unit-conductance grid, \(u_{i,j}=i/(n_x-1)\). There are (n_y) parallel
+For a unit-conductance grid, \(u_{i,j}=i/(n_x-1)\). There are \(n_y\) parallel
 rows, so
 \[
  M=E(u)=\text{right flux}=\frac{n_y}{n_x-1}.
@@ -29,15 +29,15 @@ rows, so
 \]
 The corrected dual construction has \(n_y+1\) horizontal dual levels and
 \(n_y\) strips. Its strip height is the row current and its width is the
-horizontal potential drop. Therefore the summed dual area is again (M).
-The old Phase II implementation used only (n_y-1) strips and returned
-\((n_y-1)/(n_x-1)), which is the C1 off-by-one error.
+horizontal potential drop. Therefore the summed dual area is again \(M\).
+The old Phase II implementation used only \(n_y-1\) strips and returned
+\((n_y-1)/(n_x-1)\), which is the C1 off-by-one error.
 
 ## 2. Independent invariants
 
 Three quantities are computed separately in the reference implementation:
 
-1. graph energy (u^TLu);
+1. graph energy \(u^\mathsf{T}Lu\);
 2. total right-boundary flux, the sum of conductance times potential drop on
    the rightmost horizontal edges;
 3. reconstructed dual area.
@@ -57,15 +57,15 @@ energy, flux, and area all equal \(\sum_j c_j/(n_x-1)\).
 
 ## 3. Discrete duality and the missing compatibility condition
 
-In a continuum conductivity problem, (q=A\nabla u) is divergence-free and
-the rotated one-form (Jq) has a global stream potential on a simply connected
+In a continuum conductivity problem, \(q=A\nabla u\) is divergence-free and
+the rotated one-form \(Jq\) has a global stream potential on a simply connected
 domain. A graph analogue needs three separate complexes:
 
-* a primal vertex--edge incidence matrix (B);
-* a diagonal edge Hodge star (C) containing conductances;
+* a primal vertex--edge incidence matrix \(B\);
+* a diagonal edge Hodge star \(C\) containing conductances;
 * a dual incidence operator that integrates the rotated edge fluxes.
 
-The primal equation is (B C B^T u=0) on free vertices. A dual potential exists
+The primal equation is \(BCB^\mathsf{T}u=0\) on free vertices. A dual potential exists
 only if the rotated flux vector lies in the image of the dual coboundary. On a
 rectangular simply connected grid this is equivalent to the cycle sums being
 zero and is satisfied by Kirchhoff conservation. On a general mesh, a naive
@@ -73,7 +73,7 @@ four-direction stencil does not automatically supply that dual complex.
 
 ## 4. Anisotropic extension
 
-For a facewise tensor \(A_T\succ0\), the (P_1) stiffness contribution is
+For a facewise tensor \(A_T\succ0\), the \(P_1\) stiffness contribution is
 \[
  K^T_{ij}=|T|(\nabla\phi_i)^T A_T\nabla\phi_j.
 \]

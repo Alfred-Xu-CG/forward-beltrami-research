@@ -273,14 +273,14 @@ On the structured square with a smooth nodal coefficient
 \[
 \mu(x,y)=0.25e^{0.7i}\exp(-((x-0.5)^2+(y-0.5)^2)/0.18),
 \]
-the existing face-averaged (P_1) reference was run at (65^2) and (129^2)
+the existing face-averaged \(P_1\) reference was run at \(65^2\) and \(129^2\)
 vertices. At (129^2), the primary energy was (0.8365161234202931), the
 complementary energy was (1.1954394999959734), and the reciprocal identity
 held to (2\times10^{-15}) because both quantities use the same assembled
 matrix. An independently integrated raw face-flux on the right boundary was
 (0.8385324350104797), differing from the energy by (2.0163\times10^{-3}).
-The discrepancy is expected for a conforming primal (P_1) solution whose
-raw face flux is not an equilibrated (H(\mathrm{div})) field; it is not a
+The discrepancy is expected for a conforming primal \(P_1\) solution whose
+raw face flux is not an equilibrated \(H(\mathrm{div})\) field; it is not a
 contradiction of the continuum theorem. The compatible manufactured map in
 `02_discrete_conjugacy.md` supplies the missing exact flux-conjugacy condition.
 
