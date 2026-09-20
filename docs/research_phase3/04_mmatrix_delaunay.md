@@ -193,3 +193,42 @@ and right boundary increments; the smallest left increment was
 \(0.0909090909\). This is consistent with the (M)-matrix structure of the
 right-triangle isotropic stencil, but it is not a proof for arbitrary planar
 graphs or anisotropic tensors.
+
+## 9. Realistic wide-stencil stress test
+
+The preceding fixed-stencil counterexample leaves open whether enlarging the
+local direction cone can cover more anisotropic tensors while preserving a
+topology certificate. We therefore ran the current positive-conductance
+decoder on a realistic unstructured Delaunay mesh with 12,384 vertices,
+24,382 original faces, and 384 boundary vertices (`seed=20260919`). The
+decoder was fitted once using one-ring edge supports and once using two-ring
+supports. In both cases the edge weights were constrained below by
+\(10^{-4}\), and the decoded map was solved with the resulting positive
+network. The reported determinant is the raw signed double area of every
+original triangle, not a normalized Jacobian. The timing values below are the
+values in the checked-in artifact
+`artifacts/mmatrix_global_unstructured_wide_12000/mmatrix_global_unstructured_wide_audit.json`.
+The cone residual is an absolute Euclidean norm in the three coefficient
+coordinates \((A_{00},A_{01},A_{11})\), evaluated before weight-floor clipping
+and edge-weight symmetrization, over all vertices with at least three support
+neighbors (including boundary vertices); it is not a relative error or the
+residual of the final assembled network.
+
+| support | decoder edges | mean support | p95 support | fit residual (mean) | fit residual (p95) | fit time (s) | solve time (s) | total (s) | min original-face determinant | flipped original faces |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| one-ring | 36,765 | 5.9375 | 8 | 0.12901133 | 0.79508870 | 21.76037 | 0.07077 | 21.83114 | \(2.4053\times10^{-12}\) | 0 |
+| two-ring | 120,275 | 19.4243 | 26 | 0.002908684 | \(7.44\times10^{-12}\) | 34.61139 | 0.37352 | 34.98491 | \(-4.9312\times10^{-4}\) | 1,641 |
+
+The two-ring fit substantially reduces the local cone residual but does not
+preserve the embedding: the non-planar wide graph introduces 1,641 flipped
+original faces. The one-ring graph has no flip in this run, but its residual
+is large and its positive-area margin is nearly singular. This is numerical
+counterevidence to the naive claim that a wider positive stencil automatically
+provides both universal anisotropic coverage and a hard homeomorphism
+certificate. It is not a theorem that every adaptive or planar wide-stencil
+construction fails; a successful route still needs a specified compatible
+connectivity, an assembled monotonicity proof, and a scalable certificate.
+The artifact was produced as a single local Windows CPU run with seed
+20260919, Python 3.12.4, NumPy 1.26.4, SciPy 1.13.1, and
+`OMP_NUM_THREADS=1`; wall-clock values should therefore be treated as
+machine-specific rather than portable complexity constants.

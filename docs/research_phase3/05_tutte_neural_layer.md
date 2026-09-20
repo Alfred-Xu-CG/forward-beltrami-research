@@ -160,6 +160,22 @@ and lower RSS at 257x257, while MBM retains the stronger continuum
 interpretation but still lacks a structure-preserving global discrete
 certificate.
 
+The next same-machine stress point used 513x513 vertices (the Tutte command
+uses 512x512 cells and therefore 263,169 vertices). The directed Tutte layer
+completed two forward-plus-backward passes in 117.990 s and 118.219 s for
+logit spreads 1 and 3. Both outputs and gradients were finite, the independent
+injectivity audit found zero flips and no boundary intersections, and the
+minimum signed-area ratios were 1.3282e-3 and 2.5495e-12 respectively. The
+second value is effectively a near-singular conditioning margin even though
+the audit still certifies this particular run. The MBM VJP at 513x513 vertices
+took 70.961 s forward and 46.875 s backward, increased process RSS by about
+1,290.8 MB, remained finite, and had normalized minimum face determinant
+0.50538 with conjugacy residual 0.02355. The MBM run was isolated with
+`OMP_NUM_THREADS=1`; the Tutte script reports combined elapsed time rather
+than separate forward/backward or RSS-delta measurements. These larger runs
+strengthen the practical memory warning but remain machine-specific numerical
+evidence, not a universal complexity theorem.
+
 As a nonuniform-mesh stress test, a Delaunay triangulation with 4,056
 vertices, 7,854 faces, and 256 boundary samples was decoded twice. With
 directed-logit spreads 1 and 3, the forward-plus-backward times were 1.772 s

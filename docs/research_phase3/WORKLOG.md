@@ -214,3 +214,69 @@ Smallest decisive test: sine-bump targets alpha 0.05/0.15/0.30, then 129/257 spa
 Prior work: CQ9-CQ12, existing directed implicit solver and MBM-LBS reference.
 
 Finding: Tutte fits but mu error and determinant margin worsen with alpha; 257x257 Tutte takes 4.084 s forward + 1.801 s backward, while MBM takes 17.257 s forward and has no VJP.
+
+## T+14h — Wide-stencil anisotropic stress
+
+Question: Does enlarging the positive edge-direction stencil simultaneously
+improve anisotropic tensor coverage and preserve a hard embedding certificate?
+
+Exact claim: one-ring and two-ring positive-conductance decoders should be
+evaluated on a realistic unstructured mesh, with fit residual, solve cost, and
+original-face signed determinants reported independently.
+
+Assumptions: 12,384-vertex Delaunay mesh, 24,382 original faces, 384 boundary
+vertices, seed 20260919, edge-weight floor (10^{-4}). The determinant is the
+raw signed double area on the original mesh; it is not a normalized Jacobian.
+
+What would falsify it: a wider stencil that improves tensor fit while retaining
+positive signed area on every original face would support the route; any flips
+or a near-singular margin would refute the naive universal claim.
+
+Finding: one-ring support (36,765 decoder edges) had residual mean/p95
+0.129011/0.795089, total fit-plus-solve time 21.83114 s, zero flips, but minimum
+determinant (2.4053\times10^{-12}). Two-ring support (120,275 edges) reduced
+residual mean/p95 to 0.00290868/(7.44\times10^{-12}) but took 34.98491 s and
+flipped 1,641 original faces, with minimum determinant
+(-4.9312\times10^{-4}). The result is numerical counterevidence to the naive
+wide-stencil decoder, not a theorem against adaptive planar constructions. The
+checked-in artifact reports Python 3.12.4, NumPy 1.26.4, SciPy 1.13.1,
+`OMP_NUM_THREADS=1`, and the local Intel i7-4770 CPU. Residuals include boundary
+vertices with at least three supports and are absolute pre-clipping coefficient
+norms, not final-network residuals.
+
+## T+15h — Larger same-machine neural-layer stress
+
+Question: Do the surviving directed-Tutte and MBM CPU prototypes remain finite
+at 513-by-513 vertices, and how do time/memory scale beyond 257-by-257?
+
+Exact claim: isolated-process measurements at the next realistic resolution
+can expose a practical memory or solve-time wall even when smaller runs pass.
+
+Assumptions: same smooth coefficient family, zero/affine convex boundary,
+float64 CPU execution, one thread, separate fresh process per measurement.
+
+What would falsify it: non-finite output/gradient, topology failure, or a
+resource wall before the requested resolution.
+
+Prior work: CQ12 129/257 rows and the independent checker audit. Next step is
+to run both prototypes and record only independently observable quantities.
+
+## T+16h — 513-vertex-axis stress result
+
+Finding: MBM at 513x513 vertices was finite with 70.961 s forward, 46.875 s
+backward, +1,290.8 MB process RSS, normalized minimum determinant 0.50538, and
+conjugacy residual 0.02355. Directed Tutte at 512x512 cells (263,169 vertices)
+was finite and flip-free at logit spreads 1 and 3, taking 117.990/118.219 s for
+combined forward-plus-backward passes; its minimum signed-area ratio dropped to
+2.5495e-12 at spread 3. This is a conditional numerical pass with a clear
+memory/conditioning warning, not a production-layer conclusion.
+
+## T+16.5h — Regression environment audit
+
+The first full-suite invocation aborted in `tests/test_beltrami.py` with Intel
+OpenMP error #15 because Anaconda MKL and PyTorch loaded duplicate OpenMP
+runtimes. This reproduced in the focused test and disappeared when the
+documented `MKL_THREADING_LAYER=SEQUENTIAL` and `OMP_NUM_THREADS=1` variables
+were set before Python startup. With that explicit environment the complete
+suite passed: 312 tests, one unrelated Paramiko Blowfish deprecation warning,
+129.15 s. No source fix was needed.
