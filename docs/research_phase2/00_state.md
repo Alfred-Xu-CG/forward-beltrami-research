@@ -47,6 +47,13 @@ Authoritative plan: [PLAN.md](PLAN.md)
   realizable by a continuous P1 map. This is why a small conjugacy residual in
   the independent MBM complementary solve cannot be interpreted as only a
   sparse-solver error.
+- The structured MBM implicit layer now passes a double-precision directional
+  finite-difference VJP check with relative error \(9.4\times10^{-10}\).
+  Forward-plus-backward wall time was 1.56 s at 64x64, 6.13 s at 128x128,
+  and 26.21 s at 256x256; process RSS increased to about 485 MB at 256x256.
+  This is a real differentiable prototype, but its current Python assembly,
+  sparse factorization cost, and mixed-boundary topology gap prevent a
+  production-layer claim.
 
 ## Next decisive questions
 

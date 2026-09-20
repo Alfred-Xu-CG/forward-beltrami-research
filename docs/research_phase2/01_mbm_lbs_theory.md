@@ -440,3 +440,21 @@ There are now three distinct decoder contracts:
 The final architecture may therefore be hybrid, but a hybrid is only justified
 after its interface states exactly which quantity is preserved: Beltrami
 coefficient, metric energy, boundary order, or topology.
+
+## 14. Implicit neural-layer prototype
+
+The prototype in
+src/qcopt/forward/mbm_lbs_implicit.py exposes the two scalar fields as a
+real-valued PyTorch layer. Its forward pass assembles the P1 stiffness matrix,
+solves the left/right primary problem and the bottom/top complementary problem,
+and returns \((u,v)\) with \(v=Mw\). Its backward pass solves the two reduced
+transpose systems and contracts the analytic derivatives of \(A(a,b)\).
+
+For a \(7\times7\) grid, a random directional finite-difference check of the
+loss \(\|f\|_2^2\) gave relative VJP error \(9.4\times10^{-10}\). On a smooth
+field, forward plus backward took 1.56 s, 6.13 s, and 26.21 s for 64x64,
+128x128, and 256x256 grids, respectively. The process RSS rose from
+approximately 293 MB to 485 MB during the 256x256 run. These measurements
+show that implicit differentiation is feasible, but they also identify the
+current bottlenecks: Python element assembly, two independent factorizations,
+and the absence of a hard mixed-boundary homeomorphism theorem.
