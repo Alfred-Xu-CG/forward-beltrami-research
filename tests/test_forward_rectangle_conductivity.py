@@ -29,3 +29,22 @@ def test_conductivity_recovery_has_no_central_difference_checkerboard() -> None:
     assert result.min_triangle_determinant > 0.1
     assert np.sqrt(np.mean(np.abs(result.map - truth) ** 2)) < 3e-3
     assert result.equation_residual < 5e-2
+
+
+def test_conductivity_ignores_supplied_interior_values() -> None:
+    n = 20
+    x = np.linspace(0.0, 1.0, n)
+    xx, yy = np.meshgrid(x, x, indexing="xy")
+    coefficient = 0.18 + 0.11j
+    truth = xx + 1j * yy + coefficient * (xx - 1j * yy)
+    mu = np.full((n, n), coefficient, dtype=np.complex128)
+
+    boundary_only = truth.copy()
+    interior = np.ones((n, n), dtype=bool)
+    interior[[0, -1], :] = False
+    interior[:, [0, -1]] = False
+    boundary_only[interior] = 37.0 - 19.0j
+
+    result = rectangle_beltrami_conductivity(mu, boundary_only)
+    assert result.converged
+    assert np.max(np.abs(result.map - truth)) < 2e-10

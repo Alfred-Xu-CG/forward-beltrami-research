@@ -107,18 +107,14 @@ def rectangle_beltrami_conductivity(
     stiffness = lil_matrix((n_vertices, n_vertices), dtype=np.float64)
     laplace = lil_matrix((n_vertices, n_vertices), dtype=np.float64)
     rhs_v = np.zeros(n_vertices, dtype=np.float64)
-    u_boundary = boundary.real.ravel()
-    v_boundary = boundary.imag.ravel()
+    # Only boundary entries are data. Interior entries may be arbitrary and
+    # must not leak into either the conductivity solve or flux recovery.
+    u_boundary = np.zeros(n_vertices, dtype=np.float64)
+    v_boundary = np.zeros(n_vertices, dtype=np.float64)
     for face_index, face in enumerate(triangles):
         grad = gradients[face_index]
         local_laplace = areas[face_index] * (grad @ grad.T)
         local_stiffness = areas[face_index] * (grad @ conductivity[face_index] @ grad.T)
-        local_u = u_boundary[list(face)]
-        grad_u = local_u @ grad
-        A = conductivity[face_index]
-        # J A grad(u), where J rotates a vector counter-clockwise.
-        target = np.array([-float((A @ grad_u)[1]), float((A @ grad_u)[0])])
-        rhs_v[list(face)] += areas[face_index] * (grad @ target)
         for i_local, i_global in enumerate(face):
             for j_local, j_global in enumerate(face):
                 stiffness[i_global, j_global] += local_stiffness[i_local, j_local]
@@ -131,10 +127,24 @@ def rectangle_beltrami_conductivity(
     boundary_mask[nx - 1 :: nx] = True
     interior = np.flatnonzero(~boundary_mask)
     boundary_indices = np.flatnonzero(boundary_mask)
+    supplied_real = boundary.real.ravel()
+    supplied_imag = boundary.imag.ravel()
+    u_boundary[boundary_indices] = supplied_real[boundary_indices]
+    v_boundary[boundary_indices] = supplied_imag[boundary_indices]
     stiffness_csr = stiffness.tocsr()
     u = u_boundary.copy()
     u_rhs = -stiffness_csr[interior][:, boundary_indices] @ u_boundary[boundary_indices]
     u[interior] = spsolve(stiffness_csr[interior][:, interior], u_rhs)
+
+    # Recover the conjugate coordinate from the solved conductivity field,
+    # rather than from caller-provided interior values.
+    for face_index, face in enumerate(triangles):
+        grad = gradients[face_index]
+        grad_u = u[list(face)] @ grad
+        A = conductivity[face_index]
+        # J A grad(u), where J rotates a vector counter-clockwise.
+        target = np.array([-float((A @ grad_u)[1]), float((A @ grad_u)[0])])
+        rhs_v[list(face)] += areas[face_index] * (grad @ target)
 
     laplace_csr = laplace.tocsr()
     v = v_boundary.copy()
