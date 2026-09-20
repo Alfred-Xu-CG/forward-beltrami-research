@@ -40,7 +40,9 @@ Authoritative plan: [PLAN.md](PLAN.md)
   convergent evidence, not an exact fixed-mesh conjugacy theorem.
 - The \(\mu=0\) electrical-grid unit test recovered the exact linear potential
   and positive rectangle cells; a 9x7 grid gave modulus and total tiling area
-  0.75. This validates the isotropic primal-dual bookkeeping only.
+  0.75. **Phase III correction:** the old 0.75 value omitted a boundary strip;
+  the independently derived 9x7 value is 0.875. Phase II remains
+  reconnaissance only; see `docs/research_phase3/03_electrical_primal_dual.md`.
 - A concrete four-direction diamond Hodge stencil exactly reconstructs every
   sampled Beltrami conductivity tensor (maximum reconstruction error
   \(3.6\times10^{-15}\), but its conductances stay nonnegative for only 18.46%

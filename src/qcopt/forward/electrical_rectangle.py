@@ -14,10 +14,11 @@ class ElectricalRectangleResult:
     primal_potential: np.ndarray
     dual_potential: np.ndarray
     modulus: float
+    graph_energy: float
+    right_flux: float
     minimum_cell_width: float
     minimum_cell_height: float
     tiling_area: float
-    target_area: float
 
 
 def solve_isotropic_electrical_rectangle(
@@ -32,20 +33,54 @@ def solve_isotropic_electrical_rectangle(
 
     if nx < 2 or ny < 2 or conductance <= 0.0:
         raise ValueError("nx, ny must be at least two and conductance positive")
+    horizontal = np.full((ny, nx - 1), float(conductance), dtype=np.float64)
+    vertical = np.full((ny - 1, nx), float(conductance), dtype=np.float64)
+    return solve_weighted_electrical_rectangle(horizontal, vertical)
+
+
+def solve_weighted_electrical_rectangle(
+    horizontal_conductance: np.ndarray,
+    vertical_conductance: np.ndarray,
+) -> ElectricalRectangleResult:
+    """Solve a positive rectangular conductance grid and audit its tiling.
+
+    The horizontal array has shape ``(ny, nx-1)`` and the vertical array has
+    shape ``(ny-1, nx)``.  The dual-strip reconstruction is deliberately
+    conservative: every horizontal row must have path-independent current. A
+    general network that violates this condition is rejected rather than being
+    silently presented as a rectangle tiling.
+    """
+    horizontal_conductance = np.asarray(horizontal_conductance, dtype=np.float64)
+    vertical_conductance = np.asarray(vertical_conductance, dtype=np.float64)
+    if horizontal_conductance.ndim != 2 or horizontal_conductance.shape[0] < 2 or horizontal_conductance.shape[1] < 1:
+        raise ValueError("horizontal_conductance must have shape (ny, nx-1) with ny >= 2")
+    ny, horizontal_edges = horizontal_conductance.shape
+    nx = horizontal_edges + 1
+    if vertical_conductance.shape != (ny - 1, nx):
+        raise ValueError("vertical_conductance must have shape (ny-1, nx)")
+    if not np.all(np.isfinite(horizontal_conductance)) or not np.all(np.isfinite(vertical_conductance)):
+        raise ValueError("conductances must be finite")
+    if np.min(horizontal_conductance) <= 0.0 or np.min(vertical_conductance) <= 0.0:
+        raise ValueError("conductances must be positive")
     n_vertices = nx * ny
     laplacian = lil_matrix((n_vertices, n_vertices), dtype=np.float64)
     for j in range(ny):
         for i in range(nx):
             vertex = j * nx + i
-            for di, dj in ((1, 0), (0, 1)):
-                ii, jj = i + di, j + dj
-                if ii >= nx or jj >= ny:
-                    continue
-                neighbor = jj * nx + ii
-                laplacian[vertex, vertex] += conductance
-                laplacian[neighbor, neighbor] += conductance
-                laplacian[vertex, neighbor] -= conductance
-                laplacian[neighbor, vertex] -= conductance
+            if i + 1 < nx:
+                neighbor = vertex + 1
+                edge_conductance = horizontal_conductance[j, i]
+                laplacian[vertex, vertex] += edge_conductance
+                laplacian[neighbor, neighbor] += edge_conductance
+                laplacian[vertex, neighbor] -= edge_conductance
+                laplacian[neighbor, vertex] -= edge_conductance
+            if j + 1 < ny:
+                neighbor = vertex + nx
+                edge_conductance = vertical_conductance[j, i]
+                laplacian[vertex, vertex] += edge_conductance
+                laplacian[neighbor, neighbor] += edge_conductance
+                laplacian[vertex, neighbor] -= edge_conductance
+                laplacian[neighbor, vertex] -= edge_conductance
     laplacian = laplacian.tocsr()
 
     left = np.arange(0, n_vertices, nx)
@@ -59,24 +94,34 @@ def solve_isotropic_electrical_rectangle(
         -laplacian[free][:, fixed] @ values[fixed],
     )
     primal = values.reshape(ny, nx)
-    horizontal_current = conductance * np.diff(primal, axis=1)
-    if np.max(np.abs(horizontal_current - horizontal_current.mean())) > 1e-10:
+    horizontal_difference = np.diff(primal, axis=1)
+    horizontal_current = horizontal_conductance * horizontal_difference
+    row_currents = horizontal_current.mean(axis=1)
+    if np.max(np.abs(horizontal_current - row_currents[:, None])) > 1e-10:
         raise ValueError("the isotropic grid current is not path-independent")
+    vertical_difference = np.diff(primal, axis=0)
+    vertical_current = vertical_conductance * vertical_difference
+    graph_energy = float(
+        np.sum(horizontal_current * horizontal_difference)
+        + np.sum(vertical_current * vertical_difference)
+    )
+    right_flux = float(np.sum(horizontal_current[:, -1]))
+    if abs(graph_energy - right_flux) > 1e-10:
+        raise ValueError("graph energy and right boundary flux disagree")
 
-    dual = np.zeros((ny, nx - 1), dtype=np.float64)
-    mean_current = float(horizontal_current.mean())
-    for row in range(1, ny):
-        dual[row] = dual[row - 1] + mean_current
-    cell_width = horizontal_current[:-1]
-    cell_height = np.diff(dual, axis=0)
-    modulus = float(dual[-1, 0])
+    dual_levels = np.r_[0.0, np.cumsum(row_currents)]
+    dual = np.repeat(dual_levels[:, None], nx - 1, axis=1)
+    cell_width = horizontal_difference
+    cell_height = np.repeat(row_currents[:, None], nx - 1, axis=1)
+    modulus = float(dual_levels[-1])
     tiling_area = float(np.sum(cell_width * cell_height))
     return ElectricalRectangleResult(
         primal_potential=primal,
         dual_potential=dual,
         modulus=modulus,
+        graph_energy=graph_energy,
+        right_flux=right_flux,
         minimum_cell_width=float(np.min(cell_width)),
         minimum_cell_height=float(np.min(cell_height)),
         tiling_area=tiling_area,
-        target_area=modulus,
     )

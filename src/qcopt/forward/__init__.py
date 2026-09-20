@@ -52,6 +52,12 @@ from .mmatrix import (
     spectral_conductances,
 )
 from .anisotropic_hodge import DiamondStencilResult, diamond_stencil_decomposition
+from .discrete_conjugacy import assemble_facewise_conductivity, p1_conjugacy_residual
+from .electrical_rectangle import (
+    ElectricalRectangleResult,
+    solve_isotropic_electrical_rectangle,
+    solve_weighted_electrical_rectangle,
+)
 from .safe_step import (
     certified_residual_step,
     certified_step_toward_target,
@@ -68,6 +74,7 @@ from .tutte_directed_implicit import (
     DirectedTutteSystem,
     directed_tutte_embedding_torch_implicit,
     rectangle_boundary_from_logits,
+    rectangle_boundary_from_modulus_logits,
 )
 from .tutte_weighted_implicit import weighted_tutte_vjp
 from .sphere import mobius_scale_sphere, mobius_scale_velocity_sphere, sphere_face_orientation, uv_sphere_mesh
@@ -166,6 +173,11 @@ __all__ = [
     "spectral_conductances",
     "DiamondStencilResult",
     "diamond_stencil_decomposition",
+    "assemble_facewise_conductivity",
+    "p1_conjugacy_residual",
+    "ElectricalRectangleResult",
+    "solve_isotropic_electrical_rectangle",
+    "solve_weighted_electrical_rectangle",
     "certified_residual_step",
     "maximum_safe_step",
     "certified_step_toward_target",
@@ -185,6 +197,7 @@ __all__ = [
     "DirectedTutteSystem",
     "directed_tutte_embedding_torch_implicit",
     "rectangle_boundary_from_logits",
+    "rectangle_boundary_from_modulus_logits",
     "weighted_tutte_vjp",
     "mobius_scale_sphere",
     "mobius_scale_velocity_sphere",

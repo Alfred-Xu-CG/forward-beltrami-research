@@ -1,29 +1,52 @@
-# AGENTS.md — Computational QC Research Mode
+# AGENTS.md — Deep Verification Research Mode
 ## Mission
 
-This repository is in **research convergence mode**.
+This repository is in **deep-verification research mode**.
 
 The goal is a fast, memory-efficient, differentiable neural layer that maps a learnable latent representation to a **guaranteed-bijective discrete deformation**, while retaining quasiconformal / Beltrami geometry when useful.
 
 Authoritative plan:
 
 ```text
-docs/research_phase2/PLAN.md
+docs/research_phase3/PLAN.md
 ```
 
-Legacy route documents and artifacts are evidence and reusable code, not the current agenda.
+Legacy Phase II results are reconnaissance, not final conclusions.
+
+Do not declare the 24-hour objective complete before T+22h unless the user
+explicitly stops it or no local, theoretical, or coding work is possible.
+Success criteria are not stop criteria; final synthesis begins only after an
+independent final review.
 
 ## Current priorities
 
-Only these are primary:
+Phase III mandatory closure questions are: correction audit; continuum MBM and
+modulus identities; exact P1 recovery; structure-preserving discrete
+conjugacy; corrected electrical primal-dual construction; anisotropic Hodge and
+Delaunay conditions; mixed-boundary monotonicity; directed Tutte scope,
+expressivity, and learnable modulus; and a fair neural-layer benchmark.
 
-1. Mixed-Boundary Modulus Linear Beltrami Solver (MBM-LBS).
-2. M-matrix / positive-convex-combination conditions and mixed-boundary monotonicity.
-3. Primal-dual / electrical-network QC rectangle mapping.
-4. Directed positive Tutte weights as a hard-bijective latent coordinate system.
-5. Fixed-P1 compatibility/projected-Beurling only as supporting exactness theory.
+Phase II documents remain reusable evidence, but Phase II's final decision is
+not authoritative for this round.
 
-Do not expand old A–N routes merely because they are marked partial.
+## Mandatory independent checking
+
+Critical claims require an independent checker context. The author of a
+theorem, formula, code path, or experiment may not be its only reviewer.
+Check uniqueness, necessary versus sufficient conditions, local versus global
+claims, boundary/off-by-one indexing, sign and orientation conventions,
+continuum versus fixed-mesh implications, theorem hypotheses versus the
+implementation, circular numerical validation, modulus/energy/flux identities,
+and implicit VJP formulas. Record claim, checker finding, and fix in
+`docs/research_phase3/07_independent_checks.md`. Disagreements require
+adjudication rather than silent averaging.
+
+## Deep-thinking requirement
+
+Before implementing a core idea, write a short research card in
+`docs/research_phase3/WORKLOG.md` containing Question, Exact claim, Assumptions,
+What would falsify it, Smallest decisive test, and Prior work. Do not code a
+theorem that has not been stated precisely.
 
 ## Research method
 
@@ -70,6 +93,8 @@ If these skills exist:
 - Use `academic-research-suite` only lightly for theorem/prior-art verification.
 - Use `ars/deep-research` only when a core theorem/prior-art problem cannot be resolved with targeted search.
 - Use `verification-before-completion` only at real phase milestones/final handoff.
+- Use `verification-before-completion` at the T+12h midpoint and the T+22h
+  independent final review.
 - Use `systematic-debugging` only for actual software bugs/test failures.
 - Do not repeatedly invoke `writing-plans` or `brainstorming`; the current plan already exists.
 - Keep `using-superpowers` to minimal routing.
@@ -145,5 +170,3 @@ Do not claim `|mu|<1` alone guarantees a sampled P1 map is fold-free.
 Do not claim a continuous diffeomorphism implies sampled P1 interpolation is fold-free.
 
 Do not use post-hoc fold repair as the primary topology guarantee.
-
-

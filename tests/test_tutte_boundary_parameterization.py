@@ -1,7 +1,10 @@
 import torch
 import pytest
 
-from qcopt.forward.tutte_directed_implicit import rectangle_boundary_from_logits
+from qcopt.forward.tutte_directed_implicit import (
+    rectangle_boundary_from_logits,
+    rectangle_boundary_from_modulus_logits,
+)
 from qcopt.forward.tutte_directed_implicit import DirectedTutteSystem, directed_tutte_embedding_torch_implicit
 from qcopt.mesh import structured_rectangle
 
@@ -52,3 +55,29 @@ def test_parameterized_boundary_composes_with_directed_tutte_and_preserves_face_
     output.square().sum().backward()
     assert torch.isfinite(boundary_logits.grad).all()
     assert torch.isfinite(row_logits.grad).all()
+
+
+def test_learnable_modulus_has_positive_height_exact_closure_and_gradient():
+    torch.set_default_dtype(torch.float64)
+    boundary_logits = torch.zeros((4, 2), requires_grad=True)
+    modulus_logit = torch.tensor(-0.3, requires_grad=True)
+    boundary = rectangle_boundary_from_modulus_logits(
+        boundary_logits, modulus_logit, width=torch.tensor(2.0)
+    )
+    expected_height = 1e-6 + torch.nn.functional.softplus(modulus_logit)
+    assert torch.allclose(boundary[4, 1], expected_height)
+    assert torch.allclose(boundary[6, 0], torch.tensor(0.0), atol=1e-12)
+    assert torch.allclose(boundary[-1, 1], expected_height / 2.0, atol=1e-12)
+    boundary.square().sum().backward()
+    assert torch.isfinite(modulus_logit.grad)
+    assert abs(float(modulus_logit.grad)) > 1e-8
+
+
+def test_boundary_accepts_tensor_width_and_height_gradients():
+    torch.set_default_dtype(torch.float64)
+    logits = torch.zeros((4, 2))
+    width = torch.tensor(2.0, requires_grad=True)
+    height = torch.tensor(3.0, requires_grad=True)
+    boundary = rectangle_boundary_from_logits(logits, width=width, height=height)
+    boundary.square().sum().backward()
+    assert torch.isfinite(width.grad) and torch.isfinite(height.grad)

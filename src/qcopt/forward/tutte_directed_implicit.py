@@ -85,11 +85,54 @@ class DirectedTutteSystem:
         return matrix.tocsr(), coupling.tocsr()
 
 
+def _validate_weakly_convex_boundary(boundary: np.ndarray, tolerance: float = 1e-12) -> None:
+    """Validate a positively oriented convex cycle, allowing side subdivisions."""
+
+    points = np.asarray(boundary, dtype=np.float64)
+    if points.ndim != 2 or points.shape[1] != 2 or points.shape[0] < 3:
+        raise ValueError("target boundary must contain at least three 2D points")
+    if not np.all(np.isfinite(points)):
+        raise ValueError("target boundary must be finite")
+    edges = np.roll(points, -1, axis=0) - points
+    if np.any(np.sum(edges * edges, axis=1) <= tolerance * tolerance):
+        raise ValueError("target boundary has a repeated consecutive vertex")
+    def orient(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> float:
+        delta1 = b - a
+        delta2 = c - a
+        return float(delta1[0] * delta2[1] - delta1[1] * delta2[0])
+
+    def on_segment(a: np.ndarray, b: np.ndarray, p: np.ndarray) -> bool:
+        lower = np.minimum(a, b) - tolerance
+        upper = np.maximum(a, b) + tolerance
+        return bool(abs(orient(a, b, p)) <= tolerance and np.all(p >= lower) and np.all(p <= upper))
+
+    def intersects(a: np.ndarray, b: np.ndarray, c: np.ndarray, d: np.ndarray) -> bool:
+        ab_c, ab_d = orient(a, b, c), orient(a, b, d)
+        cd_a, cd_b = orient(c, d, a), orient(c, d, b)
+        if ((ab_c > tolerance and ab_d < -tolerance) or (ab_c < -tolerance and ab_d > tolerance)) and ((cd_a > tolerance and cd_b < -tolerance) or (cd_a < -tolerance and cd_b > tolerance)):
+            return True
+        return on_segment(a, b, c) or on_segment(a, b, d) or on_segment(c, d, a) or on_segment(c, d, b)
+
+    n_points = points.shape[0]
+    for first in range(n_points):
+        for second in range(first + 1, n_points):
+            if second in (first, (first + 1) % n_points) or first in ((second + 1) % n_points,):
+                continue
+            if intersects(points[first], points[(first + 1) % n_points], points[second], points[(second + 1) % n_points]):
+                raise ValueError("target boundary must be a simple polygon")
+    turns = edges[:, 0] * np.roll(edges[:, 1], -1) - edges[:, 1] * np.roll(edges[:, 0], -1)
+    signed_area_twice = float(np.sum(points[:, 0] * np.roll(points[:, 1], -1) - points[:, 1] * np.roll(points[:, 0], -1)))
+    if signed_area_twice <= tolerance or float(np.min(turns)) < -tolerance:
+        raise ValueError("target boundary must be a positively oriented weakly convex polygon")
+    if int(np.count_nonzero(turns > tolerance)) < 3:
+        raise ValueError("target boundary is degenerate rather than strictly convex at its corners")
+
+
 def rectangle_boundary_from_logits(
     logits: torch.Tensor,
     *,
-    width: float = 1.0,
-    height: float = 1.0,
+    width: float | torch.Tensor = 1.0,
+    height: float | torch.Tensor = 1.0,
 ) -> torch.Tensor:
     """Parameterize a strictly ordered rectangular boundary by side logits.
 
@@ -108,14 +151,14 @@ def rectangle_boundary_from_logits(
         raise ValueError("logits must be floating point")
     if not torch.isfinite(logits).all():
         raise ValueError("logits must be finite")
-    if width <= 0.0 or height <= 0.0:
-        raise ValueError("width and height must be positive")
+    width_tensor = _positive_scalar_parameter(width, logits, "width")
+    height_tensor = _positive_scalar_parameter(height, logits, "height")
     lengths = torch.stack(
         (
-            torch.softmax(logits[0], dim=0) * width,
-            torch.softmax(logits[1], dim=0) * height,
-            torch.softmax(logits[2], dim=0) * width,
-            torch.softmax(logits[3], dim=0) * height,
+            torch.softmax(logits[0], dim=0) * width_tensor,
+            torch.softmax(logits[1], dim=0) * height_tensor,
+            torch.softmax(logits[2], dim=0) * width_tensor,
+            torch.softmax(logits[3], dim=0) * height_tensor,
         )
     )
     directions = torch.as_tensor(
@@ -132,6 +175,41 @@ def rectangle_boundary_from_logits(
     return torch.stack(vertices, dim=0)
 
 
+def _positive_scalar_parameter(
+    value: float | torch.Tensor,
+    reference: torch.Tensor,
+    name: str,
+) -> torch.Tensor:
+    if isinstance(value, torch.Tensor):
+        if value.ndim != 0 or not torch.is_floating_point(value):
+            raise ValueError(f"{name} must be a floating-point scalar tensor")
+        scalar = value.to(device=reference.device, dtype=reference.dtype)
+    else:
+        scalar = torch.as_tensor(value, dtype=reference.dtype, device=reference.device)
+    if not bool(torch.isfinite(scalar).item()) or not bool((scalar > 0.0).item()):
+        raise ValueError(f"{name} must be finite and positive")
+    return scalar
+
+
+def rectangle_boundary_from_modulus_logits(
+    logits: torch.Tensor,
+    modulus_logit: torch.Tensor,
+    *,
+    width: float | torch.Tensor = 1.0,
+    min_height: float = 1e-6,
+) -> torch.Tensor:
+    """Create the ordered rectangle boundary with a learnable positive height."""
+    if not isinstance(modulus_logit, torch.Tensor) or modulus_logit.ndim != 0:
+        raise ValueError("modulus_logit must be a scalar tensor")
+    if not torch.is_floating_point(modulus_logit) or not torch.isfinite(modulus_logit).item():
+        raise ValueError("modulus_logit must be finite and floating point")
+    if min_height <= 0.0 or not np.isfinite(min_height):
+        raise ValueError("min_height must be finite and positive")
+    modulus_logit = modulus_logit.to(device=logits.device, dtype=logits.dtype)
+    height = float(min_height) + torch.nn.functional.softplus(modulus_logit)
+    return rectangle_boundary_from_logits(logits, width=width, height=height)
+
+
 class _DirectedTutteImplicitFunction(torch.autograd.Function):
     @staticmethod
     def forward(ctx, target_boundary: torch.Tensor, logits: torch.Tensor, system: DirectedTutteSystem):
@@ -142,9 +220,16 @@ class _DirectedTutteImplicitFunction(torch.autograd.Function):
         if not torch.is_floating_point(target_boundary) or not torch.is_floating_point(logits):
             raise ValueError("target_boundary and logits must be floating point")
         boundary = target_boundary.detach().cpu().numpy().astype(np.float64, copy=False)
+        _validate_weakly_convex_boundary(boundary)
         logit_values = logits.detach().cpu().numpy().astype(np.float64, copy=False)
         if boundary.shape[0] != len(system.loop):
             raise ValueError("target_boundary has the wrong number of vertices")
+        if system.n_rows == 0:
+            ctx.empty = True
+            ctx.logit_dtype = logits.dtype
+            ctx.logit_device = logits.device
+            return target_boundary.clone()
+        ctx.empty = False
         probabilities = system._probabilities(logit_values)
         matrix, coupling = system._assemble(probabilities)
         solve = factorized(matrix.tocsc())
@@ -166,6 +251,8 @@ class _DirectedTutteImplicitFunction(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, gradient: torch.Tensor):
+        if ctx.empty:
+            return gradient, torch.zeros((0, 0), dtype=ctx.logit_dtype, device=ctx.logit_device), None
         system: DirectedTutteSystem = ctx.system
         grad = gradient.detach().cpu().numpy().astype(np.float64, copy=False)
         adjoint = np.asarray(ctx.solve_transpose(grad[system.interior]), dtype=np.float64)
@@ -200,4 +287,6 @@ def directed_tutte_embedding_torch_implicit(
         system = DirectedTutteSystem.from_mesh(mesh)
     if system.n_vertices != mesh.n_vertices:
         raise ValueError("system was built for a different mesh")
+    if target_boundary.device != logits.device:
+        raise ValueError("target_boundary and logits must be on the same device")
     return _DirectedTutteImplicitFunction.apply(target_boundary, logits, system)

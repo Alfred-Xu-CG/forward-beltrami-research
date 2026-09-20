@@ -97,6 +97,13 @@ In a 9-by-7 vertex grid, the sparse graph solve recovered
 \(u_{i,j}=i/8\) with maximum error \(4.44\times10^{-16}\). Every horizontal
 current was \(0.125\) up to \(3\times10^{-16}\), the integrated dual potential
 had top value \(M=0.75\), and the summed rectangle-cell area was \(0.75\).
+
+**Phase III correction (2026-09-21).** This number is an off-by-one bug in the
+old dual indexing, not a validated theorem value. For an (n_x\times n_y)
+vertex grid with left/right values 0/1 and natural top/bottom rows, the
+independent parallel-row calculation is (M=n_y/(n_x-1)), hence (M=0.875)
+for 9x7. See `docs/research_phase3/03_electrical_primal_dual.md` and the
+corrected implementation/tests.
 All cell widths and heights were positive. This validates the isotropic
 orientation and modulus bookkeeping, but it is intentionally only the
 \(\mu=0\) unit test.
@@ -228,7 +235,7 @@ A=c_x e_xe_x^\top+c_y e_ye_y^\top
   +c_+e_+e_+^\top+c_-e_-e_-^\top
 \tag{PD-8}
 \]
-has the unique coefficients
+has a one-parameter family of exact coefficients
 \[
 c_x=a-|b|,\qquad c_y=c-|b|,\qquad
 c_+=\max(b,0),\qquad c_-=\max(-b,0).
