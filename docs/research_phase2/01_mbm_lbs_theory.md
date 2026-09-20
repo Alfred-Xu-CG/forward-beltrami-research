@@ -499,3 +499,13 @@ layer.
 
 The Phase II decision is therefore to retain (PB-1) as supporting exactness
 theory and to stop before a generic Beurling production implementation.
+
+## 16. Realistic-resolution topology control
+
+For the smooth field used in the implicit-layer benchmark, an independent
+topology audit of the reference output gave positive determinants and ordered
+side traces at both 128x128 and 256x256. The minimum determinant was
+\(2.48\times10^{-5}\) and \(6.08\times10^{-6}\), while the conjugacy residual
+decreased from \(1.82\times10^{-2}\) to \(9.20\times10^{-3}\). This is useful
+realistic-resolution evidence, but the shrinking determinant margin and the
+unresolved mixed-boundary theorem prevent a hard-bijection claim.

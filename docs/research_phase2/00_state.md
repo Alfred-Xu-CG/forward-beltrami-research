@@ -55,6 +55,10 @@ Authoritative plan: [PLAN.md](PLAN.md)
   admitted strictly positive local directed-Tutte rows at all 225 interior
   vertices; the smallest maximin row weight was 0.139. This is initial evidence
   that the hard decoder is not trivially too restrictive.
+- At 128x128 and 256x256, the MBM reference output retained positive face
+  determinants and monotone side traces, but the minimum determinant decreased
+  to \(6.08\times10^{-6}\) at 256x256. This is evidence for the tested field,
+  not a global hard-bijection certificate.
 - The structured MBM implicit layer now passes a double-precision directional
   finite-difference VJP check with relative error \(9.4\times10^{-10}\).
   Forward-plus-backward wall time was 1.56 s at 64x64, 6.13 s at 128x128,
