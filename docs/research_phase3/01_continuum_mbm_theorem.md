@@ -239,6 +239,65 @@ not an exact affine test when \(\operatorname{Im}\mu\ne0\).
 - It does not provide a fast factorization when \(A(\mu)\) changes with every
   neural sample.
 
+### 7.4 A conditional P1-sampling safety lemma
+
+The missing continuum-to-discrete implication can be stated precisely under
+additional regularity. Let `Omega_h` be a conforming triangulated polygonal
+topological disk, and let `f` be a `C^2`, orientation-preserving
+diffeomorphism on a neighborhood of its closure, with certified positive-
+Jacobian and Hessian bounds on each closed triangle. Let `I_h f` be its nodal
+affine interpolant. For a triangle `T`, set
+
+\[
+m_T=\inf_{x\in T}\sigma_{\min}(Df(x)),\qquad
+M_T=\sup_{x\in T}\|D^2f(x)\|,
+\]
+
+and let \(\lambda_{T,i}\) be its barycentric basis functions. Define the
+computable shape-weighted error bound
+
+\[
+\eta_T=\frac{M_T}{2}\sum_{i=1}^3
+       \sup_{x\in T}|a_i-x|^2\,\|\nabla\lambda_{T,i}\|,
+\tag{MB3-9}
+\]
+
+where \(a_i\) are the vertices of \(T\). Taylor's theorem and
+\(\sum_i(a_i-x)\otimes\nabla\lambda_{T,i}=I\) give
+
+\[
+\|D(I_hf)|_T-Df(x)\|\le \eta_T
+\quad (x\in T).
+\tag{MB3-10}
+\]
+
+Consequently, if \(\eta_T<m_T\) on every face, then
+
+\[
+\sigma_{\min}(D(I_hf)|_T)\ge m_T-\eta_T>0,
+\qquad
+\det D(I_hf)|_T>0.
+\tag{MB3-11}
+\]
+
+If, in addition, the piecewise-linear boundary trace is a simple,
+orientation-preserving, noncollapsed polygonal curve, the positive face
+orientations and degree-one boundary map imply that `I_h f` is a global
+piecewise-affine homeomorphism onto the polygonal region bounded by that trace.
+Every regular target point has a positive signed preimage count, while the
+boundary degree is one inside the sampled polygon and zero outside; hence the
+count is exactly one. This statement is for a polygonal conforming domain; a
+curved physical boundary requires an isoparametric or separately certified
+boundary approximation.
+
+This is a sufficient sampling theorem, not a consequence of merely
+\(\|\mu\|_{L^\infty}<1\). For the measurable-coefficient CQ1 theorem, \(f\) is
+only guaranteed to be quasiconformal in \(W^{1,2}\); \(D^2f\), \(m_T\), and the
+bound (MB3-9) may not exist or be available. A neural solver would therefore
+need either a certified regularity/mesh controller satisfying (MB3-9), or a
+different discrete construction whose topology certificate is intrinsic to its
+linear system.
+
 ## 8. Evidence status
 
 | statement | level |

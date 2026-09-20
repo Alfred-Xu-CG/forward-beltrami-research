@@ -325,3 +325,16 @@ An independent checker matched the BHF receipts exactly and clarified that the
 32x32 parity run is separate from the 512x512 run; GPU driver/software/seed/
 commit metadata are absent from the receipts, so the measurement remains a
 supporting acceleration control.
+
+## T+19h — Continuum-to-P1 sampling gap
+
+Question: Under what explicit hypotheses does a sampled canonical QC map become
+a hard PL homeomorphism?
+
+Finding: added a conditional (C^2) sampling lemma: if the shape-weighted
+interpolation error \(\eta_T\) is below the minimum singular-value bound
+\(m_T\) on every triangle, all P1 face determinants stay positive; with a
+simple orientation-preserving boundary trace, degree one gives global
+homeomorphism. The measurable (L^\infty)-Beltrami theorem supplies neither
+the (C^2) Hessian bound nor an automatic mesh certificate, so this closes a
+sufficient special case only and does not upgrade MBM to a universal solver.
