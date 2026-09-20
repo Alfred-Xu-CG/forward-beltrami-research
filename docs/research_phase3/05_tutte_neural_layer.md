@@ -135,14 +135,21 @@ at 129x129 vertices, with minimum face determinant
 4.0842 s and 1.8012 s, with minimum *raw* triangle signed area
 \(1.5259\times10^{-5}=2/256^2\); the measured resident-set increase was about
 121.4 MB. The MBM face-averaged reference on the same smooth coefficient took
-4.5419 s at 129x129 and 17.2574 s at 257x257, but it has no implemented
-autograd VJP and its fixed-(P_1) conjugacy residual was 0.02366 and 0.02352;
-the latter determinant values are normalized face Jacobians and are not directly
-comparable to the raw Tutte area values.
-These are prototype measurements, not a production GPU comparison. They show
-that an implicit Tutte layer currently has the cleaner backward path, while MBM
-retains the stronger continuum interpretation but lacks the required hard
-discrete compatibility and memory-aware adjoint implementation.
+4.5419 s at 129x129 and 17.2574 s at 257x257. A separate CPU implicit VJP
+prototype was measured on the same smooth coefficient: at 65x65 it took
+0.7952 s forward, 0.7381 s backward, and increased process RSS by 18.28 MB;
+at 129x129 it took 3.2033 s, 3.0516 s, and 43.42 MB; at 257x257 it took
+14.5863 s, 11.9542 s, and 249.13 MB. Its gradients were finite, and an
+independent 7x7 directional finite-difference check had relative error
+9.37e-10. Independently recomputed fixed-(P_1) conjugacy residuals were
+0.02416, 0.02366, and 0.02352 at 65, 129, and 257 respectively. The
+prototype is differentiable on CPU, but this does not establish exact
+discrete conjugacy or GPU readiness;
+The normalized MBM face determinants are not directly comparable to the raw
+Tutte triangle areas. These are prototype CPU measurements, not a production
+GPU comparison: Tutte has the cheaper backward path and lower RSS at 257x257,
+while MBM retains the stronger continuum interpretation but still lacks a
+structure-preserving global discrete certificate.
 
 At 129x129 with 128 logits per side, the learnable-modulus boundary helper
 composed with the same implicit solve in 0.9229 s forward and 0.4133 s

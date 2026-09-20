@@ -125,6 +125,17 @@ Prior work: Daripa/Gaidashev route and periodic/zero-padded Beurling modules.
 
 Finding: periodic differs 5.19% centrally and 27.5% near the outer annulus; padding 4/8 converges centrally. Uniform FFT is therefore not a general-mesh or exact bounded-domain solver.
 
+## T+10h — MBM implicit VJP benchmark
+
+Question: Does the MBM reference actually have a usable differentiable backward path at realistic resolution?
+Exact claim: the CPU implicit prototype can backpropagate through two sparse P1 solves, but this does not establish exact discrete conjugacy or topology.
+Assumptions: smooth coefficient (0.25e^{-r^2/.18}e^{0.7i}), 65/129/257 structured vertices, one CPU process.
+What would falsify it: nonfinite gradients, finite-difference disagreement, or unbounded memory at the tested sizes.
+Smallest decisive test: directional FD on 7x7 plus RSS/timing at all three resolutions.
+Prior work: CQ1-CQ4, `mbm_lbs_torch_implicit`, independent `solve_mbm_lbs` residual evaluator.
+
+Finding: VJP is finite and FD-consistent (relative error 9.37e-10), but 257x257 costs 14.586 s forward + 11.954 s backward and 249.13 MB RSS; conjugacy residual remains 0.02352. This upgrades MBM from “no VJP prototype” to “differentiable CPU reference, not production candidate.”
+
 ## T+6h — C10/C12 expressivity and medium benchmark
 
 Question: Does the directed Tutte layer remain accurate, fold-free, and differentiable at realistic resolution?
