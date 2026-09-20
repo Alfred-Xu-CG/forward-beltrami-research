@@ -388,3 +388,8 @@ Verification command: `PYTHONPATH=src`, `MKL_THREADING_LAYER=SEQUENTIAL`, and
 123.16s`; the only warning is Paramiko's external Blowfish deprecation. The
 explicit MKL/OpenMP environment remains necessary on this host because the
 unqualified invocation can load duplicate Intel OpenMP runtimes.
+
+Receipt audit: independently compared the four matched-control JSON receipts,
+the anisotropic edge-audit maximum error, and the 513-vertex fill counts with
+their CSV rows; all 30 rows have 18 fields and the values agree within the CSV
+rounding precision.
