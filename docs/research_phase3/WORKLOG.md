@@ -380,3 +380,11 @@ they are 1,830,907 versus 53,221,022 and 53,887,458. The implicit
 implementation retains both systems and transpose factors, so factor fill—not
 only matrix assembly—is the immediate memory bottleneck. These are structural
 nonzero ratios from one SuperLU ordering, not byte or peak-RSS measurements.
+
+## T+21h — Full regression after Phase III additions
+
+Verification command: `PYTHONPATH=src`, `MKL_THREADING_LAYER=SEQUENTIAL`, and
+`OMP_NUM_THREADS=1` before `pytest -q`. Result: `316 passed, 1 warning in
+123.16s`; the only warning is Paramiko's external Blowfish deprecation. The
+explicit MKL/OpenMP environment remains necessary on this host because the
+unqualified invocation can load duplicate Intel OpenMP runtimes.
