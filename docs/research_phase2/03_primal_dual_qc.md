@@ -101,6 +101,12 @@ All cell widths and heights were positive. This validates the isotropic
 orientation and modulus bookkeeping, but it is intentionally only the
 \(\mu=0\) unit test.
 
+This unit test is now reproducible through
+src/qcopt/forward/electrical_rectangle.py and
+tests/test_forward_electrical_rectangle.py. The implementation deliberately
+rejects a nonuniform current rather than silently treating a non-closed dual
+1-form as a conjugate potential.
+
 ## 5. Anisotropic extension
 
 For a Beltrami field, the continuum energy is
