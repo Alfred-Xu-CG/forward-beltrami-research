@@ -312,3 +312,16 @@ the canonical edge sign and direct affine cases; boundary singleton edges have
 zero face-mismatch by definition and tree-edge residuals vanish by construction.
 This closes only a compatibility diagnostic, not the general dual-Hodge/neural
 solver.
+
+## T+18.5h — BHF high-resolution supporting control
+
+The prior GPU-native BHF evidence was reconciled into the Phase III summary:
+a 512x512-cell single safe step (524,288 faces) took 1,044.19 s for assembly
+and 1,066.53 s end-to-end, had zero flips, and matched a 32x32 NumPy Duffy
+reference at relative L2 error 1.66e-7. This strengthens the regular-mesh
+engineering evidence but does not close the bounded-domain PV theorem,
+multistep adjoint, arbitrary-mesh topology, or memory gate.
+An independent checker matched the BHF receipts exactly and clarified that the
+32x32 parity run is separate from the 512x512 run; GPU driver/software/seed/
+commit metadata are absent from the receipts, so the measurement remains a
+supporting acceleration control.

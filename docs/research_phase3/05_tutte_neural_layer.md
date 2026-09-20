@@ -273,8 +273,13 @@ Legacy measurements on jittered meshes reached 16,641 and 66,049 vertices with
 zero observed flips; the 32-to-128 coarse-to-fine prototype used about 4.91 GB
 peak CUDA allocation and matched a four-step fine reference to relative map
 error \(1.80\times10^{-7}\). A 64-to-256 attempt used about 24 GB and did not
-finish. These are valuable multilevel engineering clues, but no Phase III
-proof establishes a bounded-domain principal-value identity, arbitrary-mesh
-homeomorphism, smooth active-set differentiation, or production memory bound.
+finish. A separate GPU-native single-step control reached 512x512 cells
+(524,288 faces): near/far assembly took 1,044.19 s and the full safe step
+1,066.53 s, with zero flips; a 32x32 parity check against the NumPy Duffy
+reference had relative L2 error 1.66e-7. This is a large regular-mesh
+assembly control, not a multistep solver or a proof. These are valuable
+multilevel engineering clues, but no Phase III proof establishes a
+bounded-domain principal-value identity, arbitrary-mesh homeomorphism, smooth
+active-set differentiation, or production memory bound.
 Accordingly BHF/FMM/GPU remains a supporting branch, not a certified candidate
 or a route closed by the failed large run.
