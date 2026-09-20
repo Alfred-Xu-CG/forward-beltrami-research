@@ -85,6 +85,53 @@ class DirectedTutteSystem:
         return matrix.tocsr(), coupling.tocsr()
 
 
+def rectangle_boundary_from_logits(
+    logits: torch.Tensor,
+    *,
+    width: float = 1.0,
+    height: float = 1.0,
+) -> torch.Tensor:
+    """Parameterize a strictly ordered rectangular boundary by side logits.
+
+    ``logits`` has shape ``(4, n_edges_per_side)``.  Each row is converted by
+    a softmax into positive segment lengths whose sum is respectively
+    ``width``, ``height``, ``width`` and ``height``.  The returned vertices are
+    ordered counter-clockwise, with the final closing segment implicit.  Thus
+    this layer can be used before :func:`directed_tutte_embedding_torch_implicit`
+    without ever supplying a self-intersecting or non-monotone boundary.
+    It controls boundary sampling and rectangular aspect ratio, not arbitrary
+    convex-polygon shape.
+    """
+    if logits.ndim != 2 or logits.shape[0] != 4 or logits.shape[1] < 1:
+        raise ValueError("logits must have shape (4, n_edges_per_side), n_edges_per_side >= 1")
+    if not torch.is_floating_point(logits):
+        raise ValueError("logits must be floating point")
+    if not torch.isfinite(logits).all():
+        raise ValueError("logits must be finite")
+    if width <= 0.0 or height <= 0.0:
+        raise ValueError("width and height must be positive")
+    lengths = torch.stack(
+        (
+            torch.softmax(logits[0], dim=0) * width,
+            torch.softmax(logits[1], dim=0) * height,
+            torch.softmax(logits[2], dim=0) * width,
+            torch.softmax(logits[3], dim=0) * height,
+        )
+    )
+    directions = torch.as_tensor(
+        ((1.0, 0.0), (0.0, 1.0), (-1.0, 0.0), (0.0, -1.0)),
+        dtype=logits.dtype,
+        device=logits.device,
+    )
+    current = torch.zeros(2, dtype=logits.dtype, device=logits.device)
+    vertices = []
+    for side in range(4):
+        for segment in lengths[side]:
+            vertices.append(current)
+            current = current + directions[side] * segment
+    return torch.stack(vertices, dim=0)
+
+
 class _DirectedTutteImplicitFunction(torch.autograd.Function):
     @staticmethod
     def forward(ctx, target_boundary: torch.Tensor, logits: torch.Tensor, system: DirectedTutteSystem):

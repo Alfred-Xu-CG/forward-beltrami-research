@@ -39,6 +39,11 @@ Authoritative plan: [PLAN.md](PLAN.md)
 - The \(\mu=0\) electrical-grid unit test recovered the exact linear potential
   and positive rectangle cells; a 9x7 grid gave modulus and total tiling area
   0.75. This validates the isotropic primal-dual bookkeeping only.
+- A concrete four-direction diamond Hodge stencil exactly reconstructs every
+  sampled Beltrami conductivity tensor (maximum reconstruction error
+  (3.6\times10^{-15})), but its conductances stay nonnegative for only 18.46%
+  of phases at \(|\mu|=0.6\), 3.22% at 0.8, and 0.68% at 0.9. This is a
+  decisive sign/positivity limitation, not a tensor approximation error.
 - The existing directed Tutte implicit layer passed its focused VJP and
   unstructured topology audits. Its current guarantee remains conditional on
   convex boundary and graph hypotheses; Beltrami expressivity is still open.
@@ -55,6 +60,11 @@ Authoritative plan: [PLAN.md](PLAN.md)
   admitted strictly positive local directed-Tutte rows at all 225 interior
   vertices; the smallest maximin row weight was 0.139. This is initial evidence
   that the hard decoder is not trivially too restrictive.
+- A differentiable rectangle boundary latent was added for directed Tutte:
+  four side-wise softmax vectors produce strictly positive segment lengths and
+  an exactly closed convex rectangle. On an 8x8-cell mesh, composing this
+  boundary with the directed implicit solve gave 128 positive face
+  determinants and finite gradients for both boundary and interior logits.
 - At 128x128 and 256x256, the MBM reference output retained positive face
   determinants and monotone side traces, but the minimum determinant decreased
   to \(6.08\times10^{-6}\) at 256x256. This is evidence for the tested field,
@@ -66,7 +76,7 @@ Authoritative plan: [PLAN.md](PLAN.md)
 |---|---|---|---|---|
 | MBM-LBS implicit | directional VJP relative error \(9.4\times10^{-10}\) | positive tested field, but no mixed-boundary theorem | 26.21 s forward+backward; RSS about 485 MB | side-order/global homeomorphism |
 | Directed Tutte | implicit VJP and unstructured tests pass | structural conditional theorem; zero flips in legacy 256 audit | about 6.4 s for 65,536 vertices | arbitrary-\(\mu\) expressivity and learned boundary |
-| Primal-dual electrical | exact \(\mu=0\) bookkeeping only | exact tiling in isotropic grid unit test | not yet benchmarked | anisotropic positive Hodge star |
+| Primal-dual electrical | exact \(\mu=0\) bookkeeping; mixed-D/N rectangle theorem supports graph decoder | embedded rectangle tiling is guaranteed for the quadrilateral isotropic theorem; fixed diamond anisotropic stencil has a narrow positive cone | not yet benchmarked | adaptive/rotated positive Hodge star and PL realization |
 - The structured MBM implicit layer now passes a double-precision directional
   finite-difference VJP check with relative error \(9.4\times10^{-10}\).
   Forward-plus-backward wall time was 1.56 s at 64x64, 6.13 s at 128x128,
@@ -82,7 +92,10 @@ Authoritative plan: [PLAN.md](PLAN.md)
 - Under which mesh geometry and facewise A_T conditions is the P1 stiffness
   matrix an M-matrix?
 - Can a mu=0 primal-dual electrical construction produce a non-overlapping
-  rectangle tiling before anisotropy is attempted?
+  rectangle tiling before anisotropy is attempted? (The quadrilateral mixed
+  Dirichlet--Neumann theorem now answers this at the graph-to-rectangle level.)
+- Can the rectangle boundary latent be extended to a useful convex-polygon
+  latent without losing cyclic closure or creating ill-conditioned rows?
 
 ## Resource policy
 

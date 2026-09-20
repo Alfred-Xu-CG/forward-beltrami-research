@@ -51,6 +51,7 @@ from .mmatrix import (
     edge_direction_conductances,
     spectral_conductances,
 )
+from .anisotropic_hodge import DiamondStencilResult, diamond_stencil_decomposition
 from .safe_step import (
     certified_residual_step,
     certified_step_toward_target,
@@ -63,7 +64,11 @@ from .flow import SafePLFlowResult, safe_pl_flow
 from .tutte_torch import tutte_embedding_torch
 from .prolongation import prolongate_positive_increments, prolongate_regular_grid
 from .tutte_implicit import TutteImplicitSystem, tutte_embedding_torch_implicit
-from .tutte_directed_implicit import DirectedTutteSystem, directed_tutte_embedding_torch_implicit
+from .tutte_directed_implicit import (
+    DirectedTutteSystem,
+    directed_tutte_embedding_torch_implicit,
+    rectangle_boundary_from_logits,
+)
 from .tutte_weighted_implicit import weighted_tutte_vjp
 from .sphere import mobius_scale_sphere, mobius_scale_velocity_sphere, sphere_face_orientation, uv_sphere_mesh
 from .orbifold import polar_disk_mesh, radial_cone_inverse, radial_cone_map
@@ -159,6 +164,8 @@ __all__ = [
     "integer_wide_stencil_directions",
     "edge_direction_conductances",
     "spectral_conductances",
+    "DiamondStencilResult",
+    "diamond_stencil_decomposition",
     "certified_residual_step",
     "maximum_safe_step",
     "certified_step_toward_target",
@@ -177,6 +184,7 @@ __all__ = [
     "tutte_embedding_torch_implicit",
     "DirectedTutteSystem",
     "directed_tutte_embedding_torch_implicit",
+    "rectangle_boundary_from_logits",
     "weighted_tutte_vjp",
     "mobius_scale_sphere",
     "mobius_scale_velocity_sphere",

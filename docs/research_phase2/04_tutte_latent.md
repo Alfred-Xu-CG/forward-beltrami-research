@@ -33,7 +33,62 @@ p_{ij}=\frac{\exp(\ell_{ij})}
 
 Finite logits therefore produce strictly positive rows automatically.
 
-## 2. Linear algebra and implicit differentiation
+## 2. A boundary latent with a hard convexity guarantee
+
+Passing an unconstrained array of boundary coordinates to (T-3) is unsafe:
+even if every interior row is positive, a self-intersecting or non-convex
+boundary invalidates the Tutte theorem. A minimal differentiable boundary
+latent is an axis-aligned rectangle with learnable sampling density on each
+side. Let there be \(q\geq1\) boundary edges per side and logits
+\(r^{(s)}_k\), \(s\in\{0,1,2,3\}\), \(k=0,\ldots,q-1\). Define
+
+\[
+\alpha^{(s)}_k=
+\frac{\exp r^{(s)}_k}{\sum_{t=0}^{q-1}\exp r^{(s)}_t}>0,
+\qquad
+(L_0,L_1,L_2,L_3)=(W,H,W,H),
+\]
+
+and side lengths \(d^{(s)}_k=L_s\alpha^{(s)}_k\). Starting from
+\(X_0=(0,0)\), emit \(q\) vertices on each side and update
+
+\[
+X_{m+1}=X_m+d^{(s)}_k e_s,qquad
+(e_0,e_1,e_2,e_3)=((1,0),(0,1),(-1,0),(0,-1)).
+\tag{T-6}
+\]
+
+The final segment closes the cycle, because each row of \(\alpha\) sums to one.
+Every emitted side increment is strictly positive for finite logits, so the
+boundary is a counter-clockwise, non-degenerate rectangle with strictly
+ordered samples along every side. The map from logits to vertices is smooth;
+for one side its local derivative is
+
+\[
+\frac{\partial \alpha_k}{\partial r_t}
+=\alpha_k(\mathbf 1_{k=t}-\alpha_t),
+\tag{T-7}
+\]
+
+so it can be differentiated without a projection or a topology repair. The
+implementation is `rectangle_boundary_from_logits` in
+`src/qcopt/forward/tutte_directed_implicit.py`.
+
+This is deliberately a limited latent. It learns side spacing and aspect
+ratio, but not an arbitrary convex polygon. A future polygon latent must also
+enforce cyclic edge directions, positive edge lengths, and the vector closure
+\(\sum_k \ell_k e^{i\theta_k}=0\); simply applying softmax to vertex
+coordinates does not provide that closure. The current rectangle latent is
+therefore a theorem-safe boundary control, not evidence of arbitrary-μ
+expressivity.
+
+On an 8-by-8 cell structured triangulation (81 vertices, 32 boundary
+vertices), a 4-by-8 boundary-logit tensor was composed with the directed
+implicit solve. All 128 face determinants were positive and both boundary
+logit and interior-row logit gradients were finite. This is a composition
+test, not a universal theorem beyond the stated Tutte hypotheses.
+
+## 3. Linear algebra and implicit differentiation
 
 Order the interior vertices first. Let \(P_{II}\) contain the coefficients
 from interior neighbors to interior vertices, and \(P_{IB}\) contain the
@@ -67,7 +122,7 @@ The boundary derivative is the direct boundary loss plus
 one forward sparse solve and one transpose sparse solve, rather than unrolling
 iterations.
 
-## 3. Hard-topology theorem and its exact scope
+## 4. Hard-topology theorem and its exact scope
 
 A directed Tutte theorem gives the following conditional statement. If the
 embedded plane graph is connected to the boundary in the required
@@ -96,7 +151,7 @@ The theorem does not imply:
 Therefore this route is a map-primary hard decoder, not by itself a
 Beltrami-equation solver.
 
-## 4. Expressivity question
+## 5. Expressivity question
 
 For a fixed valid embedding \(Y\), an interior vertex must lie in the convex
 hull of its neighbors for a positive-row representation to exist. If it lies
@@ -127,7 +182,7 @@ that reproduced the target vertex exactly. The smallest maximin row weight was
 not an expressivity counterexample; the target itself was no longer a valid QC
 homeomorphism.
 
-## 5. Conditioning and neural usability
+## 6. Conditioning and neural usability
 
 The hard-topology theorem is qualitative. If logits have a large spread, one
 weight approaches one and the others approach zero. The equilibrium remains
@@ -148,7 +203,7 @@ conditioning certificate:
 \text{forward/backward residuals}.
 \]
 
-## 6. Existing project evidence
+## 7. Existing project evidence
 
 Legacy audits in docs/forward_beltrami already contain realistic-resolution
 directed-Tutte experiments on structured 256-squared grids and a nonuniform
@@ -161,12 +216,12 @@ The current Phase II work will reuse those artifacts without re-running them
 just to fill a ledger. The next new experiment should vary graph connectivity
 and boundary latent parameterization, not repeat the same fixed-boundary audit.
 
-## 7. Prior art
+## 8. Prior art
 
 - [Haas et al., directed Tutte theorem](https://www.cs.tufts.edu/research/geometry/pdf/haas04planar.pdf) — positive directed equilibrium weights and non-overlapping convex cells under explicit plane-graph and boundary hypotheses.
 - [An elementary proof of Tutte's planar embedding theorem](https://www.cs.harvard.edu/~sjg/papers/tutte.pdf) — positive convex-combination embeddings and the role of a convex boundary.
 
-## 8. Preliminary decision
+## 9. Preliminary decision
 
 Layer B is currently the strongest hard-bijection candidate because its
 topology certificate is structural and its backward pass is an adjoint sparse
