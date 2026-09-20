@@ -158,6 +158,10 @@ The ongoing forward-Beltrami exploration is synchronized to the private
 [forward-beltrami-research GitHub repository](https://github.com/Alfred-Xu-CG/forward-beltrami-research).
 The self-contained route summary starts at
 [`docs/forward_beltrami/summary/00_executive_answer.md`](docs/forward_beltrami/summary/00_executive_answer.md),
+and the formal equation-by-equation route formulation is in
+[`docs/forward_beltrami/summary/formal_route_formulations.md`](docs/forward_beltrami/summary/formal_route_formulations.md).
+The latter maps the equations directly to the implemented operators and
+explicitly separates local numerical evidence from global theorems.
 and the repository workflow is documented in
 [`RESEARCH_REPOSITORY.md`](RESEARCH_REPOSITORY.md). Use
 `powershell -ExecutionPolicy Bypass -File scripts/sync_research.ps1` after a
