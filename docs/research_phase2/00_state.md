@@ -42,6 +42,11 @@ Authoritative plan: [PLAN.md](PLAN.md)
 - The existing directed Tutte implicit layer passed its focused VJP and
   unstructured topology audits. Its current guarantee remains conditional on
   convex boundary and graph hypotheses; Beltrami expressivity is still open.
+- Legacy fixed-P1 holonomy evidence is now incorporated into the Phase II
+  formulation: an arbitrary bounded facewise \(\mu_T\) is generally not
+  realizable by a continuous P1 map. This is why a small conjugacy residual in
+  the independent MBM complementary solve cannot be interpreted as only a
+  sparse-solver error.
 
 ## Next decisive questions
 

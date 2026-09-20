@@ -339,3 +339,79 @@ traces are numerical observations for this field, not a general theorem.
 - [TEMPO: Feature-Endowed Teichmüller Extremal Mappings of Point Clouds](https://www.researchgate.net/publication/284476371_TEMPO_Feature-Endowed_Teichmuller_Extremal_Mappings_of_Point_Clouds) — point-cloud Beltrami/MLS formulation; this is background, not a proof of the mixed-boundary neural layer.
 - [A quadrilateral mixed Dirichlet--Neumann construction of a rectangle map](https://math.aalto.fi/~vquach/dippa/dippa_FINAL.pdf) — explicit isotropic mixed problem and rectangle modulus construction.
 - [Leonetti--Nesi, Quasiconformal solutions to certain first-order systems](https://www.sciencedirect.com/science/article/pii/S0021782497899473) — conductivity/first-order-system relation and hypotheses needed for quasiconformality.
+
+## 12. Supporting theory: exact fixed-P1 realizability
+
+The mixed conductivity decoder and a general facewise Beltrami field are not
+automatically compatible on a fixed triangulation. Let \(T\) be a source
+triangle and write the complex affine restriction of a P1 map as
+
+\[
+f_T(z)=a_T z+b_T\overline z+c_T,\qquad b_T=\mu_Ta_T.
+\tag{P1-1}
+\]
+
+For an oriented source edge \(e=z_j-z_i\), its image increment is
+
+\[
+p_T(e)=a_Tq_T(e),\qquad q_T(e)=e+\mu_T\overline e.
+\tag{P1-2}
+\]
+
+Since \(|\mu_T|<1\), \(q_T(e)\ne0\) for every nonzero source edge. If two
+triangles \(T,S\) share an edge, continuity requires
+
+\[
+a_Tq_T(e)=a_Sq_S(e).
+\tag{P1-3}
+\]
+
+Equivalently, the face scales satisfy a multiplicative transition relation
+\(a_S/a_T=q_T(e)/q_S(e)\). On a simply connected triangulated disk, a
+nonzero scale field exists exactly when the product of these ratios around
+every closed dual walk equals one. Once the scales exist, the edge increments
+\(p_e\) form a closed primal 1-form, so a vertex map exists up to one complex
+translation. The remaining global complex scale is a similarity gauge.
+
+This is the fixed-mesh compatibility theorem used here. It proves exact
+realizability for compatible facewise fields, not for arbitrary bounded fields.
+For a compatible field, every face has
+
+\[
+\det Df_T=|a_T|^2(1-|\mu_T|^2)>0.
+\tag{P1-4}
+\]
+
+The theorem still needs a separately ordered rectangle boundary to imply a
+global PL homeomorphism. Positive face determinants alone are local.
+
+The implication for MBM-LBS is important: an independently solved P1
+conjugate can have a nonzero conjugacy residual even when both scalar systems
+are solved to machine precision, because arbitrary facewise \(A_T\) need not
+belong to the fixed-P1 compatible subspace. A residual is therefore a
+discretization/compatibility diagnostic, not merely a linear-solver tolerance.
+
+Legacy realistic-resolution evidence is consistent with this obstruction. A
+manufactured 256-squared field had dual-holonomy residual \(1.05\times10^{-14}\)
+and reconstruction error \(1.22\times10^{-15}\), while a bounded random field
+had holonomy as large as \(7.64\times10^{25}\). The nonlinear projection
+prototype recovered compatible manufactured fields through 256-squared meshes,
+but arbitrary random face fields retained a nonzero Beltrami mismatch. These
+are numerical validations of the compatibility mechanism, not a theorem that a
+projection exists for every \(\mu\).
+
+## 13. Consequence for the neural-layer choice
+
+There are now three distinct decoder contracts:
+
+1. MBM-LBS gives a fast scalar elliptic solve and a continuum Beltrami relation,
+   but fixed-P1 conjugacy and boundary order need additional hypotheses.
+2. Primal-dual electrical mapping builds conjugacy and tiling structure into
+   the representation, but anisotropic positive Hodge-star conditions remain
+   open.
+3. Directed Tutte gives the cleanest hard-bijection certificate, but it is not
+   an exact arbitrary-\(\mu\) solver.
+
+The final architecture may therefore be hybrid, but a hybrid is only justified
+after its interface states exactly which quantity is preserved: Beltrami
+coefficient, metric energy, boundary order, or topology.

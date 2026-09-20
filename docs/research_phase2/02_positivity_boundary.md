@@ -51,9 +51,32 @@ For isotropic A_T = alpha_T I, the off-diagonal entries reduce to weighted
 cotangent expressions, so non-obtuse/Delaunay geometry is a familiar sufficient
 condition. For anisotropic A_T, the corresponding condition is naturally
 expressed in the metric induced by A_T; ordinary Euclidean non-obtuseness is not
-sufficient in general. The next experiment will vary |mu|, its argument, and
-the diagonal orientation on a regular grid, recording the sign of every
-off-diagonal entry.
+sufficient in general.
+
+The first phase diagram used a 4x4-vertex regular grid, constant \(\mu\), radii
+\(0,0.2,0.4,0.6,0.8,0.9\), thirteen angles in \([0,\pi)\), and both square
+diagonal orientations. The largest positive off-diagonal entry was:
+
+\[
+\begin{array}{c|rrrrrr}
+|\mu|&0&0.2&0.4&0.6&0.8&0.9\\ \hline
+\text{slash}&0&0.414&0.945&1.861&4.412&9.405\\
+\text{backslash}&0&0&0&0.522&1.718&3.847
+\end{array}
+\]
+
+The result is a decisive negative control against the shortcut
+\(A\succ0\Rightarrow K_{ij}\le0\). Even a small anisotropy can violate the
+ordinary Euclidean sign pattern for one diagonal orientation. The correct local
+condition remains
+
+\[
+(\nabla\phi_i|_T)^\top A_T(\nabla\phi_j|_T)\le0
+\quad\text{for every local pair }i\ne j,
+\]
+
+which is an anisotropic metric-geometry condition, not a scalar bound on
+\(\|\mu\|\) alone.
 
 ## 5. References
 
