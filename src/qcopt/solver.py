@@ -24,11 +24,30 @@ class SparseSolveState:
 
 
 @dataclass
+class ReducedSolveState:
+    """State of a hard-pin-eliminated coordinate solve.
+
+    ``system`` is the free-coordinate block and ``factor`` is deliberately
+    retained so the exact same numeric factorization can serve the transpose
+    adjoint solve.
+    """
+
+    system: sparse.csc_matrix
+    rhs: FloatArray
+    solution: FloatArray
+    factor: Any
+    coordinates: FloatArray
+    free_indices: NDArray[np.int64]
+    pinned_indices: NDArray[np.int64]
+    pinned_values: FloatArray
+
+
+@dataclass
 class SolveResult:
     uv: FloatArray
     primal_residual: float
     constraint_residual: float
-    state: SparseSolveState
+    state: SparseSolveState | ReducedSolveState
 
 
 def vector_to_uv(vector: FloatArray, n_vertices: int) -> FloatArray:

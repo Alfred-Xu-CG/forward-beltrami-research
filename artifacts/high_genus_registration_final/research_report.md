@@ -1,0 +1,39 @@
+# Native multi-chart high-genus registration: independent audit
+
+## Outcome
+
+- Primary matrix: 36 trials; complete=True.
+- Reload-and-recompute audits passed: 36/36.
+- Numerical homeomorphism certificates: 36/36.
+- Held-out dense registration improvements: 25/36.
+- Published real-pair improvements: 16/27; generated genus-2 improvements: 9/9.
+- Worst audited values: minimum orientation ratio 0.245905; maximum forward/inverse error 0.00362979 minimum target edges; maximum CFL ratio 0.149974; maximum overlay projection error 8.22008e-07; maximum saved-flow replay error 9.17195e-16.
+
+## Per-case, per-objective aggregate
+
+| case | mode | certified | dense successes | mean initial | mean final | mean improvement | landmark improvement | curvature improvement |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| official_genus3 | combined | 3/3 | 3/3 | 0.2552 | 0.2169 | +14.9% | +67.4% | +2.2% |
+| official_genus3 | curvature | 3/3 | 0/3 | 0.2552 | 0.2837 | -11.4% | -10.8% | +3.5% |
+| official_genus3 | landmark | 3/3 | 3/3 | 0.2552 | 0.1955 | +23.4% | +85.2% | +0.1% |
+| official_genus5 | combined | 3/3 | 2/3 | 0.2157 | 0.2129 | +1.2% | +23.9% | +9.2% |
+| official_genus5 | curvature | 3/3 | 0/3 | 0.2157 | 0.2229 | -3.4% | -12.9% | +9.7% |
+| official_genus5 | landmark | 3/3 | 3/3 | 0.2157 | 0.1949 | +9.6% | +91.4% | -0.3% |
+| official_pretzel_genus3 | combined | 3/3 | 2/3 | 0.2178 | 0.2185 | -0.5% | +70.8% | +2.1% |
+| official_pretzel_genus3 | curvature | 3/3 | 0/3 | 0.2178 | 0.2524 | -16.5% | -22.7% | +3.5% |
+| official_pretzel_genus3 | landmark | 3/3 | 3/3 | 0.2178 | 0.1992 | +8.6% | +94.4% | -0.1% |
+| synthetic_genus2 | combined | 3/3 | 3/3 | 0.2708 | 0.2355 | +13.1% | +27.6% | +11.8% |
+| synthetic_genus2 | curvature | 3/3 | 3/3 | 0.2708 | 0.2484 | +8.3% | +5.2% | +11.7% |
+| synthetic_genus2 | landmark | 3/3 | 3/3 | 0.2708 | 0.2255 | +16.7% | +91.9% | +2.3% |
+
+## What is and is not established
+
+The state is a global target-surface point `(face id, barycentric coordinates)`; face ids change only through deterministic edge walking. The optimized generators are edge-compatible quadratic fields in the native PL atlas, so there is no fixed source-chart to target-chart assignment and no cut seam.
+
+The numerical certificate combines a topology-valid common-refinement base map, projection checks, a shared Lipschitz-CFL policy, target-chart orientation probes, and forward/inverse replay. It is floating-point evidence, not an exact-predicate proof for arbitrary smooth maps.
+
+Official mesh landmarks are synthetic samples from the published common map; they are not manual semantic annotations. The published map is held out for error measurement and initialization perturbation. Consequently these experiments validate robust refinement from a known topology class, not automatic initialization from unrelated raw meshes.
+
+Curvature-only optimization is accepted only when its own residual decreases, but correspondence success is reported separately. On geometrically dissimilar official pairs, curvature residual reduction can move away from the held-out map; this negative result is retained.
+
+The official archive contains genus-3 and genus-5 cases, not genus-2. Exact genus-2 coverage is supplied by the generated smoothed double torus and is not presented as published real data.

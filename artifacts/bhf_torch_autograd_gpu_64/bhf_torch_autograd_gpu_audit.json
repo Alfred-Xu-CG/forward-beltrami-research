@@ -1,0 +1,10 @@
+{
+  "n": 64,
+  "device": "cuda",
+  "torch_version": "1.7.1+cu110",
+  "status": "forward_succeeded_backward_blocked_by_legacy_complex_autograd",
+  "forward": "tensor-native BHF near/far/Duffy assembly completed on the RTX A6000",
+  "backward_error": "Expected isFloatingType(grad.scalar_type()) || (input_is_complex == grad_is_complex) to be true",
+  "interpretation": "The legacy Torch build returns a complex gradient through torch.complex/complex-valued assembly for a real-pair input. The same layer has a finite CPU VJP on the current Torch 2.5 build; this is an environment compatibility limitation, not a mathematical convergence result.",
+  "scope": "GPU forward evidence retained; GPU autograd evidence deferred until a modern Torch runtime is available"
+}

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import torch
 
-from qcopt.autograd import lbs_from_raw, lsqc_from_raw
+from qcopt.autograd import lbs_from_raw, lsqc_fast_from_raw, lsqc_from_raw
 from qcopt.constraints import fixed_vertex_constraints, two_pin_constraints
 from qcopt.mesh import structured_rectangle
 
@@ -62,3 +62,24 @@ def test_layer_produces_one_gradient_vector_per_face():
     assert raw.grad is not None
     assert raw.grad.shape == (mesh.n_faces, 2)
     assert torch.all(torch.isfinite(raw.grad))
+
+
+def test_fast_weighted_lsqc_layer_passes_double_precision_gradcheck():
+    mesh = structured_rectangle(1, 1)
+    constraints = two_pin_constraints(
+        mesh.n_vertices,
+        [0, mesh.n_vertices - 1],
+        mesh.vertices[[0, mesh.n_vertices - 1]],
+    )
+    generator = torch.Generator().manual_seed(131)
+    raw = (
+        0.04 * torch.randn(mesh.n_faces, 2, generator=generator, dtype=torch.double)
+    ).requires_grad_()
+
+    assert torch.autograd.gradcheck(
+        lambda value: lsqc_fast_from_raw(value, mesh, constraints, k_max=0.8),
+        (raw,),
+        eps=1e-6,
+        atol=2e-5,
+        rtol=2e-4,
+    )

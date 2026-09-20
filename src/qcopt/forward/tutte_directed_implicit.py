@@ -1,0 +1,156 @@
+"""Implicit differentiable decoder for directed positive-row Tutte systems."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import numpy as np
+import torch
+from scipy.sparse import lil_matrix
+from scipy.sparse.linalg import factorized
+
+from ..mesh import TriMesh
+
+
+@dataclass
+class DirectedTutteSystem:
+    """Fixed graph data for a row-stochastic directed barycentric solve."""
+
+    loop: np.ndarray
+    interior: np.ndarray
+    neighbors: np.ndarray
+    neighbor_is_boundary: np.ndarray
+    valid_mask: np.ndarray
+    n_vertices: int
+    max_degree: int
+
+    @property
+    def n_rows(self) -> int:
+        return int(len(self.interior))
+
+    @classmethod
+    def from_mesh(cls, mesh: TriMesh) -> "DirectedTutteSystem":
+        if len(mesh.boundary_loops) != 1:
+            raise ValueError("directed Tutte embedding requires exactly one boundary loop")
+        loop = np.asarray(mesh.boundary_loops[0], dtype=np.int64)
+        boundary_set = set(loop.tolist())
+        interior = np.asarray([v for v in range(mesh.n_vertices) if v not in boundary_set], dtype=np.int64)
+        index = {int(v): i for i, v in enumerate(interior.tolist())}
+        boundary_index = {int(v): i for i, v in enumerate(loop.tolist())}
+        adjacency = [set() for _ in range(mesh.n_vertices)]
+        for a, b, c in mesh.faces.tolist():
+            adjacency[a].update((b, c))
+            adjacency[b].update((a, c))
+            adjacency[c].update((a, b))
+        degrees = [len(adjacency[int(v)]) for v in interior]
+        max_degree = max(degrees, default=0)
+        neighbors = np.full((len(interior), max_degree), -1, dtype=np.int64)
+        is_boundary = np.zeros_like(neighbors, dtype=bool)
+        valid = np.zeros_like(neighbors, dtype=bool)
+        for row, vertex in enumerate(interior.tolist()):
+            for col, neighbor in enumerate(sorted(adjacency[int(vertex)])):
+                if neighbor in boundary_index:
+                    neighbors[row, col] = boundary_index[neighbor]
+                    is_boundary[row, col] = True
+                else:
+                    neighbors[row, col] = index[neighbor]
+                valid[row, col] = True
+        return cls(loop, interior, neighbors, is_boundary, valid, mesh.n_vertices, max_degree)
+
+    def _probabilities(self, logits: np.ndarray) -> np.ndarray:
+        values = np.asarray(logits, dtype=np.float64)
+        if values.shape != (self.n_rows, self.max_degree):
+            raise ValueError("logits must have shape (interior_vertices, max_degree)")
+        if not np.all(np.isfinite(values)):
+            raise ValueError("logits must be finite")
+        masked = np.where(self.valid_mask, values, -np.inf)
+        shifted = masked - np.max(masked, axis=1, keepdims=True)
+        weights = np.exp(shifted)
+        weights[~self.valid_mask] = 0.0
+        denominator = np.sum(weights, axis=1, keepdims=True)
+        return weights / denominator
+
+    def _assemble(self, probabilities: np.ndarray):
+        matrix = lil_matrix((self.n_rows, self.n_rows), dtype=np.float64)
+        coupling = lil_matrix((self.n_rows, len(self.loop)), dtype=np.float64)
+        for row in range(self.n_rows):
+            matrix[row, row] = 1.0
+            for col in np.flatnonzero(self.valid_mask[row]):
+                weight = float(probabilities[row, col])
+                neighbor = int(self.neighbors[row, col])
+                if self.neighbor_is_boundary[row, col]:
+                    coupling[row, neighbor] += weight
+                else:
+                    matrix[row, neighbor] -= weight
+        return matrix.tocsr(), coupling.tocsr()
+
+
+class _DirectedTutteImplicitFunction(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, target_boundary: torch.Tensor, logits: torch.Tensor, system: DirectedTutteSystem):
+        if target_boundary.ndim != 2 or target_boundary.shape[1] != 2:
+            raise ValueError("target_boundary must have shape (boundary_vertices, 2)")
+        if logits.ndim != 2 or logits.shape != (system.n_rows, system.max_degree):
+            raise ValueError("logits has an incompatible shape")
+        if not torch.is_floating_point(target_boundary) or not torch.is_floating_point(logits):
+            raise ValueError("target_boundary and logits must be floating point")
+        boundary = target_boundary.detach().cpu().numpy().astype(np.float64, copy=False)
+        logit_values = logits.detach().cpu().numpy().astype(np.float64, copy=False)
+        if boundary.shape[0] != len(system.loop):
+            raise ValueError("target_boundary has the wrong number of vertices")
+        probabilities = system._probabilities(logit_values)
+        matrix, coupling = system._assemble(probabilities)
+        solve = factorized(matrix.tocsc())
+        solve_transpose = factorized(matrix.T.tocsc())
+        interior_values = np.asarray(solve(coupling @ boundary), dtype=np.float64)
+        output = np.empty((system.n_vertices, 2), dtype=np.float64)
+        output[system.loop] = boundary
+        output[system.interior] = interior_values
+        ctx.system = system
+        ctx.device = target_boundary.device
+        ctx.boundary_dtype = target_boundary.dtype
+        ctx.logit_dtype = logits.dtype
+        ctx.probabilities = probabilities
+        ctx.boundary = boundary
+        ctx.interior_values = interior_values
+        ctx.coupling = coupling
+        ctx.solve_transpose = solve_transpose
+        return torch.as_tensor(output, dtype=target_boundary.dtype, device=target_boundary.device)
+
+    @staticmethod
+    def backward(ctx, gradient: torch.Tensor):
+        system: DirectedTutteSystem = ctx.system
+        grad = gradient.detach().cpu().numpy().astype(np.float64, copy=False)
+        adjoint = np.asarray(ctx.solve_transpose(grad[system.interior]), dtype=np.float64)
+        boundary_gradient = grad[system.loop] + np.asarray(ctx.coupling.T @ adjoint, dtype=np.float64)
+        logits_gradient = np.zeros_like(ctx.probabilities)
+        for row in range(system.n_rows):
+            x_row = ctx.interior_values[row]
+            adjoint_row = adjoint[row]
+            for col in np.flatnonzero(system.valid_mask[row]):
+                if system.neighbor_is_boundary[row, col]:
+                    neighbor_value = ctx.boundary[system.neighbors[row, col]]
+                else:
+                    neighbor_value = ctx.interior_values[system.neighbors[row, col]]
+                logits_gradient[row, col] = ctx.probabilities[row, col] * float(
+                    np.dot(adjoint_row, neighbor_value - x_row)
+                )
+        return (
+            torch.as_tensor(boundary_gradient, dtype=ctx.boundary_dtype, device=ctx.device),
+            torch.as_tensor(logits_gradient, dtype=ctx.logit_dtype, device=ctx.device),
+            None,
+        )
+
+
+def directed_tutte_embedding_torch_implicit(
+    mesh: TriMesh,
+    target_boundary: torch.Tensor,
+    logits: torch.Tensor,
+    system: DirectedTutteSystem | None = None,
+) -> torch.Tensor:
+    """Decode a directed positive-row Tutte system with sparse implicit VJPs."""
+    if system is None:
+        system = DirectedTutteSystem.from_mesh(mesh)
+    if system.n_vertices != mesh.n_vertices:
+        raise ValueError("system was built for a different mesh")
+    return _DirectedTutteImplicitFunction.apply(target_boundary, logits, system)

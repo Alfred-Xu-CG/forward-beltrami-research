@@ -7,7 +7,11 @@ It is intentionally positioned as an **exact sparse baseline**, not as the first
 ## Implemented components
 
 - Sparse LBS with arbitrary linear constraints, including a rectangle boundary whose points slide tangentially on their assigned sides.
-- Weighted and unweighted LSQC using an augmented saddle system, not normal equations.
+- Weighted and unweighted LSQC using an augmented saddle system as the general
+  reference backend.
+- Fast weighted LSQC for hard coordinate-selector constraints: direct paper
+  Hessian assembly, exact pin elimination, fill-reducing symmetric sparse LU,
+  and factorization reuse in the adjoint.
 - Exact implicit VJP returning gradients for every `Re(mu_T), Im(mu_T)` pair.
 - PyTorch CPU custom autograd layers with radial squashing into `|mu| < k_max`.
 - Floating-point disk-map audit: positive oriented faces, simple oriented boundary, interior one-ring branch index, and rectangle side membership/order.
@@ -91,25 +95,55 @@ The delivery script refuses a nonempty unrelated target, copies hidden Git state
 ```python
 import torch
 
-from qcopt.autograd import lbs_from_raw
-from qcopt.constraints import rectangle_sliding_constraints
+from qcopt.autograd import lsqc_fast_from_raw
+from qcopt.constraints import two_pin_constraints
 from qcopt.mesh import structured_rectangle
 
 mesh = structured_rectangle(16, 16)
-constraints = rectangle_sliding_constraints(mesh)
+constraints = two_pin_constraints(
+    mesh.n_vertices,
+    [0, mesh.n_vertices - 1],
+    mesh.vertices[[0, mesh.n_vertices - 1]],
+)
 raw_mu = torch.zeros(mesh.n_faces, 2, dtype=torch.double, requires_grad=True)
-uv = lbs_from_raw(raw_mu, mesh, constraints, k_max=0.92)
+uv = lsqc_fast_from_raw(raw_mu, mesh, constraints, k_max=0.92)
 loss = (uv - torch.as_tensor(mesh.vertices.copy())).square().mean()
 loss.backward()
 
 assert raw_mu.grad.shape == (mesh.n_faces, 2)
 ```
 
-`raw_mu.grad[T, 0]` and `raw_mu.grad[T, 1]` are the gradients for the two unconstrained parameters feeding `Re(mu_T)` and `Im(mu_T)`. Call `lbs_layer` or `lsqc_layer` directly when already-bounded μ components are the optimization variables.
+`raw_mu.grad[T, 0]` and `raw_mu.grad[T, 1]` are the gradients for the two
+unconstrained parameters feeding `Re(mu_T)` and `Im(mu_T)`. Call
+`lsqc_fast_layer` directly when already-bounded μ components are the
+optimization variables. The fast backend is weighted LSQC and accepts exact
+coordinate selectors: two complex pins, fixed vertices, or axis-aligned
+rectangle sliding constraints. Use `lsqc_layer` for unweighted LSQC or mixed
+linear constraints.
+
+## Reproducible LSQC backend benchmark
+
+```powershell
+$env:MKL_THREADING_LAYER='SEQUENTIAL'
+$env:PYTHONPATH='src'
+& 'C:\Users\xuzhehao\anaconda3\python.exe' `
+  -m qcopt.experiments.benchmark_lsqc `
+  --output artifacts/fast_lsqc_benchmark/2026-08-31 `
+  --grid-sizes 12 24 36 48 `
+  --repeats 7
+```
+
+The JSON and CSV outputs include matrix dimensions/nonzeros, LU fill, assembly,
+forward, isolated adjoint-solve and contraction costs, total backward and
+independently timed complete forward-plus-backward steps, residuals, and
+map/gradient discrepancies against the augmented weighted-LSQC reference.
+Timings are reported rather than asserted in tests because they are
+machine-dependent.
 
 ## Evidence and interpretation
 
 - [Verified numerical results](docs/results.md)
+- [Fast weighted-LSQC implementation and benchmark](docs/fast_weighted_lsqc_results.md)
 - [High-genus registration validation](docs/high_genus_registration_results.md)
 - [Official high-genus dataset inventory](docs/high_genus_dataset_inventory.md)
 - [Limitations and unresolved research questions](docs/limitations.md)
