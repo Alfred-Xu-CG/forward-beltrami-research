@@ -340,6 +340,31 @@ traces are numerical observations for this field, not a general theorem.
 - [A quadrilateral mixed Dirichlet--Neumann construction of a rectangle map](https://math.aalto.fi/~vquach/dippa/dippa_FINAL.pdf) — explicit isotropic mixed problem and rectangle modulus construction.
 - [Leonetti--Nesi, Quasiconformal solutions to certain first-order systems](https://www.sciencedirect.com/science/article/pii/S0021782497899473) — conductivity/first-order-system relation and hypotheses needed for quasiconformality.
 
+## 11.1. Scope of sigma-harmonic global theorems
+
+The sigma-harmonic literature is relevant but does not immediately close the
+MBM-LBS topology gap. Alessandrini and Nesi formulate a two-component mapping
+\(U=(u_1,u_2)\) whose components solve divergence-form elliptic equations with
+**full Dirichlet boundary data**. Their global-diffeomorphism criteria are
+expressed through the boundary parametrization, including convex-target or
+unimodality hypotheses.
+
+The MBM construction instead prescribes Dirichlet data for \(u\) only on
+\(\Gamma_L\cup\Gamma_R\), prescribes Neumann data on
+\(\Gamma_B\cup\Gamma_T\), and obtains \(v\) as a stream potential. Therefore
+one cannot quote a full-Dirichlet sigma-harmonic theorem without proving that
+the induced four-arc boundary trace is an admissible unimodal/convex
+parametrization. The correct status is:
+
+- sigma-harmonic theory supports the principle that boundary structure, not
+  ellipticity alone, controls global injectivity;
+- it does not prove mixed-boundary side monotonicity for this decoder;
+- a future theorem may be obtained by converting the mixed problem into a
+  full-boundary statement with an explicit ordered trace, but that conversion
+  is still open.
+
+Reference: [Alessandrini--Nesi, Globally diffeomorphic sigma-harmonic mappings](https://arxiv.org/abs/1906.00902).
+
 ## 12. Supporting theory: exact fixed-P1 realizability
 
 The mixed conductivity decoder and a general facewise Beltrami field are not
