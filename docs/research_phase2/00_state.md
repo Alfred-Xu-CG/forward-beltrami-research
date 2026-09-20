@@ -59,6 +59,14 @@ Authoritative plan: [PLAN.md](PLAN.md)
   determinants and monotone side traces, but the minimum determinant decreased
   to \(6.08\times10^{-6}\) at 256x256. This is evidence for the tested field,
   not a global hard-bijection certificate.
+
+## Provisional candidate snapshot
+
+| Candidate | differentiable evidence | topology evidence | 256-scale cost | main unresolved gate |
+|---|---|---|---|---|
+| MBM-LBS implicit | directional VJP relative error \(9.4\times10^{-10}\) | positive tested field, but no mixed-boundary theorem | 26.21 s forward+backward; RSS about 485 MB | side-order/global homeomorphism |
+| Directed Tutte | implicit VJP and unstructured tests pass | structural conditional theorem; zero flips in legacy 256 audit | about 6.4 s for 65,536 vertices | arbitrary-\(\mu\) expressivity and learned boundary |
+| Primal-dual electrical | exact \(\mu=0\) bookkeeping only | exact tiling in isotropic grid unit test | not yet benchmarked | anisotropic positive Hodge star |
 - The structured MBM implicit layer now passes a double-precision directional
   finite-difference VJP check with relative error \(9.4\times10^{-10}\).
   Forward-plus-backward wall time was 1.56 s at 64x64, 6.13 s at 128x128,
