@@ -36,6 +36,12 @@ Authoritative plan: [PLAN.md](PLAN.md)
   face determinants and monotone left/right side traces. The conjugacy residual
   decreased from 0.1676 to 0.0536, so the independent complementary solve is
   convergent evidence, not an exact fixed-mesh conjugacy theorem.
+- The \(\mu=0\) electrical-grid unit test recovered the exact linear potential
+  and positive rectangle cells; a 9x7 grid gave modulus and total tiling area
+  0.75. This validates the isotropic primal-dual bookkeeping only.
+- The existing directed Tutte implicit layer passed its focused VJP and
+  unstructured topology audits. Its current guarantee remains conditional on
+  convex boundary and graph hypotheses; Beltrami expressivity is still open.
 
 ## Next decisive questions
 
