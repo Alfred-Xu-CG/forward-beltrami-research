@@ -53,6 +53,23 @@ condition. For anisotropic A_T, the corresponding condition is naturally
 expressed in the metric induced by A_T; ordinary Euclidean non-obtuseness is not
 sufficient in general.
 
+More precisely, on one triangle with constant SPD tensor \(A_T\), set
+\(\widetilde x=A_T^{-1/2}x\). Since
+\(\nabla_x\phi=A_T^{-1/2}\nabla_{\widetilde x}\phi\) and
+\(\det A_T=1\), the local form satisfies
+
+\[
+|T|\,\nabla_x\phi_i^\top A_T\nabla_x\phi_j
+=|\widetilde T|\,\nabla_{\widetilde x}\phi_i\cdot
+\nabla_{\widetilde x}\phi_j.
+\]
+
+Consequently, the local off-diagonal is nonpositive exactly when the
+corresponding angle of the transformed triangle \(\widetilde T\) is
+nonobtuse. This is the anisotropic nonobtuse condition for the P1 matrix. A
+global M-matrix requires it on every face and an appropriate connectivity
+condition; positive definiteness of \(A_T\) alone is insufficient.
+
 The first phase diagram used a 4x4-vertex regular grid, constant \(\mu\), radii
 \(0,0.2,0.4,0.6,0.8,0.9\), thirteen angles in \([0,\pi)\), and both square
 diagonal orientations. The largest positive off-diagonal entry was:
