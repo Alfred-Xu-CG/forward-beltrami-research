@@ -78,6 +78,14 @@ condition remains
 which is an anisotropic metric-geometry condition, not a scalar bound on
 \(\|\mu\|\) alone.
 
+As a separate graph-level check, random positive conductances spanning six
+orders of magnitude were assigned to every edge of triangulated 4x4, 5x5, and
+6x6 grids. The complementary bottom/top Dirichlet solve produced no negative
+increment on either free side in 10,000 samples per grid size. This increases
+confidence that a planar-network monotonicity principle may exist, but it is
+not a proof and does not cover arbitrary planar graphs or anisotropic FEM
+stiffness matrices.
+
 ## 5. References
 
 - [Directed Tutte theorem](https://www.cs.tufts.edu/research/geometry/pdf/haas04planar.pdf) — positive directed equilibrium weights and non-overlapping convex cells under explicit graph/boundary hypotheses.

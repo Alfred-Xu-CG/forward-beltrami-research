@@ -47,6 +47,10 @@ Authoritative plan: [PLAN.md](PLAN.md)
   realizable by a continuous P1 map. This is why a small conjugacy residual in
   the independent MBM complementary solve cannot be interpreted as only a
   sparse-solver error.
+- The projected-Beurling formulation is retained as supporting theory only:
+  its range projector explains the fixed-P1 compatibility manifold, while the
+  existing realistic random-field control retains relative Beltrami error about
+  0.7081. It is not being promoted to a generic production backend.
 - The structured MBM implicit layer now passes a double-precision directional
   finite-difference VJP check with relative error \(9.4\times10^{-10}\).
   Forward-plus-backward wall time was 1.56 s at 64x64, 6.13 s at 128x128,

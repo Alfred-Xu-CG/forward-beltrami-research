@@ -458,3 +458,44 @@ approximately 293 MB to 485 MB during the 256x256 run. These measurements
 show that implicit differentiation is feasible, but they also identify the
 current bottlenecks: Python element assembly, two independent factorizations,
 and the absence of a hard mixed-boundary homeomorphism theorem.
+
+## 15. Supporting theory: projected Beurling on a fixed P1 mesh
+
+The fixed-P1 compatibility obstruction can also be written as a projected
+Beurling equation. Let \(D_{\bar z}^h\) and \(D_z^h\) map a vertex displacement
+field \(h\) to its facewise discrete Wirtinger derivatives. Let
+
+\[
+Q_h=D_{\bar z}^h(D_{\bar z}^h)^\dagger,\qquad
+S_h=D_z^h(D_{\bar z}^h)^\dagger.
+\]
+
+Here \({}^\dagger\) denotes the chosen least-squares/pseudoinverse on the
+fixed mesh. The discrete fixed-point equation for \(f=z+h\) is
+
+\[
+h=Q_h\left[\mu\left(1+S_hh\right)\right].
+\tag{PB-1}
+\]
+
+The operator \(Q_h\) projects a facewise field onto the realizable range of
+\(D_{\bar z}^h\). Consequently:
+
+- if the target field is exactly fixed-P1 compatible, the projection residual
+  can vanish;
+- if the target is incompatible, a small linear residual alone does not mean
+  that the requested facewise \(\mu\) was realized;
+- the projection is not automatically unique, globally injective, or
+  differentiable across rank changes.
+
+The existing sparse projection prototype uses the exact quotient-rule Jacobian
+of facewise \(f_{\bar z}/f_z\). It recovered manufactured compatible fields
+through 256-squared meshes, whereas bounded random fields retained a large
+residual. A realistic 256-squared random-field control reported relative
+Beltrami error about \(0.7081\). This closes the conceptual question—arbitrary
+facewise \(\mu\) must be projected or parameterized on the realizable manifold—
+but does not justify engineering a Beurling/FMM backend as the main neural
+layer.
+
+The Phase II decision is therefore to retain (PB-1) as supporting exactness
+theory and to stop before a generic Beurling production implementation.
