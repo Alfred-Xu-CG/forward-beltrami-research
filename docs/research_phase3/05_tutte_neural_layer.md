@@ -150,3 +150,38 @@ backward. The modulus-logit gradient of the squared-coordinate loss was
 2627.4139 and finite; side closure is algebraic because the fourth side is the
 implicit closing segment. This confirms a usable latent-to-VJP path, not a
 claim that the loss landscape is well conditioned.
+
+## 9. Supporting Beurling/FFT audit
+
+The whole-plane Beurling transform is
+\[
+(Bg)(z)=-\frac1\pi\operatorname{p.v.}\int_{\mathbb C}
+\frac{g(w)}{(z-w)^2}\,dA(w).
+\]
+An (N_x\times N_y) FFT does not evaluate this integral on a bounded domain
+directly. It diagonalizes the *periodized* convolution on a flat torus: the
+kernel is replaced by the lattice sum
+\[
+K_{\mathrm{per}}(z)=\sum_{m\in\mathbb Z^2}K(z+mL),
+\]
+and the sampled field is periodic across opposite sides. Setting the
+coefficient to zero outside the computational window removes the physical
+coefficient there, but it does not remove the periodic image interactions.
+
+Centered zero-padding approximates the free-space operator by increasing the
+period (L); it is not an exact bounded-domain boundary condition. On a
+128x128 uniform grid with a smooth coefficient supported in a central disk
+(radius 0.34), periodic FFT and padding-factor-2 differed by 5.19% in the
+central radius-0.18 region and 27.5% in the outer annulus. Padding factors 4
+and 8 changed the central result by only (2.03\times10^{-4}) relative to
+the factor-8 result, while the periodic result remained 5.53% away. Runtime
+grew from 0.0202 s (factor 2) to 0.325 s (factor 8) on this CPU.
+
+On a general nonuniform mesh there is no exact uniform-grid FFT diagonalization.
+The direct quadrature reference in `beurling_direct.py` costs (O(N^2)); a
+particle-mesh, NUFFT, or treecode approximation can reduce that cost but needs
+separate quadrature, near-singular treatment, and boundary-error validation.
+Neither the periodic nor the zero-padded Beurling prototype currently supplies
+a hard piecewise-affine homeomorphism certificate. This is why the route is
+supporting evidence rather than a surviving production candidate in this
+phase.

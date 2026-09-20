@@ -100,6 +100,38 @@ discrete conjugacy invariant. Enforcing all five with a million-vertex neural
 batch requires matrix-free incidence operations, checkpointed solves, and
 careful storage of only edge fluxes rather than two full coordinate histories.
 
+### Incidence/Hodge formulation (feasibility derivation)
+
+For completeness, let (B_0\in\mathbb R^{n_e\times n_v}) be the oriented
+vertex-to-edge incidence matrix and (B_1\in\mathbb R^{n_f\times n_e}) the
+oriented edge-to-face incidence matrix. The chain-complex identity is
+\[
+B_1B_0=0.
+\]
+Let (H_A) be a positive (possibly block) discrete Hodge star on primal edge
+one-forms. The primal potential and flux equations are
+\[
+q=H_A B_0u,qquad B_1q=0.
+\tag{DC-2}
+\]
+On a simply connected dual complex, let \(\widetilde B_0\) be the dual
+vertex-to-edge incidence. A stream coordinate is obtained by solving
+\[
+\widetilde B_0v=R q,
+\tag{DC-3}
+\]
+where (R) rotates the oriented primal flux into the dual orientation. A
+solution exists exactly when the right side has zero sum around every dual
+cycle; this is the discrete exactness condition. One additive constant is fixed
+as the gauge, and boundary dual edges encode the Neumann/Dirichlet side data.
+
+The present code does **not** claim to implement (DC-2)--(DC-3) on an
+arbitrary mesh. It implements the compatible (P_1) route above, where
+continuity of (u_h,v_h) supplies the normal-flux cancellation analytically.
+The incidence/Hodge equations identify the missing data structures for a
+future matrix-free layer and explain why an independent complementary solve is
+not automatically a stream integration.
+
 ## 6. Current conclusion
 
 The compatible (P_1) route can produce an exact piecewise-affine

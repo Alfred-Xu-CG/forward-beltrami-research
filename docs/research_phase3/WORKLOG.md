@@ -103,6 +103,28 @@ Prior work: `tmp/phase3_code_checker.md`.
 
 Finding: all four issues were reproduced and fixed; focused tests now pass. Electrical target-area field was removed because it was circular; CSV determinant units/provenance were made explicit.
 
+## T+8h — anisotropic route escalation beyond the fixed stencil
+
+Question: Did the negative four-direction audit disprove anisotropic primal-dual methods in general?
+Exact claim: eigenvector directions, A-metric Delaunay meshes, or block Hodge stars can represent SPD tensors, but each changes the global discrete complex.
+Assumptions: facewise SPD tensors; conforming primal/dual incidence is the limiting constraint.
+What would falsify it: an algebraic obstruction for every rotated representation, or a fixed graph that realizes all principal directions without new edges.
+Smallest decisive test: spectral rank-one decomposition and comparison with the four-direction positive-feasibility interval.
+Prior work: C2/C3/C6 and anisotropic Delaunay literature.
+
+Next: have the independent code checker audit the scope, then keep this as a route redesign question rather than declaring the whole anisotropic route false.
+
+## T+9h — supporting Beurling periodicity audit
+
+Question: Does FFT acceleration of the whole-plane Beurling transform silently impose a harmful periodicity assumption?
+Exact claim: periodic FFT computes a torus convolution; zero-padding only approximates free-space by separating periodic images.
+Assumptions: uniform 128x128 grid, smooth coefficient supported in a central disk, padding factors 2/4/8.
+What would falsify it: periodic and converged zero-padded operators agreeing to discretization error at both interior and boundary regions.
+Smallest decisive test: relative periodic-vs-padding difference on central and outer masks, plus padding convergence.
+Prior work: Daripa/Gaidashev route and periodic/zero-padded Beurling modules.
+
+Finding: periodic differs 5.19% centrally and 27.5% near the outer annulus; padding 4/8 converges centrally. Uniform FFT is therefore not a general-mesh or exact bounded-domain solver.
+
 ## T+6h — C10/C12 expressivity and medium benchmark
 
 Question: Does the directed Tutte layer remain accurate, fold-free, and differentiable at realistic resolution?

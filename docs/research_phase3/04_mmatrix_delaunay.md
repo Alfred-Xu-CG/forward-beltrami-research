@@ -91,7 +91,47 @@ is differentiable almost everywhere, but is not a proof of a homeomorphism.
 For a guaranteed topology-preserving layer, mesh/boundary hypotheses and the
 sign certificate remain explicit inputs or certified preconditions.
 
-## 6. Independent-check status
+## 6. Why one fixed stencil does not settle the anisotropic route
+
+For any single SPD tensor, an eigen-decomposition gives the positive algebraic
+representation
+\[
+A=\lambda_1 e_1e_1^T+\lambda_2 e_2e_2^T,
+\qquad \lambda_1,\lambda_2>0,
+\quad e_1\perp e_2.
+\]
+Thus the obstruction found for the four directions
+\(e_x,e_y,(1,1),(1,-1)\) is not an obstruction to *all* positive directional
+representations. It is an obstruction to using that fixed global cone on the
+given graph.
+
+There are three possible escapes, each with a different cost:
+
+1. **Adaptive rotated directions.** Use the principal directions per face. The
+   resulting directions generally do not coincide with primal edges or with a
+   globally conforming dual complex. Introducing virtual edges changes the
+   graph and requires a new incidence/Hodge construction.
+2. **(A)-metric orthogonalization.** Transform each face by
+   (A_T^{-1/2}), use a circumcentric/cotangent discretization in the metric,
+   then pull it back. This yields the weighted cotangent formula above, but
+   positivity requires an anisotropic Delaunay condition and neighboring faces
+   need not share one metric.
+3. **Full SPD local Hodge star.** Retain non-diagonal local Hodge blocks in a
+   specified primal/dual basis. This can represent every SPD tensor, but a
+   generic (2\times2) edge-pair block is not by itself a conforming global
+   Hodge system: the basis, degrees of freedom, orientation, and assembly must
+   be defined, and standard local edge constructions may use larger blocks.
+   The resulting block mixed system loses the interpretation as independent
+   positive scalar conductances and does not automatically imply an
+   (M)-matrix or topology guarantee.
+
+Consequently, the Phase II fixed-stencil coverage percentages only ruled out
+one diagonal positive-network design. They did not rule out adaptive metric
+meshes or compatible mixed finite elements. The new (P_1) conjugacy module is
+an exact facewise compatibility prototype, not an implementation of the full
+block-Hodge option; it still lacks a scalable global dual complex.
+
+## 7. Independent-check status
 
 The two-face obtuse-angle calculation and the C7 anisotropic counterexample
 were recomputed without calling the production helper. Remaining work is a
@@ -99,7 +139,7 @@ realistic-resolution sparse assembly benchmark reporting the fraction of
 positive off-diagonals, factorization cost, and sensitivity under coefficient
 perturbations.
 
-## 7. Mixed-boundary monotonicity: theorem search and exhaustive tiny search
+## 8. Mixed-boundary monotonicity: theorem search and exhaustive tiny search
 
 The literature supports a maximum--minimum principle for positive scalar
 conductance graphs and studies response matrices of circular planar networks,
