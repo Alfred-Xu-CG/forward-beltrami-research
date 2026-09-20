@@ -51,6 +51,10 @@ Authoritative plan: [PLAN.md](PLAN.md)
   its range projector explains the fixed-P1 compatibility manifold, while the
   existing realistic random-field control retains relative Beltrami error about
   0.7081. It is not being promoted to a generic production backend.
+- A 16x16 smooth boundary-fixed PL deformation with positive face determinants
+  admitted strictly positive local directed-Tutte rows at all 225 interior
+  vertices; the smallest maximin row weight was 0.139. This is initial evidence
+  that the hard decoder is not trivially too restrictive.
 - The structured MBM implicit layer now passes a double-precision directional
   finite-difference VJP check with relative error \(9.4\times10^{-10}\).
   Forward-plus-backward wall time was 1.56 s at 64x64, 6.13 s at 128x128,

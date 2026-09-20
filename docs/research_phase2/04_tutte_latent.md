@@ -117,6 +117,16 @@ expressive enough for a broad family of convex-boundary disk embeddings, but
 there is no evidence yet that it can represent every arbitrary Beltrami field
 without increasing graph connectivity or changing the boundary.
 
+As a direct local expressivity test, a 16x16 structured triangulation was given
+a boundary-fixed smooth deformation with amplitude 0.12. For every one of its
+225 interior vertices, a linear program found strict positive neighbor weights
+that reproduced the target vertex exactly. The smallest maximin row weight was
+0.139, the 5th percentile was 0.141, and the target had
+\(\max_T|\mu_T|=0.6595\) with all face determinants positive. A larger amplitude
+0.2 produced flipped faces and \(\max|\mu|>1\), so its eight failed rows are
+not an expressivity counterexample; the target itself was no longer a valid QC
+homeomorphism.
+
 ## 5. Conditioning and neural usability
 
 The hard-topology theorem is qualitative. If logits have a large spread, one

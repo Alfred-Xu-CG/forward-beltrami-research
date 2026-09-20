@@ -136,6 +136,21 @@ At present only the isotropic square-grid construction is exact. The anisotropic
 extension is open and must be tested with a tensor sign/positivity audit before
 being treated as a decoder.
 
+There is an immediate algebraic obstruction to the simplest anisotropic
+shortcut. On an axis-aligned square grid, a diagonal edge-conductance star can
+only represent an energy of the form
+
+\[
+c_x(\partial_x u)^2+c_y(\partial_y u)^2.
+\]
+
+Testing the affine fields \(u=x\) and \(u=y\) forces
+\(c_x=A_{11}\) and \(c_y=A_{22}\). Testing \(u=x+y\) then misses the continuum
+cross term \(2A_{12}\partial_xu\,\partial_yu\) whenever \(A_{12}\ne0\). Thus
+ordinary positive horizontal/vertical conductances cannot exactly encode a
+general complex Beltrami coefficient. A rotated/metric orthogonal complex, a
+diamond refinement, or a full non-diagonal discrete Hodge star is necessary.
+
 ## 6. Relation to a PL map
 
 The electrical tiling naturally produces orthogonal quadrilateral cells on a
