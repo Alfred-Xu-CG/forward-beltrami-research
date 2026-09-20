@@ -90,6 +90,19 @@ Prior work: planar resistor response matrices, discrete maximum principle, Phase
 
 Finding: 6561 cases contain 87 counterexamples; minimum left increment -0.2749922961. The continuum canonical-map question remains separate.
 
+Follow-up: the same 6561-case enumeration with scalar conductances {1,2,10} on the right-triangle stencil had no negative increment (minimum 0.0909090909), so the positive result is restricted to that M-matrix graph family.
+
+## T+7h — independent code audit and repair
+
+Question: Are the new solver primitives actually enforcing their mathematical preconditions?
+Exact claim: SPD/unit-determinant tensors, simple convex boundaries, empty-interior meshes, and device-consistent VJPs are handled explicitly.
+Assumptions: finite arrays, conforming meshes, same-device Torch inputs.
+What would falsify it: negative-definite acceptance, star-boundary acceptance, empty reduction, or a device mismatch reaching NumPy.
+Smallest decisive test: -I and det != 1 faces, regular pentagram, 1x1-cell boundary-only mesh, meta-device logits.
+Prior work: `tmp/phase3_code_checker.md`.
+
+Finding: all four issues were reproduced and fixed; focused tests now pass. Electrical target-area field was removed because it was circular; CSV determinant units/provenance were made explicit.
+
 ## T+6h — C10/C12 expressivity and medium benchmark
 
 Question: Does the directed Tutte layer remain accurate, fold-free, and differentiable at realistic resolution?

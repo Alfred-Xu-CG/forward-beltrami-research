@@ -143,3 +143,11 @@ loses its boundary order. A valid restricted theorem would need an assembled
 that prevents the independent complementary solve from leaving the stream
 space. The continuum monotonicity question is therefore left explicitly open
 rather than incorrectly promoted or rejected by the discrete search.
+
+As a restricted positive check, the same (2\times2)-cell triangulation was
+exhaustively tested with scalar face conductances in
+\(\{1,2,10\}^8\). All 6561 systems were nonsingular and had nonnegative left
+and right boundary increments; the smallest left increment was
+\(0.0909090909\). This is consistent with the (M)-matrix structure of the
+right-triangle isotropic stencil, but it is not a proof for arbitrary planar
+graphs or anisotropic tensors.
