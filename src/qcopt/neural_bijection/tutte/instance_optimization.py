@@ -69,6 +69,7 @@ class InstanceOptimizationResult:
     global_solves_to_threshold: int | None
     wall_seconds_to_threshold: float | None
     all_iterates_certified: bool
+    final_metrics: P1MapMetrics
     trace: tuple[InstanceTraceRow, ...]
 
 
@@ -230,6 +231,7 @@ def _make_result(
     target_setup_seconds: float,
     objective_threshold: float | None,
     wall_seconds: float,
+    final_metrics: P1MapMetrics,
 ) -> InstanceOptimizationResult:
     evaluations, solves, threshold_wall = _threshold_fields(trace, objective_threshold)
     side = int(round(np.sqrt(mesh.n_vertices)))
@@ -256,6 +258,7 @@ def _make_result(
         global_solves_to_threshold=solves,
         wall_seconds_to_threshold=threshold_wall,
         all_iterates_certified=all(row.topology_certified for row in trace),
+        final_metrics=final_metrics,
         trace=tuple(trace),
     )
 
@@ -361,6 +364,7 @@ def _run_adam(
         target_setup_seconds=target_setup_seconds,
         objective_threshold=objective_threshold,
         wall_seconds=perf_counter() - start,
+        final_metrics=metrics,
     )
 
 
@@ -526,6 +530,7 @@ def _run_lbfgs(
         target_setup_seconds=target_setup_seconds,
         objective_threshold=objective_threshold,
         wall_seconds=perf_counter() - start,
+        final_metrics=metrics,
     )
 
 

@@ -66,6 +66,9 @@ def test_short_supervised_adam_instance_reduces_actual_dense_decoder_error() -> 
     assert result.wall_seconds_to_threshold <= result.wall_seconds
     assert result.control_vertices_per_side == 5
     assert result.control_vertex_count == 25
+    assert result.final_metrics.global_injectivity_certificate
+    assert np.isfinite(result.final_metrics.maximum_map_error)
+    assert np.isfinite(result.final_metrics.mu_rmse)
     assert all(row.audit_seconds >= 0.0 for row in result.trace)
     assert all(
         left.observation_wall_seconds <= right.observation_wall_seconds
