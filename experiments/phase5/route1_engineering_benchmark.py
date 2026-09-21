@@ -21,6 +21,7 @@ import os
 from pathlib import Path
 import platform
 import statistics
+import subprocess
 import sys
 from time import perf_counter
 from typing import Any
@@ -34,8 +35,12 @@ from qcopt.neural_bijection.metrics import compute_p1_map_metrics
 from qcopt.neural_bijection.tutte.composition import SquareTutteComposition, compose_control_maps
 from qcopt.neural_bijection.tutte.decoder import TutteRectangleDecoder
 from qcopt.neural_bijection.tutte.direct import DirectTutteLayer
+from qcopt.neural_bijection.tutte.reference import LegacyReferenceTutteLayer
 from qcopt.neural_bijection.tutte.iterative import MatrixFreeDirectedTutteLayer
 from qcopt.neural_bijection.tutte.symmetric import MatrixFreeSymmetricTutteLayer
+
+
+REPOSITORY = Path(__file__).resolve().parents[2]
 
 
 @dataclass(frozen=True)
@@ -52,6 +57,24 @@ class BenchmarkConfig:
     seed: int = 1701
     strength: float = 0.15
     threads: int = 1
+
+
+def _git_commit() -> str | None:
+    """Return ordinary Git provenance when this script runs inside a checkout."""
+    try:
+        result = subprocess.run(
+            ('git', '-C', str(REPOSITORY), 'rev-parse', 'HEAD'),
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    value = result.stdout.strip().lower()
+    if result.returncode != 0 or len(value) != 40 or any(ch not in '0123456789abcdef' for ch in value):
+        return None
+    return value
 
 
 def _plain(value: Any) -> Any:
@@ -131,8 +154,14 @@ def _true_residual(solver, latent, control) -> dict:
             contrast = float(np.max(np.max(c, axis=1) / np.min(c, axis=1)))
             conditioning = {'normalized_conductance_contrast': contrast}
         else:
-            mask = torch.tensor(system.valid_mask.copy(), device=latent.device)
-            p = torch.softmax(latent.masked_fill(~mask, -torch.inf), dim=-1).double().cpu().numpy()
+            if isinstance(solver, LegacyReferenceTutteLayer):
+                # Legacy realizes its probabilities in NumPy float64 even when
+                # the supplied logits and returned coordinates are float32.
+                p = np.stack([system._probabilities(sample)
+                              for sample in latent.detach().double().cpu().numpy()])
+            else:
+                mask = torch.tensor(system.valid_mask.copy(), device=latent.device)
+                p = torch.softmax(latent.masked_fill(~mask, -torch.inf), dim=-1).double().cpu().numpy()
             residual[:] = y[:, system.interior]
             for row, slot in zip(*np.nonzero(system.valid_mask)):
                 neighbor = system.neighbors[row, slot]
@@ -167,11 +196,7 @@ def run_benchmark(config: BenchmarkConfig) -> dict:
     old_threads = torch.get_num_threads()
     counts = {'forward': 0, 'backward': 0}
     try:
-        if config.backend == 'reference':
-            report.update(status='not_implemented', error=dict(type='NotImplementedError',
-                message='official-style/legacy reference adapter is not implemented; direct is improved SuperLU'))
-            return report
-        if config.backend not in ('direct', 'directed_iterative', 'symmetric'):
+        if config.backend not in ('reference', 'direct', 'directed_iterative', 'symmetric'):
             raise ValueError('unknown backend')
         if config.control < 3 or config.batch < 1 or config.layers not in (1, 2, 4):
             raise ValueError('control>=3, batch>=1, and layers in 1/2/4 are required')
@@ -184,8 +209,8 @@ def run_benchmark(config: BenchmarkConfig) -> dict:
         device = torch.device(config.device)
         if device.type not in ('cpu', 'cuda'):
             raise ValueError('device must be CPU or CUDA')
-        if config.backend == 'direct' and device.type != 'cpu':
-            raise ValueError('direct backend is CPU-only')
+        if config.backend in ('reference', 'direct') and device.type != 'cpu':
+            raise ValueError(f'{config.backend} backend is CPU-only')
         if device.type == 'cuda' and not torch.cuda.is_available():
             raise ValueError('CUDA requested but unavailable')
         dtype = getattr(torch, config.dtype)
@@ -193,6 +218,7 @@ def run_benchmark(config: BenchmarkConfig) -> dict:
         report['environment'] = dict(host=platform.node(), platform=platform.platform(),
             python=platform.python_version(), torch=torch.__version__, numpy=np.__version__,
             scipy=scipy.__version__, cuda_build=torch.version.cuda, cpu=platform.processor(),
+            commit=_git_commit(),
             torch_threads=torch.get_num_threads(), omp_num_threads=os.getenv('OMP_NUM_THREADS'),
             mkl_num_threads=os.getenv('MKL_NUM_THREADS'),
             gpu_name=torch.cuda.get_device_name(device) if device.type == 'cuda' else None)
@@ -201,7 +227,8 @@ def run_benchmark(config: BenchmarkConfig) -> dict:
         mesh = structured_rectangle(config.control - 1, config.control - 1)
         decoders, latents, boundaries = [], [], []
         for layer in range(config.layers):
-            solver = {'direct': DirectTutteLayer, 'directed_iterative': MatrixFreeDirectedTutteLayer,
+            solver = {'reference': LegacyReferenceTutteLayer,
+                      'direct': DirectTutteLayer, 'directed_iterative': MatrixFreeDirectedTutteLayer,
                       'symmetric': MatrixFreeSymmetricTutteLayer}[config.backend](mesh)
             decoder = TutteRectangleDecoder(mesh, solver, image_height=config.image_resolution,
                                             image_width=config.image_resolution)
@@ -284,6 +311,12 @@ def run_benchmark(config: BenchmarkConfig) -> dict:
             measured_adjoint_systems=counts['backward']*config.batch,
             warmup_primal_systems=warm_counts['forward']*config.batch,
             warmup_adjoint_systems=warm_counts['backward']*config.batch)
+        if config.backend in ('reference', 'direct'):
+            factors_per_sample = 2 if config.backend == 'reference' else 1
+            report['solve_counts'].update(
+                measured_factorizations=counts['forward']*config.batch*factors_per_sample,
+                warmup_factorizations=warm_counts['forward']*config.batch*factors_per_sample,
+                factorization_count_basis='completed forward hooks times batch times backend factorization contract; call counts independently tested')
         for field in ('forward_seconds', 'loss_seconds', 'backward_seconds', 'end_to_end_seconds'):
             report['timing']['mean_' + field] = statistics.mean(row[field] for row in report['samples'])
             report['timing']['median_' + field] = statistics.median(row[field] for row in report['samples'])
@@ -311,8 +344,15 @@ def run_benchmark(config: BenchmarkConfig) -> dict:
                     relative_tolerance=solver.relative_tolerance if solver.relative_tolerance is not None else
                     (1e-5 if dtype == torch.float32 else 1e-11),
                     absolute_tolerance=solver.absolute_tolerance, maximum_iterations=solver.max_iterations)
+            elif isinstance(solver, LegacyReferenceTutteLayer):
+                row['solver_settings'] = dict(
+                    algorithm='legacy SciPy factorized(A) and factorized(A.T)',
+                    internal_dtype='float64', probability_dtype='float64',
+                    factorizations_per_sample_forward=2, batch_execution='sequential CPU',
+                    relative_tolerance=None, absolute_tolerance=None, maximum_iterations=None)
             else:
                 row['solver_settings'] = dict(algorithm='SuperLU', internal_dtype='float64',
+                    factorizations_per_sample_forward=1, batch_execution='sequential CPU',
                     relative_tolerance=None, absolute_tolerance=None, maximum_iterations=None)
             row.update(_true_residual(solver, latent, control))
             for sample in control.detach().double().cpu().numpy():
@@ -346,6 +386,7 @@ def run_benchmark(config: BenchmarkConfig) -> dict:
             iterations='diagnostic method/primary_failure are preserved; fallback iterations are not total work including the failed primary attempt',
             family='symmetric changes the matrix/parameter family; directed backends share seeded logits and boundaries',
             direct='CPU SuperLU internally double, one factor per sample per forward; no cross-forward symbolic cache',
+            reference='legacy CPU-only sequential adapter; NumPy float64 weights and solves; factorized(A) and factorized(A.T) per sample forward, saved transpose factor in backward; no cross-forward cache or official KLU replication; realized-probability and returned-dtype positive-face screens included',
             gradients='finite gradients checked; no finite-difference accuracy claim from this performance run')
         report.update(status='ok', stage='complete')
     except Exception as error:

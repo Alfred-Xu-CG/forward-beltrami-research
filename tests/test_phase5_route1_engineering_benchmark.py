@@ -30,6 +30,24 @@ def _run(**kwargs):
     return module.run_benchmark(module.BenchmarkConfig(**defaults))
 
 
+def test_receipt_records_repository_commit(monkeypatch):
+    module = _module()
+    monkeypatch.setattr(module, '_git_commit', lambda: 'a' * 40)
+    receipt = module.run_benchmark(module.BenchmarkConfig(
+        control=3,
+        batch=1,
+        layers=1,
+        image_resolution=8,
+        backend='directed_iterative',
+        dtype='float64',
+        device='cpu',
+        warmup=0,
+        repeats=1,
+    ))
+    assert receipt['status'] == 'ok', receipt
+    assert receipt['environment']['commit'] == 'a' * 40
+
+
 @pytest.mark.parametrize('batch,layers', [(1, 1), (2, 2), (2, 4)])
 def test_cpu_tiny_receipt_counts_actual_factorizations_and_fields(batch, layers, monkeypatch):
     original = sparse_linalg.splu
@@ -107,10 +125,47 @@ def test_invalid_or_unavailable_configuration_is_structured_failure(kwargs):
     json.dumps(receipt, allow_nan=False)
 
 
-def test_reference_is_explicitly_not_implemented():
-    receipt = _run(backend='reference')
-    assert receipt['status'] == 'not_implemented'
-    assert 'legacy' in receipt['error']['message']
+def test_reference_receipt_counts_two_actual_legacy_factors_per_sample(monkeypatch):
+    from qcopt.forward import tutte_directed_implicit as legacy
+    original = legacy.factorized
+    calls = []
+    def recording(matrix):
+        calls.append(1)
+        return original(matrix)
+    monkeypatch.setattr(legacy, 'factorized', recording)
+    receipt = _run(backend='reference', batch=2, layers=2, warmup=1, repeats=2)
+    assert receipt['status'] == 'ok', receipt
+    assert len(calls) == 2 * 2 * 2 * 3
+    assert receipt['solve_counts']['measured_primal_systems'] == 8
+    assert receipt['solve_counts']['measured_adjoint_systems'] == 8
+    assert receipt['solve_counts']['measured_factorizations'] == 16
+    assert receipt['solve_counts']['warmup_factorizations'] == 8
+    assert 'legacy' in receipt['semantics']['reference'].lower()
+    assert 'sequential' in receipt['semantics']['reference'].lower()
+    assert all(row['solver_settings']['factorizations_per_sample_forward'] == 2
+               for row in receipt['per_layer'])
+    assert all(row['solver_forward'] is None for row in receipt['per_layer'])
+    assert all(row['true_primal_relative_residual_max'] < 1e-12 for row in receipt['per_layer'])
+    direct = _run(backend='direct', batch=2, layers=2, warmup=0, repeats=1)
+    assert direct['input_summary'] == receipt['input_summary']
+    assert receipt['output_summary']['dense_sum'] == pytest.approx(
+        direct['output_summary']['dense_sum'], abs=2e-10)
+    json.dumps(receipt, allow_nan=False)
+
+
+def test_reference_cuda_is_explicit_cpu_only_failure():
+    receipt = _run(backend='reference', device='cuda')
+    assert receipt['status'] == 'failure'
+    assert 'CPU-only' in receipt['error']['message']
+
+
+def test_reference_float32_receipt_audits_legacy_double_realized_weights():
+    receipt = _run(backend='reference', dtype='float32')
+    assert receipt['status'] == 'ok', receipt
+    row = receipt['per_layer'][0]
+    assert row['solver_settings']['probability_dtype'] == 'float64'
+    assert row['true_primal_relative_residual_max'] < 1e-6
+    assert all(item['global_injectivity_certificate'] for item in row['topology'])
 
 
 def test_cli_emits_exactly_one_json_document():
