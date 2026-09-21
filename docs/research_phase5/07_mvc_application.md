@@ -285,7 +285,8 @@ are:
 
 - [local CPU direct](raw_results/route2_mvc_layer_local_cpu_b2972ea.json);
 - [AI A6000-0](raw_results/route2_mvc_layer_ai_a6000_gpu0_eeaed32.json);
-- [Turing A40-0](raw_results/route2_mvc_layer_turing_a40_gpu0_eeaed32.json).
+- [Turing A40-0](raw_results/route2_mvc_layer_turing_a40_gpu0_eeaed32.json); and
+- [bounded tolerance/memory diagnostic](raw_results/route2_mvc_layer_rtol_sweep_ai_gpu1_turing_memory_20260922.json).
 
 The embedded remote identity is
 `eeaed327ca563cfc4b536e83994350bea354c5a8`.  AI used Torch 2.4.0 with CUDA
@@ -360,6 +361,16 @@ control-only experiment remains below 40 MiB, but it excludes the dense image
 grid, images, optimizer parameters, and any CNN.  It does not answer the full
 training-memory question by itself.
 
+A warmup-free, fresh-process Turing repetition at (N=25,B=4), float64
+started with only 484,352 allocated bytes and 6,291,456 reserved bytes before
+M2, but reached 1,150,018,048 allocated bytes.  This is 99.26% of the original
+Turing peak and 29.206 times the corresponding formal AI peak.  The encoder and
+full-M1 peaks in that fresh process remained below 4.6 MiB.  Thus accumulated
+warmup cache and a cross-stage live-tensor baseline do not explain the large
+M2 allocation.  Device architecture, Torch version, CUDA version, and runtime
+kernel/workspace selection remain confounded, so the evidence still does not
+support a single-factor attribution.
+
 ## 6. Numerical accuracy and topology
 
 ### 6.1 Maximum error over the three profiles
@@ -398,10 +409,28 @@ acceptable for rendering a map can be inadequate for a derivative test.
 
 The cross-host near agreement of round-trip and finite-difference errors shows
 that this is reproducible under the two tested builds.  It does not prove that
-the residual tolerance is the only cause.  The separately launched explicit
-tolerance sweep must distinguish attainable float32 solver accuracy from a
-formula or implementation defect.  Until that sweep closes, the supported
-statement is:
+the residual tolerance is the only cause.  A bounded explicit-tolerance sweep
+on idle physical AI GPU 1 used the same (N=49,B=1), float32 inputs with no
+warmup and one repeat:
+
+| solver rtol | round-trip | FD relative | projected-JVP relative | M2 represented residual | M2 end-to-end seconds |
+|---:|---:|---:|---:|---:|---:|
+| (3\times10^{-6}) | 1.941e-4 | 7.102e-2 | 8.925e-2 | 9.799e-7 | 11.886 |
+| (1\times10^{-6}) | 5.825e-5 | 1.362e-3 | 3.958e-2 | 2.923e-7 | 23.999 |
+| (3\times10^{-7}) | 1.378e-5 | 1.338e-3 | 7.894e-3 | 1.280e-7 | 19.292 |
+
+All three rows completed with certified topology.  Some solves at
+(10^{-6}) and (3\times10^{-7}) used the bounded stationary fallback; the
+largest reported per-row iteration count was 4,078 and 4,771 respectively.
+These are cold single observations, so their nonmonotone forward/backward
+times are not a rate theorem or a warmed comparison with the formal baseline.
+No accuracy threshold was registered, and the sweep stopped at its three
+declared tolerances rather than tuning until a desired label appeared.
+
+The improvement with tolerance supports solver error as an important cause,
+but it also exposes a practical floor/cost: FD error changes little between
+(10^{-6}) and (3\times10^{-7}), projected-JVP error remains (7.89\times
+10^{-3}), and the cold M2 call takes 19.3 seconds.  The supported statement is:
 
 \[
  \boxed{\text{The current float32 directed GPU path is topology-safe here,
@@ -416,12 +445,11 @@ yet the desired fast neural-layer solution.
 
 ## 7. Independent M1/M2 correctness evidence
 
-The focused local suite, after adding a regression that forbids a nominally
-successful receipt from containing nonfinite timing/audit values, reports 12
-passes and one CUDA-unavailable skip.  The combined MVC, retraction,
-round-trip, direct, and iterative regression reports 103 passes and five local
-CUDA-unavailable skips before that extra regression, hence 104 corresponding
-passes after it.
+The focused layer-benchmark suite, including explicit-tolerance propagation
+and fail-closed invalid/direct-backend cases, reports 19 passes and one local
+CUDA-unavailable skip.  The combined MVC, retraction, round-trip, layer,
+instance-protocol, direct, and iterative regression reports 124 passes and
+five local CUDA-unavailable skips.
 
 The independent latent-lift comparison uses a variable-degree disk.  It
 computes the autograd JVP (dE_{\rm MVC}(Y)[d]) and the covariance lift
@@ -544,8 +572,9 @@ layer:
 - no plan-compliant O1--O4 256-by-256 comparison has yet been accepted; and
 - no CNN has been trained through this Route-II layer.
 
-These are research results, not reasons to abandon the route.  The immediate
-decisive tasks are the tighter-float32 solver sweep, the repaired equal-budget
-instance benchmark, and an independent Route-II checker.  Only then can the
-route be classified as a practical candidate, a correctness-only teacher, or
-a negative result for the final neural-layer goal.
+These are research results, not reasons to abandon the route.  The bounded
+tighter-float32 sweep is complete and the repaired fixed-boundary protocol has
+an independent code-level pass.  The immediate decisive tasks are its formal
+256-by-256 equal-budget experiments and the complete independent Route-II
+checker.  Only then can the route be classified as a practical candidate, a
+correctness-only teacher, or a negative result for the final neural-layer goal.
