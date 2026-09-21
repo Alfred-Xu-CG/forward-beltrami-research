@@ -1,172 +1,226 @@
-# AGENTS.md — Deep Verification Research Mode
+# AGENTS.md — Phase V Sequential Deep-Research Mode
+
 ## Mission
 
-This repository is in **deep-verification research mode**.
-
-The goal is a fast, memory-efficient, differentiable neural layer that maps a learnable latent representation to a **guaranteed-bijective discrete deformation**, while retaining quasiconformal / Beltrami geometry when useful.
+This repository is in **Phase V sequential deep-research mode**.
 
 Authoritative plan:
 
 ```text
-docs/research_phase3/PLAN.md
+docs/research_phase5/PLAN.md
 ```
 
-Legacy Phase II results are reconnaissance, not final conclusions.
+Goal: develop a fast, memory-efficient, differentiable neural layer producing a guaranteed-bijective discrete deformation.
 
-Do not declare the 24-hour objective complete before T+22h unless the user
-explicitly stops it or no local, theoretical, or coding work is possible.
-Success criteria are not stop criteria; final synthesis begins only after an
-independent final review.
+Routes must be explored **sequentially and deeply**:
 
-## Current priorities
+1. Fast Tutte neural layer.
+2. MVC canonical coordinates + geometric incremental optimization.
+3. Primal-dual / RT / Whitney / Hodge.
 
-Phase III mandatory closure questions are: correction audit; continuum MBM and
-modulus identities; exact P1 recovery; structure-preserving discrete
-conjugacy; corrected electrical primal-dual construction; anisotropic Hodge and
-Delaunay conditions; mixed-boundary monotonicity; directed Tutte scope,
-expressivity, and learnable modulus; and a fair neural-layer benchmark.
+Do not start the next route until the current route passes its independent checker.
 
-Phase II documents remain reusable evidence, but Phase II's final decision is
-not authoritative for this round.
+## Real wall-clock requirement
 
-## Mandatory independent checking
+This is an 18-hour real wall-clock phase.
 
-Critical claims require an independent checker context. The author of a
-theorem, formula, code path, or experiment may not be its only reviewer.
-Check uniqueness, necessary versus sufficient conditions, local versus global
-claims, boundary/off-by-one indexing, sign and orientation conventions,
-continuum versus fixed-mesh implications, theorem hypotheses versus the
-implementation, circular numerical validation, modulus/energy/flux identities,
-and implicit VJP formulas. Record claim, checker finding, and fix in
-`docs/research_phase3/07_independent_checks.md`. Disagreements require
-adjudication rather than silent averaging.
+Use:
 
-## Deep-thinking requirement
+```text
+docs/research_phase5/START_TIME.json
+tools/check_phase5_elapsed.py
+```
 
-Before implementing a core idea, write a short research card in
-`docs/research_phase3/WORKLOG.md` containing Question, Exact claim, Assumptions,
-What would falsify it, Smallest decisive test, and Prior work. Do not code a
-theorem that has not been stated precisely.
+Do not simulate `T+Nh` labels.
 
-## Research method
+Do not mark complete before real elapsed time reaches 18 hours.
+
+A successful result is not a stop criterion.
+
+## Research depth
+
+Before a core theorem, solver design, or experiment, state:
+
+```text
+Question:
+Precise claim/hypothesis:
+Assumptions:
+What falsifies it:
+Smallest decisive test:
+```
 
 Prefer:
 
-1. precise mathematical formulation;
-2. proof or smallest counterexample;
-3. small decisive numerical experiment;
-4. implementation;
-5. medium benchmark;
-6. large benchmark only when earlier steps justify it.
+1. precise formulation;
+2. proof/counterexample;
+3. independent check;
+4. minimal decisive code;
+5. realistic benchmark;
+6. engineering optimization.
 
-Negative results are progress.
+## Independent checker
 
-When a core idea fails twice independently, escalate to a frontier reasoning model before abandoning it.
+Each route requires an independent checker.
 
-## Anti-bureaucracy
+High-risk words require review:
 
-By default, DO NOT add:
+```text
+unique
+iff
+necessary
+sufficient
+universal
+exact
+guaranteed
+canonical
+bijective
+```
 
-- checksums or SHA manifests;
-- custom artifact-integrity systems;
-- frozen contracts or schema freezes;
-- new baseline frameworks;
-- workflow/completion/release gates for ordinary research;
-- duplicate audit layers;
-- per-run artifact directories;
-- speculative infrastructure unrelated to a concrete failure.
-
-Only add one when there is a concrete failure scenario and Git/versioning, types, ordinary tests, and normal constraints are insufficient.
-
-Do not remove existing safety mechanisms merely to simplify the repository.
-
-Workflow gates belong only at irreversible, destructive, cross-system, security, production-data, or formal-release boundaries.
-
-Preflight checks must not crowd out actual code execution, simulation, or measurement.
-
-## Skills
-
-If these skills exist:
-
-- Do **not** use `ars/experiment-agent` during this open-ended research phase.
-- Do **not** use `academic-paper` until conclusions are stable.
-- Use `academic-research-suite` only lightly for theorem/prior-art verification.
-- Use `ars/deep-research` only when a core theorem/prior-art problem cannot be resolved with targeted search.
-- Use `verification-before-completion` only at real phase milestones/final handoff.
-- Use `verification-before-completion` at the T+12h midpoint and the T+22h
-  independent final review.
-- Use `systematic-debugging` only for actual software bugs/test failures.
-- Do not repeatedly invoke `writing-plans` or `brainstorming`; the current plan already exists.
-- Keep `using-superpowers` to minimal routing.
-
-## Experiments
-
-Every experiment must answer a named research question.
-
-Scale order:
-
-- tiny/local first;
-- medium only after tiny correctness;
-- 512²+ only after medium correctness and accuracy.
-
-Default budgets:
-
-- tiny: ~2 min;
-- medium: ~10 min;
-- large: ~30 min unless a written high-information reason justifies more.
-
-Use one compact results table. Do not create one audit directory per run.
-
-## Remote compute
-
-Three remote hosts may be available through a VPN.
-
-- Use remote compute for meaningful medium/large jobs, not tiny sanity checks.
-- On SSH failure: retry at most twice over ~2 min, mark host temporarily unavailable, and continue locally.
-- Do not pause the objective waiting for VPN restoration.
-- Recheck at phase transitions or after ~45–90 min.
-- Long jobs may use `tmux`/`screen`/`nohup` and concise logs.
-- Never kill unrelated processes or modify shared services/ports.
+The builder may not be the sole reviewer.
 
 ## Model routing
 
-Minimum model baseline: **GPT-5.6**.
+Minimum baseline: GPT-5.6.
 
-- routine implementation: GPT-5.6 Sol medium;
-- complex sparse/adjoint/DEC implementation: GPT-5.6 Sol high;
-- routine literature extraction / experiment summary: GPT-5.6 Terra medium;
-- mechanical log parsing / utility tests: GPT-5.6 Luna medium;
-- hard mathematical reasoning / route redesign: GPT-6 Astra high;
-- genuine conceptual impasse after two attempts: GPT-6 Astra xhigh/max.
+- coordinator: GPT-5.6 Sol high;
+- core implementation: GPT-5.6 Sol high;
+- utilities/tests: GPT-5.6 Sol medium;
+- hard mathematics: GPT-6 high if available;
+- independent theorem checker: GPT-6 high/xhigh if available;
+- conceptual impasse after two attempts: highest available GPT-6 reasoning, otherwise GPT-5.6 Sol maximum effort.
 
-Do not automatically fall back to models below GPT-5.6.
+Do not automatically fall below GPT-5.6.
 
-Do not use maximum reasoning for routine work.
+## Route order
 
-## Git and files
+Route I Tutte must close before Route II MVC.
 
-Use Git as normal version history. No extra hashing layer.
+Route II MVC must close before Route III primal-dual.
 
-Meaningful milestone commits are enough.
+No parallel route exploration.
 
-Do not refactor legacy code merely for cleanliness.
+Independent checker work for the current route is allowed.
 
-Prefer isolated new modules and minimal corrections to confirmed bugs.
+## Experiments
 
-Temporary logs may remain untracked.
+Use one shared benchmark.
+
+Mandatory realistic scale:
+
+```text
+256×256 image/query
+```
+
+512×512 preferred when resources allow.
+
+Always distinguish control mesh resolution from dense image/query resolution.
+
+Every route must execute code and produce numerical evidence; literature-only exploration is insufficient.
+
+## Tutte rules
+
+Audit TutteNet paper, official code, and `torch_sparse_solve`.
+
+Implement and benchmark:
+
+- reference direct solve;
+- improved direct/factor reuse where possible;
+- matrix-free iterative solve;
+- custom implicit backward;
+- fixed-query dense-warp precomputation.
+
+Do not call CPU reference code production-ready.
+
+## MVC rules
+
+MVC is primarily a canonicalization / optimization-geometry route, not a separate hard decoder.
+
+Distinguish:
+
+```text
+D(E(Y)) = Y
+```
+
+from the false general claim:
+
+```text
+E(D(p)) = p.
+```
+
+Analyze redundancy, decoder Jacobian nullspace, covariance lift, canonical re-encoding, trainability, and incremental correction.
+
+Treat covariance lift as one latent gauge/right-inverse, not the derivative of MVC unless proved.
+
+## Primal-dual rules
+
+Do not stop at “DEC/RT is promising”.
+
+Implement at least one concrete compatible reference operator and one positive hard-valid approximation/hybrid.
+
+Do not equate:
+
+- conservation with bijection;
+- SPD with M-matrix;
+- positive wide stencil with planar graph;
+- fixed-direction failure with route failure.
+
+Quantify anisotropy/accuracy vs positivity/topology.
+
+## Anti-bureaucracy
+
+Do not add by default:
+
+- hashes/checksums;
+- manifests;
+- frozen contracts;
+- completion ledgers;
+- per-run artifact trees;
+- speculative frameworks.
+
+Allowed gates:
+
+- route checker;
+- real 18h finalization clock;
+- destructive/security/release boundaries.
+
+## Skills
+
+- do not use `ars/experiment-agent`;
+- do not use `academic-paper` before final synthesis;
+- use research/deep-research only for targeted prior-art/theorem questions;
+- use systematic debugging only for real code failures;
+- use verification-before-completion at each route closure and final review.
+
+## Remote compute
+
+VPN failure does not pause the objective.
+
+Retry briefly, then continue locally.
+
+Use remote compute for meaningful medium/large runs.
+
+Avoid high-frequency polling.
+
+Never interfere with unrelated processes or ports.
 
 ## Scientific integrity
 
 Always distinguish:
 
-- theorem vs numerical evidence;
-- continuum guarantee vs fixed-mesh guarantee;
-- local positive Jacobian vs global homeomorphism;
-- exact Beltrami reproduction vs metric/harmonic approximation;
-- solver residual vs induced Beltrami error.
-
-Do not claim `|mu|<1` alone guarantees a sampled P1 map is fold-free.
-
-Do not claim a continuous diffeomorphism implies sampled P1 interpolation is fold-free.
+- theorem vs evidence;
+- exact vs approximate;
+- expressivity vs trainability;
+- control-map bijection vs dense-query evaluation;
+- continuous diffeo vs sampled PL homeomorphism;
+- directed positive Tutte weights vs symmetric conductance family;
+- discrete exactness/conservation vs spatial injectivity.
 
 Do not use post-hoc fold repair as the primary topology guarantee.
+
+## Git and files
+
+Use Git as normal version history without extra hashing infrastructure. Work on the
+Phase V feature branch in the D-drive worktree. Prefer isolated modules and minimal
+corrections to confirmed legacy bugs; do not refactor unrelated code. Keep temporary
+logs under `tmp/`, and make meaningful milestone commits only after fresh verification.
+
