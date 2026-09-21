@@ -21,6 +21,7 @@ class DirectedTutteSystem:
     neighbors: np.ndarray
     neighbor_is_boundary: np.ndarray
     valid_mask: np.ndarray
+    faces: np.ndarray
     n_vertices: int
     max_degree: int
 
@@ -32,6 +33,9 @@ class DirectedTutteSystem:
     def from_mesh(cls, mesh: TriMesh) -> "DirectedTutteSystem":
         if len(mesh.boundary_loops) != 1:
             raise ValueError("directed Tutte embedding requires exactly one boundary loop")
+        used_vertices = np.unique(mesh.faces)
+        if not np.array_equal(used_vertices, np.arange(mesh.n_vertices, dtype=np.int64)):
+            raise ValueError("directed Tutte embedding requires every vertex to belong to a face")
         loop = np.asarray(mesh.boundary_loops[0], dtype=np.int64)
         boundary_set = set(loop.tolist())
         interior = np.asarray([v for v in range(mesh.n_vertices) if v not in boundary_set], dtype=np.int64)
@@ -55,7 +59,16 @@ class DirectedTutteSystem:
                 else:
                     neighbors[row, col] = index[neighbor]
                 valid[row, col] = True
-        return cls(loop, interior, neighbors, is_boundary, valid, mesh.n_vertices, max_degree)
+        return cls(
+            loop,
+            interior,
+            neighbors,
+            is_boundary,
+            valid,
+            np.asarray(mesh.faces, dtype=np.int64),
+            mesh.n_vertices,
+            max_degree,
+        )
 
     def _probabilities(self, logits: np.ndarray) -> np.ndarray:
         values = np.asarray(logits, dtype=np.float64)
@@ -67,6 +80,8 @@ class DirectedTutteSystem:
         shifted = masked - np.max(masked, axis=1, keepdims=True)
         weights = np.exp(shifted)
         weights[~self.valid_mask] = 0.0
+        if np.any(weights[self.valid_mask] == 0.0):
+            raise ValueError("a supported softmax probability underflowed to zero")
         denominator = np.sum(weights, axis=1, keepdims=True)
         return weights / denominator
 
@@ -126,6 +141,21 @@ def _validate_weakly_convex_boundary(boundary: np.ndarray, tolerance: float = 1e
         raise ValueError("target boundary must be a positively oriented weakly convex polygon")
     if int(np.count_nonzero(turns > tolerance)) < 3:
         raise ValueError("target boundary is degenerate rather than strictly convex at its corners")
+
+
+def _validate_strictly_positive_faces(
+    faces: np.ndarray,
+    mapped: np.ndarray,
+) -> None:
+    """Numerically certify strict orientation on every original face."""
+    triangles = mapped[faces]
+    first = triangles[:, 1] - triangles[:, 0]
+    second = triangles[:, 2] - triangles[:, 0]
+    twice_area = first[:, 0] * second[:, 1] - first[:, 1] * second[:, 0]
+    scale = max(float(np.ptp(mapped[:, 0])), float(np.ptp(mapped[:, 1])), 1.0)
+    tolerance = 64.0 * np.finfo(np.float64).eps * scale * scale
+    if np.any(twice_area <= tolerance):
+        raise ValueError("directed Tutte output does not have strictly positive face areas")
 
 
 def rectangle_boundary_from_logits(
@@ -228,7 +258,15 @@ class _DirectedTutteImplicitFunction(torch.autograd.Function):
             ctx.empty = True
             ctx.logit_dtype = logits.dtype
             ctx.logit_device = logits.device
-            return target_boundary.clone()
+            ctx.loop = system.loop
+            output = np.empty((system.n_vertices, 2), dtype=np.float64)
+            output[system.loop] = boundary
+            _validate_strictly_positive_faces(system.faces, output)
+            return torch.as_tensor(
+                output,
+                dtype=target_boundary.dtype,
+                device=target_boundary.device,
+            )
         ctx.empty = False
         probabilities = system._probabilities(logit_values)
         matrix, coupling = system._assemble(probabilities)
@@ -238,6 +276,7 @@ class _DirectedTutteImplicitFunction(torch.autograd.Function):
         output = np.empty((system.n_vertices, 2), dtype=np.float64)
         output[system.loop] = boundary
         output[system.interior] = interior_values
+        _validate_strictly_positive_faces(system.faces, output)
         ctx.system = system
         ctx.device = target_boundary.device
         ctx.boundary_dtype = target_boundary.dtype
@@ -252,7 +291,8 @@ class _DirectedTutteImplicitFunction(torch.autograd.Function):
     @staticmethod
     def backward(ctx, gradient: torch.Tensor):
         if ctx.empty:
-            return gradient, torch.zeros((0, 0), dtype=ctx.logit_dtype, device=ctx.logit_device), None
+            loop = torch.as_tensor(ctx.loop.copy(), device=gradient.device)
+            return gradient[loop], torch.zeros((0, 0), dtype=ctx.logit_dtype, device=ctx.logit_device), None
         system: DirectedTutteSystem = ctx.system
         grad = gradient.detach().cpu().numpy().astype(np.float64, copy=False)
         adjoint = np.asarray(ctx.solve_transpose(grad[system.interior]), dtype=np.float64)

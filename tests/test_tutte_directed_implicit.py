@@ -7,7 +7,7 @@ from qcopt.forward.tutte_directed_implicit import (
     _validate_weakly_convex_boundary,
     directed_tutte_embedding_torch_implicit,
 )
-from qcopt.mesh import structured_rectangle
+from qcopt.mesh import TriMesh, structured_rectangle
 
 
 def test_directed_implicit_boundary_and_logit_gradients_match_finite_difference():
@@ -53,7 +53,71 @@ def test_directed_implicit_supports_a_boundary_only_mesh():
     boundary = torch.tensor(mesh.vertices[mesh.boundary_loops[0]], dtype=torch.float64)
     logits = torch.zeros((0, 0), dtype=torch.float64)
     output = directed_tutte_embedding_torch_implicit(mesh, boundary, logits, system)
-    assert torch.allclose(output, boundary)
+    expected = torch.empty_like(output)
+    expected[torch.tensor(system.loop.copy())] = boundary
+    assert torch.allclose(output, expected)
+    triangle = torch.tensor(mesh.faces.copy())
+    points = output[triangle]
+    signed_double_area = (
+        (points[:, 1, 0] - points[:, 0, 0]) * (points[:, 2, 1] - points[:, 0, 1])
+        - (points[:, 1, 1] - points[:, 0, 1]) * (points[:, 2, 0] - points[:, 0, 0])
+    )
+    assert torch.all(signed_double_area > 0.0)
+
+
+def test_boundary_only_backward_respects_loop_to_vertex_permutation():
+    mesh = structured_rectangle(1, 1)
+    system = DirectedTutteSystem.from_mesh(mesh)
+    boundary = torch.tensor(
+        mesh.vertices[mesh.boundary_loops[0]].copy(),
+        dtype=torch.float64,
+        requires_grad=True,
+    )
+    logits = torch.zeros((0, 0), dtype=torch.float64)
+    coefficients = torch.arange(8, dtype=torch.float64).reshape(4, 2)
+
+    output = directed_tutte_embedding_torch_implicit(mesh, boundary, logits, system)
+    (output * coefficients).sum().backward()
+
+    torch.testing.assert_close(boundary.grad, coefficients[torch.tensor(system.loop.copy())])
+
+
+def test_directed_tutte_rejects_a_collinear_boundary_ear():
+    vertices = np.asarray(
+        ((0.0, 0.0), (0.5, -0.2), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.5, 0.5))
+    )
+    faces = np.asarray(((0, 1, 2), (0, 2, 5), (2, 3, 5), (3, 4, 5), (4, 0, 5)))
+    mesh = TriMesh(vertices, faces)
+    system = DirectedTutteSystem.from_mesh(mesh)
+    target = torch.tensor(
+        ((0.0, 0.0), (0.5, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)),
+        dtype=torch.float64,
+    )
+    logits = torch.zeros((system.n_rows, system.max_degree), dtype=torch.float64)
+
+    with pytest.raises(ValueError, match="strictly positive face"):
+        directed_tutte_embedding_torch_implicit(mesh, target, logits, system)
+
+
+def test_directed_tutte_rejects_numerically_zero_supported_probabilities():
+    mesh = structured_rectangle(2, 2)
+    system = DirectedTutteSystem.from_mesh(mesh)
+    boundary = torch.tensor(mesh.vertices[system.loop].copy(), dtype=torch.float64)
+    logits = torch.zeros((system.n_rows, system.max_degree), dtype=torch.float64)
+    logits[0, system.valid_mask[0]] = -1000.0
+    logits[0, int(np.flatnonzero(system.valid_mask[0])[0])] = 0.0
+
+    with pytest.raises(ValueError, match="underflowed to zero"):
+        directed_tutte_embedding_torch_implicit(mesh, boundary, logits, system)
+
+
+def test_directed_system_rejects_an_unused_isolated_vertex():
+    mesh = TriMesh(
+        np.asarray(((0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (0.2, 0.2))),
+        np.asarray(((0, 1, 2),)),
+    )
+    with pytest.raises(ValueError, match="every vertex"):
+        DirectedTutteSystem.from_mesh(mesh)
 
 
 def test_boundary_validator_rejects_a_self_intersecting_star_cycle():
