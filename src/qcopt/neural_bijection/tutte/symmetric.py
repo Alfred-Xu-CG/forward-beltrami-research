@@ -44,14 +44,15 @@ def _conjugate_gradient(
     x = torch.zeros_like(scaled_rhs)
     residual = scaled_rhs.clone()
     direction = residual.clone()
+    residual_norm = torch.linalg.vector_norm(residual, dim=1)
+    rhs_norm = residual_norm.clone()
     squared_norm = residual.square().sum(dim=1)
-    rhs_norm = torch.sqrt(squared_norm)
     relative_tolerance = layer.relative_tolerance
     if relative_tolerance is None:
-        relative_tolerance = 2.0e-6 if rhs.dtype == torch.float32 else 1.0e-11
+        relative_tolerance = 1.0e-5 if rhs.dtype == torch.float32 else 1.0e-11
     scaled_absolute_tolerance = layer.absolute_tolerance / safe_scale.squeeze(1)
     threshold = scaled_absolute_tolerance + relative_tolerance * rhs_norm
-    active = torch.sqrt(squared_norm) > threshold
+    active = residual_norm > threshold
     iterations = 0
 
     for iteration in range(layer.max_iterations):
@@ -62,15 +63,45 @@ def _conjugate_gradient(
         if bool(torch.any(active & ((denominator <= 0.0) | ~torch.isfinite(denominator)))):
             raise RuntimeError("matrix-free symmetric CG encountered a nonpositive or nonfinite curvature")
         safe_denominator = torch.where(active, denominator, torch.ones_like(denominator))
-        alpha = torch.where(active, squared_norm / safe_denominator, torch.zeros_like(squared_norm))
+        alpha = torch.where(
+            active,
+            squared_norm / safe_denominator,
+            torch.zeros_like(squared_norm),
+        )
         x = x + alpha[:, None, :] * direction
-        residual = residual - alpha[:, None, :] * operator_direction
-        new_squared_norm = residual.square().sum(dim=1)
-        if not bool(torch.isfinite(new_squared_norm).all()):
+        recursive_residual = residual - alpha[:, None, :] * operator_direction
+        recursive_norm = torch.linalg.vector_norm(recursive_residual, dim=1)
+        # Preserve CG conjugacy between reliable updates.  Whenever the
+        # recursive residual appears converged, and periodically every 32
+        # iterations, replace it by b-Ax.  A false recursive convergence then
+        # restarts that RHS from its represented true residual instead of
+        # returning or repeatedly destroying conjugacy at every iteration.
+        reliable_update = active & (
+            (recursive_norm <= threshold) | (((iteration + 1) % 32) == 0)
+        )
+        if bool(reliable_update.any()):
+            true_residual = scaled_rhs - layer._apply_batched(conductances, x)
+            residual = torch.where(
+                reliable_update[:, None, :], true_residual, recursive_residual
+            )
+        else:
+            residual = recursive_residual
+        residual_norm = torch.linalg.vector_norm(residual, dim=1)
+        if not bool(torch.isfinite(residual_norm).all()):
             raise RuntimeError("matrix-free symmetric CG produced a nonfinite residual")
-        new_active = torch.sqrt(new_squared_norm) > threshold
-        safe_squared_norm = torch.where(active, squared_norm, torch.ones_like(squared_norm))
-        beta = torch.where(new_active, new_squared_norm / safe_squared_norm, torch.zeros_like(new_squared_norm))
+        new_active = residual_norm > threshold
+        new_squared_norm = residual.square().sum(dim=1)
+        safe_previous = torch.where(
+            active,
+            squared_norm,
+            torch.ones_like(squared_norm),
+        )
+        restarted = reliable_update & new_active
+        beta = torch.where(
+            new_active & ~restarted,
+            new_squared_norm / safe_previous,
+            torch.zeros_like(new_squared_norm),
+        )
         direction = residual + beta[:, None, :] * direction
         direction = torch.where(new_active[:, None, :], direction, torch.zeros_like(direction))
         squared_norm = new_squared_norm

@@ -37,6 +37,8 @@ class KrylovReport:
     relative_residual: torch.Tensor
     absolute_residual: torch.Tensor
     converged: torch.Tensor
+    method: str = "bicgstab"
+    primary_failure: str | None = None
 
 
 @dataclass
@@ -58,6 +60,100 @@ class KrylovConvergenceError(RuntimeError):
     def __init__(self, message: str, report: KrylovReport):
         super().__init__(message)
         self.report = report
+
+
+def _stationary_fallback(
+    matvec: Callable[[torch.Tensor], torch.Tensor],
+    rhs: torch.Tensor,
+    *,
+    rtol: float,
+    atol: float,
+    max_iter: int,
+    primary_failure: str,
+) -> tuple[torch.Tensor, KrylovReport]:
+    """Reliable Richardson fallback for a certified Tutte M-matrix.
+
+    For the directed Tutte operator ``A=I-P_II``, the iteration
+    ``x <- x + (b-Ax)`` is exactly ``x <- P_II x+b``.  In exact arithmetic,
+    the validated disk, positive weights, and boundary reachability imply
+    ``rho(P_II)<1``; the transpose used by the adjoint has the same spectrum.
+    Rounded float32 row sums do not inherit that proof exactly, and the
+    ``20*max_iter`` budget is heuristic rather than a uniform rate bound.
+    Consequently this path is accepted only through its explicit represented
+    true residual and otherwise fails closed.  It is intentionally slower than
+    BiCGStab and uses a constant number of vectors.
+    """
+
+    def norm(value: torch.Tensor) -> torch.Tensor:
+        if value.shape[1] == 0:
+            return value.new_zeros((value.shape[0], 1, value.shape[2]))
+        scale = value.abs().amax(dim=1, keepdim=True)
+        safe = torch.where(scale > 0.0, scale, torch.ones_like(scale))
+        return scale * torch.linalg.vector_norm(value / safe, dim=1, keepdim=True)
+
+    if max_iter < 1 or not bool(torch.isfinite(rhs).all()):
+        raise ValueError("stationary fallback requires a positive budget and finite RHS")
+    x = torch.zeros_like(rhs)
+    norm_b = norm(rhs)
+    tolerance = atol + rtol * norm_b
+    counts = torch.zeros_like(norm_b, dtype=torch.int64)
+    residual = rhs - matvec(x)
+
+    def report() -> KrylovReport:
+        residual_norm = norm(residual)
+        finite_positive_norm = torch.isfinite(norm_b) & (norm_b > 0.0)
+        relative = torch.where(
+            finite_positive_norm,
+            residual_norm / torch.where(finite_positive_norm, norm_b, 1.0),
+            torch.where(norm_b == 0.0, residual_norm, torch.full_like(residual_norm, float("inf"))),
+        )
+        snapshot = lambda value: value.squeeze(1).detach().cpu().clone()
+        converged = (
+            torch.isfinite(norm_b)
+            & torch.isfinite(tolerance)
+            & torch.isfinite(residual_norm)
+            & (residual_norm <= tolerance)
+        )
+        return KrylovReport(
+            snapshot(counts),
+            snapshot(relative),
+            snapshot(residual_norm),
+            snapshot(converged),
+            method="stationary_fallback",
+            primary_failure=primary_failure,
+        )
+
+    if not bool(torch.isfinite(norm_b).all()) or not bool(torch.isfinite(tolerance).all()):
+        raise KrylovConvergenceError(
+            "stationary fallback encountered a nonfinite RHS norm or tolerance", report()
+        )
+
+    for _ in range(max_iter):
+        residual_norm = norm(residual)
+        if not bool(torch.isfinite(residual_norm).all()):
+            raise KrylovConvergenceError(
+                "stationary fallback encountered a nonfinite residual norm", report()
+            )
+        active = residual_norm > tolerance
+        if not bool(active.any()):
+            final = report()
+            if bool(final.converged.all()):
+                return x, final
+            raise KrylovConvergenceError(
+                "stationary fallback stopped without a converged true residual", final
+            )
+        x = x + torch.where(active, residual, torch.zeros_like(residual))
+        counts = counts + active.to(counts.dtype)
+        residual = rhs - matvec(x)
+        if not bool(torch.isfinite(x).all()) or not bool(torch.isfinite(residual).all()):
+            raise KrylovConvergenceError("stationary fallback produced nonfinite values", report())
+    final = report()
+    if bool(final.converged.all()):
+        return x, final
+    raise KrylovConvergenceError(
+        f"stationary fallback did not converge within {max_iter} iterations after: {primary_failure}",
+        final,
+    )
 
 
 def _bicgstab(
@@ -178,6 +274,31 @@ def _bicgstab(
     raise KrylovConvergenceError(f"BiCGStab did not converge within {max_iter} iterations", final)
 
 
+def _solve_tutte_system(
+    matvec: Callable[[torch.Tensor], torch.Tensor],
+    rhs: torch.Tensor,
+    settings: dict[str, float | int],
+) -> tuple[torch.Tensor, KrylovReport]:
+    """Use BiCGStab, with a certified-operator CUDA float32 fallback."""
+    try:
+        return _bicgstab(matvec, rhs, **settings)
+    except KrylovConvergenceError as primary:
+        # The stationary convergence claim relies on the validated Tutte
+        # M-matrix; do not silently apply it to arbitrary public _bicgstab
+        # callers or extreme-range CPU tests.  Its cost and triggering cause
+        # remain visible in the returned diagnostic report.
+        if rhs.device.type != "cuda" or rhs.dtype != torch.float32:
+            raise
+        return _stationary_fallback(
+            matvec,
+            rhs,
+            rtol=float(settings["rtol"]),
+            atol=float(settings["atol"]),
+            max_iter=20 * int(settings["max_iter"]),
+            primary_failure=str(primary),
+        )
+
+
 @dataclass(frozen=True)
 class _NeighborOperator:
     """References to this invocation's topology tensors, not mutable module state."""
@@ -219,8 +340,8 @@ class _ImplicitMatrixFree(torch.autograd.Function):
     def forward(ctx, probabilities, boundary, operator, settings, diagnostics):
         rhs = operator.rhs(probabilities, boundary)
         try:
-            interior, diagnostics.forward = _bicgstab(
-                lambda x: operator.matvec(probabilities, x), rhs, **settings)
+            interior, diagnostics.forward = _solve_tutte_system(
+                lambda x: operator.matvec(probabilities, x), rhs, settings)
         except KrylovConvergenceError as error:
             diagnostics.forward = error.report
             raise
@@ -242,9 +363,9 @@ class _ImplicitMatrixFree(torch.autograd.Function):
         probabilities, primal = ctx.saved_tensors
         operator = ctx.operator
         try:
-            adjoint, ctx.diagnostics.adjoint = _bicgstab(
+            adjoint, ctx.diagnostics.adjoint = _solve_tutte_system(
                 lambda x: operator.matvec(probabilities, x, transpose=True),
-                gradient[:, operator.interior], **ctx.settings)
+                gradient[:, operator.interior], ctx.settings)
         except KrylovConvergenceError as error:
             ctx.diagnostics.adjoint = error.report
             raise
@@ -264,10 +385,17 @@ class MatrixFreeDirectedTutteLayer(torch.nn.Module):
     that dtype without silently promoting float32. Masked slots have zero
     probabilities, supported slots must stay strictly positive.
 
-    Defaults: rtol=5e-6 for float32, 1e-10 for float64; atol=0, max_iter=500.
+    Defaults: rtol=1e-5 for float32, 1e-10 for float64; atol=0, max_iter=500.
+    The float32 value is the tightest configuration that remained stable in
+    the audited 17-by-17 CUDA dense-loss adjoint; every accepted column is
+    still checked using its explicitly recomputed true residual.
     Each RHS is accepted only if its TRUE norm residual <= atol+rtol*||rhs||.
-    A failed forward or adjoint raises KrylovConvergenceError; tiny residuals
-    alone do not bound solution/gradient error without conditioning estimates.
+    On CUDA float32 only, a BiCGStab breakdown/nonconvergence falls back to a
+    slower stationary iteration justified by the validated Tutte M-matrix;
+    its diagnostic records both method and primary failure.  If that explicit
+    true-residual fallback also fails, KrylovConvergenceError propagates.
+    Tiny residuals alone do not bound solution/gradient error without
+    conditioning estimates.
     Max-scaled norms prevent residual-square underflow; recurrence dot products
     are scaled and extreme subnormal/overflow ranges are explicitly rejected.
 
@@ -356,7 +484,7 @@ class MatrixFreeDirectedTutteLayer(torch.nn.Module):
         if not bool(torch.isfinite(probabilities).all()) or bool((probabilities[:, self._valid] <= 0).any()):
             raise ValueError("supported probabilities must be finite and strictly positive")
         settings = dict(rtol=self.rtol if self.rtol is not None else
-                        (5e-6 if logits.dtype == torch.float32 else 1e-10),
+                        (1e-5 if logits.dtype == torch.float32 else 1e-10),
                         atol=self.atol, max_iter=self.max_iter)
         diagnostics = SolveDiagnostics()
         self.last_diagnostics = diagnostics

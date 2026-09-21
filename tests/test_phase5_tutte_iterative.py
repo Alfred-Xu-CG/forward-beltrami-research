@@ -284,6 +284,71 @@ def test_zero_rhs_columns_and_empty_interior():
     torch.testing.assert_close(boundary.grad, torch.ones_like(boundary))
 
 
+def test_stationary_tutte_fallback_has_explicit_true_residual_and_provenance():
+    backend = module()
+    matrix = torch.tensor(
+        [[1.0, -0.2, 0.0], [-0.3, 1.0, -0.1], [0.0, -0.25, 1.0]],
+        dtype=torch.float64,
+    )
+    rhs = torch.tensor([[[1.0], [0.7], [1.3]]], dtype=torch.float64)
+
+    output, report = backend._stationary_fallback(
+        lambda value: matrix @ value,
+        rhs,
+        rtol=1.0e-11,
+        atol=0.0,
+        max_iter=1000,
+        primary_failure="forced primary breakdown",
+    )
+
+    expected = torch.linalg.solve(matrix, rhs[0]).unsqueeze(0)
+    torch.testing.assert_close(output, expected, atol=2.0e-10, rtol=2.0e-10)
+    assert report.method == "stationary_fallback"
+    assert report.primary_failure == "forced primary breakdown"
+    assert report.converged.all()
+    assert report.relative_residual.max() <= 1.0e-11
+
+
+def test_stationary_fallback_rejects_finite_rhs_whose_norm_overflows():
+    """A finite float32 RHS must not turn an infinite tolerance into success."""
+    backend = module()
+    rhs = torch.full((1, 4, 2), 3.0e38, dtype=torch.float32)
+
+    with pytest.raises(backend.KrylovConvergenceError, match="nonfinite.*norm|tolerance"):
+        backend._stationary_fallback(
+            lambda value: value,
+            rhs,
+            rtol=1.0e-5,
+            atol=0.0,
+            max_iter=8,
+            primary_failure="forced primary failure",
+        )
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA device unavailable")
+def test_cuda_float32_wrapper_exposes_forced_stationary_fallback(monkeypatch):
+    backend = module()
+    rhs = torch.tensor([[[1.0], [0.5]]], device="cuda")
+    zeros_i64 = torch.zeros((1, 1), dtype=torch.int64)
+    zeros = torch.zeros((1, 1), dtype=torch.float32)
+    falses = torch.zeros((1, 1), dtype=torch.bool)
+    failed_report = backend.KrylovReport(zeros_i64, zeros, zeros, falses)
+
+    def forced_failure(*args, **kwargs):
+        raise backend.KrylovConvergenceError("forced breakdown", failed_report)
+
+    monkeypatch.setattr(backend, "_bicgstab", forced_failure)
+    output, report = backend._solve_tutte_system(
+        lambda value: value,
+        rhs,
+        {"rtol": 1.0e-5, "atol": 0.0, "max_iter": 5},
+    )
+
+    torch.testing.assert_close(output, rhs)
+    assert report.method == "stationary_fallback"
+    assert report.primary_failure == "forced breakdown"
+
+
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_returned_dtype_positive_topology_and_identity(dtype):
     mesh, layer, z, _ = make_case(5, 4)
@@ -331,3 +396,45 @@ def test_cuda_output_and_gradients(dtype):
     out.square().sum().backward()
     assert z.grad.device.type == "cuda" and torch.isfinite(z.grad).all()
     assert b.grad.device.type == "cuda" and torch.isfinite(b.grad).all()
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA device unavailable")
+def test_float32_cuda_medium_adjoint_remains_stable_across_optimizer_steps():
+    backend = module()
+    from qcopt.neural_bijection.tutte.decoder import TutteRectangleDecoder
+    from qcopt.neural_bijection.tutte.instance_optimization import build_directed_target
+
+    mesh = structured_rectangle(16, 16)
+    target = build_directed_target(
+        mesh,
+        image_height=256,
+        image_width=256,
+        seed=20260922,
+        strength=0.25,
+        height=0.9,
+    )
+    layer = backend.MatrixFreeDirectedTutteLayer(mesh).cuda()
+    decoder = TutteRectangleDecoder(mesh, layer, image_height=256, image_width=256).cuda()
+    decoder.prepare(device="cuda", dtype=torch.float32)
+    logits = torch.nn.Parameter(
+        torch.zeros((layer.system.n_rows, layer.system.max_degree), device="cuda")
+    )
+    boundary_logits = torch.nn.Parameter(
+        torch.zeros(decoder.boundary.n_segments, device="cuda")
+    )
+    raw_modulus = torch.nn.Parameter(
+        torch.tensor(decoder.boundary.raw_modulus_for_height(1.0), device="cuda")
+    )
+    optimizer = torch.optim.Adam((logits, boundary_logits, raw_modulus), lr=0.03)
+    target_dense = target.dense.float().cuda()
+
+    for _ in range(4):
+        optimizer.zero_grad(set_to_none=True)
+        decoded = decoder(logits, boundary_logits, raw_modulus)
+        loss = (decoded.dense - target_dense).square().mean()
+        loss.backward()
+        optimizer.step()
+        assert layer.last_diagnostics.forward.converged.all()
+        assert layer.last_diagnostics.adjoint.converged.all()
+        assert float(layer.last_diagnostics.forward.relative_residual.max()) <= 1.0e-5
+        assert float(layer.last_diagnostics.adjoint.relative_residual.max()) <= 1.0e-5

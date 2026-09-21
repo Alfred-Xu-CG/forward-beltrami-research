@@ -96,6 +96,34 @@ def _environment(device: torch.device) -> dict[str, Any]:
     return result
 
 
+def _solver_settings(backend: str, dtype: torch.dtype) -> dict[str, Any]:
+    if backend == "direct":
+        return {
+            "variant": "SuperLU factorization; two-coordinate RHS; reused transpose factor",
+            "relative_tolerance": None,
+            "absolute_tolerance": None,
+            "max_iterations": None,
+            "internal_arithmetic": "float64",
+        }
+    if backend == "directed_iterative":
+        return {
+            "variant": "unpreconditioned BiCGStab; explicit true residual each iteration",
+            "relative_tolerance": 1.0e-5 if dtype == torch.float32 else 1.0e-10,
+            "absolute_tolerance": 0.0,
+            "max_iterations": 500,
+            "internal_arithmetic": str(dtype).removeprefix("torch."),
+        }
+    if backend == "symmetric":
+        return {
+            "variant": "unpreconditioned CG; candidate/periodic true-residual replacement",
+            "relative_tolerance": 1.0e-5 if dtype == torch.float32 else 1.0e-11,
+            "absolute_tolerance": 0.0,
+            "max_iterations": 1000,
+            "internal_arithmetic": str(dtype).removeprefix("torch."),
+        }
+    return {"variant": "unknown"}
+
+
 def _run_one(
     args: argparse.Namespace,
     *,
@@ -158,6 +186,7 @@ def _run_one(
                 "gpu_baseline_reserved_bytes": gpu_baseline_reserved,
                 "threshold_semantics": "first independently audited evaluation; LBFGS trials included",
                 "target_object_identity": id(target),
+                "solver_settings": _solver_settings(backend, dtype),
             }
         )
         if not args.include_trace:
@@ -172,6 +201,7 @@ def _run_one(
             "failure_type": type(exc).__name__,
             "failure_message": str(exc),
             "wrapper_wall_seconds": perf_counter() - wrapper_start,
+            "solver_settings": _solver_settings(backend, dtype),
         }
 
 

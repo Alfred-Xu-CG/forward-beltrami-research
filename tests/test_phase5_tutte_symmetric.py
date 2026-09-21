@@ -6,6 +6,9 @@ import scipy.sparse.linalg as sparse_linalg
 import torch
 
 from qcopt.mesh import structured_rectangle
+from qcopt.neural_bijection.tutte.decoder import TutteRectangleDecoder
+from qcopt.neural_bijection.tutte.instance_optimization import build_directed_target
+from qcopt.neural_bijection.tutte import symmetric as symmetric_backend
 from qcopt.neural_bijection.tutte.symmetric import MatrixFreeSymmetricTutteLayer
 
 
@@ -161,6 +164,41 @@ def test_saved_autograd_state_does_not_scale_with_krylov_iterations() -> None:
     assert all(len(shape) <= 3 for shape in saved_shapes)
 
 
+def test_zero_rhs_column_does_not_force_true_residual_matvec_each_iteration(monkeypatch) -> None:
+    mesh = structured_rectangle(10, 10)
+    layer = MatrixFreeSymmetricTutteLayer(
+        mesh,
+        relative_tolerance=1.0e-12,
+        absolute_tolerance=0.0,
+        max_iterations=1000,
+    )
+    generator = torch.Generator().manual_seed(721)
+    conductances = torch.exp(
+        0.7 * torch.randn((1, layer.n_conductances), generator=generator, dtype=torch.float64)
+    )
+    rhs = torch.randn((1, layer.n_interior, 1), generator=generator, dtype=torch.float64)
+    original_apply = layer._apply_batched
+    calls = 0
+
+    def counted_apply(values, vectors):
+        nonlocal calls
+        calls += 1
+        return original_apply(values, vectors)
+
+    monkeypatch.setattr(layer, "_apply_batched", counted_apply)
+    expected, _ = symmetric_backend._conjugate_gradient(layer, conductances, rhs)
+    baseline_calls = calls
+    calls = 0
+    augmented, _ = symmetric_backend._conjugate_gradient(
+        layer,
+        conductances,
+        torch.cat((rhs, torch.zeros_like(rhs)), dim=2),
+    )
+
+    torch.testing.assert_close(augmented[..., :1], expected)
+    assert calls == baseline_calls
+
+
 def test_nonconvergence_is_fail_closed() -> None:
     mesh = structured_rectangle(8, 8)
     layer = MatrixFreeSymmetricTutteLayer(
@@ -287,3 +325,40 @@ def test_boundary_only_mesh_needs_no_conductance_reduction_or_cg() -> None:
     assert logits.grad is not None and logits.grad.numel() == 0
     assert layer.last_forward_stats.iterations == 0
     assert layer.last_adjoint_stats.iterations == 0
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA device unavailable")
+def test_float32_cuda_medium_dense_loss_has_reliable_primal_and_adjoint_residuals() -> None:
+    mesh = structured_rectangle(16, 16)
+    target = build_directed_target(
+        mesh,
+        image_height=256,
+        image_width=256,
+        seed=20260922,
+        strength=0.25,
+        height=0.9,
+    )
+    # Preserve the original failure threshold as a targeted reliable-residual
+    # regression even though the production float32 default is more tolerant.
+    layer = MatrixFreeSymmetricTutteLayer(mesh, relative_tolerance=2.0e-6).cuda()
+    decoder = TutteRectangleDecoder(mesh, layer, image_height=256, image_width=256).cuda()
+    decoder.prepare(device="cuda", dtype=torch.float32)
+    logits = torch.zeros(layer.n_conductances, device="cuda", requires_grad=True)
+    boundary_logits = torch.zeros(
+        decoder.boundary.n_segments, device="cuda", requires_grad=True
+    )
+    raw_modulus = torch.tensor(
+        decoder.boundary.raw_modulus_for_height(1.0),
+        device="cuda",
+        requires_grad=True,
+    )
+
+    decoded = decoder(logits, boundary_logits, raw_modulus)
+    loss = (decoded.dense - target.dense.float().cuda()).square().mean()
+    loss.backward()
+
+    assert layer.last_forward_stats.converged
+    assert layer.last_forward_stats.relative_residual <= 2.0e-6
+    assert layer.last_adjoint_stats.converged
+    assert layer.last_adjoint_stats.relative_residual <= 2.0e-6
+    assert torch.isfinite(logits.grad).all()
