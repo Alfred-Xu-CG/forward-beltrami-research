@@ -1,0 +1,232 @@
+{
+  "schema": "phase5_route2_mvc_layer_rtol_memory_diagnostic_v1",
+  "status": "complete",
+  "research_questions": [
+    "Does tightening the explicit matrix-free solver tolerance reduce the known N=49, B=1, float32 M1/M2 accuracy errors?",
+    "Does the approximately 30x A40 versus A6000 M2 peak-allocation contrast persist in a warmup-free fresh process?"
+  ],
+  "interpretation_guard": "A benchmark row with status=ok is execution-complete with finite gradients and certified sampled topology; it is not thereby a gradient-accuracy pass.",
+  "provenance": {
+    "remote_base_commit": "eeaed327ca563cfc4b536e83994350bea354c5a8",
+    "local_head_during_analysis": "391b5d7a6a06586ea3b8b7afe32329a2c24ae99b",
+    "code_state": "Detached eeaed32 checkout plus the uncommitted solver_rtol-only benchmark patch from the local working tree; dependencies are unchanged between eeaed32 and the local head.",
+    "ai_raw_paths": [
+      "/tmp/phase5_route2_rtol_20260922/remote_results/ai_gpu1_n49b1_f32_rtol_3e-6.json",
+      "/tmp/phase5_route2_rtol_20260922/remote_results/ai_gpu1_n49b1_f32_rtol_1e-6.json",
+      "/tmp/phase5_route2_rtol_20260922/remote_results/ai_gpu1_n49b1_f32_rtol_3e-7.json"
+    ],
+    "turing_raw_path": "/tmp/phase5_route2_rtol_20260922/remote_results/turing_gpu0_n25b4_f64_fresh.json"
+  },
+  "formal_float32_baseline": {
+    "source": "route2_mvc_layer_ai_a6000_gpu0_eeaed32.json",
+    "control_side": 49,
+    "batch": 1,
+    "dtype": "float32",
+    "solver_rtol": 1e-05,
+    "warmup": 1,
+    "repeats": 2,
+    "execution_status": "ok",
+    "canonical_redecode_maximum_vertex_error": 0.00040659471392470985,
+    "finite_difference_relative_l2_error": 0.1998704289865072,
+    "projected_jvp_relative_error": 0.3376922607421875,
+    "m2_finite_maximum_solver_relative_residual": 2.730767639986322e-06,
+    "canonical_m2_mean_end_to_end_seconds": 2.7646409273147583,
+    "canonical_m2_peak_allocated_bytes": 29826560,
+    "canonical_m2_peak_reserved_bytes": 48234496,
+    "accuracy_interpretation": "Known float32 accuracy failure; retained unchanged as the formal baseline."
+  },
+  "ai_float32_rtol_sweep": {
+    "host": "ai",
+    "physical_gpu_index": 1,
+    "visible_cuda_device": 0,
+    "gpu": "NVIDIA RTX A6000",
+    "preflight_memory_used_mib": 11,
+    "preflight_utilization_percent": 0,
+    "python": "3.11.7",
+    "torch": "2.4.0+cu121",
+    "cuda_build": "12.1",
+    "common_config": {
+      "control_side": 49,
+      "batch": 1,
+      "dtype": "float32",
+      "backend": "matrix_free_directed",
+      "warmup": 0,
+      "repeats": 1,
+      "seed": 2718,
+      "strength": 0.12,
+      "step_size": 0.05,
+      "finite_difference_epsilon": 0.02,
+      "maximum_iterations": 2000
+    },
+    "timing_caveat": "Warmup-free single repeats include cold-start effects and are not directly comparable to the formal warmup-one timing baseline.",
+    "accuracy_threshold": null,
+    "rows": [
+      {
+        "solver_rtol": 3e-06,
+        "execution_status": "ok",
+        "stage": "complete",
+        "accuracy_verdict": "No threshold was predeclared; improved but not promoted to an accuracy pass.",
+        "canonical_redecode_maximum_vertex_error": 0.00019414172509956253,
+        "m2_zero_maximum_vertex_error_vs_base": 0.00019414172509956253,
+        "m2_finite_independent_redecode_maximum_vertex_error": 0.0,
+        "finite_difference_maximum_vertex_error": 0.0018013052430419546,
+        "finite_difference_relative_l2_error": 0.0710152704004397,
+        "projected_jvp_absolute_error": 3.731937613338232e-05,
+        "projected_jvp_relative_error": 0.08925377577543259,
+        "solver_relative_residuals": {
+          "base": 9.76871475691737e-07,
+          "canonical_redecode": 8.586917882212433e-07,
+          "m2_finite": 9.799078250817159e-07
+        },
+        "solver_diagnostics": {
+          "used_stationary_fallback": true,
+          "maximum_reported_iteration_count": 3584,
+          "maximum_reported_relative_residual": 2.99660882774333e-06
+        },
+        "maximum_covariance_condition": 2.478705406188965,
+        "m2_finite_topology_certified": true,
+        "m2_finite_flip_count": 0,
+        "m2_finite_minimum_area_ratio": 0.7461122525446575,
+        "timing_seconds": {
+          "encoder_end_to_end": 0.086126159876585,
+          "full_m1_end_to_end": 9.89940670505166,
+          "canonical_m2_forward": 10.681859139353037,
+          "canonical_m2_backward": 1.2036530897021294,
+          "canonical_m2_end_to_end": 11.885689981281757,
+          "suite_wall": 97.54318775981665
+        },
+        "gpu_memory_bytes": {
+          "encoder_peak_allocated": 3245568,
+          "full_m1_peak_allocated": 3386368,
+          "canonical_m2_baseline_allocated": 1230336,
+          "canonical_m2_baseline_reserved": 4194304,
+          "canonical_m2_peak_allocated": 21306880,
+          "canonical_m2_peak_reserved": 27262976
+        }
+      },
+      {
+        "solver_rtol": 1e-06,
+        "execution_status": "ok",
+        "stage": "complete",
+        "accuracy_verdict": "No threshold was predeclared; improved but not promoted to an accuracy pass.",
+        "canonical_redecode_maximum_vertex_error": 5.8247920537753154e-05,
+        "m2_zero_maximum_vertex_error_vs_base": 5.8247920537753154e-05,
+        "m2_finite_independent_redecode_maximum_vertex_error": 0.0,
+        "finite_difference_maximum_vertex_error": 4.513882357921268e-05,
+        "finite_difference_relative_l2_error": 0.001362091997171118,
+        "projected_jvp_absolute_error": 1.654747757129371e-05,
+        "projected_jvp_relative_error": 0.039575282484292984,
+        "solver_relative_residuals": {
+          "base": 3.503114334016343e-07,
+          "canonical_redecode": 3.305817756171302e-07,
+          "m2_finite": 2.922752585746257e-07
+        },
+        "solver_diagnostics": {
+          "used_stationary_fallback": true,
+          "maximum_reported_iteration_count": 4078,
+          "maximum_reported_relative_residual": 9.99369376586401e-07
+        },
+        "maximum_covariance_condition": 2.478538990020752,
+        "m2_finite_topology_certified": true,
+        "m2_finite_flip_count": 0,
+        "m2_finite_minimum_area_ratio": 0.7458030014167839,
+        "timing_seconds": {
+          "encoder_end_to_end": 0.09404223784804344,
+          "full_m1_end_to_end": 12.284842308610678,
+          "canonical_m2_forward": 11.987960685044527,
+          "canonical_m2_backward": 12.010852094739676,
+          "canonical_m2_end_to_end": 23.998981177806854,
+          "suite_wall": 134.93772711604834
+        },
+        "gpu_memory_bytes": {
+          "encoder_peak_allocated": 3245568,
+          "full_m1_peak_allocated": 3386368,
+          "canonical_m2_baseline_allocated": 1230336,
+          "canonical_m2_baseline_reserved": 4194304,
+          "canonical_m2_peak_allocated": 21306880,
+          "canonical_m2_peak_reserved": 27262976
+        }
+      },
+      {
+        "solver_rtol": 3e-07,
+        "execution_status": "ok",
+        "stage": "complete",
+        "accuracy_verdict": "No threshold was predeclared; improved but not promoted to an accuracy pass.",
+        "canonical_redecode_maximum_vertex_error": 1.3782083907634172e-05,
+        "m2_zero_maximum_vertex_error_vs_base": 1.3782083907634172e-05,
+        "m2_finite_independent_redecode_maximum_vertex_error": 0.0,
+        "finite_difference_maximum_vertex_error": 3.796993875693473e-05,
+        "finite_difference_relative_l2_error": 0.0013382085492594804,
+        "projected_jvp_absolute_error": 3.3008400350809097e-06,
+        "projected_jvp_relative_error": 0.007894355803728104,
+        "solver_relative_residuals": {
+          "base": 1.6479862251396482e-07,
+          "canonical_redecode": 1.606093603557625e-07,
+          "m2_finite": 1.2804296287084982e-07
+        },
+        "solver_diagnostics": {
+          "used_stationary_fallback": true,
+          "maximum_reported_iteration_count": 4771,
+          "maximum_reported_relative_residual": 2.988821847793588e-07
+        },
+        "maximum_covariance_condition": 2.4788460731506348,
+        "m2_finite_topology_certified": true,
+        "m2_finite_flip_count": 0,
+        "m2_finite_minimum_area_ratio": 0.7457227246068164,
+        "timing_seconds": {
+          "encoder_end_to_end": 0.09545770287513733,
+          "full_m1_end_to_end": 12.859087243676186,
+          "canonical_m2_forward": 12.501436121761799,
+          "canonical_m2_backward": 6.790381763130426,
+          "canonical_m2_end_to_end": 19.292001739144325,
+          "suite_wall": 124.23761923238635
+        },
+        "gpu_memory_bytes": {
+          "encoder_peak_allocated": 3245568,
+          "full_m1_peak_allocated": 3386368,
+          "canonical_m2_baseline_allocated": 1230336,
+          "canonical_m2_baseline_reserved": 4194304,
+          "canonical_m2_peak_allocated": 21306880,
+          "canonical_m2_peak_reserved": 27262976
+        }
+      }
+    ],
+    "bounded_conclusion": "Tightening rtol substantially reduces round-trip, finite-difference, and projected-gradient errors, but the float32 error floor remains far above the prior float64 row. FD relative error saturates near 1.34e-3 between rtol 1e-6 and 3e-7, while projected-JVP error continues to improve to 7.89e-3. The sweep stops at the three preregistered tolerances."
+  },
+  "turing_memory_fresh_process": {
+    "host": "turing",
+    "physical_gpu_index": 0,
+    "visible_cuda_device": 0,
+    "gpu": "NVIDIA A40",
+    "preflight_memory_used_mib": 0,
+    "preflight_utilization_percent": 0,
+    "python": "3.11.7",
+    "torch": "2.8.0+cu128",
+    "cuda_build": "12.8",
+    "config": {
+      "control_side": 25,
+      "batch": 4,
+      "dtype": "float64",
+      "solver_rtol": 1e-11,
+      "solver_rtol_source": "dtype_default",
+      "warmup": 0,
+      "repeats": 1
+    },
+    "execution_status": "ok",
+    "canonical_m2_end_to_end_seconds": 2.362955854041502,
+    "stage_memory_bytes": {
+      "encoder_peak_allocated": 4310016,
+      "full_m1_peak_allocated": 4563968,
+      "canonical_m2_baseline_allocated": 484352,
+      "canonical_m2_baseline_reserved": 6291456,
+      "canonical_m2_peak_allocated": 1150018048,
+      "canonical_m2_peak_reserved": 1166016512
+    },
+    "original_turing_canonical_m2_peak_allocated_bytes": 1158537728,
+    "formal_ai_canonical_m2_peak_allocated_bytes": 39376384,
+    "fresh_over_original_turing_peak_allocated_ratio": 0.9926461782002494,
+    "fresh_turing_over_formal_ai_peak_allocated_ratio": 29.20578100823072,
+    "original_turing_over_formal_ai_peak_allocated_ratio": 29.42214622856177,
+    "diagnostic_conclusion": "The fresh process starts with only 484352 allocated bytes and 6291456 reserved bytes before M2, yet reproduces 99.26 percent of the original A40 M2 allocated peak. Encoder and full-M1 peaks remain below 4.6 MB. This rules out accumulated warmup cache or a cross-stage live-tensor baseline as the explanation. The large allocation is an observed A40/PyTorch-2.8 M2 forward/backward runtime-workspace behavior; device and software-version effects are confounded, so no single-factor attribution is claimed."
+  }
+}

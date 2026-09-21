@@ -89,7 +89,19 @@ def test_tiny_cpu_receipt_contains_m1_m2_timing_accuracy_and_topology_contracts(
 
 
 def test_batch_repeats_float32_and_warmups_are_recorded_without_entering_samples() -> None:
-    receipt = _run(control_side=4, batch=2, dtype="float32", warmup=1, repeats=2)
+    # The Windows CI environment loads incompatible Torch/SciPy OpenMP runtimes
+    # when a nontrivial SuperLU solve is first exercised.  This test concerns
+    # batching/timing rather than the CPU reference factorization, so use the
+    # production-shaped iterative path instead of enabling the unsafe
+    # KMP_DUPLICATE_LIB_OK workaround.
+    receipt = _run(
+        control_side=4,
+        batch=2,
+        dtype="float32",
+        backend="matrix_free_directed",
+        warmup=1,
+        repeats=2,
+    )
 
     assert receipt["status"] == "ok", receipt
     assert receipt["config"]["warmup"] == 1
@@ -108,15 +120,52 @@ def test_tiny_cpu_matrix_free_exercises_the_cuda_solver_receipt_path(dtype: str)
 
     assert receipt["status"] == "ok", receipt
     assert receipt["resolved_backend"] == "matrix_free_directed"
+    assert receipt["config"]["solver_rtol"] is None
     assert receipt["solver_settings"]["relative_tolerance"] == (
         1.0e-5 if dtype == "float32" else 1.0e-11
     )
+    assert receipt["solver_settings"]["relative_tolerance_source"] == "dtype_default"
     diagnostics = receipt["audit"]["solver_diagnostics"]
     assert diagnostics["canonical_redecode"]["forward"]["converged"] == [[True, True]]
     assert diagnostics["last_first_variation_backward"]["adjoint"]["converged"] == [
         [True, True]
     ]
     assert receipt["audit"]["topology"]["m2_finite"]["all_certified"]
+    json.dumps(receipt, allow_nan=False)
+
+
+def test_explicit_solver_rtol_is_applied_and_identified_in_the_receipt() -> None:
+    receipt = _run(
+        backend="matrix_free_directed",
+        dtype="float32",
+        solver_rtol=3.0e-6,
+    )
+
+    assert receipt["status"] == "ok", receipt
+    assert receipt["config"]["solver_rtol"] == 3.0e-6
+    assert receipt["solver_settings"]["relative_tolerance"] == 3.0e-6
+    assert receipt["solver_settings"]["relative_tolerance_source"] == "explicit"
+    json.dumps(receipt, allow_nan=False)
+
+
+@pytest.mark.parametrize("solver_rtol", [0.0, -1.0e-6, float("nan"), float("inf")])
+def test_invalid_explicit_solver_rtol_is_an_explicit_validation_failure(
+    solver_rtol: float,
+) -> None:
+    receipt = _run(backend="matrix_free_directed", solver_rtol=solver_rtol)
+
+    assert receipt["status"] == "failure"
+    assert receipt["stage"] == "validation"
+    assert "solver_rtol" in receipt["error"]["message"]
+    json.dumps(receipt, allow_nan=False)
+
+
+def test_explicit_solver_rtol_cannot_be_silently_ignored_by_direct_backend() -> None:
+    receipt = _run(backend="direct", solver_rtol=1.0e-6)
+
+    assert receipt["status"] == "failure"
+    assert receipt["stage"] == "validation"
+    assert "solver_rtol" in receipt["error"]["message"]
     json.dumps(receipt, allow_nan=False)
 
 
@@ -237,6 +286,39 @@ def test_tiny_cli_emits_exactly_one_json_document() -> None:
     receipt = json.loads(result.stdout)
     assert receipt["success_count"] == 1
     assert receipt["failure_count"] == 0
+
+
+def test_tiny_cli_propagates_explicit_solver_rtol() -> None:
+    _module()
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--profiles",
+            "3:1",
+            "--dtypes",
+            "float32",
+            "--devices",
+            "cpu",
+            "--backend",
+            "matrix_free_directed",
+            "--solver-rtol",
+            "3e-6",
+            "--warmup",
+            "0",
+            "--repeats",
+            "1",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    receipt = json.loads(result.stdout)
+    row = receipt["rows"][0]
+    assert row["config"]["solver_rtol"] == 3.0e-6
+    assert row["solver_settings"]["relative_tolerance"] == 3.0e-6
+    assert row["solver_settings"]["relative_tolerance_source"] == "explicit"
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is unavailable")

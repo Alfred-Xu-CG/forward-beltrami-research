@@ -61,6 +61,7 @@ class BenchmarkConfig:
     step_size: float = 0.05
     direction_scale: float = 0.02
     fd_epsilon: float | None = None
+    solver_rtol: float | None = None
     threads: int = 1
     max_iterations: int = 2000
 
@@ -191,8 +192,16 @@ def _validate_config(config: BenchmarkConfig) -> tuple[torch.device, torch.dtype
         not math.isfinite(config.fd_epsilon) or config.fd_epsilon <= 0.0
     ):
         raise ValueError("fd_epsilon must be finite and positive when supplied")
+    if config.solver_rtol is not None and (
+        isinstance(config.solver_rtol, bool)
+        or not math.isfinite(config.solver_rtol)
+        or config.solver_rtol <= 0.0
+    ):
+        raise ValueError("solver_rtol must be finite and positive when supplied")
     device = torch.device(config.device)
     backend = _resolve_backend(config, device)
+    if config.solver_rtol is not None and backend != "matrix_free_directed":
+        raise ValueError("solver_rtol is supported only by matrix_free_directed")
     if device.type == "cuda" and not torch.cuda.is_available():
         raise ValueError("CUDA requested but unavailable")
     dtype = torch.float32 if config.dtype == "float32" else torch.float64
@@ -203,10 +212,21 @@ def _validate_config(config: BenchmarkConfig) -> tuple[torch.device, torch.dtype
     return device, dtype, backend, float(epsilon)
 
 
-def _make_solver(mesh, backend: str, dtype: torch.dtype, device: torch.device, max_iterations: int):
+def _make_solver(
+    mesh,
+    backend: str,
+    dtype: torch.dtype,
+    device: torch.device,
+    max_iterations: int,
+    solver_rtol: float | None,
+):
     if backend == "direct":
         return DirectTutteLayer(mesh)
-    relative_tolerance = 1.0e-5 if dtype == torch.float32 else 1.0e-11
+    relative_tolerance = (
+        solver_rtol
+        if solver_rtol is not None
+        else 1.0e-5 if dtype == torch.float32 else 1.0e-11
+    )
     return MatrixFreeDirectedTutteLayer(
         mesh,
         rtol=relative_tolerance,
@@ -447,7 +467,14 @@ def run_case(config: BenchmarkConfig) -> dict[str, Any]:
         report["environment"] = _environment(device)
         report["stage"] = "setup"
         mesh = structured_rectangle(config.control_side - 1, config.control_side - 1)
-        solver = _make_solver(mesh, backend, dtype, device, config.max_iterations)
+        solver = _make_solver(
+            mesh,
+            backend,
+            dtype,
+            device,
+            config.max_iterations,
+            config.solver_rtol,
+        )
         m1 = MVCCanonicalizationLayer(mesh, solver).to(device)
         m2 = CovarianceTutteRetraction(solver, encoder=m1.encoder).to(device)
         raw_logits, boundary, direction = _inputs(mesh, solver.system, config, dtype, device)
@@ -469,6 +496,9 @@ def run_case(config: BenchmarkConfig) -> dict[str, Any]:
             else {
                 "algorithm": "matrix-free directed BiCGStab with documented CUDA-float32 fallback",
                 "relative_tolerance": solver.rtol,
+                "relative_tolerance_source": (
+                    "explicit" if config.solver_rtol is not None else "dtype_default"
+                ),
                 "absolute_tolerance": solver.atol,
                 "maximum_iterations": solver.max_iter,
                 "public_dtype": config.dtype,
@@ -766,6 +796,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.add_argument("--step-size", type=float, default=0.05)
         parser.add_argument("--direction-scale", type=float, default=0.02)
         parser.add_argument("--fd-epsilon", type=float)
+        parser.add_argument("--solver-rtol", type=float)
         parser.add_argument("--threads", type=int, default=1)
         parser.add_argument("--max-iterations", type=int, default=2000)
         parser.add_argument("--output", type=Path)
@@ -787,6 +818,7 @@ def main(argv: list[str] | None = None) -> int:
                 step_size=arguments.step_size,
                 direction_scale=arguments.direction_scale,
                 fd_epsilon=arguments.fd_epsilon,
+                solver_rtol=arguments.solver_rtol,
                 threads=arguments.threads,
                 max_iterations=arguments.max_iterations,
             )
