@@ -199,6 +199,35 @@ def test_zero_rhs_column_does_not_force_true_residual_matvec_each_iteration(monk
     assert calls == baseline_calls
 
 
+def test_cuda_float32_cg_uses_one_percent_internal_headroom_only() -> None:
+    requested = torch.tensor([[1.0e-5, 2.0e-5]], dtype=torch.float64)
+    selector = getattr(
+        symmetric_backend,
+        "_internal_convergence_threshold",
+        lambda threshold, **_kwargs: threshold,
+    )
+
+    cuda_float32 = selector(
+        requested,
+        dtype=torch.float32,
+        device_type="cuda",
+    )
+
+    torch.testing.assert_close(cuda_float32, 0.99 * requested, atol=0.0, rtol=0.0)
+    torch.testing.assert_close(
+        selector(requested, dtype=torch.float64, device_type="cuda"),
+        requested,
+        atol=0.0,
+        rtol=0.0,
+    )
+    torch.testing.assert_close(
+        selector(requested, dtype=torch.float32, device_type="cpu"),
+        requested,
+        atol=0.0,
+        rtol=0.0,
+    )
+
+
 def test_nonconvergence_is_fail_closed() -> None:
     mesh = structured_rectangle(8, 8)
     layer = MatrixFreeSymmetricTutteLayer(

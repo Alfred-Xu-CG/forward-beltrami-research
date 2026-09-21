@@ -25,6 +25,18 @@ class KrylovStats:
     converged: bool
 
 
+def _internal_convergence_threshold(
+    requested_threshold: torch.Tensor,
+    *,
+    dtype: torch.dtype,
+    device_type: str,
+) -> torch.Tensor:
+    """Leave CUDA float32 headroom for a fresh nondeterministic residual check."""
+    if dtype == torch.float32 and device_type == "cuda":
+        return 0.99 * requested_threshold
+    return requested_threshold
+
+
 def _conjugate_gradient(
     layer: "MatrixFreeSymmetricTutteLayer",
     conductances: torch.Tensor,
@@ -51,8 +63,13 @@ def _conjugate_gradient(
     if relative_tolerance is None:
         relative_tolerance = 1.0e-5 if rhs.dtype == torch.float32 else 1.0e-11
     scaled_absolute_tolerance = layer.absolute_tolerance / safe_scale.squeeze(1)
-    threshold = scaled_absolute_tolerance + relative_tolerance * rhs_norm
-    active = residual_norm > threshold
+    requested_threshold = scaled_absolute_tolerance + relative_tolerance * rhs_norm
+    internal_threshold = _internal_convergence_threshold(
+        requested_threshold,
+        dtype=rhs.dtype,
+        device_type=rhs.device.type,
+    )
+    active = residual_norm > internal_threshold
     iterations = 0
 
     for iteration in range(layer.max_iterations):
@@ -77,7 +94,7 @@ def _conjugate_gradient(
         # restarts that RHS from its represented true residual instead of
         # returning or repeatedly destroying conjugacy at every iteration.
         reliable_update = active & (
-            (recursive_norm <= threshold) | (((iteration + 1) % 32) == 0)
+            (recursive_norm <= internal_threshold) | (((iteration + 1) % 32) == 0)
         )
         if bool(reliable_update.any()):
             true_residual = scaled_rhs - layer._apply_batched(conductances, x)
@@ -89,7 +106,7 @@ def _conjugate_gradient(
         residual_norm = torch.linalg.vector_norm(residual, dim=1)
         if not bool(torch.isfinite(residual_norm).all()):
             raise RuntimeError("matrix-free symmetric CG produced a nonfinite residual")
-        new_active = residual_norm > threshold
+        new_active = residual_norm > internal_threshold
         new_squared_norm = residual.square().sum(dim=1)
         safe_previous = torch.where(
             active,
@@ -110,7 +127,7 @@ def _conjugate_gradient(
 
     true_residual = layer._apply_batched(conductances, x) - scaled_rhs
     true_norm = torch.linalg.vector_norm(true_residual, dim=1)
-    converged_mask = true_norm <= threshold
+    converged_mask = true_norm <= requested_threshold
     denominator = torch.where(rhs_norm > 0.0, rhs_norm, torch.ones_like(rhs_norm))
     relative = torch.where(rhs_norm > 0.0, true_norm / denominator, true_norm)
     maximum_relative = float(relative.max().detach().cpu()) if relative.numel() else 0.0
