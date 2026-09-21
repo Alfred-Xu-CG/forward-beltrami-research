@@ -72,6 +72,29 @@ def test_batched_logits_and_scalar_modulus_broadcast() -> None:
     )
 
 
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+def test_fixed_represented_height_is_exact_and_broadcasts(dtype) -> None:
+    layer = StructuredRectangleBoundary(structured_rectangle(3, 2))
+    logits = torch.zeros((3, layer.n_segments), dtype=dtype)
+
+    output = layer.at_height(logits, 1.0)
+
+    assert output.shape == (3, layer.n_segments, 2)
+    assert bool(torch.all(output[..., 1].amin(dim=-1) == 0.0))
+    assert bool(torch.all(output[..., 1].amax(dim=-1) == 1.0))
+
+
+def test_fixed_height_rejects_nonpositive_nonfinite_and_mismatched_tensors() -> None:
+    layer = StructuredRectangleBoundary(structured_rectangle(2, 2))
+    logits = torch.zeros(layer.n_segments, dtype=torch.float32)
+
+    for height in (0.0, -1.0, float("nan"), float("inf")):
+        with pytest.raises(ValueError):
+            layer.at_height(logits, height)
+    with pytest.raises(ValueError, match="dtype"):
+        layer.at_height(logits, torch.tensor(1.0, dtype=torch.float64))
+
+
 def test_segment_underflow_and_invalid_inputs_are_rejected() -> None:
     mesh = structured_rectangle(3, 3)
     layer = StructuredRectangleBoundary(mesh)

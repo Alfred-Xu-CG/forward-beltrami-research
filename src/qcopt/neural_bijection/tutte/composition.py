@@ -105,12 +105,7 @@ class SquareTutteComposition(torch.nn.Module):
         boundaries = []
         controls = []
         for decoder, latent, logits in zip(self.decoders, latents, boundary_logits):
-            raw = logits.new_tensor(decoder.boundary.raw_modulus_for_height(1.0))
-            # Do not silently accept a different source/target rectangle after
-            # inverse-softplus rounding or a user-modified boundary module.
-            if not bool(decoder.boundary.height(raw) == 1.0):
-                raise ValueError("every layer must realize height exactly one")
-            boundary = decoder.boundary(logits, raw)
+            boundary = decoder.boundary.at_height(logits, 1.0)
             control = decoder.solver(latent, boundary)
             boundaries.append(boundary)
             controls.append(control)

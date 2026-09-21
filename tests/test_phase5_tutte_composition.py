@@ -68,6 +68,35 @@ def test_real_layers_preserve_unit_height_controls_and_no_composite_p1_claim(cou
         assert audit_injectivity(structured_rectangle(4, 3), control.detach().double().numpy()).certified
 
 
+def test_composition_constructs_exact_unit_height_without_inverse_softplus(monkeypatch):
+    from qcopt.neural_bijection.tutte.iterative import MatrixFreeDirectedTutteLayer
+
+    mesh = structured_rectangle(3, 3)
+    decoder = TutteRectangleDecoder(
+        mesh,
+        MatrixFreeDirectedTutteLayer(mesh),
+        image_height=13,
+        image_width=17,
+    )
+    module = _api().SquareTutteComposition([decoder])
+    module.prepare(device='cpu', dtype=torch.float32)
+    latent = torch.zeros(
+        decoder.solver.system.n_rows,
+        decoder.solver.system.max_degree,
+        dtype=torch.float32,
+    )
+    logits = torch.zeros(decoder.boundary.n_segments, dtype=torch.float32)
+
+    def forbidden_inverse(*args, **kwargs):
+        pytest.fail('fixed unit height must not use inverse softplus')
+
+    monkeypatch.setattr(decoder.boundary, 'raw_modulus_for_height', forbidden_inverse)
+    result = module([latent], [logits])
+
+    assert result.boundaries[0][..., 1].amin().item() == 0.0
+    assert result.boundaries[0][..., 1].amax().item() == 1.0
+
+
 @pytest.mark.parametrize('batch', [1, 4, 8])
 def test_mixed_layer_batch_broadcast_matches_independent_samples(batch):
     module, latents, boundaries = _layers(2)

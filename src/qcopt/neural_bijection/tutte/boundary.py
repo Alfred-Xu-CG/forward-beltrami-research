@@ -74,31 +74,31 @@ class StructuredRectangleBoundary(torch.nn.Module):
     def height(self, raw_modulus: torch.Tensor) -> torch.Tensor:
         return self.minimum_height + torch_functional.softplus(raw_modulus)
 
-    def forward(self, edge_logits: torch.Tensor, raw_modulus: torch.Tensor) -> torch.Tensor:
-        if not isinstance(edge_logits, torch.Tensor) or not isinstance(raw_modulus, torch.Tensor):
-            raise TypeError("edge_logits and raw_modulus must be torch tensors")
+    def _realize_height(self, edge_logits: torch.Tensor, height: torch.Tensor) -> torch.Tensor:
+        """Realize a rectangle at an already represented positive height."""
+        if not isinstance(edge_logits, torch.Tensor) or not isinstance(height, torch.Tensor):
+            raise TypeError("edge_logits and height must be torch tensors")
         if edge_logits.ndim < 1 or edge_logits.shape[-1] != self.n_segments:
             raise ValueError(f"edge_logits must have trailing shape ({self.n_segments},)")
         if edge_logits.dtype not in (torch.float32, torch.float64):
             raise ValueError("edge_logits dtype must be float32 or float64")
-        if raw_modulus.dtype != edge_logits.dtype:
-            raise ValueError("edge_logits and raw_modulus dtype must match")
-        if raw_modulus.device != edge_logits.device:
-            raise ValueError("edge_logits and raw_modulus device must match")
-        if not bool(torch.isfinite(edge_logits).all()) or not bool(torch.isfinite(raw_modulus).all()):
-            raise ValueError("edge_logits and raw_modulus must be finite")
+        if height.dtype != edge_logits.dtype:
+            raise ValueError("edge_logits and height dtype must match")
+        if height.device != edge_logits.device:
+            raise ValueError("edge_logits and height device must match")
+        if not bool(torch.isfinite(edge_logits).all()) or not bool(torch.isfinite(height).all()):
+            raise ValueError("edge_logits and height must be finite")
+        if bool(torch.any(height <= 0.0)):
+            raise ValueError("realized rectangle height must be strictly positive")
         if self._side_positions_0.device != edge_logits.device:
             raise ValueError("move StructuredRectangleBoundary to the input device before use")
 
         try:
-            batch_shape = torch.broadcast_shapes(edge_logits.shape[:-1], raw_modulus.shape)
+            batch_shape = torch.broadcast_shapes(edge_logits.shape[:-1], height.shape)
         except RuntimeError as error:
-            raise ValueError("edge_logits and raw_modulus batch shapes are not broadcastable") from error
+            raise ValueError("edge_logits and height batch shapes are not broadcastable") from error
         logits = edge_logits.expand(batch_shape + (self.n_segments,))
-        raw = raw_modulus.expand(batch_shape)
-        height = self.height(raw)
-        if not bool(torch.isfinite(height).all()):
-            raise ValueError("realized rectangle height must be finite")
+        realized_height = height.expand(batch_shape)
         output = torch.zeros(
             batch_shape + (self.n_segments, 2),
             dtype=edge_logits.dtype,
@@ -122,11 +122,17 @@ class StructuredRectangleBoundary(torch.nn.Module):
             if side == 0:
                 coordinates = torch.stack((cumulative, torch.zeros_like(cumulative)), dim=-1)
             elif side == 1:
-                coordinates = torch.stack((torch.ones_like(cumulative), height[..., None] * cumulative), dim=-1)
+                coordinates = torch.stack(
+                    (torch.ones_like(cumulative), realized_height[..., None] * cumulative), dim=-1
+                )
             elif side == 2:
-                coordinates = torch.stack((1.0 - cumulative, height[..., None].expand_as(cumulative)), dim=-1)
+                coordinates = torch.stack(
+                    (1.0 - cumulative, realized_height[..., None].expand_as(cumulative)), dim=-1
+                )
             else:
-                coordinates = torch.stack((torch.zeros_like(cumulative), height[..., None] * (1.0 - cumulative)), dim=-1)
+                coordinates = torch.stack(
+                    (torch.zeros_like(cumulative), realized_height[..., None] * (1.0 - cumulative)), dim=-1
+                )
             ordered_coordinate = coordinates[..., 0] if side in (0, 2) else coordinates[..., 1]
             increments = torch.diff(ordered_coordinate, dim=-1)
             strictly_ordered = torch.all(increments > 0.0) if side in (0, 1) else torch.all(increments < 0.0)
@@ -134,6 +140,32 @@ class StructuredRectangleBoundary(torch.nn.Module):
                 raise ValueError("realized rectangle boundary vertices must remain strictly ordered")
             output = output.index_copy(-2, positions, coordinates)
         return output
+
+    def at_height(self, edge_logits: torch.Tensor, height: float | torch.Tensor) -> torch.Tensor:
+        """Realize a fixed represented height without an inverse-softplus round trip.
+
+        This is used by unit-square compositions whose modulus is deliberately
+        fixed rather than learned.  In particular, binary-exact ``1.0`` stays
+        exactly one in both float32 and float64 across Torch implementations.
+        """
+        if not isinstance(edge_logits, torch.Tensor):
+            raise TypeError("edge_logits must be a torch tensor")
+        represented = height if isinstance(height, torch.Tensor) else edge_logits.new_tensor(height)
+        return self._realize_height(edge_logits, represented)
+
+    def forward(self, edge_logits: torch.Tensor, raw_modulus: torch.Tensor) -> torch.Tensor:
+        if not isinstance(edge_logits, torch.Tensor) or not isinstance(raw_modulus, torch.Tensor):
+            raise TypeError("edge_logits and raw_modulus must be torch tensors")
+        if raw_modulus.dtype != edge_logits.dtype:
+            raise ValueError("edge_logits and raw_modulus dtype must match")
+        if raw_modulus.device != edge_logits.device:
+            raise ValueError("edge_logits and raw_modulus device must match")
+        if not bool(torch.isfinite(raw_modulus).all()):
+            raise ValueError("raw_modulus must be finite")
+        height = self.height(raw_modulus)
+        if not bool(torch.isfinite(height).all()):
+            raise ValueError("realized rectangle height must be finite")
+        return self._realize_height(edge_logits, height)
 
 
 def _validate_structured_rectangle(mesh: TriMesh) -> None:
