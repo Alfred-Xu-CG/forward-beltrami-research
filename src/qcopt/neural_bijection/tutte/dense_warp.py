@@ -17,7 +17,9 @@ class StructuredDenseQueryTable:
     The table matches :func:`qcopt.mesh.structured_rectangle`, whose cells use
     the diagonal from the lower-left to the upper-right corner. Interpolation
     contains only tensor gather, multiply, and reduce operations; point
-    location is never repeated during forward or backward passes.
+    location is never repeated by :meth:`interpolate`.  The separate
+    :meth:`interpolate_points` method intentionally repeats structured-grid
+    arithmetic for queries propagated through multiple composed maps.
     """
 
     _vertex_indices_cpu: torch.Tensor
@@ -25,6 +27,8 @@ class StructuredDenseQueryTable:
     height: int
     width: int
     control_vertices: int
+    nx: int
+    ny: int
     _device_cache: dict[tuple[str, int | None, torch.dtype], tuple[torch.Tensor, torch.Tensor]] = field(
         default_factory=dict,
         compare=False,
@@ -100,6 +104,8 @@ class StructuredDenseQueryTable:
             height,
             width,
             mesh.n_vertices,
+            nx,
+            ny,
         )
         result._device_cache[("cpu", None, torch.float64)] = (
             index_tensor,
@@ -151,3 +157,83 @@ class StructuredDenseQueryTable:
             return values.reshape(self.height, self.width, 2)
         values = (control_vertices[:, indices, :] * weights[None, ..., None]).sum(dim=2)
         return values.reshape(control_vertices.shape[0], self.height, self.width, 2)
+
+    def interpolate_points(
+        self,
+        control_vertices: torch.Tensor,
+        query_points: torch.Tensor,
+    ) -> torch.Tensor:
+        """Evaluate the P1 map at dynamic unit-square points.
+
+        Unlike :meth:`interpolate`, this performs structured-grid point
+        location on every call.  It is intended for composition layers whose
+        queries are outputs of an earlier map.  Shapes are ``(V,2)`` or
+        ``(B,V,2)`` and ``(Q,2)`` or ``(B,Q,2)``; singleton batches broadcast.
+        The floor/triangle decision is piecewise constant, while barycentric
+        weights remain differentiable inside each source triangle.
+        """
+        if control_vertices.ndim not in (2, 3) or control_vertices.shape[-2:] != (
+            self.control_vertices,
+            2,
+        ):
+            raise ValueError("control_vertices must have shape (V,2) or (B,V,2)")
+        if query_points.ndim not in (2, 3) or query_points.shape[-1] != 2:
+            raise ValueError("query_points must have shape (Q,2) or (B,Q,2)")
+        if control_vertices.dtype not in (torch.float32, torch.float64) or query_points.dtype not in (
+            torch.float32,
+            torch.float64,
+        ):
+            raise ValueError("control_vertices and query_points must be float32 or float64")
+        if (
+            control_vertices.dtype != query_points.dtype
+            or control_vertices.device != query_points.device
+        ):
+            raise ValueError("control_vertices and query_points must share dtype and device")
+        if not bool(torch.isfinite(control_vertices).all()) or not bool(
+            torch.isfinite(query_points).all()
+        ):
+            raise ValueError("control_vertices and query_points must be finite")
+        # Admit only dtype-roundoff-sized excursions before clamping to the
+        # closed source square.  Larger excursions are a domain error, not a
+        # padding convention.  The clamped coordinate has zero outward VJP.
+        tolerance = 64.0 * torch.finfo(query_points.dtype).eps
+        if bool(torch.any(query_points < -tolerance)) or bool(
+            torch.any(query_points > 1.0 + tolerance)
+        ):
+            raise ValueError("dynamic query points must lie in the closed unit square")
+
+        unbatched = control_vertices.ndim == query_points.ndim == 2
+        control = control_vertices.unsqueeze(0) if control_vertices.ndim == 2 else control_vertices
+        query = query_points.unsqueeze(0) if query_points.ndim == 2 else query_points
+        batch = max(control.shape[0], query.shape[0])
+        if control.shape[0] not in (1, batch) or query.shape[0] not in (1, batch):
+            raise ValueError("control and query batch dimensions must match or be singleton")
+        control = control.expand(batch, -1, -1)
+        query = query.expand(batch, -1, -1).clamp(0.0, 1.0)
+
+        scaled_x = query[..., 0] * self.nx
+        scaled_y = query[..., 1] * self.ny
+        cell_x = torch.floor(scaled_x).to(torch.int64).clamp(max=self.nx - 1)
+        cell_y = torch.floor(scaled_y).to(torch.int64).clamp(max=self.ny - 1)
+        local_x = scaled_x - cell_x
+        local_y = scaled_y - cell_y
+        stride = self.nx + 1
+        v00 = cell_y * stride + cell_x
+        v10 = v00 + 1
+        v01 = v00 + stride
+        v11 = v01 + 1
+        lower = local_y <= local_x
+        lower_indices = torch.stack((v00, v10, v11), dim=-1)
+        upper_indices = torch.stack((v00, v11, v01), dim=-1)
+        indices = torch.where(lower[..., None], lower_indices, upper_indices)
+        lower_weights = torch.stack(
+            (1.0 - local_x, local_x - local_y, local_y), dim=-1
+        )
+        upper_weights = torch.stack(
+            (1.0 - local_y, local_x, local_y - local_x), dim=-1
+        )
+        weights = torch.where(lower[..., None], lower_weights, upper_weights)
+        batch_indices = torch.arange(batch, device=control.device)[:, None, None]
+        values = control[batch_indices, indices]
+        result = (values * weights[..., None]).sum(dim=-2)
+        return result[0] if unbatched else result

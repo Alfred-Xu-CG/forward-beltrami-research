@@ -83,3 +83,91 @@ def test_prepare_normalizes_indexed_cpu_alias_to_actual_tensor_device() -> None:
     dense = table.interpolate(vertices)
     assert dense.device == vertices.device
     assert dense.dtype == vertices.dtype
+
+
+def test_dynamic_structured_interpolation_is_affine_exact_and_differentiable() -> None:
+    mesh = structured_rectangle(5, 4)
+    table = StructuredDenseQueryTable.from_mesh(mesh, height=17, width=19)
+    source = torch.tensor(mesh.vertices.copy(), dtype=torch.float64)
+    matrix = torch.tensor(((0.82, 0.11), (-0.07, 1.13)), dtype=torch.float64)
+    offset = torch.tensor((0.04, -0.03), dtype=torch.float64)
+    control = (source @ matrix.T + offset).requires_grad_()
+    query = torch.tensor(
+        ((0.13, 0.22), (0.71, 0.38), (0.47, 0.83), (0.999, 0.001)),
+        dtype=torch.float64,
+        requires_grad=True,
+    )
+
+    result = table.interpolate_points(control, query)
+    expected = query @ matrix.T + offset
+
+    torch.testing.assert_close(result, expected, atol=3e-15, rtol=0.0)
+    assert torch.autograd.gradcheck(
+        table.interpolate_points,
+        (control, query),
+        eps=1e-6,
+        atol=2e-7,
+        rtol=2e-6,
+    )
+
+
+def test_dynamic_interpolation_supports_batch_broadcast_and_composition() -> None:
+    mesh = structured_rectangle(4, 4)
+    table = StructuredDenseQueryTable.from_mesh(mesh, height=11, width=13)
+    source = torch.tensor(mesh.vertices.copy(), dtype=torch.float64)
+    first = torch.stack((source, 0.8 * source + 0.1))
+    query = torch.tensor(((0.12, 0.34), (0.56, 0.78)), dtype=torch.float64)
+
+    after_first = table.interpolate_points(first, query)
+    after_second = table.interpolate_points(source, after_first)
+
+    assert after_first.shape == (2, 2, 2)
+    torch.testing.assert_close(after_second, after_first, atol=2e-15, rtol=0.0)
+    torch.testing.assert_close(after_first[0], query, atol=2e-15, rtol=0.0)
+    torch.testing.assert_close(after_first[1], 0.8 * query + 0.1, atol=2e-15, rtol=0.0)
+
+
+@pytest.mark.parametrize("kind", ("outside", "nan"))
+def test_dynamic_interpolation_rejects_invalid_query_coordinates(kind: str) -> None:
+    mesh = structured_rectangle(3, 3)
+    table = StructuredDenseQueryTable.from_mesh(mesh, height=9, width=9)
+    control = torch.tensor(mesh.vertices.copy(), dtype=torch.float64)
+    query = torch.tensor(((0.2, 0.4), (0.7, 0.8)), dtype=torch.float64)
+    if kind == "outside":
+        query[0, 0] = 1.01
+    else:
+        query[1, 1] = torch.nan
+
+    with pytest.raises(ValueError, match="unit square|finite"):
+        table.interpolate_points(control, query)
+
+
+def test_dynamic_interpolation_rejects_unvalidated_low_precision() -> None:
+    mesh = structured_rectangle(3, 3)
+    table = StructuredDenseQueryTable.from_mesh(mesh, height=9, width=9)
+    control = torch.tensor(mesh.vertices.copy(), dtype=torch.float16)
+    query = torch.tensor(((0.2, 0.4), (0.7, 0.8)), dtype=torch.float16)
+
+    with pytest.raises(ValueError, match="float32 or float64"):
+        table.interpolate_points(control, query)
+
+
+@pytest.mark.parametrize("dtype", (torch.float32, torch.float64))
+def test_dynamic_interpolation_only_clamps_roundoff_sized_exterior_queries(dtype) -> None:
+    mesh = structured_rectangle(3, 3)
+    table = StructuredDenseQueryTable.from_mesh(mesh, height=9, width=9)
+    control = torch.tensor(mesh.vertices.copy(), dtype=dtype)
+    tolerance = 64.0 * torch.finfo(dtype).eps
+    roundoff_query = torch.tensor(((1.0 + 0.5 * tolerance, 0.4),), dtype=dtype)
+    invalid_query = torch.tensor(((1.0 + 2.0 * tolerance, 0.4),), dtype=dtype)
+
+    accepted = table.interpolate_points(control, roundoff_query)
+
+    torch.testing.assert_close(
+        accepted,
+        torch.tensor(((1.0, 0.4),), dtype=dtype),
+        atol=4.0 * torch.finfo(dtype).eps,
+        rtol=0.0,
+    )
+    with pytest.raises(ValueError, match="unit square"):
+        table.interpolate_points(control, invalid_query)
