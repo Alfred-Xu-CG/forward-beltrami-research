@@ -9,6 +9,7 @@ start, the exact correction equation, and a row-local Woodbury update.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import inspect
 
 import numpy as np
 import scipy.sparse as sparse
@@ -121,6 +122,16 @@ def bicgstab_two_rhs(
     if budget < 1:
         raise ValueError("max_iterations must be positive")
 
+    parameters = inspect.signature(sparse_linalg.bicgstab).parameters
+    if "rtol" in parameters:
+        relative_keyword = "rtol"
+    elif "tol" in parameters:
+        # SciPy < 1.12 used ``tol`` for the same relative term.  Setting it to
+        # zero preserves the declared absolute-only stopping contract.
+        relative_keyword = "tol"
+    else:  # pragma: no cover - protects against an unrecognized future API
+        raise RuntimeError("unrecognized scipy.sparse.linalg.bicgstab tolerance API")
+
     columns: list[np.ndarray] = []
     counts: list[int] = []
     residuals: list[float] = []
@@ -131,14 +142,15 @@ def bicgstab_two_rhs(
             nonlocal count
             count += 1
 
+        keyword_arguments = {
+            "x0": None if guess is None else guess[:, coordinate],
+            relative_keyword: 0.0,
+            "atol": atol,
+            "maxiter": budget,
+            "callback": callback,
+        }
         solution, info = sparse_linalg.bicgstab(
-            a,
-            b[:, coordinate],
-            x0=None if guess is None else guess[:, coordinate],
-            rtol=0.0,
-            atol=atol,
-            maxiter=budget,
-            callback=callback,
+            a, b[:, coordinate], **keyword_arguments
         )
         residual = float(np.linalg.norm(b[:, coordinate] - a @ solution))
         if info != 0 or not np.all(np.isfinite(solution)) or not np.isfinite(residual) or residual > 1.01 * atol:

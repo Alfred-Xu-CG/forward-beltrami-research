@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 import scipy.sparse.linalg as sparse_linalg
+from qcopt.neural_bijection.tutte import incremental as incremental_module
 
 from qcopt.mesh import structured_rectangle
 from qcopt.neural_bijection.tutte.direct import DirectTutteLayer
@@ -120,3 +121,25 @@ def test_invalid_masked_or_nonfinite_logits_fail_closed() -> None:
     logits[0, 0] = np.nan
     with pytest.raises(ValueError, match="finite"):
         assemble_directed_system(system, logits, boundary)
+
+
+def test_bicgstab_old_scipy_tol_signature_keeps_absolute_contract(monkeypatch) -> None:
+    """SciPy before the rtol rename must receive tol=0, not a looser default."""
+
+    matrix = np.array([[2.0, -0.2], [-0.1, 1.5]])
+    rhs = np.array([[1.0, 0.4], [0.2, 1.3]])
+    observed = []
+
+    def old_signature(a, b, x0=None, tol=1e-5, maxiter=None, callback=None, atol=None):
+        observed.append((tol, atol, maxiter, x0 is None))
+        solution = np.linalg.solve(a.toarray(), b)
+        if callback is not None:
+            callback(solution)
+        return solution, 0
+
+    monkeypatch.setattr(incremental_module.sparse_linalg, "bicgstab", old_signature)
+    result = bicgstab_two_rhs(
+        incremental_module.sparse.csr_matrix(matrix), rhs, atol=3.0e-12
+    )
+    np.testing.assert_allclose(result.solution, np.linalg.solve(matrix, rhs), atol=1e-15)
+    assert observed == [(0.0, 3.0e-12, 20, True), (0.0, 3.0e-12, 20, True)]
