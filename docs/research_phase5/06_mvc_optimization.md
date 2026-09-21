@@ -407,11 +407,33 @@ update or every nonsymmetric Krylov implementation.
 
 Woodbury was executed only when the update was declared local and contained at
 most 64 rows.  Global cases retain the projected dense-Schur storage and an
-explicit `not_run` reason.  At (N=49), a five-percent update already changes
+explicit `not_run` reason.  At \(N=49\), a five-percent update already changes
 111 rows and therefore exceeds this deliberately bounded local experiment.
-Timing conclusions will be drawn only after an independent rerun on another
-host; the current Windows observations primarily establish algebra and
-iteration counts.
+
+An independent Linux rerun is preserved in
+[`route2_incremental_turing.json`](raw_results/route2_incremental_turing.json).
+It used commit `be08f45`, Python 3.11.7, NumPy 1.26.4, SciPy 1.11.4, and one
+OMP/MKL thread on host `turing`.  All 24 rows completed, all reference maps
+were certified, and maximum coordinate errors relative to a fresh SuperLU
+factorization were \(5.92\times10^{-9}\), \(5.79\times10^{-9}\), and
+\(5.74\times10^{-9}\) for cold, warm, and correction solutions.  The old
+SciPy `tol` interface initially exposed a genuine cross-version failure before
+any solve; a regression now maps both old `tol` and new `rtol` APIs to the same
+zero-relative, declared-absolute contract.
+
+The independent iteration pattern agrees qualitatively but not bitwise with
+Windows.  At \(N=49\), the mean maximum-coordinate counts for
+`local_one/global_small/global_large` were respectively
+\(106.33/107.33/103.67\) cold and \(76.33/79.00/93.67\) warm.  Correction
+means were \(75.33/79.67/94.33\).  Across all rows, five warm/correction tuples
+matched exactly, their largest per-coordinate count difference was eight, and
+their mean absolute difference was 2.10 iterations.  Mean observed Turing
+cold-versus-warm times ranged from 4.66 versus 3.69 ms at \(N=25\) one-row to
+14.61 versus 10.20 ms at \(N=49\) one-row; the \(N=49\) global-large means were
+14.31 versus 12.74 ms.  These sequential single-host observations support an
+iteration/work reduction for the tested small updates, but they are not a
+randomized performance theorem, and fresh SuperLU remained faster in these
+CPU cases (roughly 1.4--1.5 ms at \(N=25\) and 6.6--7.1 ms at \(N=49\)).
 
 ## 14. Required remaining evidence
 
