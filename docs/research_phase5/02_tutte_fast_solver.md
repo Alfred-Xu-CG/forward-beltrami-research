@@ -300,7 +300,13 @@ p_{k+1}=r_{k+1}^{\rm rec}+\beta_kp_k. \tag{18}
 
 The implemented update modifies (18) at two events: a recursive convergence candidate, or every 32 iterations. For active columns at such an event, it recomputes \(r=b-Kx\). If that true residual is not accepted, the column restarts with \(p=r\), i.e. \(\beta=0\). Otherwise it becomes inactive. Between these events the usual recurrence is retained. The reliable-update mask is intersected with the active mask; a zero or already-converged RHS must not trigger an extra true-residual matvec on every iteration.
 
-All columns undergo a final true-residual test. Nonpositive/nonfinite active curvature, nonfinite residuals, iteration exhaustion, and nonfinite reconstructed solutions raise errors. The current method is **unpreconditioned CG**, not Jacobi-PCG. Defaults are `rtol=1e-5` for float32, `rtol=1e-11` for float64, `atol=0`, and 1000 iterations.
+All columns undergo a fresh final true-residual test. Let \(\tau_{\rm req}\) denote the requested absolute-plus-relative threshold. On CUDA float32 only, the recurrence activity and reliable-update candidate tests use the stricter internal threshold
+
+\[
+\tau_{\rm int}=0.99\,\tau_{\rm req},
+\]
+
+whereas final acceptance still requires the freshly recomputed represented residual to be no larger than \(\tau_{\rm req}\). CPU and float64 use \(\tau_{\rm int}=\tau_{\rm req}\). The one-percent headroom addresses measured variation when CUDA scatter accumulation re-evaluates \(Kx\) at the tolerance boundary; it does not relax the public contract, make scatter deterministic, or prove convergence. It can require additional iterations, and failure remains explicit. Nonpositive/nonfinite active curvature, nonfinite residuals, an unmet final threshold, and nonfinite reconstructed solutions raise errors. The current method is **unpreconditioned CG**, not Jacobi-PCG. Defaults are `rtol=1e-5` for float32, `rtol=1e-11` for float64, `atol=0`, and 1000 iterations.
 
 For a nonempty interior and \(s_b=\max_i|b_i|\), the internal tolerance is \(\mathrm{atol}/s_b+\mathrm{rtol}\|b/s_b\|_2\), with a safe unit scale for a zero-valued RHS; this scaling is not evaluated for the boundary-only bypass. Thus the residual test is performed on the scaled represented problem; rounding when rescaling the returned solution is not an exact-arithmetic equivalence. The returned map also passes the geometric checks. Reliable residual replacement corrects false recursive stopping. Relaxing the float32 default to `1e-5` is a separate availability/accuracy tradeoff, not a proof that the original strict tolerance now always converges. See the reliable-GPU entries in the [worklog](WORKLOG.md).
 
@@ -520,7 +526,7 @@ For the official architecture's 24 planar sublayers, the audited convention is 2
 
 In the instance runner, \(S\) Adam updates with one initial/final sequence of observations incur \(S+1\) primal evaluations and \(S\) adjoints per sample/layer when all updates succeed. LBFGS has data-dependent closure evaluations; outer steps are not solve counts. Target generation is a separately charged setup solve, not training. Audit time, solver time, dense warp time, optimizer-only overhead, and observation wall time should remain separately identified. A threshold first observed in an LBFGS trial closure is an audited **evaluation**, not automatically an accepted optimizer state. CUDA timings require the benchmark's synchronization policy; raw host launch latency is not completed device work.
 
-## 12. End-to-end algorithm and pending evaluation
+## 12. End-to-end algorithm and evaluation handoff
 
 ### 12.1 Single layer
 
@@ -535,15 +541,15 @@ The current computation is:
 
 For composition, steps 2–5 are performed separately for each square layer, followed by the coordinate recursion (29). The first query table is fixed; later queries are dynamic. No clipping/untangling of failed control maps or repeated image resampling is included in this algorithm.
 
-### 12.2 Evidence to populate, not conclusions already drawn
+### 12.2 Evidence schema and completed application handoff
 
-The [worklog](WORKLOG.md) records unit/dense-reference/finite-difference checks, independent reviews, known failure cases, and bounded remote smoke/stress observations. Those are implementation evidence, not a substitute for the complete matrix. The experimental section should use one compact table with the following fields, populated from actual receipts rather than inferred from method names:
+The [worklog](WORKLOG.md) records unit/dense-reference/finite-difference checks, independent reviews, known failure cases, and bounded remote smoke/stress observations. The completed engineering, adversarial, instance-optimization, and extension matrices are aggregated in the independently reviewed [application chapter](03_tutte_application.md), with raw receipts under `raw_results/`. The following fields define the comparison schema; no value is inferred from a method name:
 
-| Backend and environment | Mesh / batch / layers / queries | Primal + adjoint systems; factors; iterations/fallback | Independent map / VJP / residual / \(\mu\) error | Returned-map checks and failures | Warmup/repeats; synchronized time; peak memory |
-|---|---|---|---|---|---|
-| `reference` / CPU | Pending formal aggregation | Pending | Pending | Pending | Pending |
-| `direct` / CPU | Pending formal aggregation | Pending | Pending | Pending | Pending |
-| `directed_iterative` / CPU or CUDA, dtype/tolerances explicit | Pending formal aggregation | Pending | Pending | Pending | Pending |
-| `symmetric` / CPU or CUDA, dtype/tolerances explicit | Pending formal aggregation | Pending | Pending | Pending | Pending |
+| Backend and environment | Final evidence location | Required numerical-work fields | Accuracy/topology fields kept distinct | Timing/memory scope |
+|---|---|---|---|---|
+| `reference` / CPU | Application §6.1 | Primal/adjoint systems and two forward factors per nonempty sample | Independent primal replay and returned-map audit; no fitted accuracy is invented | Fresh process, warmup/repeats, synchronized workload, process HWM |
+| `direct` / CPU | Application §§6.1 and 7 | One retained factor per nonempty sample forward, multi-RHS and transpose solves | Independent residual plus formal map/Beltrami metrics where a target exists | Setup/audit separated from optimization or engineering time |
+| `directed_iterative` / CPU or CUDA | Application §§6.1–6.2, 7, and 8.3–8.4 | Dtype/tolerances, primal/adjoint iterations, primary failure and fallback kept explicit | Residual, map/VJP comparison, topology, and fitted \(\mu\) error reported only when actually measured | Native/float64 and normal/adversarial scopes remain separate |
+| `symmetric` / CPU or CUDA | Application §§6.1–6.2, 7, 8.1–8.2, and 8.5 | CG invocation/iteration fields, requested versus internal threshold, no factor count | Native and independent replay residuals, topology, fitting error, and failure blanks remain distinct | Original and clean-postfix matrices remain separate; GPU allocator and process HWM are labelled |
 
 The shared instance target is generated once by a positive directed map and passed unchanged to the compared backends, with target setup outside training timing. Ordinary Git provenance and target shape/sum/L2 summaries help reproduce and compare this setup; summaries are not cryptographic identities, and Python object IDs have meaning only within one process. The fitting target protocol does not prove representability by the symmetric parameter family, global convergence of an optimizer, superiority of a solver, or completion of Route I. No such conclusion is asserted here.
