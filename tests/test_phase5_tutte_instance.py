@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import importlib.util
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -12,6 +14,37 @@ from qcopt.neural_bijection.tutte.instance_optimization import (
     run_image_instance,
     run_supervised_instance,
 )
+
+
+def _benchmark_module():
+    path = Path(__file__).resolve().parents[1] / 'experiments/phase5/route1_instance_benchmark.py'
+    spec = importlib.util.spec_from_file_location('phase5_instance_benchmark_test', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_instance_receipt_helpers_record_commit_and_cross_process_target_summary(monkeypatch) -> None:
+    module = _benchmark_module()
+    target = build_directed_target(
+        structured_rectangle(3, 3),
+        image_height=16,
+        image_width=16,
+        seed=901,
+        strength=0.2,
+        height=1.0,
+    )
+    monkeypatch.setattr(module, '_git_commit', lambda: 'b' * 40)
+
+    environment = module._environment(torch.device('cpu'))
+    summary = module._target_summary(target)
+
+    assert environment['commit'] == 'b' * 40
+    assert summary['control_shape'] == [16, 2]
+    assert summary['dense_shape'] == [16, 16, 2]
+    assert summary['control_sum'] == float(target.control.double().sum())
+    assert summary['dense_sum'] == float(target.dense.double().sum())
+    assert summary['control_l2'] > 0.0 and summary['dense_l2'] > 0.0
 
 
 def test_positive_tutte_target_is_deterministic_nontrivial_and_certified() -> None:

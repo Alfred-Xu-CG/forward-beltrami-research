@@ -19,6 +19,7 @@ import os
 from pathlib import Path
 import platform
 import socket
+import subprocess
 import sys
 from time import perf_counter
 from typing import Any
@@ -37,6 +38,37 @@ from qcopt.neural_bijection.tutte.instance_optimization import (  # noqa: E402
     run_image_instance,
     run_supervised_instance,
 )
+
+
+def _git_commit() -> str | None:
+    try:
+        result = subprocess.run(
+            ("git", "-C", str(REPOSITORY), "rev-parse", "HEAD"),
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    value = result.stdout.strip().lower()
+    if result.returncode != 0 or len(value) != 40 or any(ch not in "0123456789abcdef" for ch in value):
+        return None
+    return value
+
+
+def _target_summary(target) -> dict[str, Any]:
+    """Small numeric identity for comparing deterministic targets across hosts."""
+    control = target.control.detach().double()
+    dense = target.dense.detach().double()
+    return {
+        "control_shape": list(control.shape),
+        "dense_shape": list(dense.shape),
+        "control_sum": float(control.sum()),
+        "dense_sum": float(dense.sum()),
+        "control_l2": float(torch.linalg.vector_norm(control)),
+        "dense_l2": float(torch.linalg.vector_norm(dense)),
+    }
 
 
 def _parse_csv(value: str) -> list[str]:
@@ -81,6 +113,7 @@ def _environment(device: torch.device) -> dict[str, Any]:
         "torch": torch.__version__,
         "numpy": np.__version__,
         "scipy": scipy.__version__,
+        "commit": _git_commit(),
         "device": str(device),
         "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
         "torch_threads": torch.get_num_threads(),
@@ -272,6 +305,7 @@ def main() -> None:
             "setup_seconds": target_setup_seconds,
             "metrics": asdict(target.metrics),
             "object_identity": id(target),
+            **_target_summary(target),
         },
         "runs": [
             _run_one(args, backend=backend, target=target, device=device, dtype=dtype)
