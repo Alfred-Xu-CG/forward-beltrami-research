@@ -18,6 +18,10 @@ update rule:
     vertex-space Adam on interior vertices, MVC canonicalization, the
     covariance logit lift, and a decoder-mediated retraction.  It never sends
     the loss through a decoder adjoint and never accepts the raw Euler point.
+``O4_covariance_retraction_trust``
+    a separately named follow-up variant of O4.  It backtracks only the lifted
+    latent increment and counts every trial decoder attempt/completion.  It is
+    deliberately excluded from the four-method baseline tuple.
 
 The fixed target boundary is intentional: it makes the zero-boundary tangent
 semantics of O4 exact.  This benchmark therefore does not evaluate learnable
@@ -67,6 +71,8 @@ METHOD_NAMES = (
     "O3_mvc_adam",
     "O4_covariance_retraction",
 )
+O4_TRUST_METHOD_NAME = "O4_covariance_retraction_trust"
+_ALL_METHOD_NAMES = METHOD_NAMES + (O4_TRUST_METHOD_NAME,)
 
 
 @dataclass(frozen=True)
@@ -114,6 +120,11 @@ class MVCOptimizationTraceRow:
     audit_seconds: float
     observation_wall_seconds: float
     raw_euler_gap_rmse: float | None
+    retraction_trial_attempts: int
+    retraction_trial_solves: int
+    retraction_extra_solves: int
+    accepted_retraction_scale: float | None
+    trust_minimum_required_area_ratio: float | None
     flip_count: int
     minimum_signed_area: float
     minimum_area_ratio: float
@@ -153,6 +164,10 @@ class MVCMethodResult:
     primal_attempts: int
     adjoint_attempts: int
     local_backward_attempts: int
+    retraction_trial_attempts: int
+    retraction_trial_solves: int
+    retraction_extra_solves: int
+    minimum_accepted_retraction_scale: float | None
     primal_krylov_rhs_iterations: int
     adjoint_krylov_rhs_iterations: int
     maximum_primal_krylov_iterations: int
@@ -234,6 +249,8 @@ class _Counters:
     primal_attempts: int = 0
     adjoint_attempts: int = 0
     local_backward_attempts: int = 0
+    retraction_trial_attempts: int = 0
+    retraction_trial_solves: int = 0
     primal_krylov_rhs_iterations: int = 0
     adjoint_krylov_rhs_iterations: int = 0
     maximum_primal_krylov_iterations: int = 0
@@ -472,6 +489,24 @@ def _audit(
     )
 
 
+def _trust_candidate_metrics(
+    mesh: TriMesh,
+    control: torch.Tensor,
+    target_control: torch.Tensor,
+) -> P1MapMetrics:
+    """Independently screen one decoded trust candidate in returned precision.
+
+    The helper is intentionally geometry-only.  It never changes a candidate;
+    callers either accept the decoded map or shrink the latent increment.
+    """
+
+    return compute_p1_map_metrics(
+        mesh,
+        control.detach().to(dtype=torch.float64, device="cpu").numpy(),
+        target=target_control.detach().to(dtype=torch.float64, device="cpu").numpy(),
+    )
+
+
 def _trace_row(
     *,
     iteration: int,
@@ -481,6 +516,10 @@ def _trace_row(
     wall_start: float,
     audit: _Audit,
     raw_euler_gap_rmse: float | None = None,
+    retraction_trial_attempts: int = 0,
+    retraction_trial_solves: int = 0,
+    accepted_retraction_scale: float | None = None,
+    trust_minimum_required_area_ratio: float | None = None,
 ) -> MVCOptimizationTraceRow:
     metrics = audit.metrics
     return MVCOptimizationTraceRow(
@@ -513,6 +552,13 @@ def _trace_row(
         audit_seconds=timings.get("audit", 0.0),
         observation_wall_seconds=perf_counter() - wall_start,
         raw_euler_gap_rmse=raw_euler_gap_rmse,
+        retraction_trial_attempts=retraction_trial_attempts,
+        retraction_trial_solves=retraction_trial_solves,
+        retraction_extra_solves=max(
+            0, retraction_trial_solves - (accepted_retraction_scale is not None)
+        ),
+        accepted_retraction_scale=accepted_retraction_scale,
+        trust_minimum_required_area_ratio=trust_minimum_required_area_ratio,
         flip_count=metrics.flip_count,
         minimum_signed_area=metrics.minimum_signed_area,
         minimum_area_ratio=metrics.minimum_area_ratio,
@@ -591,6 +637,10 @@ def _finish(
             "manual Adam in fixed-boundary vertex coordinates followed by MVC "
             "covariance lift and decoder retraction"
         ),
+        O4_TRUST_METHOD_NAME: (
+            "manual Adam in fixed-boundary vertex coordinates followed by MVC "
+            "covariance lift and bounded geometry-screened latent backtracking"
+        ),
     }[method]
     moment_policy = {
         "O1_sigmoid_positive": "native Torch Adam moments",
@@ -600,6 +650,10 @@ def _finish(
         ),
         "O4_covariance_retraction": (
             "retain moments in fixed global vertex coordinates; boundary direction is zeroed"
+        ),
+        O4_TRUST_METHOD_NAME: (
+            "retain moments in fixed global vertex coordinates across accepted latent "
+            "backtracking; boundary direction is zeroed"
         ),
     }[method]
     return MVCMethodResult(
@@ -622,6 +676,19 @@ def _finish(
         primal_attempts=counters.primal_attempts,
         adjoint_attempts=counters.adjoint_attempts,
         local_backward_attempts=counters.local_backward_attempts,
+        retraction_trial_attempts=counters.retraction_trial_attempts,
+        retraction_trial_solves=counters.retraction_trial_solves,
+        retraction_extra_solves=max(
+            0, counters.retraction_trial_solves - last.iteration
+        ),
+        minimum_accepted_retraction_scale=min(
+            (
+                row.accepted_retraction_scale
+                for row in trace
+                if row.accepted_retraction_scale is not None
+            ),
+            default=None,
+        ),
         primal_krylov_rhs_iterations=counters.primal_krylov_rhs_iterations,
         adjoint_krylov_rhs_iterations=counters.adjoint_krylov_rhs_iterations,
         maximum_primal_krylov_iterations=counters.maximum_primal_krylov_iterations,
@@ -910,8 +977,12 @@ def _run_covariance_method(
     objective_threshold: float | None,
     system_condition_dense_limit: int,
     max_covariance_condition: float,
+    trust_backtracking: bool,
+    trust_backtrack_factor: float,
+    trust_max_trials: int,
+    trust_min_area_fraction: float,
 ) -> MVCMethodResult:
-    method = "O4_covariance_retraction"
+    method = O4_TRUST_METHOD_NAME if trust_backtracking else "O4_covariance_retraction"
     solver = _make_solver(mesh, backend=backend, dtype=dtype, device=device)
     encoder = MeanValueCoordinateEncoder(mesh).to(device=device, dtype=dtype)
     lift = CovarianceLogitLift(
@@ -1025,16 +1096,84 @@ def _run_covariance_method(
                     current_canonical.probabilities,
                     direction,
                 )
-                updated_logits = current_canonical.logits + lifted.delta_logits
             _synchronize(device)
             timings["lift"] = perf_counter() - start
 
-            raw_euler = current_control.detach() + direction
-            active_phase = "retraction_decode"
-            updated_control, elapsed = _decode(
-                solver, updated_logits, fixed_boundary, counters
-            )
-            timings["primal"] = elapsed
+            step_trial_attempts = 0
+            step_trial_solves = 0
+            accepted_scale: float | None = None
+            minimum_required_area_ratio: float | None = None
+            if trust_backtracking:
+                active_phase = "retraction_trust_search"
+                minimum_required_area_ratio = (
+                    trust_min_area_fraction * trace[-1].minimum_area_ratio
+                )
+                updated_control = None
+                updated_logits = None
+                last_rejection = "no candidate was attempted"
+                for trial in range(trust_max_trials):
+                    scale = trust_backtrack_factor**trial
+                    candidate_logits = (
+                        current_canonical.logits + scale * lifted.delta_logits
+                    )
+                    step_trial_attempts += 1
+                    counters.retraction_trial_attempts += 1
+                    try:
+                        candidate_control, elapsed = _decode(
+                            solver, candidate_logits, fixed_boundary, counters
+                        )
+                    except Exception as error:
+                        last_rejection = f"scale={scale:.17g} decoder {type(error).__name__}: {error}"
+                        continue
+                    step_trial_solves += 1
+                    counters.retraction_trial_solves += 1
+                    timings["primal"] = timings.get("primal", 0.0) + elapsed
+                    try:
+                        candidate_metrics = _trust_candidate_metrics(
+                            mesh, candidate_control, target_control
+                        )
+                    except Exception as error:
+                        last_rejection = (
+                            f"scale={scale:.17g} geometry audit "
+                            f"{type(error).__name__}: {error}"
+                        )
+                        continue
+                    if not candidate_metrics.global_injectivity_certificate:
+                        last_rejection = (
+                            f"scale={scale:.17g} failed the unchanged global "
+                            "injectivity certificate"
+                        )
+                        continue
+                    if (
+                        not np.isfinite(candidate_metrics.minimum_area_ratio)
+                        or candidate_metrics.minimum_area_ratio
+                        < minimum_required_area_ratio
+                    ):
+                        last_rejection = (
+                            f"scale={scale:.17g} minimum area ratio "
+                            f"{candidate_metrics.minimum_area_ratio:.17g} is below "
+                            f"the trust floor {minimum_required_area_ratio:.17g}"
+                        )
+                        continue
+                    updated_control = candidate_control
+                    updated_logits = candidate_logits
+                    accepted_scale = scale
+                    break
+                if updated_control is None or updated_logits is None:
+                    raise RuntimeError(
+                        f"all {trust_max_trials} latent trust trials were rejected; "
+                        f"last rejection: {last_rejection}"
+                    )
+            else:
+                active_phase = "retraction_decode"
+                updated_logits = current_canonical.logits + lifted.delta_logits
+                updated_control, elapsed = _decode(
+                    solver, updated_logits, fixed_boundary, counters
+                )
+                timings["primal"] = elapsed
+
+            raw_euler_scale = 1.0 if accepted_scale is None else accepted_scale
+            raw_euler = current_control.detach() + raw_euler_scale * direction
             gap = torch.sqrt(
                 torch.mean(
                     torch.sum((updated_control.detach() - raw_euler).square(), dim=-1)
@@ -1082,6 +1221,10 @@ def _run_covariance_method(
                     wall_start=wall_start,
                     audit=audit,
                     raw_euler_gap_rmse=raw_euler_gap_rmse,
+                    retraction_trial_attempts=step_trial_attempts,
+                    retraction_trial_solves=step_trial_solves,
+                    accepted_retraction_scale=accepted_scale,
+                    trust_minimum_required_area_ratio=(minimum_required_area_ratio),
                 )
             )
             accepted_control = current_control.detach().clone()
@@ -1182,6 +1325,9 @@ def run_fixed_boundary_comparison(
     objective_threshold: float | None = None,
     system_condition_dense_limit: int = 256,
     max_covariance_condition: float = 1.0e8,
+    o4_trust_backtrack_factor: float = 0.5,
+    o4_trust_max_trials: int = 12,
+    o4_trust_min_area_fraction: float = 0.5,
 ) -> FixedBoundaryComparison:
     """Run a controlled O1--O4 comparison on one fixed-boundary problem.
 
@@ -1222,10 +1368,26 @@ def run_fixed_boundary_comparison(
         or system_condition_dense_limit < 0
     ):
         raise ValueError("system_condition_dense_limit must be a nonnegative integer")
+    if (
+        not np.isfinite(o4_trust_backtrack_factor)
+        or not 0.0 < o4_trust_backtrack_factor < 1.0
+    ):
+        raise ValueError("o4_trust_backtrack_factor must be finite and in (0, 1)")
+    if (
+        isinstance(o4_trust_max_trials, bool)
+        or not isinstance(o4_trust_max_trials, int)
+        or o4_trust_max_trials < 1
+    ):
+        raise ValueError("o4_trust_max_trials must be a positive integer")
+    if (
+        not np.isfinite(o4_trust_min_area_fraction)
+        or not 0.0 < o4_trust_min_area_fraction <= 1.0
+    ):
+        raise ValueError("o4_trust_min_area_fraction must be finite and in (0, 1]")
     selected = tuple(methods)
     if not selected or len(set(selected)) != len(selected):
         raise ValueError("methods must be a nonempty sequence without duplicates")
-    unknown = set(selected) - set(METHOD_NAMES)
+    unknown = set(selected) - set(_ALL_METHOD_NAMES)
     if unknown:
         raise ValueError(f"unknown methods: {sorted(unknown)}")
 
@@ -1288,10 +1450,14 @@ def run_fixed_boundary_comparison(
         system_condition_dense_limit=system_condition_dense_limit,
     )
     for method in selected:
-        if method == "O4_covariance_retraction":
+        if method in ("O4_covariance_retraction", O4_TRUST_METHOD_NAME):
             result = _run_covariance_method(
                 **common,
                 max_covariance_condition=max_covariance_condition,
+                trust_backtracking=method == O4_TRUST_METHOD_NAME,
+                trust_backtrack_factor=float(o4_trust_backtrack_factor),
+                trust_max_trials=o4_trust_max_trials,
+                trust_min_area_fraction=float(o4_trust_min_area_fraction),
             )
         else:
             result = _run_latent_method(method=method, **common)
