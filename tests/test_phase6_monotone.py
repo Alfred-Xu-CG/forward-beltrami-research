@@ -2,7 +2,7 @@
 
 import torch
 
-from qcopt.neural_bijection.dense import DenseMonotoneGridLayer
+from qcopt.neural_bijection.dense import DenseMonotoneGridLayer, MultiscaleMonotoneGridLayer
 
 
 def _signed_twice_area(control: torch.Tensor) -> torch.Tensor:
@@ -62,3 +62,21 @@ def test_backward_matches_directional_finite_difference() -> None:
     minus = (layer(global_logits - step * direction_x, line_logits - step * direction_y) * cotangent).sum()
     actual = (plus - minus) / (2.0 * step)
     torch.testing.assert_close(predicted, actual, rtol=1.0e-7, atol=1.0e-8)
+
+
+def test_multiscale_logits_preserve_fine_grid_topology_and_gradient() -> None:
+    torch.manual_seed(31)
+    layer = MultiscaleMonotoneGridLayer(17)
+    coarse_global = torch.randn(2, 4, dtype=torch.float64, requires_grad=True)
+    coarse_line = torch.randn(2, 5, 4, dtype=torch.float64, requires_grad=True)
+    fine_global = torch.randn(2, 16, dtype=torch.float64, requires_grad=True)
+    fine_line = torch.randn(2, 17, 16, dtype=torch.float64, requires_grad=True)
+    output = layer(((coarse_global, coarse_line), (fine_global, fine_line)))
+    assert output.shape == (2, 17, 17, 2)
+    assert torch.all(_signed_twice_area(output[0]) > 0.0)
+    gradient = torch.autograd.grad(
+        (output.square()).sum(),
+        (coarse_global, coarse_line, fine_global, fine_line),
+    )
+    assert all(torch.isfinite(value).all() for value in gradient)
+    assert all(value.abs().max() > 0 for value in gradient)

@@ -10,6 +10,7 @@ extension is a homeomorphism.  ``axis='horizontal'`` swaps x and y.
 from __future__ import annotations
 
 import torch
+import torch.nn.functional as torch_functional
 
 
 class DenseMonotoneGridLayer(torch.nn.Module):
@@ -92,3 +93,58 @@ class DenseMonotoneGridLayer(torch.nn.Module):
             raise RuntimeError("line spacings collapsed in represented precision")
         control = torch.stack((x_coord, y_coord), dim=-1)
         return control[0] if unbatched else control
+
+
+class MultiscaleMonotoneGridLayer(torch.nn.Module):
+    """Sum coarse-to-fine logit fields, then decode on one fixed fine mesh.
+
+    Each level is a pair with shapes ``(B,side_l-1)`` and
+    ``(B,side_l,side_l-1)``.  Interpolating logits is only a latent-field
+    construction; the output map is decoded directly on the supplied fine
+    triangulation and retains the single-layer P1 theorem.
+    """
+
+    def __init__(
+        self,
+        side: int,
+        *,
+        axis: str = "vertical",
+        floor_fraction: float = 0.01,
+    ) -> None:
+        super().__init__()
+        self.base = DenseMonotoneGridLayer(
+            side, axis=axis, floor_fraction=floor_fraction
+        )
+
+    def forward(
+        self,
+        levels: tuple[tuple[torch.Tensor, torch.Tensor], ...],
+    ) -> torch.Tensor:
+        if not levels:
+            raise ValueError("at least one latent level is required")
+        side = self.base.side
+        combined_global = None
+        combined_line = None
+        for global_logits, line_logits in levels:
+            if (
+                global_logits.ndim != 2
+                or line_logits.ndim != 3
+                or line_logits.shape[0] != global_logits.shape[0]
+                or global_logits.shape[1] != line_logits.shape[1] - 1
+                or line_logits.shape[2] != line_logits.shape[1] - 1
+            ):
+                raise ValueError("each level must have shapes (B,m-1), (B,m,m-1)")
+            if line_logits.shape[1] > side:
+                raise ValueError("latent level cannot exceed the output side")
+            up_global = torch_functional.interpolate(
+                global_logits[:, None, :], size=side - 1, mode="linear", align_corners=True
+            )[:, 0]
+            up_line = torch_functional.interpolate(
+                line_logits[:, None],
+                size=(side, side - 1),
+                mode="bilinear",
+                align_corners=True,
+            )[:, 0]
+            combined_global = up_global if combined_global is None else combined_global + up_global
+            combined_line = up_line if combined_line is None else combined_line + up_line
+        return self.base(combined_global, combined_line)
