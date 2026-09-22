@@ -22,6 +22,7 @@ from phase6_train_alternating_image_to_latent import AlternatingImageEncoder
 from phase6_train_image_to_latent import SmallImageEncoder, _minimum_area_ratio
 from qcopt.mesh import structured_rectangle
 from qcopt.neural_bijection.dense import (
+    CoarseFineConvexQuadComposition,
     ExactAlternatingMonotoneComposition,
     HierarchicalConvexQuadFreeCenterLayer,
     MultiscaleMonotoneGridLayer,
@@ -171,10 +172,23 @@ class ConvexQuadImageEncoder(torch.nn.Module):
         return root, tuple(levels)
 
 
+class CoarseFineConvexQuadImageEncoder(torch.nn.Module):
+    """Separate image heads for the coarse and fine exact-composition factors."""
+
+    def __init__(self, coarse_side: int, fine_side: int, *, head_mode: str, body_mode: str) -> None:
+        super().__init__()
+        self.coarse = ConvexQuadImageEncoder(coarse_side, head_mode=head_mode, body_mode=body_mode)
+        self.fine = ConvexQuadImageEncoder(fine_side, head_mode=head_mode, body_mode=body_mode)
+
+    def forward(self, pair: torch.Tensor):
+        return self.coarse(pair), self.fine(pair)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--method", choices=("A", "AB2", "A2"), required=True)
+    parser.add_argument("--method", choices=("A", "AB2", "A2", "CF2"), required=True)
     parser.add_argument("--side", type=int, default=257)
+    parser.add_argument("--coarse-side", type=int, default=17)
     parser.add_argument("--image-side", type=int, default=512)
     parser.add_argument("--train-count", type=int, default=32)
     parser.add_argument("--test-count", type=int, default=8)
@@ -194,26 +208,34 @@ def main() -> None:
         raise ValueError("all dimensions, counts and steps must be positive")
     if args.strain_weight and args.method != "A2":
         raise ValueError("the current strain ablation is defined only for A2")
-    if args.a2_head_mode != "multilevel" and args.method != "A2":
-        raise ValueError("a2-head-mode applies only to A2")
-    if args.a2_body_mode != "local" and args.method != "A2":
-        raise ValueError("a2-body-mode applies only to A2")
+    if args.a2_head_mode != "multilevel" and args.method not in ("A2", "CF2"):
+        raise ValueError("a2-head-mode applies only to A2 or CF2")
+    if args.a2_body_mode != "local" and args.method not in ("A2", "CF2"):
+        raise ValueError("a2-body-mode applies only to A2 or CF2")
     if args.oracle_map_loss and args.method != "A2":
         raise ValueError("the oracle-map-loss diagnostic is defined only for A2")
     torch.manual_seed(20260923)
     device = torch.device(args.device)
     train = tuple(t.to(device) for t in make_dataset(args.train_count, args.image_side, 55101, target_family=args.target_family))
     test = tuple(t.to(device) for t in make_dataset(args.test_count, args.image_side, 99317, target_family=args.target_family))
-    table = StructuredDenseQueryTable.from_mesh(
-        structured_rectangle(args.side - 1, args.side - 1), height=args.image_side, width=args.image_side
-    )
-    table.prepare(device=device, dtype=torch.float32)
+    table = None
+    if args.method != "CF2":
+        table = StructuredDenseQueryTable.from_mesh(
+            structured_rectangle(args.side - 1, args.side - 1), height=args.image_side, width=args.image_side
+        )
+        table.prepare(device=device, dtype=torch.float32)
     if args.method == "A":
         encoder = SmallImageEncoder(args.side).to(device)
         decoder = MultiscaleMonotoneGridLayer(args.side)
     elif args.method == "A2":
         encoder = ConvexQuadImageEncoder(args.side, head_mode=args.a2_head_mode, body_mode=args.a2_body_mode).to(device)
         decoder = HierarchicalConvexQuadFreeCenterLayer(args.side)
+    elif args.method == "CF2":
+        encoder = CoarseFineConvexQuadImageEncoder(
+            args.coarse_side, args.side, head_mode=args.a2_head_mode, body_mode=args.a2_body_mode
+        ).to(device)
+        decoder = CoarseFineConvexQuadComposition(args.coarse_side, args.side, args.image_side)
+        decoder.prepare(device=device, dtype=torch.float32)
     else:
         axes = ("vertical", "horizontal")
         encoder = AlternatingImageEncoder(args.side, axes).to(device)
@@ -221,8 +243,8 @@ def main() -> None:
     if args.load_state:
         previous = torch.load(args.load_state, map_location=device, weights_only=False)
         previous_args = previous["args"]
-        defaults = {"target_family": "base", "a2_head_mode": "multilevel", "a2_body_mode": "local"}
-        for key in ("method", "side", "image_side", "target_family", "a2_head_mode", "a2_body_mode"):
+        defaults = {"target_family": "base", "coarse_side": 17, "a2_head_mode": "multilevel", "a2_body_mode": "local"}
+        for key in ("method", "side", "coarse_side", "image_side", "target_family", "a2_head_mode", "a2_body_mode"):
             if previous_args.get(key, defaults.get(key)) != getattr(args, key):
                 raise ValueError(f"loaded checkpoint does not match {key}")
         encoder.load_state_dict(previous["encoder"])
@@ -243,6 +265,10 @@ def main() -> None:
             control = decoder(*latent)
             predicted = table.interpolate(control.reshape(len(indices), -1, 2))
             controls = (control,)
+        elif args.method == "CF2":
+            result = decoder(*latent[0], *latent[1])
+            predicted = result.dense
+            controls = result.controls
         else:
             result = decoder(latent)
             predicted = result.dense
@@ -257,7 +283,7 @@ def main() -> None:
         image_sum = 0.0
         map_sum = 0.0
         strain_sum = 0.0
-        minimum = [float("inf")] * (2 if args.method == "AB2" else 1)
+        minimum = [float("inf")] * (2 if args.method in ("AB2", "CF2") else 1)
         count = dataset[0].shape[0]
         for start in range(0, count, args.batch):
             stop = min(start + args.batch, count)
@@ -328,8 +354,11 @@ def main() -> None:
         "control_side": args.side,
         "control_vertices": args.side**2,
         "control_faces_per_layer": 2 * (args.side - 1)**2,
-        "layers": 2 if args.method == "AB2" else 1,
-        "representation": "exact_PL_composition" if args.method == "AB2" else "original_grid_P1",
+        "layers": 2 if args.method in ("AB2", "CF2") else 1,
+        "representation": "exact_PL_composition" if args.method in ("AB2", "CF2") else "original_grid_P1",
+        "coarse_control_side": args.coarse_side if args.method == "CF2" else None,
+        "coarse_control_vertices": args.coarse_side**2 if args.method == "CF2" else None,
+        "coarse_control_faces": 2 * (args.coarse_side - 1)**2 if args.method == "CF2" else None,
         "encoder_parameters": sum(parameter.numel() for parameter in encoder.parameters()),
         "image_side": args.image_side,
         "image_queries": args.image_side**2,
@@ -341,8 +370,8 @@ def main() -> None:
         "steps": args.steps,
         "learning_rate": args.learning_rate,
         "strain_weight": args.strain_weight,
-        "a2_head_mode": args.a2_head_mode if args.method == "A2" else None,
-        "a2_body_mode": args.a2_body_mode if args.method == "A2" else None,
+        "a2_head_mode": args.a2_head_mode if args.method in ("A2", "CF2") else None,
+        "a2_body_mode": args.a2_body_mode if args.method in ("A2", "CF2") else None,
         "oracle_map_loss": args.oracle_map_loss,
         "target_family": args.target_family,
         "loaded_state": args.load_state,
