@@ -1,0 +1,143 @@
+"""Evaluate face-wise Beltrami geometry of an image-trained A2 checkpoint."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import time
+
+import torch
+import torch.nn.functional as F
+
+from phase6_train_multisample_image import ConvexQuadImageEncoder, make_dataset
+from qcopt.mesh import structured_rectangle
+from qcopt.neural_bijection.dense import (
+    HierarchicalConvexQuadFreeCenterLayer,
+    certify_convex_quad_output,
+    evaluate_structured_p1_with_jacobian,
+)
+from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
+
+
+def _mu(jacobian: torch.Tensor) -> torch.Tensor:
+    f_z = torch.complex(
+        0.5 * (jacobian[..., 0, 0] + jacobian[..., 1, 1]),
+        0.5 * (jacobian[..., 1, 0] - jacobian[..., 0, 1]),
+    )
+    f_zbar = torch.complex(
+        0.5 * (jacobian[..., 0, 0] - jacobian[..., 1, 1]),
+        0.5 * (jacobian[..., 1, 0] + jacobian[..., 0, 1]),
+    )
+    return f_zbar / f_z
+
+
+def _target_on_faces(
+    points: torch.Tensor, coefficients: torch.Tensor
+) -> tuple[torch.Tensor, torch.Tensor]:
+    x = points[..., 0]
+    y = points[..., 1]
+    ax, ay, af = (coefficients[:, index, None] for index in range(3))
+    low = torch.sin(2 * math.pi * x) * torch.sin(2 * math.pi * y)
+    high = torch.sin(16 * math.pi * x) * torch.sin(16 * math.pi * y)
+    low_x = 2 * math.pi * torch.cos(2 * math.pi * x) * torch.sin(2 * math.pi * y)
+    low_y = 2 * math.pi * torch.sin(2 * math.pi * x) * torch.cos(2 * math.pi * y)
+    high_x = 16 * math.pi * torch.cos(16 * math.pi * x) * torch.sin(16 * math.pi * y)
+    high_y = 16 * math.pi * torch.sin(16 * math.pi * x) * torch.cos(16 * math.pi * y)
+    value = torch.stack((x + ax * low + af * high, y + ay * low + af * high), dim=-1)
+    row_x = torch.stack((1 + ax * low_x + af * high_x, ax * low_y + af * high_y), dim=-1)
+    row_y = torch.stack((ay * low_x + af * high_x, 1 + ay * low_y + af * high_y), dim=-1)
+    return value, torch.stack((row_x, row_y), dim=-2)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--checkpoint", required=True)
+    parser.add_argument("--side", type=int, default=257)
+    parser.add_argument("--image-side", type=int, default=512)
+    parser.add_argument("--test-count", type=int, default=8)
+    parser.add_argument("--batch", type=int, default=2)
+    parser.add_argument("--device", default="cpu")
+    args = parser.parse_args()
+    device = torch.device(args.device)
+    state = torch.load(args.checkpoint, map_location=device, weights_only=False)
+    if state["args"]["method"] != "A2" or state["args"]["side"] != args.side:
+        raise ValueError("checkpoint does not match A2 and requested side")
+    encoder = ConvexQuadImageEncoder(args.side).to(device)
+    encoder.load_state_dict(state["encoder"])
+    encoder.eval()
+    decoder = HierarchicalConvexQuadFreeCenterLayer(args.side)
+    fixed, moving, true_map, coefficients = (
+        value.to(device)
+        for value in make_dataset(args.test_count, args.image_side, 99317, return_coefficients=True)
+    )
+    mesh = structured_rectangle(args.side - 1, args.side - 1)
+    vertices = torch.tensor(mesh.vertices, device=device, dtype=torch.float32)
+    faces = torch.tensor(mesh.faces, device=device, dtype=torch.int64)
+    centroids = vertices[faces].mean(dim=1)
+    table = StructuredDenseQueryTable.from_mesh(mesh, height=args.image_side, width=args.image_side)
+    table.prepare(device=device, dtype=torch.float32)
+    image_error_sum = 0.0
+    pixel_map_error_sum = 0.0
+    face_map_error_sum = 0.0
+    jacobian_error_sum = 0.0
+    mu_error_sum = 0.0
+    count = 0
+    min_area = float("inf")
+    min_determinant = float("inf")
+    max_predicted_mu = 0.0
+    max_target_mu = 0.0
+    began = time.perf_counter()
+    with torch.no_grad():
+        for start in range(0, args.test_count, args.batch):
+            end = min(start + args.batch, args.test_count)
+            current = end - start
+            pair = torch.cat((fixed[start:end], moving[start:end]), dim=1)
+            control = decoder(*encoder(pair))
+            min_area = min(min_area, certify_convex_quad_output(control))
+            dense = table.interpolate(control.reshape(current, -1, 2))
+            warped = F.grid_sample(moving[start:end], 2 * dense - 1, mode="bilinear", padding_mode="border", align_corners=True)
+            image_error_sum += (warped - fixed[start:end]).square().mean().item() * current
+            pixel_map_error_sum += (dense - true_map[start:end]).square().mean().item() * current
+            query = centroids[None].expand(current, -1, -1)
+            predicted_value, predicted_jacobian = evaluate_structured_p1_with_jacobian(control, query)
+            target_value, target_jacobian = _target_on_faces(query, coefficients[start:end])
+            face_map_error_sum += (predicted_value - target_value).square().mean().item() * current
+            jacobian_error_sum += (predicted_jacobian - target_jacobian).square().mean().item() * current
+            predicted_mu = _mu(predicted_jacobian)
+            target_mu = _mu(target_jacobian)
+            mu_error_sum += (predicted_mu - target_mu).abs().square().mean().item() * current
+            determinant = predicted_jacobian[..., 0, 0] * predicted_jacobian[..., 1, 1] - predicted_jacobian[..., 0, 1] * predicted_jacobian[..., 1, 0]
+            min_determinant = min(min_determinant, determinant.min().item())
+            max_predicted_mu = max(max_predicted_mu, predicted_mu.abs().max().item())
+            max_target_mu = max(max_target_mu, target_mu.abs().max().item())
+            count += current
+    print(json.dumps({
+        "checkpoint": args.checkpoint,
+        "method": "A2_free_center_image_trained",
+        "representation": "original_grid_P1",
+        "control_side": args.side,
+        "control_vertices": mesh.n_vertices,
+        "control_faces": mesh.n_faces,
+        "image_side": args.image_side,
+        "image_queries": args.image_side**2,
+        "test_count": count,
+        "batch": args.batch,
+        "test_seed": 99317,
+        "dtype": "float32",
+        "device": str(device),
+        "heldout_image_mse": image_error_sum / count,
+        "heldout_pixel_query_map_rmse": math.sqrt(pixel_map_error_sum / count),
+        "heldout_face_centroid_map_rmse": math.sqrt(face_map_error_sum / count),
+        "heldout_face_jacobian_component_rmse": math.sqrt(jacobian_error_sum / count),
+        "heldout_source_area_weighted_beltrami_rmse": math.sqrt(mu_error_sum / count),
+        "minimum_source_normalized_face_area": min_area,
+        "minimum_face_jacobian_determinant": min_determinant,
+        "maximum_predicted_beltrami_modulus": max_predicted_mu,
+        "maximum_target_beltrami_modulus": max_target_mu,
+        "evaluation_seconds": time.perf_counter() - began,
+    }, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()

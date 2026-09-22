@@ -29,7 +29,9 @@ from qcopt.neural_bijection.dense import (
 from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 
 
-def make_dataset(count: int, image_side: int, seed: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+def make_dataset(
+    count: int, image_side: int, seed: int, *, return_coefficients: bool = False
+) -> tuple[torch.Tensor, ...]:
     """Make independent textures with uniformly bounded, boundary-fixed maps."""
     generator = torch.Generator(device="cpu").manual_seed(seed)
     line = torch.linspace(0.0, 1.0, image_side)
@@ -57,6 +59,9 @@ def make_dataset(count: int, image_side: int, seed: int) -> tuple[torch.Tensor, 
     true_map = torch.stack((xx + disp_x, yy + disp_y), dim=-1)
     moving = texture[:, None].contiguous()
     fixed = F.grid_sample(moving, 2 * true_map - 1, mode="bilinear", padding_mode="border", align_corners=True).detach()
+    if return_coefficients:
+        coefficients = torch.cat((ax, ay, af), dim=-1).reshape(count, 3)
+        return fixed, moving, true_map, coefficients
     return fixed, moving, true_map
 
 
@@ -66,6 +71,19 @@ def _rss_bytes() -> int | None:
         return int(psutil.Process(os.getpid()).memory_info().rss)
     except ImportError:
         return None
+
+
+def _edge_strain(control: torch.Tensor) -> torch.Tensor:
+    """Mean squared fine-edge derivative of F-id; no target map is consulted."""
+    scale = control.shape[1] - 1
+    horizontal = scale * (control[:, :, 1:] - control[:, :, :-1])
+    vertical = scale * (control[:, 1:] - control[:, :-1])
+    identity_horizontal = horizontal.new_tensor((1.0, 0.0))
+    identity_vertical = vertical.new_tensor((0.0, 1.0))
+    return 0.5 * (
+        (horizontal - identity_horizontal).square().sum(dim=-1).mean()
+        + (vertical - identity_vertical).square().sum(dim=-1).mean()
+    )
 
 
 class ConvexQuadImageEncoder(torch.nn.Module):
@@ -121,11 +139,14 @@ def main() -> None:
     parser.add_argument("--batch", type=int, default=2)
     parser.add_argument("--steps", type=int, default=1000)
     parser.add_argument("--learning-rate", type=float, default=0.003)
+    parser.add_argument("--strain-weight", type=float, default=0.0)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--save-state", default=None)
     args = parser.parse_args()
-    if min(args.side, args.image_side, args.train_count, args.test_count, args.batch, args.steps) < 1:
+    if min(args.side, args.image_side, args.train_count, args.test_count, args.batch, args.steps) < 1 or args.strain_weight < 0:
         raise ValueError("all dimensions, counts and steps must be positive")
+    if args.strain_weight and args.method != "A2":
+        raise ValueError("the current strain ablation is defined only for A2")
     torch.manual_seed(20260923)
     device = torch.device(args.device)
     train = tuple(t.to(device) for t in make_dataset(args.train_count, args.image_side, 55101))
@@ -174,6 +195,7 @@ def main() -> None:
     def evaluate(dataset: tuple[torch.Tensor, ...]) -> dict[str, object]:
         image_sum = 0.0
         map_sum = 0.0
+        strain_sum = 0.0
         minimum = [float("inf")] * (2 if args.method == "AB2" else 1)
         count = dataset[0].shape[0]
         for start in range(0, count, args.batch):
@@ -183,13 +205,18 @@ def main() -> None:
             assert map_mse is not None
             image_sum += image_mse.item() * (stop - start)
             map_sum += map_mse.item() * (stop - start)
+            if args.method == "A2":
+                strain_sum += _edge_strain(controls[0]).item() * (stop - start)
             for index, control in enumerate(controls):
                 minimum[index] = min(minimum[index], _minimum_area_ratio(control))
-        return {
+        result = {
             "image_mse": image_sum / count,
             "map_rmse": math.sqrt(map_sum / count),
             "minimum_layer_signed_area_ratios": minimum,
         }
+        if args.method == "A2":
+            result["edge_strain_energy"] = strain_sum / count
+        return result
 
     initial_train = evaluate(train)
     initial_test = evaluate(test)
@@ -206,11 +233,12 @@ def main() -> None:
         draw = torch.randint(args.train_count, (args.batch,), generator=train_generator).to(device)
         optimizer.zero_grad(set_to_none=True)
         began = time.perf_counter()
-        image_mse, _, _ = forward(draw, train, measure_map_error=False)
+        image_mse, _, controls = forward(draw, train, measure_map_error=False)
+        total_loss = image_mse + args.strain_weight * _edge_strain(controls[0]) if args.strain_weight else image_mse
         if device.type == "cuda":
             torch.cuda.synchronize(device)
         middle = time.perf_counter()
-        image_mse.backward()
+        total_loss.backward()
         if device.type == "cuda":
             torch.cuda.synchronize(device)
         after_backward = time.perf_counter()
@@ -221,7 +249,12 @@ def main() -> None:
             current_rss = _rss_bytes()
             if current_rss is not None:
                 peak_rss = max(peak_rss or 0, current_rss)
-            records.append({"step": step + 1, "sampled_train_image_mse_before_update": image_mse.item(), "cumulative_seconds": time.perf_counter() - began_all})
+            records.append({
+                "step": step + 1,
+                "sampled_train_image_mse_before_update": image_mse.item(),
+                "sampled_train_total_objective_before_update": total_loss.item(),
+                "cumulative_seconds": time.perf_counter() - began_all,
+            })
     total_seconds = time.perf_counter() - began_all
     final_train = evaluate(train)
     final_test = evaluate(test)
@@ -244,6 +277,7 @@ def main() -> None:
         "batch": args.batch,
         "steps": args.steps,
         "learning_rate": args.learning_rate,
+        "strain_weight": args.strain_weight,
         "device": str(device),
         "device_name": torch.cuda.get_device_name(device) if device.type == "cuda" else platform.processor(),
         "torch_version": torch.__version__,
