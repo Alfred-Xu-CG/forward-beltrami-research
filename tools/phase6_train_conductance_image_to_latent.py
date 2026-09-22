@@ -17,7 +17,7 @@ from phase6_evaluate_heldout_beltrami import _mu, _target_on_faces
 from phase6_train_image_to_latent import _minimum_area_ratio, _synthetic_pair
 from phase6_train_multisample_image import make_dataset
 from qcopt.mesh import structured_rectangle
-from qcopt.neural_bijection.dense import ExactBlockSchurTutteLayer, SparseEdgeWoodburyTutteLayer
+from qcopt.neural_bijection.dense import ExactBlockSchurTutteLayer, ReusableInterfaceSchurTutteLayer, SparseEdgeWoodburyTutteLayer
 from qcopt.neural_bijection.dense import evaluate_structured_p1_with_jacobian
 from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 from qcopt.neural_bijection.tutte.symmetric import MatrixFreeSymmetricTutteLayer
@@ -52,7 +52,7 @@ class MultiscaleEdgeImageEncoder(torch.nn.Module):
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--solver", choices=("schur", "woodbury"), required=True)
+    parser.add_argument("--solver", choices=("schur", "interface", "woodbury"), required=True)
     parser.add_argument("--side", type=int, default=257)
     parser.add_argument("--image-side", type=int, default=512)
     parser.add_argument("--patch-cells", type=int, default=16)
@@ -68,8 +68,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.record_every < 1:
         raise ValueError("record-every must be positive")
-    if args.solver == "schur" and args.device != "cpu":
-        raise ValueError("the current exact Schur implementation supports CPU only")
+    if args.solver in ("schur", "interface") and args.device != "cpu":
+        raise ValueError("the current exact Schur implementations support CPU only")
     torch.manual_seed(20260923)
     device = torch.device(args.device)
     mesh = structured_rectangle(args.side - 1, args.side - 1)
@@ -78,6 +78,9 @@ def main() -> None:
     if args.solver == "schur":
         solver = ExactBlockSchurTutteLayer(mesh, args.patch_cells)
         active_edges = reference.active_edges
+    elif args.solver == "interface":
+        solver = ReusableInterfaceSchurTutteLayer(mesh, args.patch_cells)
+        active_edges = reference.active_edges[solver.variable_edge_indices]
     else:
         selected = regular_selected_edges(args.side, args.woodbury_cells_per_axis) if args.edge_pattern == "lattice" else cut_selected_edges(args.side)
         solver = SparseEdgeWoodburyTutteLayer(mesh, selected).to(device=device, dtype=torch.float32)
@@ -98,7 +101,7 @@ def main() -> None:
 
     def evaluate() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         logits = encoder(pair)
-        control = solver(logits.double() if args.solver == "schur" else logits).float()
+        control = solver(logits.double() if args.solver in ("schur", "interface") else logits).float()
         queries = table.interpolate(control)
         warped = F.grid_sample(moving, 2.0 * queries - 1.0, mode="bilinear", padding_mode="border", align_corners=True)
         return (warped - fixed).square().mean(), queries, control
@@ -164,7 +167,7 @@ def main() -> None:
         torch.save({"encoder": encoder.state_dict(), "args": vars(args)}, args.save_state)
     print(json.dumps({
         "route": "C",
-        "method": "all_edge_exact_block_schur" if args.solver == "schur" else "selected_edge_woodbury",
+        "method": {"schur": "all_edge_exact_block_schur", "interface": "reusable_interface_schur", "woodbury": "selected_edge_woodbury"}[args.solver],
         "edge_pattern": args.edge_pattern if args.solver == "woodbury" else None,
         "target_kind": args.target_kind,
         "control_side": args.side,
@@ -180,7 +183,7 @@ def main() -> None:
         "learning_rate": args.learning_rate,
         "device": str(device),
         "device_name": torch.cuda.get_device_name(device) if device.type == "cuda" else platform.processor(),
-        "solver_precision": "float64" if args.solver == "schur" else "float32",
+        "solver_precision": "float64" if args.solver in ("schur", "interface") else "float32",
         "torch_version": torch.__version__,
         "initial_image_mse": initial_loss,
         "final_image_mse": final_loss.item(),
@@ -189,8 +192,8 @@ def main() -> None:
         "initial_process_rss_bytes": initial_rss,
         "maximum_observed_process_rss_bytes": maximum_rss,
         "peak_cuda_allocated_bytes": torch.cuda.max_memory_allocated(device) if device.type == "cuda" else None,
-        "solver_setup_seconds": solver.setup_seconds if args.solver == "woodbury" else None,
-        "last_solver_relative_residual": solver.last_forward_stats[0].relative_residual if args.solver == "schur" else None,
+        "solver_setup_seconds": solver.setup_seconds if args.solver == "woodbury" else solver.precompute_seconds if args.solver == "interface" else None,
+        "last_solver_relative_residual": solver.last_forward_stats[0].relative_residual if args.solver in ("schur", "interface") else None,
         "step_records": records,
         "first_head_gradient_norms": first_head_gradient_norms,
         "qc_geometry": qc_geometry,

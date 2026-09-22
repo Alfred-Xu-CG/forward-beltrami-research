@@ -13,7 +13,7 @@ import psutil
 import torch
 
 from qcopt.mesh import structured_rectangle
-from qcopt.neural_bijection.dense import ExactBlockSchurTutteLayer
+from qcopt.neural_bijection.dense import ExactBlockSchurTutteLayer, ReusableInterfaceSchurTutteLayer
 from qcopt.neural_bijection.tutte.symmetric import MatrixFreeSymmetricTutteLayer
 
 
@@ -24,14 +24,17 @@ def main() -> None:
     parser.add_argument("--batch", type=int, default=1)
     parser.add_argument("--repeat", type=int, default=1)
     parser.add_argument("--oracle", action="store_true")
+    parser.add_argument("--solver", choices=("all_edge", "reusable_interface"), default="all_edge")
     args = parser.parse_args()
     if args.batch < 1 or args.repeat < 1:
         raise ValueError("batch and repeat must be positive")
     torch.manual_seed(20260923)
     mesh = structured_rectangle(args.side - 1, args.side - 1)
-    layer = ExactBlockSchurTutteLayer(mesh, args.patch_cells)
+    layer = (ExactBlockSchurTutteLayer(mesh, args.patch_cells) if args.solver == "all_edge"
+             else ReusableInterfaceSchurTutteLayer(mesh, args.patch_cells))
     reference = MatrixFreeSymmetricTutteLayer(mesh)
-    midpoint = mesh.vertices[reference.active_edges].mean(axis=1)
+    active_edges = reference.active_edges if args.solver == "all_edge" else reference.active_edges[layer.variable_edge_indices]
+    midpoint = mesh.vertices[active_edges].mean(axis=1)
     x, y = midpoint[:, 0], midpoint[:, 1]
     coarse = 0.4 * np.sin(2 * math.pi * x) * np.sin(2 * math.pi * y)
     localized = 0.6 * np.exp(-((x - 0.42) ** 2 + (y - 0.61) ** 2) / 0.015)
@@ -71,11 +74,15 @@ def main() -> None:
         peak_rss = max(peak_rss, process.memory_info().rss)
     print(json.dumps({
         "route": "C",
-        "method": "exact_patch_interior_Schur",
+        "method": "exact_patch_interior_Schur" if args.solver == "all_edge" else "reusable_interface_Schur",
         "control_side": args.side,
         "control_vertices": mesh.n_vertices,
         "control_faces": mesh.n_faces,
         "active_edges": layer.n_conductances,
+        "learned_edges": layer.n_conductances if args.solver == "all_edge" else layer.n_variable_edges,
+        "interface_vertices": len(layer._interface),
+        "precompute_seconds": layer.precompute_seconds if args.solver == "reusable_interface" else None,
+        "precomputed_bytes": layer.precomputed_bytes if args.solver == "reusable_interface" else None,
         "patch_cells": args.patch_cells,
         "patch_count": len(layer._blocks),
         "batch": args.batch,
