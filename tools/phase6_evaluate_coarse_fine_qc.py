@@ -9,9 +9,8 @@ import math
 import torch
 
 from phase6_evaluate_heldout_beltrami import _mu, _target_on_faces
-from phase6_train_image_to_latent import _minimum_area_ratio
 from qcopt.mesh import structured_rectangle
-from qcopt.neural_bijection.dense import HierarchicalConvexQuadFreeCenterLayer, evaluate_structured_p1_with_jacobian
+from qcopt.neural_bijection.dense import HierarchicalConvexQuadFreeCenterLayer, certify_convex_quad_output, evaluate_structured_p1_with_jacobian
 
 
 def _decode(parameters, side: int, offset: int):
@@ -73,7 +72,7 @@ def evaluate(checkpoint: str, batch_faces: int) -> dict:
         "fine_control_vertices": side**2,
         "fine_control_faces": count,
         "sampled_query_count": count,
-        "factor_minimum_signed_area_ratios": [_minimum_area_ratio(coarse), _minimum_area_ratio(fine)],
+        "factor_minimum_signed_area_ratios": [certify_convex_quad_output(coarse), certify_convex_quad_output(fine)],
         "source_centroid_map_rmse": math.sqrt(map_squared / (2 * count)),
         "source_centroid_beltrami_rmse": math.sqrt(mu_squared / count),
         "sampled_target_P1_centroid_beltrami_floor": math.sqrt(floor_squared / count),

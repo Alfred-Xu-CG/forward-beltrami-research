@@ -10,10 +10,9 @@ import torch
 import torch.nn.functional as F
 
 from phase6_evaluate_heldout_beltrami import _mu, _target_on_faces
-from phase6_train_image_to_latent import _minimum_area_ratio
 from phase6_train_multisample_image import CoarseFineConvexQuadImageEncoder, make_dataset
 from qcopt.mesh import structured_rectangle
-from qcopt.neural_bijection.dense import CoarseFineConvexQuadComposition, evaluate_structured_p1_with_jacobian
+from qcopt.neural_bijection.dense import CoarseFineConvexQuadComposition, certify_convex_quad_output, evaluate_structured_p1_with_jacobian
 
 
 def evaluate(checkpoint: str, batch: int, device: str) -> dict:
@@ -28,6 +27,7 @@ def evaluate(checkpoint: str, batch: int, device: str) -> dict:
     cycles = 8 if family == "base" else 32
     encoder = CoarseFineConvexQuadImageEncoder(
         coarse_side, side,
+        width=args.get("a2_width", 8),
         head_mode=args.get("a2_head_mode", "multilevel"),
         body_mode=args.get("a2_body_mode", "local"),
     ).to(device)
@@ -56,7 +56,7 @@ def evaluate(checkpoint: str, batch: int, device: str) -> dict:
             coarse_latent, fine_latent = encoder(pair)
             result = decoder(*coarse_latent, *fine_latent)
             for index, control in enumerate(result.controls):
-                minimum_areas[index] = min(minimum_areas[index], _minimum_area_ratio(control))
+                minimum_areas[index] = min(minimum_areas[index], certify_convex_quad_output(control))
             warped = F.grid_sample(moving[start:stop], 2 * result.dense - 1, mode="bilinear", padding_mode="border", align_corners=True)
             image_sum += (warped - fixed[start:stop]).square().mean().item() * current
             pixel_map_sum += (result.dense - true_map[start:stop]).square().mean().item() * current

@@ -175,10 +175,10 @@ class ConvexQuadImageEncoder(torch.nn.Module):
 class CoarseFineConvexQuadImageEncoder(torch.nn.Module):
     """Separate image heads for the coarse and fine exact-composition factors."""
 
-    def __init__(self, coarse_side: int, fine_side: int, *, head_mode: str, body_mode: str) -> None:
+    def __init__(self, coarse_side: int, fine_side: int, *, width: int = 8, head_mode: str, body_mode: str) -> None:
         super().__init__()
-        self.coarse = ConvexQuadImageEncoder(coarse_side, head_mode=head_mode, body_mode=body_mode)
-        self.fine = ConvexQuadImageEncoder(fine_side, head_mode=head_mode, body_mode=body_mode)
+        self.coarse = ConvexQuadImageEncoder(coarse_side, width=width, head_mode=head_mode, body_mode=body_mode)
+        self.fine = ConvexQuadImageEncoder(fine_side, width=width, head_mode=head_mode, body_mode=body_mode)
 
     def forward(self, pair: torch.Tensor):
         return self.coarse(pair), self.fine(pair)
@@ -198,13 +198,14 @@ def main() -> None:
     parser.add_argument("--strain-weight", type=float, default=0.0)
     parser.add_argument("--a2-head-mode", choices=("multilevel", "shared"), default="multilevel")
     parser.add_argument("--a2-body-mode", choices=("local", "context"), default="local")
+    parser.add_argument("--a2-width", type=int, default=8)
     parser.add_argument("--oracle-map-loss", action="store_true", help="diagnostic target-map supervision; not image-only training")
     parser.add_argument("--target-family", choices=("base", "high32"), default="base")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--save-state", default=None)
     parser.add_argument("--load-state", default=None, help="warm-start encoder weights; Adam state is restarted")
     args = parser.parse_args()
-    if min(args.side, args.image_side, args.train_count, args.test_count, args.batch, args.steps) < 1 or args.strain_weight < 0:
+    if min(args.side, args.image_side, args.train_count, args.test_count, args.batch, args.steps, args.a2_width) < 1 or args.strain_weight < 0:
         raise ValueError("all dimensions, counts and steps must be positive")
     if args.strain_weight and args.method != "A2":
         raise ValueError("the current strain ablation is defined only for A2")
@@ -212,6 +213,8 @@ def main() -> None:
         raise ValueError("a2-head-mode applies only to A2 or CF2")
     if args.a2_body_mode != "local" and args.method not in ("A2", "CF2"):
         raise ValueError("a2-body-mode applies only to A2 or CF2")
+    if args.a2_width != 8 and args.method not in ("A2", "CF2"):
+        raise ValueError("a2-width applies only to A2 or CF2")
     if args.oracle_map_loss and args.method != "A2":
         raise ValueError("the oracle-map-loss diagnostic is defined only for A2")
     torch.manual_seed(20260923)
@@ -228,11 +231,11 @@ def main() -> None:
         encoder = SmallImageEncoder(args.side).to(device)
         decoder = MultiscaleMonotoneGridLayer(args.side)
     elif args.method == "A2":
-        encoder = ConvexQuadImageEncoder(args.side, head_mode=args.a2_head_mode, body_mode=args.a2_body_mode).to(device)
+        encoder = ConvexQuadImageEncoder(args.side, width=args.a2_width, head_mode=args.a2_head_mode, body_mode=args.a2_body_mode).to(device)
         decoder = HierarchicalConvexQuadFreeCenterLayer(args.side)
     elif args.method == "CF2":
         encoder = CoarseFineConvexQuadImageEncoder(
-            args.coarse_side, args.side, head_mode=args.a2_head_mode, body_mode=args.a2_body_mode
+            args.coarse_side, args.side, width=args.a2_width, head_mode=args.a2_head_mode, body_mode=args.a2_body_mode
         ).to(device)
         decoder = CoarseFineConvexQuadComposition(args.coarse_side, args.side, args.image_side)
         decoder.prepare(device=device, dtype=torch.float32)
@@ -243,8 +246,8 @@ def main() -> None:
     if args.load_state:
         previous = torch.load(args.load_state, map_location=device, weights_only=False)
         previous_args = previous["args"]
-        defaults = {"target_family": "base", "coarse_side": 17, "a2_head_mode": "multilevel", "a2_body_mode": "local"}
-        for key in ("method", "side", "coarse_side", "image_side", "target_family", "a2_head_mode", "a2_body_mode"):
+        defaults = {"target_family": "base", "coarse_side": 17, "a2_head_mode": "multilevel", "a2_body_mode": "local", "a2_width": 8}
+        for key in ("method", "side", "coarse_side", "image_side", "target_family", "a2_head_mode", "a2_body_mode", "a2_width"):
             if previous_args.get(key, defaults.get(key)) != getattr(args, key):
                 raise ValueError(f"loaded checkpoint does not match {key}")
         encoder.load_state_dict(previous["encoder"])
@@ -372,6 +375,7 @@ def main() -> None:
         "strain_weight": args.strain_weight,
         "a2_head_mode": args.a2_head_mode if args.method in ("A2", "CF2") else None,
         "a2_body_mode": args.a2_body_mode if args.method in ("A2", "CF2") else None,
+        "a2_width": args.a2_width if args.method in ("A2", "CF2") else None,
         "oracle_map_loss": args.oracle_map_loss,
         "target_family": args.target_family,
         "loaded_state": args.load_state,

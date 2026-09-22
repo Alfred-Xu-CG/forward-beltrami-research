@@ -68,6 +68,7 @@ def main() -> None:
     fine_cycles = 8 if target_family == "base" else 32
     encoder = ConvexQuadImageEncoder(
         args.side,
+        width=state["args"].get("a2_width", 8),
         head_mode=state["args"].get("a2_head_mode", "multilevel"),
         body_mode=state["args"].get("a2_body_mode", "local"),
     ).to(device)
