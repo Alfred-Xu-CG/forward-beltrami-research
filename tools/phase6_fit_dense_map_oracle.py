@@ -56,6 +56,7 @@ def main() -> None:
     parser.add_argument("--method", choices=("single_vertical", "single_horizontal", "alternating", "patches", "convex_quad", "convex_quad_free", "convex_quad_coarse_fine"), required=True)
     parser.add_argument("--side", type=int, default=257)
     parser.add_argument("--coarse-side", type=int, default=17)
+    parser.add_argument("--train-factor", choices=("both", "coarse", "fine"), default="both")
     parser.add_argument("--layers", type=int, choices=(2, 4), default=2)
     parser.add_argument("--patch-cells", type=int, default=16)
     parser.add_argument("--steps", type=int, default=1000)
@@ -65,6 +66,8 @@ def main() -> None:
     parser.add_argument("--save-state", default=None)
     parser.add_argument("--load-state", default=None, help="warm-start latent tensors; Adam state restarts")
     args = parser.parse_args()
+    if args.train_factor != "both" and args.method != "convex_quad_coarse_fine":
+        raise ValueError("train-factor applies only to convex_quad_coarse_fine")
     torch.manual_seed(20260923)
     device = torch.device(args.device)
     dtype = torch.float32
@@ -190,7 +193,15 @@ def main() -> None:
                 if parameter.shape != prior.shape:
                     raise ValueError("loaded latent tensor shape mismatch")
                 parameter.copy_(prior)
-    optimizer = torch.optim.Adam(parameters, lr=args.learning_rate)
+    if args.method == "convex_quad_coarse_fine":
+        split = 1 + 3 * len(decoder.coarse.latent_sides)
+        train_parameters = parameters[:split] if args.train_factor == "coarse" else parameters[split:] if args.train_factor == "fine" else parameters
+    else:
+        train_parameters = parameters
+    active_ids = {id(parameter) for parameter in train_parameters}
+    for parameter in parameters:
+        parameter.requires_grad_(id(parameter) in active_ids)
+    optimizer = torch.optim.Adam(train_parameters, lr=args.learning_rate)
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(device)
     begin = time.perf_counter()
@@ -219,6 +230,7 @@ def main() -> None:
             "side": side,
             "layers": 1 if args.method.startswith("single_") or args.method in ("convex_quad", "convex_quad_free") else 2 if args.method == "convex_quad_coarse_fine" else args.layers,
             "coarse_side": args.coarse_side if args.method == "convex_quad_coarse_fine" else None,
+            "train_factor": args.train_factor if args.method == "convex_quad_coarse_fine" else None,
             "patch_cells": args.patch_cells if args.method == "patches" else None,
             "parameters": [parameter.detach().cpu().clone() for parameter in parameters],
         }, args.save_state)
@@ -234,6 +246,7 @@ def main() -> None:
         "query_count": side**2,
         "layers": 1 if args.method.startswith("single_") or args.method in ("convex_quad", "convex_quad_free") else 2 if args.method == "convex_quad_coarse_fine" else args.layers,
         "coarse_side": args.coarse_side if args.method == "convex_quad_coarse_fine" else None,
+        "train_factor": args.train_factor if args.method == "convex_quad_coarse_fine" else None,
         "patch_cells": args.patch_cells if args.method == "patches" else None,
         "latent_values": sum(parameter.numel() for parameter in parameters),
         "steps": args.steps,
