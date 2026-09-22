@@ -12,7 +12,7 @@ import psutil
 import torch
 import torch.nn.functional as F
 
-from phase6_benchmark_edge_woodbury import regular_selected_edges
+from phase6_benchmark_edge_woodbury import cut_selected_edges, regular_selected_edges
 from phase6_train_image_to_latent import _minimum_area_ratio, _synthetic_pair
 from qcopt.mesh import structured_rectangle
 from qcopt.neural_bijection.dense import ExactBlockSchurTutteLayer, SparseEdgeWoodburyTutteLayer
@@ -54,6 +54,7 @@ def main() -> None:
     parser.add_argument("--image-side", type=int, default=512)
     parser.add_argument("--patch-cells", type=int, default=16)
     parser.add_argument("--woodbury-cells-per-axis", type=int, default=16)
+    parser.add_argument("--edge-pattern", choices=("lattice", "cut"), default="lattice")
     parser.add_argument("--batch", type=int, default=1)
     parser.add_argument("--steps", type=int, default=50)
     parser.add_argument("--learning-rate", type=float, default=0.003)
@@ -71,7 +72,7 @@ def main() -> None:
         solver = ExactBlockSchurTutteLayer(mesh, args.patch_cells)
         active_edges = reference.active_edges
     else:
-        selected = regular_selected_edges(args.side, args.woodbury_cells_per_axis)
+        selected = regular_selected_edges(args.side, args.woodbury_cells_per_axis) if args.edge_pattern == "lattice" else cut_selected_edges(args.side)
         solver = SparseEdgeWoodburyTutteLayer(mesh, selected).to(device=device, dtype=torch.float32)
         active_edges = reference.active_edges[selected]
     encoder = MultiscaleEdgeImageEncoder(args.side, mesh.vertices[active_edges].mean(axis=1)).to(device)
@@ -127,6 +128,7 @@ def main() -> None:
     print(json.dumps({
         "route": "C",
         "method": "all_edge_exact_block_schur" if args.solver == "schur" else "selected_edge_woodbury",
+        "edge_pattern": args.edge_pattern if args.solver == "woodbury" else None,
         "target_kind": args.target_kind,
         "control_side": args.side,
         "control_vertices": mesh.n_vertices,

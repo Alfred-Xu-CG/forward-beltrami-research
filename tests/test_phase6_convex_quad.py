@@ -111,3 +111,13 @@ def test_free_center_directional_vjp_matches_finite_difference() -> None:
     minus = (layer(minus_inputs[0], ((minus_inputs[1], minus_inputs[2], minus_inputs[3]),)) * weight).sum()
     observed = (plus - minus) / (2 * step)
     assert torch.allclose(predicted, observed, rtol=1e-7, atol=1e-9)
+
+
+def test_standalone_certificate_rejects_coordinates_outside_unit_square() -> None:
+    layer = HierarchicalConvexQuadFreeCenterLayer(5)
+    root = torch.zeros(1, 1, 1, 2)
+    latents = ((torch.zeros(1, 3, 2), torch.zeros(1, 2, 3), torch.zeros(1, 2, 2, 2)),)
+    control = layer(root, latents).clone()
+    control[0, 2, 2, 0] = 2.0
+    with pytest.raises(ValueError, match="outside the unit square"):
+        certify_convex_quad_output(control)

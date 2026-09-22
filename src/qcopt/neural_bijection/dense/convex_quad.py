@@ -96,8 +96,11 @@ def certify_convex_quad_output(control: torch.Tensor) -> float:
     side = control.shape[1]
     if not torch.isfinite(control).all().item():
         raise ValueError("nonfinite output coordinate")
+    if not torch.all((control >= 0.0) & (control <= 1.0)).item():
+        raise ValueError("represented output lies outside the unit square")
     # Evaluate orientation in float64 even when the returned coordinates are
-    # float32, and demand a margin above elementary roundoff at unit scale.
+    # float32, and demand a margin above elementary roundoff at the explicitly
+    # checked unit scale. This is a numerical filter, not exact-predicate proof.
     represented = control.to(torch.float64)
     a = represented[:, :-1, :-1]
     b = represented[:, :-1, 1:]

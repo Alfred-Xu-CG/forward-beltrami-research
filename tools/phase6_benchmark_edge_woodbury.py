@@ -31,6 +31,18 @@ def regular_selected_edges(side: int, cells_per_axis: int) -> np.ndarray:
     return np.asarray(indices, dtype=np.int64)
 
 
+def cut_selected_edges(side: int) -> np.ndarray:
+    """Pick one diagonal crossing every cell in the middle horizontal row."""
+    mesh = structured_rectangle(side - 1, side - 1)
+    reference = MatrixFreeSymmetricTutteLayer(mesh)
+    lookup = {tuple(edge): i for i, edge in enumerate(reference.active_edges)}
+    y = (side - 1) // 2
+    return np.asarray(
+        [lookup[(y * side + x, (y + 1) * side + x + 1)] for x in range(side - 1)],
+        dtype=np.int64,
+    )
+
+
 def _sync(device: torch.device) -> None:
     if device.type == "cuda":
         torch.cuda.synchronize(device)
@@ -40,6 +52,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--side", type=int, default=257)
     parser.add_argument("--cells-per-axis", type=int, default=8)
+    parser.add_argument("--edge-pattern", choices=("lattice", "cut"), default="lattice")
     parser.add_argument("--batch", type=int, default=1)
     parser.add_argument("--repeat", type=int, default=5)
     parser.add_argument("--device", default="cpu")
@@ -52,7 +65,7 @@ def main() -> None:
     dtype = getattr(torch, args.dtype)
     device = torch.device(args.device)
     mesh = structured_rectangle(args.side - 1, args.side - 1)
-    selected = regular_selected_edges(args.side, args.cells_per_axis)
+    selected = regular_selected_edges(args.side, args.cells_per_axis) if args.edge_pattern == "lattice" else cut_selected_edges(args.side)
     layer = SparseEdgeWoodburyTutteLayer(mesh, selected).to(device=device, dtype=dtype)
     logits = (-1.0 + 0.3 * torch.randn(args.batch, layer.rank, device=device, dtype=dtype)).requires_grad_()
     coordinate = torch.as_tensor(np.array(mesh.vertices, copy=True), dtype=dtype, device=device)
@@ -94,6 +107,7 @@ def main() -> None:
     print(json.dumps({
         "route": "C",
         "method": "fine_grid_positive_edge_woodbury",
+        "edge_pattern": args.edge_pattern,
         "control_side": args.side,
         "control_vertices": mesh.n_vertices,
         "control_faces": mesh.n_faces,
