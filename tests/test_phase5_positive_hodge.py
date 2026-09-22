@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+from itertools import permutations
 import json
 import math
 from pathlib import Path
@@ -15,6 +16,7 @@ np.linalg.cond(np.eye(1, dtype=np.float64))
 
 import torch
 
+import qcopt.neural_bijection.tutte.positive_hodge as positive_hodge_module
 from qcopt.neural_bijection.metrics import compute_p1_map_metrics
 from qcopt.neural_bijection.tutte.positive_hodge import (
     LearnedPositiveDirectionMap,
@@ -169,6 +171,56 @@ def test_redundant_direction_nnls_uses_unique_minimum_norm_tie_break() -> None:
     restored = np.empty_like(permuted.conductances)
     restored[permutation] = permuted.conductances
     np.testing.assert_allclose(restored, expected, rtol=0.0, atol=2.0e-12)
+
+
+def test_canonical_nnls_resolves_near_tied_supports_permutation_equivariantly() -> None:
+    directions = build_center_split_square_graph(2).direction_angles
+    lower = 1.0e-6 + 1.0e-10
+    perturbation = 1.0e-7
+    first_diagonal = math.sqrt(3.0 + 4.0 * (lower + perturbation) ** 2) - 2.0 * (
+        lower + perturbation
+    )
+    second_diagonal = 1.0 / first_diagonal
+    tensor = np.diag([first_diagonal, second_diagonal])
+    assert np.linalg.det(tensor) == pytest.approx(1.0, rel=0.0, abs=2.0e-15)
+    shared_diagonal = (first_diagonal + second_diagonal) / 4.0
+    expected = np.asarray(
+        [
+            first_diagonal - shared_diagonal,
+            shared_diagonal,
+            second_diagonal - shared_diagonal,
+            shared_diagonal,
+        ],
+        dtype=np.float64,
+    )
+    canonical = fit_direction_tensor_nnls(tensor, directions)
+    np.testing.assert_allclose(canonical.conductances, expected, rtol=0.0, atol=2.0e-12)
+
+    for permutation_tuple in permutations(range(4)):
+        permutation = np.asarray(permutation_tuple, dtype=np.int64)
+        permuted = fit_direction_tensor_nnls(tensor, directions[permutation])
+        restored = np.empty_like(permuted.conductances)
+        restored[permutation] = permuted.conductances
+        np.testing.assert_allclose(restored, expected, rtol=0.0, atol=2.0e-12)
+        np.testing.assert_allclose(
+            restored,
+            canonical.conductances,
+            rtol=0.0,
+            atol=2.0e-13,
+        )
+
+
+def test_canonical_nnls_rejects_a_non_unit_trace_dictionary() -> None:
+    design = np.asarray(
+        [[1.0, 0.0], [0.0, 0.0], [0.0, 2.0]],
+        dtype=np.float64,
+    )
+    with pytest.raises(ValueError, match="unit-direction trace identity"):
+        positive_hodge_module._verified_nnls(
+            design,
+            np.asarray([1.0, 0.0, 1.0], dtype=np.float64),
+            conductance_offset=np.full(2, 1.0e-6, dtype=np.float64),
+        )
 
 
 def test_stellar_nnls_cycling_phase_has_verified_active_set_fallback() -> None:

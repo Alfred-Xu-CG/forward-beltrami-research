@@ -408,21 +408,41 @@ def _verified_nnls(
 
     All supports are enumerated.  On each support ``lstsq`` returns the
     minimum-norm least-squares coefficients, and the global candidate is
-    screened by the primary NNLS KKT conditions.  The secondary objective is
-    strictly convex, so its optimizer is unique.  Exhaustive enumeration is
-    deliberately limited to the small direction dictionaries used here (at
-    most six columns in the declared graph family); the larger hard limit only
-    prevents an accidental exponential-time call from masquerading as a fast
-    projector.
+    screened by the primary NNLS KKT conditions.  The equivalence to minimum
+    *actual-conductance* norm uses both special facts checked below: the floor
+    is uniform, and every unit-direction column obeys
+    ``D[0,j] + D[2,j] = 1``.  Hence ``D z = 0`` implies ``sum(z) = 0``, so a
+    null-space displacement is orthogonal to the uniform floor.  The secondary
+    objective is strictly convex, so its optimizer is unique.  Exhaustive
+    enumeration is deliberately limited to the small direction dictionaries
+    used here (at most six columns in the declared graph family); the larger
+    hard limit only prevents an accidental exponential-time call from
+    masquerading as a fast projector.
     """
 
+    if design.ndim != 2 or design.shape[0] != 3:
+        raise ValueError("canonical NNLS requires a three-row symmetric-tensor design")
     count = int(design.shape[1])
     if conductance_offset.shape != (count,):
         raise ValueError("conductance_offset must match the design columns")
     if not np.all(conductance_offset == conductance_offset[0]):
         raise ValueError("canonical NNLS requires the uniform conductance floor used here")
+    trace_tolerance = 64.0 * np.finfo(np.float64).eps
+    if not np.allclose(
+        design[0] + design[2],
+        np.ones(count, dtype=np.float64),
+        rtol=0.0,
+        atol=trace_tolerance,
+    ):
+        raise ValueError("canonical NNLS requires the unit-direction trace identity")
     if count > 16:
         raise ValueError("canonical exhaustive NNLS supports at most 16 directions")
+
+    # Enumerate in a content-defined order, not the caller's column order.  A
+    # lexicographic fallback is then permutation equivariant after unpermuting.
+    canonical_order = np.lexsort((design[2], design[1], design[0]))
+    design = design[:, canonical_order]
+    conductance_offset = conductance_offset[canonical_order]
 
     def valid(values: np.ndarray) -> bool:
         tolerance = _nnls_kkt_tolerance(design, target, values)
@@ -460,10 +480,10 @@ def _verified_nnls(
             conductance = conductance_offset + candidate
             conductance_norm_squared = float(conductance @ conductance)
             key = tuple(candidate.tolist())
-            objective_tolerance = 8192.0 * np.finfo(np.float64).eps * max(
+            objective_tolerance = 64.0 * np.finfo(np.float64).eps * max(
                 1.0, best_objective if math.isfinite(best_objective) else 1.0, objective
             )
-            norm_tolerance = 8192.0 * np.finfo(np.float64).eps * max(
+            norm_tolerance = 8.0 * np.finfo(np.float64).eps * max(
                 1.0,
                 best_conductance_norm_squared
                 if math.isfinite(best_conductance_norm_squared)
@@ -495,7 +515,9 @@ def _verified_nnls(
                 best_key = key
     if best_values is None or not valid(best_values):
         raise RuntimeError("exhaustive active-set NNLS failed its KKT verification")
-    return best_values, "exhaustive_primary_then_minimum_conductance_norm_nnls_verified"
+    restored = np.empty_like(best_values)
+    restored[canonical_order] = best_values
+    return restored, "exhaustive_primary_then_minimum_conductance_norm_nnls_verified"
 
 
 def fit_direction_tensor_nnls(
