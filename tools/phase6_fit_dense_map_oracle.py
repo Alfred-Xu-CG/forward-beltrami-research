@@ -50,6 +50,7 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=1000)
     parser.add_argument("--learning-rate", type=float, default=0.05)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--save-state", default=None)
     args = parser.parse_args()
     torch.manual_seed(20260923)
     device = torch.device(args.device)
@@ -117,6 +118,14 @@ def main() -> None:
         rmse = difference.square().mean().sqrt().item()
         maximum_error = torch.linalg.vector_norm(difference, dim=-1).max().item()
         areas = [_minimum_area_ratio(control) for control in controls]
+    if args.save_state is not None:
+        torch.save({
+            "method": args.method,
+            "side": side,
+            "layers": 1 if args.method.startswith("single_") else args.layers,
+            "patch_cells": args.patch_cells if args.method == "patches" else None,
+            "parameters": [parameter.detach().cpu().clone() for parameter in parameters],
+        }, args.save_state)
     print(json.dumps({
         "task": "direct_latent_map_oracle_not_image_training",
         "method": args.method,
@@ -141,6 +150,7 @@ def main() -> None:
         "minimum_layer_signed_area_ratios": areas,
         "peak_cuda_allocated_bytes": torch.cuda.max_memory_allocated(device) if device.type == "cuda" else None,
         "trajectory_samples": samples,
+        "saved_state": args.save_state,
     }, sort_keys=True))
 
 
