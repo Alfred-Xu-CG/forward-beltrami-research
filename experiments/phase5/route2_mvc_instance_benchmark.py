@@ -475,6 +475,213 @@ def _krylov_report(solver: torch.nn.Module) -> Any:
     }
 
 
+def _represented_dense_system(
+    system,
+    logits: torch.Tensor,
+    boundary: torch.Tensor,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Assemble the CPU-float64 system represented by one logits/boundary pair."""
+
+    logits64 = logits.detach().to(dtype=torch.float64, device="cpu")
+    boundary64 = boundary.detach().to(dtype=torch.float64, device="cpu")
+    valid = torch.as_tensor(system.valid_mask, dtype=torch.bool)
+    probabilities = torch.softmax(
+        logits64.masked_fill(~valid, -torch.inf), dim=-1
+    ).numpy()
+    matrix = np.eye(system.n_rows, dtype=np.float64)
+    rhs = np.zeros((system.n_rows, 2), dtype=np.float64)
+    rows, slots = np.nonzero(system.valid_mask)
+    is_boundary = system.neighbor_is_boundary[rows, slots]
+    interior_rows, interior_slots = rows[~is_boundary], slots[~is_boundary]
+    boundary_rows, boundary_slots = rows[is_boundary], slots[is_boundary]
+    np.add.at(
+        matrix,
+        (
+            interior_rows,
+            system.neighbors[interior_rows, interior_slots],
+        ),
+        -probabilities[interior_rows, interior_slots],
+    )
+    np.add.at(
+        rhs,
+        boundary_rows,
+        probabilities[boundary_rows, boundary_slots, None]
+        * boundary64.numpy()[system.neighbors[boundary_rows, boundary_slots]],
+    )
+    return matrix, rhs
+
+
+def _residual_statistics(
+    matrix: np.ndarray,
+    rhs: np.ndarray,
+    interior: np.ndarray,
+    *,
+    matrix_norm: float,
+) -> dict[str, Any]:
+    residual = rhs - matrix @ interior
+    residual_norms = np.linalg.norm(residual, axis=0)
+    rhs_norms = np.linalg.norm(rhs, axis=0)
+    relative = np.divide(
+        residual_norms,
+        rhs_norms,
+        out=np.where(residual_norms == 0.0, 0.0, np.inf),
+        where=rhs_norms > 0.0,
+    )
+    denominator = matrix_norm * float(np.linalg.norm(interior)) + float(
+        np.linalg.norm(rhs)
+    )
+    joint_scaled_residual = (
+        float(np.linalg.norm(residual)) / denominator
+        if denominator > 0.0
+        else float(np.linalg.norm(residual))
+    )
+    return {
+        "residual_frobenius_norm": float(np.linalg.norm(residual)),
+        "residual_column_norms_2": residual_norms.tolist(),
+        "relative_residuals_2": relative.tolist(),
+        "maximum_relative_residual_2": float(np.max(relative)),
+        "joint_scaled_residual_indicator": joint_scaled_residual,
+    }
+
+
+def _agreement_contract(
+    *,
+    system,
+    logits: torch.Tensor,
+    boundary: torch.Tensor,
+    accepted: torch.Tensor,
+    redecoded: torch.Tensor,
+    authority: torch.Tensor,
+    backend: str,
+    dtype: torch.dtype,
+    condition_dense_limit: int,
+) -> dict[str, Any]:
+    """Residual/conditioning contract against a CPU-float64 direct authority."""
+
+    matrix, rhs = _represented_dense_system(system, logits, boundary)
+    singular_values = np.linalg.svd(matrix, compute_uv=False)
+    largest = float(singular_values[0]) if singular_values.size else 1.0
+    smallest = float(singular_values[-1]) if singular_values.size else 1.0
+    if not math.isfinite(smallest) or smallest <= 0.0:
+        raise ValueError("represented directed system must be nonsingular")
+    inverse_norm = 1.0 / smallest
+    condition = largest / smallest
+    interior = np.asarray(system.interior, dtype=np.int64)
+    accepted_np = accepted.detach().to(dtype=torch.float64, device="cpu").numpy()
+    redecoded_np = redecoded.detach().to(dtype=torch.float64, device="cpu").numpy()
+    authority_np = authority.detach().to(dtype=torch.float64, device="cpu").numpy()
+    accepted_stats = _residual_statistics(
+        matrix, rhs, accepted_np[interior], matrix_norm=largest
+    )
+    redecoded_stats = _residual_statistics(
+        matrix, rhs, redecoded_np[interior], matrix_norm=largest
+    )
+    authority_stats = _residual_statistics(
+        matrix, rhs, authority_np[interior], matrix_norm=largest
+    )
+
+    maximum_degree = int(np.max(np.sum(system.valid_mask, axis=1), initial=0))
+    operation_depth = maximum_degree + 2
+    dtype_roundoff = 32.0 * operation_depth * float(torch.finfo(dtype).eps)
+    authority_roundoff = 32.0 * operation_depth * float(torch.finfo(torch.float64).eps)
+    solver_rtol = (
+        None if backend == "direct" else (1.0e-5 if dtype == torch.float32 else 1.0e-10)
+    )
+    residual_limit = dtype_roundoff + (solver_rtol or 0.0)
+    rhs_column_norms = np.linalg.norm(rhs, axis=0)
+    candidate_residual_allowance = float(
+        np.linalg.norm(residual_limit * rhs_column_norms)
+    )
+    authority_residual_allowance = float(
+        np.linalg.norm(authority_roundoff * rhs_column_norms)
+    )
+    authority_scale = max(1.0, float(np.linalg.norm(authority_np[interior])))
+    output_roundoff_floor = authority_roundoff * authority_scale
+    forward_error_bound = (
+        inverse_norm * (candidate_residual_allowance + authority_residual_allowance)
+        + output_roundoff_floor
+    )
+    pairwise_error_bound = (
+        2.0 * inverse_norm * candidate_residual_allowance + output_roundoff_floor
+    )
+
+    accepted_to_authority = float(
+        np.max(np.linalg.norm(accepted_np - authority_np, axis=1))
+    )
+    redecoded_to_authority = float(
+        np.max(np.linalg.norm(redecoded_np - authority_np, axis=1))
+    )
+    accepted_to_redecoded = float(
+        np.max(np.linalg.norm(accepted_np - redecoded_np, axis=1))
+    )
+    accepted_posteriori_bound = (
+        inverse_norm
+        * (
+            accepted_stats["residual_frobenius_norm"]
+            + authority_stats["residual_frobenius_norm"]
+        )
+        + output_roundoff_floor
+    )
+    redecoded_posteriori_bound = (
+        inverse_norm
+        * (
+            redecoded_stats["residual_frobenius_norm"]
+            + authority_stats["residual_frobenius_norm"]
+        )
+        + output_roundoff_floor
+    )
+    return {
+        "backend": backend,
+        "authority": "CPU-float64 DirectTutteLayer replay of final logits and boundary",
+        "condition_estimation": {
+            "method": "full_dense_svd_exact_2norm",
+            "interior_row_count": int(matrix.shape[0]),
+            "dense_limit": condition_dense_limit,
+            "dense_matrix_storage_bytes": int(matrix.nbytes),
+            "asymptotic_storage": "O(I^2)",
+            "asymptotic_work": "O(I^3)",
+            "scope": (
+                "independent final-state agreement audit only; not part of the "
+                "forward/backward neural layer"
+            ),
+        },
+        "condition_number_2": condition,
+        "matrix_norm_2": largest,
+        "inverse_operator_norm_2": inverse_norm,
+        "solver_relative_residual_limit": solver_rtol,
+        "roundoff_relative_allowance": dtype_roundoff,
+        "residual_relative_limit": residual_limit,
+        "authority_roundoff_relative_limit": authority_roundoff,
+        "accepted": accepted_stats,
+        "redecoded": redecoded_stats,
+        "direct_authority": authority_stats,
+        "accepted_residual_within_limit": (
+            accepted_stats["maximum_relative_residual_2"] <= residual_limit
+        ),
+        "redecoded_residual_within_limit": (
+            redecoded_stats["maximum_relative_residual_2"] <= residual_limit
+        ),
+        "direct_authority_residual_within_limit": (
+            authority_stats["maximum_relative_residual_2"] <= authority_roundoff
+        ),
+        "forward_error_bound": forward_error_bound,
+        "pairwise_forward_error_bound": pairwise_error_bound,
+        "accepted_a_posteriori_forward_error_bound": accepted_posteriori_bound,
+        "redecoded_a_posteriori_forward_error_bound": redecoded_posteriori_bound,
+        "accepted_within_forward_error_bound": (
+            accepted_to_authority <= forward_error_bound
+            and accepted_to_authority <= accepted_posteriori_bound
+        ),
+        "redecoded_within_forward_error_bound": (
+            redecoded_to_authority <= forward_error_bound
+            and redecoded_to_authority <= redecoded_posteriori_bound
+        ),
+        "accepted_redecoded_within_pairwise_bound": (
+            accepted_to_redecoded <= pairwise_error_bound
+        ),
+    }
+
+
 def _independent_redecode(
     mesh,
     result,
@@ -482,9 +689,12 @@ def _independent_redecode(
     backend: str,
     dtype: torch.dtype,
     device: torch.device,
+    condition_dense_limit: int,
 ) -> dict[str, Any]:
     attempts = 0
     completed = 0
+    authority_attempts = 0
+    authority_completed = 0
     try:
         solver: torch.nn.Module
         if backend == "direct":
@@ -492,6 +702,40 @@ def _independent_redecode(
         else:
             solver = MatrixFreeDirectedTutteLayer(mesh)
         solver = solver.to(device=device, dtype=dtype)
+        interior_row_count = int(solver.system.n_rows)
+        if interior_row_count > condition_dense_limit:
+            storage_bytes = interior_row_count * interior_row_count * 8
+            return {
+                "status": "scale_limit_failure",
+                "verified": False,
+                "audit_primal_attempts": attempts,
+                "audit_primal_solves": completed,
+                "authority_direct_primal_attempts": authority_attempts,
+                "authority_direct_primal_solves": authority_completed,
+                "condition_estimation": {
+                    "method": "not_computed_n_rows_gt_dense_limit",
+                    "interior_row_count": interior_row_count,
+                    "dense_limit": condition_dense_limit,
+                    "dense_matrix_storage_bytes_if_computed": storage_bytes,
+                    "asymptotic_storage": "O(I^2)",
+                    "asymptotic_work": "O(I^3)",
+                    "fail_closed": True,
+                },
+                "error": {
+                    "type": "ConditionAuditScaleLimit",
+                    "message": (
+                        "condition-aware agreement audit was not evaluated: "
+                        f"interior rows {interior_row_count} exceed configured "
+                        f"dense limit {condition_dense_limit}; full dense SVD is "
+                        "intentionally skipped and the audit fails closed"
+                    ),
+                },
+                "scope": (
+                    "independent final-accepted-state-only agreement audit; "
+                    "full dense SVD is limited because it requires O(I^2) "
+                    "storage and O(I^3) work"
+                ),
+            }
         logits = result.final_logits.to(device=device, dtype=dtype)
         boundary = result.fixed_boundary.to(device=device, dtype=dtype)
         with torch.no_grad():
@@ -502,49 +746,144 @@ def _independent_redecode(
             torch.cuda.synchronize(device)
         recovered64 = recovered.detach().to(dtype=torch.float64, device="cpu")
         expected64 = result.final_control.detach().to(dtype=torch.float64, device="cpu")
+        authority_solver = DirectTutteLayer(mesh)
+        authority_logits = result.final_logits.detach().to(
+            dtype=torch.float64, device="cpu"
+        )
+        authority_boundary = result.fixed_boundary.detach().to(
+            dtype=torch.float64, device="cpu"
+        )
+        with torch.no_grad():
+            authority_attempts += 1
+            authority = authority_solver(authority_logits, authority_boundary)
+            authority_completed += 1
+        authority64 = authority.detach().to(dtype=torch.float64, device="cpu")
+        agreement = _agreement_contract(
+            system=authority_solver.system,
+            logits=authority_logits,
+            boundary=authority_boundary,
+            accepted=expected64,
+            redecoded=recovered64,
+            authority=authority64,
+            backend=backend,
+            dtype=dtype,
+            condition_dense_limit=condition_dense_limit,
+        )
         error = torch.linalg.vector_norm(recovered64 - expected64, dim=-1)
+        accepted_authority_error = torch.linalg.vector_norm(
+            expected64 - authority64, dim=-1
+        )
+        redecoded_authority_error = torch.linalg.vector_norm(
+            recovered64 - authority64, dim=-1
+        )
         loop = torch.as_tensor(mesh.boundary_loops[0].copy(), dtype=torch.int64)
         boundary_error = torch.linalg.vector_norm(
             recovered64.index_select(0, loop) - result.fixed_boundary.to(torch.float64),
             dim=-1,
         )
+        accepted_boundary_error = torch.linalg.vector_norm(
+            expected64.index_select(0, loop) - authority_boundary,
+            dim=-1,
+        )
+        authority_boundary_error = torch.linalg.vector_norm(
+            authority64.index_select(0, loop) - authority_boundary,
+            dim=-1,
+        )
         topology = compute_p1_map_metrics(
             mesh, recovered64.numpy(), target=expected64.numpy()
+        )
+        accepted_topology = compute_p1_map_metrics(
+            mesh, expected64.numpy(), target=authority64.numpy()
+        )
+        authority_topology = compute_p1_map_metrics(
+            mesh, authority64.numpy(), target=expected64.numpy()
         )
         maximum_vertex_error = float(error.max())
         map_rmse = float(torch.sqrt(torch.mean(error.square())))
         maximum_boundary_error = float(boundary_error.max())
-        agreement_atol = 4096.0 * torch.finfo(dtype).eps
+        maximum_accepted_authority_error = float(accepted_authority_error.max())
+        maximum_redecoded_authority_error = float(redecoded_authority_error.max())
+        maximum_accepted_boundary_error = float(accepted_boundary_error.max())
+        maximum_authority_boundary_error = float(authority_boundary_error.max())
+        boundary_atol = 4096.0 * float(torch.finfo(dtype).eps)
+        diagnostics = getattr(solver, "last_diagnostics", None)
+        forward_report = getattr(diagnostics, "forward", None)
+        iterative_report_converged = (
+            None
+            if backend == "direct"
+            else (
+                forward_report is not None
+                and bool(torch.as_tensor(forward_report.converged).all())
+            )
+        )
         reasons: list[str] = []
-        if (
-            not math.isfinite(maximum_vertex_error)
-            or maximum_vertex_error > agreement_atol
-        ):
-            reasons.append("decoded map does not agree with the final accepted map")
+        for label in ("accepted", "redecoded", "direct_authority"):
+            if not agreement[f"{label}_residual_within_limit"]:
+                reasons.append(
+                    f"{label} map exceeds the represented-system residual contract"
+                )
+        for label in ("accepted", "redecoded"):
+            if not agreement[f"{label}_within_forward_error_bound"]:
+                reasons.append(
+                    f"{label} map exceeds the condition-aware direct-authority error bound"
+                )
+        if not agreement["accepted_redecoded_within_pairwise_bound"]:
+            reasons.append(
+                "accepted and redecoded maps exceed their joint condition-aware error bound"
+            )
+        if iterative_report_converged is False:
+            reasons.append(
+                "iterative re-decode did not report converged true residuals"
+            )
         if (
             not math.isfinite(maximum_boundary_error)
-            or maximum_boundary_error > agreement_atol
+            or maximum_boundary_error > boundary_atol
+            or not math.isfinite(maximum_accepted_boundary_error)
+            or maximum_accepted_boundary_error > boundary_atol
+            or not math.isfinite(maximum_authority_boundary_error)
+            or maximum_authority_boundary_error > boundary_atol
         ):
-            reasons.append("decoded boundary does not agree with the fixed boundary")
-        if not topology.global_injectivity_certificate:
             reasons.append(
-                "decoded map did not pass the global injectivity certificate"
+                "accepted, redecoded, or direct-authority boundary disagrees with the fixed boundary"
+            )
+        if not (
+            topology.global_injectivity_certificate
+            and accepted_topology.global_injectivity_certificate
+            and authority_topology.global_injectivity_certificate
+        ):
+            reasons.append(
+                "accepted, redecoded, or direct-authority map failed the global injectivity certificate"
             )
         return {
             "status": "ok" if not reasons else "verification_failure",
             "verified": not reasons,
             "verification_failures": reasons,
-            "agreement_atol": agreement_atol,
+            "agreement_contract": agreement,
+            "boundary_atol": boundary_atol,
             "audit_primal_attempts": attempts,
             "audit_primal_solves": completed,
+            "authority_direct_primal_attempts": authority_attempts,
+            "authority_direct_primal_solves": authority_completed,
             "maximum_vertex_error": maximum_vertex_error,
             "map_rmse": map_rmse,
             "maximum_boundary_error": maximum_boundary_error,
+            "maximum_accepted_boundary_error": maximum_accepted_boundary_error,
+            "maximum_authority_boundary_error": maximum_authority_boundary_error,
+            "maximum_accepted_to_direct_authority_error": (
+                maximum_accepted_authority_error
+            ),
+            "maximum_redecoded_to_direct_authority_error": (
+                maximum_redecoded_authority_error
+            ),
             "topology": topology,
+            "accepted_topology": accepted_topology,
+            "direct_authority_topology": authority_topology,
             "krylov_forward": _krylov_report(solver),
+            "iterative_report_converged": iterative_report_converged,
             "scope": (
-                "independent final-accepted-state-only audit; trace rows lack state "
-                "snapshots; excluded from optimizer solve budget"
+                "independent final-accepted-state-only audit against a CPU-float64 "
+                "direct replay; trace rows lack state snapshots; all audit solves are "
+                "excluded from optimizer solve budget"
             ),
         }
     except Exception as error:  # audit failures are preserved per method
@@ -553,6 +892,8 @@ def _independent_redecode(
             "verified": False,
             "audit_primal_attempts": attempts,
             "audit_primal_solves": completed,
+            "authority_direct_primal_attempts": authority_attempts,
+            "authority_direct_primal_solves": authority_completed,
             "error": {"type": type(error).__name__, "message": str(error)},
             "scope": (
                 "independent final-accepted-state-only audit; trace rows lack state "
@@ -744,6 +1085,7 @@ def run_benchmark(config: BenchmarkConfig) -> dict[str, Any]:
                 backend=backend,
                 dtype=dtype,
                 device=device,
+                condition_dense_limit=config.system_condition_dense_limit,
             )
             for name, result in comparison.results.items()
         }

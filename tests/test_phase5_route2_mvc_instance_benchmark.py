@@ -320,8 +320,142 @@ def test_independent_redecode_requires_map_agreement_and_topology(
     assert audit["status"] == "verification_failure"
     assert not audit["verified"]
     assert audit["audit_primal_attempts"] == audit["audit_primal_solves"] == 1
-    assert audit["maximum_vertex_error"] > audit["agreement_atol"]
+    assert audit["authority_direct_primal_attempts"] == 1
+    assert audit["authority_direct_primal_solves"] == 1
+    contract = audit["agreement_contract"]
+    assert contract["backend"] == "direct"
+    assert not contract["direct_authority_residual_within_limit"]
+    assert not contract["redecoded_residual_within_limit"]
     assert audit["verification_failures"]
+
+
+def test_iterative_redecode_accepts_residual_conditioned_approximation() -> None:
+    receipt = _run(
+        methods=("O4_covariance_retraction",),
+        control_side=7,
+        resolution=17,
+        steps=3,
+        learning_rate=0.001,
+        target_strength=0.25,
+        backend="directed_iterative",
+        dtype="float64",
+        slice_global_solves=5,
+        slice_outer_step=None,
+        system_condition_dense_limit=256,
+    )
+
+    audit = receipt["independent_final_redecode"]["O4_covariance_retraction"]
+    contract = audit["agreement_contract"]
+    assert receipt["status"] == "ok", receipt
+    assert audit["status"] == "ok"
+    assert audit["verified"]
+    assert audit["maximum_vertex_error"] > 4096.0 * module_epsilon("float64")
+    assert audit["authority_direct_primal_solves"] == 1
+    assert audit["maximum_accepted_to_direct_authority_error"] < 1.0e-12
+    assert contract["backend"] == "directed_iterative"
+    assert contract["solver_relative_residual_limit"] == pytest.approx(1.0e-10)
+    assert contract["accepted_residual_within_limit"]
+    assert contract["redecoded_residual_within_limit"]
+    assert contract["accepted_within_forward_error_bound"]
+    assert contract["redecoded_within_forward_error_bound"]
+    assert contract["condition_number_2"] >= 1.0
+    assert contract["condition_estimation"] == {
+        "method": "full_dense_svd_exact_2norm",
+        "interior_row_count": 25,
+        "dense_limit": 256,
+        "dense_matrix_storage_bytes": 25 * 25 * 8,
+        "asymptotic_storage": "O(I^2)",
+        "asymptotic_work": "O(I^3)",
+        "scope": (
+            "independent final-state agreement audit only; not part of the "
+            "forward/backward neural layer"
+        ),
+    }
+
+
+def test_independent_redecode_fails_closed_before_dense_svd_above_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _module()
+
+    def forbidden_svd(*args, **kwargs):
+        raise AssertionError("dense SVD must not run above the configured limit")
+
+    monkeypatch.setattr(module.np.linalg, "svd", forbidden_svd)
+    receipt = _run(
+        methods=("O2_row_softmax",),
+        control_side=5,
+        resolution=9,
+        steps=1,
+        learning_rate=0.001,
+        target_strength=0.10,
+        backend="directed_iterative",
+        dtype="float64",
+        slice_global_solves=3,
+        slice_outer_step=None,
+        system_condition_dense_limit=8,
+    )
+
+    audit = receipt["independent_final_redecode"]["O2_row_softmax"]
+    assert receipt["status"] == "complete_with_failures"
+    assert receipt["audit_failure_count"] == 1
+    assert audit["status"] == "scale_limit_failure"
+    assert not audit["verified"]
+    assert audit["condition_estimation"] == {
+        "method": "not_computed_n_rows_gt_dense_limit",
+        "interior_row_count": 9,
+        "dense_limit": 8,
+        "dense_matrix_storage_bytes_if_computed": 9 * 9 * 8,
+        "asymptotic_storage": "O(I^2)",
+        "asymptotic_work": "O(I^3)",
+        "fail_closed": True,
+    }
+    assert "condition-aware" in audit["error"]["message"]
+
+
+def module_epsilon(dtype: str) -> float:
+    module = _module()
+    return module.torch.finfo(getattr(module.torch, dtype)).eps
+
+
+def test_iterative_redecode_rejects_error_beyond_residual_contract(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _module()
+    real_layer = module.MatrixFreeDirectedTutteLayer
+
+    class ShiftedIterativeTutteLayer(real_layer):
+        def forward(self, logits, boundary):
+            return super().forward(logits, boundary) + 0.1
+
+    monkeypatch.setattr(
+        module, "MatrixFreeDirectedTutteLayer", ShiftedIterativeTutteLayer
+    )
+    receipt = module.run_benchmark(
+        module.BenchmarkConfig(
+            task="map",
+            methods=("O2_row_softmax",),
+            control_side=3,
+            resolution=7,
+            steps=1,
+            learning_rate=0.005,
+            seed=34,
+            target_strength=0.1,
+            backend="directed_iterative",
+            dtype="float64",
+            device="cpu",
+            slice_global_solves=3,
+            slice_outer_step=None,
+        )
+    )
+
+    audit = receipt["independent_final_redecode"]["O2_row_softmax"]
+    contract = audit["agreement_contract"]
+    assert receipt["status"] == "complete_with_failures"
+    assert audit["status"] == "verification_failure"
+    assert not audit["verified"]
+    assert not contract["redecoded_residual_within_limit"]
+    assert not contract["redecoded_within_forward_error_bound"]
 
 
 def test_nonfinite_guard_is_explicit_and_never_silent_success() -> None:
