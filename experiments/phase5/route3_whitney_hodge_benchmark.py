@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import socket
 import subprocess
 import sys
 from time import perf_counter
@@ -166,7 +167,7 @@ def main():
             row = {"case": name, "tensor": a.tolist(), **run(n, a)}
             results.append(row)
             print(json.dumps(row), flush=True)
-    payload = {"research_question": "III-C/D: Whitney energy/dual exactness versus ordinary P1 and primal stream integration", "utc": datetime.now(timezone.utc).isoformat(), "git": git_state(), "platform": platform.platform(), "python": sys.version, "torch": torch.__version__, "numpy": np.__version__, "scipy": scipy.__version__, "device": "CPU float64", "MKL_THREADING_LAYER": os.environ.get("MKL_THREADING_LAYER"), "torch_threads": torch.get_num_threads(), "timing_scope": "single cold forward with assembly/factorization; backward reuses factor; diagnostics excluded", "memory_scope": "explicit arrays/factors only; not process peak nor allocator peak", "results": results}
+    payload = {"research_question": "III-C/D: Whitney energy/dual exactness versus ordinary P1 and primal stream integration", "utc": datetime.now(timezone.utc).isoformat(), "git": git_state(), "hostname": socket.gethostname(), "platform": platform.platform(), "python": sys.version, "torch": torch.__version__, "numpy": np.__version__, "scipy": scipy.__version__, "device": "CPU float64", "MKL_THREADING_LAYER": os.environ.get("MKL_THREADING_LAYER"), "torch_threads": torch.get_num_threads(), "timing_scope": "single cold forward with assembly/factorization; backward reuses factor; diagnostics excluded", "memory_scope": "explicit arrays/factors only; not process peak nor allocator peak", "results": results}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(payload, indent=2)+"\n", encoding="utf-8")
 
