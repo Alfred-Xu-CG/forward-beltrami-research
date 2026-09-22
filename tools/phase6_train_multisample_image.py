@@ -21,7 +21,11 @@ import torch.nn.functional as F
 from phase6_train_alternating_image_to_latent import AlternatingImageEncoder
 from phase6_train_image_to_latent import SmallImageEncoder, _minimum_area_ratio
 from qcopt.mesh import structured_rectangle
-from qcopt.neural_bijection.dense import ExactAlternatingMonotoneComposition, MultiscaleMonotoneGridLayer
+from qcopt.neural_bijection.dense import (
+    ExactAlternatingMonotoneComposition,
+    HierarchicalConvexQuadFreeCenterLayer,
+    MultiscaleMonotoneGridLayer,
+)
 from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 
 
@@ -64,9 +68,52 @@ def _rss_bytes() -> int | None:
         return None
 
 
+class ConvexQuadImageEncoder(torch.nn.Module):
+    """Image pyramid to shared-edge and free-center logits at every level."""
+
+    def __init__(self, side: int, width: int = 8) -> None:
+        super().__init__()
+        self.side = side
+        self.latent_sides = HierarchicalConvexQuadFreeCenterLayer(side).latent_sides
+        self.body = torch.nn.Sequential(
+            torch.nn.Conv2d(2, width, 3, padding=1),
+            torch.nn.GELU(),
+            torch.nn.Conv2d(width, width, 3, padding=1),
+            torch.nn.GELU(),
+        )
+        self.root_head = torch.nn.Linear(width, 2)
+        self.horizontal_heads = torch.nn.ModuleList(torch.nn.Conv2d(width, 1, 1) for _ in self.latent_sides)
+        self.vertical_heads = torch.nn.ModuleList(torch.nn.Conv2d(width, 1, 1) for _ in self.latent_sides)
+        self.center_heads = torch.nn.ModuleList(torch.nn.Conv2d(width, 2, 1) for _ in self.latent_sides)
+        for head in (self.root_head, *self.horizontal_heads, *self.vertical_heads, *self.center_heads):
+            torch.nn.init.zeros_(head.weight)
+            torch.nn.init.zeros_(head.bias)
+
+    def forward(
+        self, pair: torch.Tensor
+    ) -> tuple[torch.Tensor, tuple[tuple[torch.Tensor, torch.Tensor, torch.Tensor], ...]]:
+        reduced = F.interpolate(pair, size=(self.side, self.side), mode="bilinear", align_corners=True)
+        fine = self.body(reduced)
+        root = self.root_head(fine.mean(dim=(2, 3)))[:, None, None, :]
+        levels = []
+        for index, current in enumerate(self.latent_sides):
+            feature = F.interpolate(fine, size=(current, current), mode="bilinear", align_corners=True)
+            horizontal_vertices = self.horizontal_heads[index](feature)[:, 0]
+            vertical_vertices = self.vertical_heads[index](feature)[:, 0]
+            center_vertices = self.center_heads[index](feature).permute(0, 2, 3, 1)
+            horizontal = 0.5 * (horizontal_vertices[:, :, :-1] + horizontal_vertices[:, :, 1:])
+            vertical = 0.5 * (vertical_vertices[:, :-1, :] + vertical_vertices[:, 1:, :])
+            center = 0.25 * (
+                center_vertices[:, :-1, :-1] + center_vertices[:, :-1, 1:]
+                + center_vertices[:, 1:, :-1] + center_vertices[:, 1:, 1:]
+            )
+            levels.append((horizontal, vertical, center))
+        return root, tuple(levels)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--method", choices=("A", "AB2"), required=True)
+    parser.add_argument("--method", choices=("A", "AB2", "A2"), required=True)
     parser.add_argument("--side", type=int, default=257)
     parser.add_argument("--image-side", type=int, default=512)
     parser.add_argument("--train-count", type=int, default=32)
@@ -90,6 +137,9 @@ def main() -> None:
     if args.method == "A":
         encoder = SmallImageEncoder(args.side).to(device)
         decoder = MultiscaleMonotoneGridLayer(args.side)
+    elif args.method == "A2":
+        encoder = ConvexQuadImageEncoder(args.side).to(device)
+        decoder = HierarchicalConvexQuadFreeCenterLayer(args.side)
     else:
         axes = ("vertical", "horizontal")
         encoder = AlternatingImageEncoder(args.side, axes).to(device)
@@ -107,6 +157,10 @@ def main() -> None:
             control = decoder(latent)
             predicted = table.interpolate(control.reshape(len(indices), -1, 2))
             controls = (control,)
+        elif args.method == "A2":
+            control = decoder(*latent)
+            predicted = table.interpolate(control.reshape(len(indices), -1, 2))
+            controls = (control,)
         else:
             result = decoder(latent)
             predicted = result.dense
@@ -120,7 +174,7 @@ def main() -> None:
     def evaluate(dataset: tuple[torch.Tensor, ...]) -> dict[str, object]:
         image_sum = 0.0
         map_sum = 0.0
-        minimum = [float("inf")] * (1 if args.method == "A" else 2)
+        minimum = [float("inf")] * (2 if args.method == "AB2" else 1)
         count = dataset[0].shape[0]
         for start in range(0, count, args.batch):
             stop = min(start + args.batch, count)
@@ -178,8 +232,9 @@ def main() -> None:
         "control_side": args.side,
         "control_vertices": args.side**2,
         "control_faces_per_layer": 2 * (args.side - 1)**2,
-        "layers": 1 if args.method == "A" else 2,
-        "representation": "original_grid_P1" if args.method == "A" else "exact_PL_composition",
+        "layers": 2 if args.method == "AB2" else 1,
+        "representation": "exact_PL_composition" if args.method == "AB2" else "original_grid_P1",
+        "encoder_parameters": sum(parameter.numel() for parameter in encoder.parameters()),
         "image_side": args.image_side,
         "image_queries": args.image_side**2,
         "train_count": args.train_count,

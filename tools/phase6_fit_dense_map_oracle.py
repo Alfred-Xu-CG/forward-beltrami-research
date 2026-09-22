@@ -20,6 +20,8 @@ from qcopt.mesh import structured_rectangle
 from qcopt.neural_bijection.dense import (
     DenseMonotoneGridLayer,
     ExactAlternatingMonotoneComposition,
+    HierarchicalConvexQuadFreeCenterLayer,
+    HierarchicalConvexQuadLayer,
     LocalPatchComposition,
     LocalPatchMonotoneLayer,
 )
@@ -43,7 +45,7 @@ def target_map(side: int, device: torch.device, dtype: torch.dtype) -> torch.Ten
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--method", choices=("single_vertical", "single_horizontal", "alternating", "patches"), required=True)
+    parser.add_argument("--method", choices=("single_vertical", "single_horizontal", "alternating", "patches", "convex_quad", "convex_quad_free"), required=True)
     parser.add_argument("--side", type=int, default=257)
     parser.add_argument("--layers", type=int, choices=(2, 4), default=2)
     parser.add_argument("--patch-cells", type=int, default=16)
@@ -82,6 +84,43 @@ def main() -> None:
             levels = tuple(((global_logits_list[i], line_logits_list[i]),) for i in range(args.layers))
             result = decoder(levels)
             return result.dense, result.controls
+
+    elif args.method == "convex_quad":
+        decoder = HierarchicalConvexQuadLayer(side)
+        horizontal_logits_list = torch.nn.ParameterList(
+            torch.nn.Parameter(torch.zeros(1, current, current - 1, dtype=dtype, device=device))
+            for current in decoder.latent_sides
+        )
+        vertical_logits_list = torch.nn.ParameterList(
+            torch.nn.Parameter(torch.zeros(1, current - 1, current, dtype=dtype, device=device))
+            for current in decoder.latent_sides
+        )
+        parameters = list(horizontal_logits_list) + list(vertical_logits_list)
+
+        def decode() -> tuple[torch.Tensor, tuple[torch.Tensor, ...]]:
+            control = decoder(tuple(zip(horizontal_logits_list, vertical_logits_list)))
+            return control, (control,)
+
+    elif args.method == "convex_quad_free":
+        decoder = HierarchicalConvexQuadFreeCenterLayer(side)
+        root_center = torch.nn.Parameter(torch.zeros(1, 1, 1, 2, dtype=dtype, device=device))
+        horizontal_logits_list = torch.nn.ParameterList(
+            torch.nn.Parameter(torch.zeros(1, current, current - 1, dtype=dtype, device=device))
+            for current in decoder.latent_sides
+        )
+        vertical_logits_list = torch.nn.ParameterList(
+            torch.nn.Parameter(torch.zeros(1, current - 1, current, dtype=dtype, device=device))
+            for current in decoder.latent_sides
+        )
+        center_logits_list = torch.nn.ParameterList(
+            torch.nn.Parameter(torch.zeros(1, current - 1, current - 1, 2, dtype=dtype, device=device))
+            for current in decoder.latent_sides
+        )
+        parameters = [root_center] + list(horizontal_logits_list) + list(vertical_logits_list) + list(center_logits_list)
+
+        def decode() -> tuple[torch.Tensor, tuple[torch.Tensor, ...]]:
+            control = decoder(root_center, tuple(zip(horizontal_logits_list, vertical_logits_list, center_logits_list)))
+            return control, (control,)
 
     else:
         patch_layers = []
@@ -122,20 +161,20 @@ def main() -> None:
         torch.save({
             "method": args.method,
             "side": side,
-            "layers": 1 if args.method.startswith("single_") else args.layers,
+            "layers": 1 if args.method.startswith(("single_", "convex_quad")) else args.layers,
             "patch_cells": args.patch_cells if args.method == "patches" else None,
             "parameters": [parameter.detach().cpu().clone() for parameter in parameters],
         }, args.save_state)
     print(json.dumps({
         "task": "direct_latent_map_oracle_not_image_training",
         "method": args.method,
-        "representation": "original_grid_P1" if args.method.startswith("single_") else "exact_PL_composition",
+        "representation": "original_grid_P1" if args.method.startswith(("single_", "convex_quad")) else "exact_PL_composition",
         "control_side": side,
         "control_vertices": mesh.n_vertices,
         "control_faces_per_layer": mesh.n_faces,
         "query_side": side,
         "query_count": side**2,
-        "layers": 1 if args.method.startswith("single_") else args.layers,
+        "layers": 1 if args.method.startswith(("single_", "convex_quad")) else args.layers,
         "patch_cells": args.patch_cells if args.method == "patches" else None,
         "latent_values": sum(parameter.numel() for parameter in parameters),
         "steps": args.steps,

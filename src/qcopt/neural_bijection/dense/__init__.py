@@ -5,6 +5,7 @@ from .patches import LocalPatchComposition, LocalPatchMonotoneLayer
 from .edge_woodbury import SparseEdgeWoodburyTutteLayer
 from .exact_block_schur import ExactBlockSchurTutteLayer
 from .alternating import ExactAlternatingMonotoneComposition, evaluate_structured_p1_with_jacobian
+from .convex_quad import HierarchicalConvexQuadLayer, HierarchicalConvexQuadFreeCenterLayer, certify_convex_quad_output, split_convex_quad_grid
 
 __all__ = [
     "DenseMonotoneGridLayer",
@@ -15,4 +16,8 @@ __all__ = [
     "ExactBlockSchurTutteLayer",
     "ExactAlternatingMonotoneComposition",
     "evaluate_structured_p1_with_jacobian",
+    "HierarchicalConvexQuadLayer",
+    "HierarchicalConvexQuadFreeCenterLayer",
+    "certify_convex_quad_output",
+    "split_convex_quad_grid",
 ]
