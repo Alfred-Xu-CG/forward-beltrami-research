@@ -16,7 +16,7 @@ import torch
 import torch.nn.functional as F
 
 from phase6_evaluate_heldout_beltrami import _mu, _target_on_faces
-from phase6_train_multisample_image import make_dataset
+from phase6_train_multisample_image import _edge_strain, make_dataset
 from qcopt.mesh import structured_rectangle
 from qcopt.neural_bijection.dense import (
     HierarchicalConvexQuadFreeCenterLayer,
@@ -33,9 +33,10 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=1000)
     parser.add_argument("--learning-rate", type=float, default=0.05)
     parser.add_argument("--sample-index", type=int, default=1)
+    parser.add_argument("--strain-weight", type=float, default=0.0)
     parser.add_argument("--save-state", default=None)
     args = parser.parse_args()
-    if args.side < 5 or args.steps < 1 or not 0 <= args.sample_index < 8:
+    if args.side < 5 or args.steps < 1 or not 0 <= args.sample_index < 8 or args.strain_weight < 0:
         raise ValueError("invalid side, steps or held-out sample index")
     torch.manual_seed(20260923)
     fixed_all, moving_all, true_map_all, coefficients_all = make_dataset(
@@ -71,7 +72,8 @@ def main() -> None:
     for step in range(args.steps):
         optimizer.zero_grad(set_to_none=True)
         began = time.perf_counter()
-        loss, _, _ = forward()
+        image_loss, control, _ = forward()
+        loss = image_loss + args.strain_weight * _edge_strain(control) if args.strain_weight else image_loss
         middle = time.perf_counter()
         loss.backward()
         ended = time.perf_counter()
@@ -79,7 +81,7 @@ def main() -> None:
         forward_times.append(middle - began)
         backward_times.append(ended - middle)
         if step == 0 or (step + 1) % 100 == 0 or step + 1 == args.steps:
-            records.append({"step": step + 1, "image_mse_before_update": loss.item(), "cumulative_seconds": time.perf_counter() - began_all})
+            records.append({"step": step + 1, "image_mse_before_update": image_loss.item(), "total_loss_before_update": loss.item(), "cumulative_seconds": time.perf_counter() - began_all})
     total_seconds = time.perf_counter() - began_all
     with torch.no_grad():
         final_loss, control, dense = forward()
@@ -105,6 +107,7 @@ def main() -> None:
             "side": args.side,
             "image_side": args.image_side,
             "sample_index": args.sample_index,
+            "strain_weight": args.strain_weight,
             "parameters": [parameter.detach().clone() for parameter in parameters],
         }, args.save_state)
     print(json.dumps({
@@ -121,8 +124,10 @@ def main() -> None:
         "latent_values": sum(parameter.numel() for parameter in parameters),
         "steps": args.steps,
         "learning_rate": args.learning_rate,
+        "strain_weight": args.strain_weight,
         "initial_image_mse": initial_image_mse,
         "final_image_mse": final_loss.item(),
+        "final_edge_strain_energy": _edge_strain(control).item(),
         "final_query_map_rmse": (dense - true_map).square().mean().sqrt().item(),
         "projected_fine_x_amplitude": projected[0].item() if projected is not None else None,
         "projected_fine_y_amplitude": projected[1].item() if projected is not None else None,
