@@ -394,6 +394,9 @@ def _finite_difference_check(config: BenchmarkConfig) -> dict[str, Any]:
             else "tensor_to_whitney_solve_to_dense_map_to_backward_image_warp"
         ),
         "elapsed_seconds": perf_counter() - start,
+        "diagnostic_target_setup_primal_global_solves": 1,
+        "diagnostic_whitney_forward_global_solve_calls": 3,
+        "diagnostic_whitney_backward_global_adjoint_calls": 1,
         "diagnostic_forward_scalar_rhs": 6,
         "diagnostic_backward_scalar_rhs": 2,
         "excluded_from_primary_solve_counts": True,
@@ -441,7 +444,8 @@ def run_benchmark(config: BenchmarkConfig) -> dict[str, Any]:
     tensor = torch.tensor(tensor_np, dtype=torch.float64, requires_grad=True)
     setup_seconds = perf_counter() - setup_start
 
-    forward_start = perf_counter()
+    differentiable_path_start = perf_counter()
+    forward_start = differentiable_path_start
     control = system.solve(tensor, boundary, boundary_values)
     forward_seconds = perf_counter() - forward_start
 
@@ -461,7 +465,9 @@ def run_benchmark(config: BenchmarkConfig) -> dict[str, Any]:
     probe_loss.backward()
     backward_seconds = perf_counter() - backward_start
     tensor_gradient_norm = float(torch.linalg.vector_norm(tensor.grad))
+    differentiable_path_seconds = perf_counter() - differentiable_path_start
 
+    validation_start = perf_counter()
     values = control.detach().numpy()
     p1_metrics = compute_p1_map_metrics(mesh, values, target=target_control.numpy())
     measured_mu = face_beltrami(mesh, values)
@@ -478,6 +484,7 @@ def run_benchmark(config: BenchmarkConfig) -> dict[str, Any]:
     )
     independent_residual = direct_operator @ target_control.numpy()
     whitney_residual = system.apply(tensor.detach(), control.detach()).numpy()
+    validation_seconds = perf_counter() - validation_start
 
     explicit_state_bytes = int(
         target_control.numel() * target_control.element_size()
@@ -559,7 +566,23 @@ def run_benchmark(config: BenchmarkConfig) -> dict[str, Any]:
             "primary_backward_global_adjoint_calls": 1,
             "primary_backward_scalar_rhs": 2,
             "primary_total_global_solve_calls_including_adjoint": 2,
+            "independent_validation_p1_global_solve_calls": 1,
+            "independent_validation_p1_scalar_rhs": 2,
             "finite_difference_diagnostic_excluded_from_primary": True,
+            "finite_difference_target_setup_primal_global_solves": vjp_check[
+                "diagnostic_target_setup_primal_global_solves"
+            ],
+            "finite_difference_whitney_forward_global_solve_calls": vjp_check[
+                "diagnostic_whitney_forward_global_solve_calls"
+            ],
+            "finite_difference_whitney_backward_global_adjoint_calls": vjp_check[
+                "diagnostic_whitney_backward_global_adjoint_calls"
+            ],
+            "count_scope": (
+                "primary count 2 is only the differentiable Whitney path; target setup, "
+                "the independent P1 validation solve, and finite-difference diagnostics "
+                "are enumerated separately"
+            ),
         },
         "timings_seconds": {
             "target_setup": target_seconds,
@@ -568,9 +591,18 @@ def run_benchmark(config: BenchmarkConfig) -> dict[str, Any]:
             "dense_interpolation": dense_seconds,
             "dense_warp_and_image_objective": warp_seconds,
             "backward": backward_seconds,
-            "primary_total": primary_done - total_start,
+            "differentiable_reference_path": differentiable_path_seconds,
+            "validation_metrics_and_independent_p1_oracle": validation_seconds,
+            "pre_fd_total_including_target_setup_reference_setup_and_validation": (
+                primary_done - total_start
+            ),
             "finite_difference_check": vjp_check["elapsed_seconds"],
             "total_with_diagnostics": perf_counter() - total_start,
+            "scope": (
+                "differentiable_reference_path spans Whitney forward, dense interpolation, "
+                "task objective construction, and diagnostic-probe backward; validation and "
+                "finite-difference timings are excluded and reported separately"
+            ),
         },
         "metrics": {
             **_topology_dict(p1_metrics),

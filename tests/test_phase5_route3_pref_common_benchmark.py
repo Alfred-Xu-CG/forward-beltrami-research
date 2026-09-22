@@ -144,7 +144,16 @@ def test_tiny_reference_recovers_exact_p1_target_and_checks_full_vjp(
     assert receipt["primary_objective"]["optimized"] is False
     assert receipt["solve_counts"]["primary_forward_scalar_rhs"] == 2
     assert receipt["solve_counts"]["primary_backward_scalar_rhs"] == 2
+    assert receipt["solve_counts"]["independent_validation_p1_global_solve_calls"] == 1
+    assert receipt["solve_counts"]["independent_validation_p1_scalar_rhs"] == 2
+    assert receipt["solve_counts"]["finite_difference_target_setup_primal_global_solves"] == 1
+    assert receipt["solve_counts"]["finite_difference_whitney_forward_global_solve_calls"] == 3
+    assert receipt["solve_counts"]["finite_difference_whitney_backward_global_adjoint_calls"] == 1
     assert receipt["solve_counts"]["finite_difference_diagnostic_excluded_from_primary"] is True
+    timings = receipt["timings_seconds"]
+    assert timings["differentiable_reference_path"] > 0.0
+    assert timings["validation_metrics_and_independent_p1_oracle"] > 0.0
+    assert "primary_total" not in timings
 
     vjp = receipt["vjp_check"]
     assert vjp["path"] == (
