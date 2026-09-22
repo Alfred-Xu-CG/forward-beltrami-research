@@ -118,6 +118,7 @@ class SparseEdgeWoodburyTutteLayer(torch.nn.Module):
         self._u = u
         self._rhs0 = rhs
         self._base_full_numpy = f0
+        self._interior_numpy = interior
         self._edges_numpy = edges
 
     @property
@@ -161,11 +162,11 @@ class SparseEdgeWoodburyTutteLayer(torch.nn.Module):
         update = self._u @ sparse.diags(values) @ self._u.T
         a = self._a0 + update
         full_difference = self._d.detach().cpu().numpy()
-        rhs = self._rhs0 + self._u @ (values[:, None] * (self._u.T @ self._base_full_numpy[self._interior] - full_difference))
+        rhs = self._rhs0 + self._u @ (values[:, None] * (self._u.T @ self._base_full_numpy[self._interior_numpy] - full_difference))
         # Since d = U^T f0_I + boundary contribution, the changed RHS is
         # U D (U^T f0_I - d). This includes interior-boundary selected edges.
         interior_solution = sparse_linalg.spsolve(a, rhs)
         full = self._base_full_numpy.copy()
-        full[self._interior.detach().cpu().numpy()] = interior_solution
+        full[self._interior_numpy] = interior_solution
         residual = float(np.linalg.norm(a @ interior_solution - rhs) / max(np.linalg.norm(rhs), np.finfo(float).tiny))
         return full, residual
