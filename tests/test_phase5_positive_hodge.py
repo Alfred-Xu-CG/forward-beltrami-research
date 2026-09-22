@@ -156,6 +156,30 @@ def test_frobenius_direction_design_and_strict_nnls_floor() -> None:
     )
 
 
+def test_stellar_nnls_cycling_phase_has_verified_active_set_fallback() -> None:
+    graph = build_stellar_square_graph(2)
+    phase = 5.342014692511909
+    tensor = beltrami_tensor(0.9 * np.exp(1j * phase))
+    fit = fit_direction_tensor_nnls(
+        tensor,
+        graph.direction_angles,
+        minimum_conductance=1.0e-8,
+        minimum_excess=1.0e-12,
+    )
+    assert np.all(np.isfinite(fit.conductances))
+    assert np.all(fit.conductances >= 1.0e-8 + 1.0e-12)
+    design = direction_design_matrix(graph.direction_angles)
+    target_vector = np.asarray(
+        [tensor[0, 0], math.sqrt(2.0) * tensor[0, 1], tensor[1, 1]]
+    )
+    lower = 1.0e-8 + 1.0e-12
+    free = fit.conductances - lower
+    gradient = design.T @ (design @ free - (target_vector - design @ np.full(len(free), lower)))
+    tolerance = 2.0e-10
+    assert np.min(gradient) >= -tolerance
+    assert np.max(np.abs(gradient[free > tolerance])) < tolerance
+
+
 def test_learned_local_map_is_deterministic_strict_positive_and_differentiable() -> None:
     directions = build_center_split_square_graph(2).direction_angles
     first = LearnedPositiveDirectionMap(directions, hidden_features=12, seed=901)

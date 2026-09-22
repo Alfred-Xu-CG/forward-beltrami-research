@@ -16,6 +16,7 @@ P1 checks in :class:`MatrixFreeSymmetricTutteLayer`.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import combinations
 import math
 from typing import Callable
 
@@ -84,6 +85,7 @@ class PositiveTensorFit:
     residual_norm: float
     minimum_conductance: float
     minimum_excess: float
+    solver_method: str
 
 
 def _validate_cells(cells_per_side: int) -> int:
@@ -380,6 +382,85 @@ def _inverse_softplus_numpy(values: np.ndarray) -> np.ndarray:
     return values + np.log(-np.expm1(-values))
 
 
+def _nnls_kkt_tolerance(design: np.ndarray, target: np.ndarray, values: np.ndarray) -> float:
+    scale = max(
+        1.0,
+        float(np.linalg.norm(target)),
+        float(np.linalg.norm(design, ord=2) * np.linalg.norm(values)),
+    )
+    return 8192.0 * np.finfo(np.float64).eps * scale
+
+
+def _verified_nnls(design: np.ndarray, target: np.ndarray) -> tuple[np.ndarray, str]:
+    """Small deterministic NNLS with a verified exhaustive fallback.
+
+    SciPy's fast active-set routine is retained for the ordinary path, but a
+    known six-direction Beltrami case can cycle.  Because the observation space
+    here has dimension three, conic Caratheodory guarantees an optimum with at
+    most three positive generators.  Enumerating all subsets of size at most
+    three is therefore complete even when callers supply more than six
+    directions.  Every returned solution is screened against primal and KKT
+    feasibility.
+    """
+
+    def valid(values: np.ndarray) -> bool:
+        tolerance = _nnls_kkt_tolerance(design, target, values)
+        if np.any(values < -tolerance):
+            return False
+        clipped = np.maximum(values, 0.0)
+        gradient = design.T @ (design @ clipped - target)
+        active = clipped > tolerance
+        return bool(
+            np.min(gradient) >= -tolerance
+            and (not np.any(active) or np.max(np.abs(gradient[active])) <= tolerance)
+        )
+
+    try:
+        scipy_values, _ = nnls(design, target)
+    except RuntimeError:
+        scipy_values = None
+    if scipy_values is not None and valid(scipy_values):
+        return scipy_values, "scipy_nnls_verified"
+
+    count = design.shape[1]
+    feasibility_scale = max(1.0, float(np.linalg.norm(target)))
+    feasibility_tolerance = 8192.0 * np.finfo(np.float64).eps * feasibility_scale
+    best_values: np.ndarray | None = None
+    best_objective = math.inf
+    best_key: tuple[float, ...] | None = None
+    for active_count in range(min(3, count) + 1):
+        for active_indices in combinations(range(count), active_count):
+            candidate = np.zeros(count, dtype=np.float64)
+            if active_indices:
+                active_array = np.asarray(active_indices, dtype=np.int64)
+                solution, _, _, _ = np.linalg.lstsq(
+                    design[:, active_array], target, rcond=None
+                )
+                if np.any(solution < -feasibility_tolerance):
+                    continue
+                candidate[active_array] = np.maximum(solution, 0.0)
+            residual = design @ candidate - target
+            objective = float(residual @ residual)
+            key = tuple(candidate.tolist())
+            comparison_tolerance = 64.0 * np.finfo(np.float64).eps * max(
+                1.0, best_objective if math.isfinite(best_objective) else 1.0, objective
+            )
+            if (
+                best_values is None
+                or objective < best_objective - comparison_tolerance
+                or (
+                    abs(objective - best_objective) <= comparison_tolerance
+                    and (best_key is None or key < best_key)
+                )
+            ):
+                best_values = candidate
+                best_objective = objective
+                best_key = key
+    if best_values is None or not valid(best_values):
+        raise RuntimeError("exhaustive active-set NNLS failed its KKT verification")
+    return best_values, "exhaustive_active_set_fallback_verified"
+
+
 def fit_direction_tensor_nnls(
     tensor: np.ndarray,
     direction_angles: np.ndarray,
@@ -411,7 +492,7 @@ def fit_direction_tensor_nnls(
     target_vector = _symmetric_vector(target)
     lower = minimum_conductance + minimum_excess
     offset = np.full(design.shape[1], lower, dtype=np.float64)
-    free, _ = nnls(design, target_vector - design @ offset)
+    free, solver_method = _verified_nnls(design, target_vector - design @ offset)
     conductances = offset + free
     fitted_vector = design @ conductances
     fitted = _vector_symmetric(fitted_vector)
@@ -432,6 +513,7 @@ def fit_direction_tensor_nnls(
         residual_norm=float(np.linalg.norm(fitted_vector - target_vector)),
         minimum_conductance=float(minimum_conductance),
         minimum_excess=float(minimum_excess),
+        solver_method=solver_method,
     )
 
 
