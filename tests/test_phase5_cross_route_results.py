@@ -32,6 +32,20 @@ def authority_paths() -> list[Path]:
     return paths
 
 
+def p1_paths() -> list[Path]:
+    return [
+        RAW / f"route3_p1_formal_{task}_gpu3_35a1878.json"
+        for task in ("map", "image")
+    ]
+
+
+def pref_paths() -> list[Path]:
+    return [
+        RAW / f"route3_pref_common_{task}_cpu_0da8ffa.json"
+        for task in ("map", "image")
+    ]
+
+
 def save(tmp_path: Path, receipt: dict, name: str) -> Path:
     path = tmp_path / name
     path.write_text(json.dumps(receipt), encoding="utf-8")
@@ -59,6 +73,12 @@ def test_real_authority_uses_exact83_not_step40_or_final() -> None:
     assert o3_map["route_label"] == "T2"
     assert o3_map["selected_for_common_input"] is True
     assert o3_map["primary_global_solves"] == 83
+
+    # Timing columns are cumulative through the exact-83 observation, not the
+    # single trace row's per-observation timing.
+    assert o1_map["primary_forward_seconds"] == pytest.approx(14.806887775659561)
+    assert o1_map["primary_backward_seconds"] == pytest.approx(10.005911007523537)
+    assert o1_map["primary_dense_seconds"] == pytest.approx(0.03535051271319389)
 
 
 def test_o4_image_failure_is_preserved_without_imputed_exact83() -> None:
@@ -88,7 +108,55 @@ def test_units_and_target_identity_are_explicit() -> None:
     assert row["image_mse"] == row["primary_objective"]
     assert next(item for item in rows if item["task"] == "map")["image_mse"] is None
     assert row["latent_dimension"] is None
-    assert len(module().FIELDS) == 50
+    assert row["process_hwm_GB_decimal"] == pytest.approx(1.309868032)
+    assert row["hard_topology_scope"] == "positive_Tutte_decoder_with_independent_iterate_audits"
+    assert len(module().FIELDS) == 57
+
+
+def test_common_table_adds_p1_and_pref_without_false_ranking() -> None:
+    rows = module().extract_common_results(authority_paths(), p1_paths(), pref_paths())
+    assert len(rows) == 10
+    by_key = {(row["task"], row["method"]): row for row in rows}
+
+    p1_map = by_key["map", "P1_positive_uniform"]
+    assert p1_map["route_label"] == "P1"
+    assert p1_map["primary_slice"] == "exact83"
+    assert p1_map["primary_global_solves"] == 83
+    assert p1_map["primary_objective"] == pytest.approx(7.65868296606389e-6)
+    assert p1_map["primary_forward_seconds"] == pytest.approx(11.108095470815897)
+    assert p1_map["primary_backward_seconds"] == pytest.approx(5.467638202011585)
+    assert p1_map["primary_dense_seconds"] == pytest.approx(0.005829419940710068)
+    assert p1_map["map_rmse"] == pytest.approx(0.004605230120138025)
+    assert p1_map["mu_rmse"] == pytest.approx(0.09918527430055511)
+    assert p1_map["topology_certified"] is True
+    assert p1_map["latent_dimension"] == 2304
+    assert p1_map["gradient_check_relative_error"] is None
+    assert p1_map["hard_topology_scope"] == "positive_symmetric_Tutte_fixed_graph_and_convex_boundary"
+
+    pref_map = by_key["map", "P-ref_full_Whitney_teacher"]
+    assert pref_map["route_label"] == "P-ref"
+    assert pref_map["protocol_kind"] == "target_derived_one_shot_reference"
+    assert pref_map["primary_slice"] == "one_forward_one_adjoint"
+    assert pref_map["primary_global_solves"] == 2
+    assert pref_map["primary_objective"] == pytest.approx(2.0720980749075907e-31)
+    assert pref_map["comparable"] is False
+    assert pref_map["selected_for_common_input"] is True
+    assert pref_map["explicit_state_MB_decimal"] == pytest.approx(6.864144)
+    assert pref_map["hard_topology_scope"] == "observed_this_target_only_no_general_guarantee"
+    assert pref_map["gradient_check_relative_error"] == pytest.approx(1.0784960953491835e-7)
+
+    for task in ("map", "image"):
+        route2 = by_key[task, "O1_sigmoid_positive"]
+        p1 = by_key[task, "P1_positive_uniform"]
+        pref = by_key[task, "P-ref_full_Whitney_teacher"]
+        for key in (
+            "target_control_sum",
+            "target_control_l2",
+            "target_dense_sum",
+            "target_dense_l2",
+        ):
+            assert p1[key] == pytest.approx(route2[key], rel=1e-12, abs=1e-12)
+            assert pref[key] == pytest.approx(route2[key], rel=1e-12, abs=1e-12)
 
 
 def test_authority_rejects_target_mismatch_and_nonexact_slice(tmp_path: Path) -> None:

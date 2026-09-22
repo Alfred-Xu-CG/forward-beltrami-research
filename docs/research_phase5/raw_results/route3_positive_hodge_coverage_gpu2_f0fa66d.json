@@ -1,0 +1,2801 @@
+{
+  "configuration": {
+    "angles_per_split": 180,
+    "assembled_operator_error": "relative Frobenius norm of interior rows after one best positive global scale",
+    "cells_per_side": 4,
+    "heldout_angle_offset_degrees": 1.0,
+    "hidden_features": 32,
+    "local_operator_symbol_error": "relative spectral norm of the same 2x2 local symbol",
+    "map_error": "student versus full-anisotropic-P1 teacher on one monotone rectangle boundary",
+    "minimum_conductance": 1e-06,
+    "minimum_excess": 1e-10,
+    "radii": [
+      0.0,
+      0.2,
+      0.4,
+      0.6,
+      0.8,
+      0.9
+    ],
+    "tensor_error": "relative Frobenius norm of local direction moment",
+    "train_angle_spacing_degrees": 2.0,
+    "train_learning_rate": 0.005,
+    "train_steps": 1500
+  },
+  "environment": {
+    "commit": "f0fa66d5fae4fe7512c0e6d3656b1853792cca69",
+    "cuda_runtime": "12.1",
+    "cuda_visible_devices": "2",
+    "device": "cuda",
+    "dirty": false,
+    "gpu_name": "NVIDIA RTX A6000",
+    "gpu_total_bytes": 51033931776,
+    "hostname": "ai",
+    "numpy": "1.26.4",
+    "omp_num_threads": "1",
+    "platform": "Linux-5.15.0-88-generic-x86_64-with-glibc2.31",
+    "python": "3.11.7",
+    "scipy": "1.11.4",
+    "torch": "2.4.0+cu121",
+    "torch_threads": 1
+  },
+  "failures": [],
+  "graphs": [
+    {
+      "audit": {
+        "boundary_loop_count": 1,
+        "collinear_overlap_count": 0,
+        "disk_topology": true,
+        "dividing_edge_count": 2,
+        "edge_count": 56,
+        "euler_characteristic": 1,
+        "face_count": 32,
+        "proper_crossing_count": 0,
+        "vertex_count": 25
+      },
+      "direction_degrees": [
+        0.0,
+        45.0,
+        90.0
+      ],
+      "local_cone_uniform_exact_positive_radius_open_bound": 0.0,
+      "maximum_projective_gap_degrees": 90.0,
+      "name": "standard_sw_ne",
+      "strict_floor_can_add_nonzero_error_at_the_cone_boundary": true
+    },
+    {
+      "audit": {
+        "boundary_loop_count": 1,
+        "collinear_overlap_count": 0,
+        "disk_topology": true,
+        "dividing_edge_count": 0,
+        "edge_count": 104,
+        "euler_characteristic": 1,
+        "face_count": 64,
+        "proper_crossing_count": 0,
+        "vertex_count": 41
+      },
+      "direction_degrees": [
+        0.0,
+        45.0,
+        90.0,
+        135.0
+      ],
+      "local_cone_uniform_exact_positive_radius_open_bound": 0.41421356237309515,
+      "maximum_projective_gap_degrees": 45.0,
+      "name": "center_split",
+      "strict_floor_can_add_nonzero_error_at_the_cone_boundary": true
+    },
+    {
+      "audit": {
+        "boundary_loop_count": 1,
+        "collinear_overlap_count": 0,
+        "disk_topology": true,
+        "dividing_edge_count": 2,
+        "edge_count": 152,
+        "euler_characteristic": 1,
+        "face_count": 96,
+        "proper_crossing_count": 0,
+        "vertex_count": 57
+      },
+      "direction_degrees": [
+        0.0,
+        26.56505117707799,
+        45.0,
+        63.43494882292201,
+        90.0,
+        135.0
+      ],
+      "local_cone_uniform_exact_positive_radius_open_bound": 0.41421356237309515,
+      "maximum_projective_gap_degrees": 45.0,
+      "name": "stellar_triangle_centroids",
+      "strict_floor_can_add_nonzero_error_at_the_cone_boundary": true
+    }
+  ],
+  "learned_training": [
+    {
+      "final_relative_frobenius_squared_loss": 0.08094829626881961,
+      "graph": "standard_sw_ne",
+      "hidden_features": 32,
+      "initial_relative_frobenius_squared_loss": 0.4978633383384698,
+      "learning_rate": 0.005,
+      "seed": 20260922,
+      "steps": 1500,
+      "training_samples": 1080,
+      "wall_seconds": 3.905093975365162
+    },
+    {
+      "final_relative_frobenius_squared_loss": 0.0055782167506935555,
+      "graph": "center_split",
+      "hidden_features": 32,
+      "initial_relative_frobenius_squared_loss": 0.47359124641347217,
+      "learning_rate": 0.005,
+      "seed": 20260923,
+      "steps": 1500,
+      "training_samples": 1080,
+      "wall_seconds": 3.7067857459187508
+    },
+    {
+      "final_relative_frobenius_squared_loss": 0.003440882235897228,
+      "graph": "stellar_triangle_centroids",
+      "hidden_features": 32,
+      "initial_relative_frobenius_squared_loss": 0.9354281542456411,
+      "learning_rate": 0.005,
+      "seed": 20260924,
+      "steps": 1500,
+      "training_samples": 1080,
+      "wall_seconds": 3.4550609588623047
+    }
+  ],
+  "memory": {
+    "cuda_baseline_allocated_bytes": 0,
+    "cuda_baseline_reserved_bytes": 0,
+    "cuda_peak_allocated_bytes": 19475456,
+    "cuda_peak_reserved_bytes": 25165824,
+    "process_hwm_bytes": 907239424,
+    "rss_after_bytes": 907239424,
+    "rss_before_bytes": 561291264
+  },
+  "research_question": "What local tensor, assembled fixed-boundary operator, and decoded-map accuracy frontier is attainable with strictly positive coefficients on three fixed planar direction sets?",
+  "schema": "phase5_route3_positive_hodge_coverage_v1",
+  "scope": {
+    "assembled_operator_is_not_schur_effective_tensor": true,
+    "finite_directions_exact_arbitrary_spd": false,
+    "local_direction_moment_is_not_global_operator": true,
+    "student_topology_claim": "independently certified represented P1 map for each successful positive solve",
+    "teacher_topology_guarantee": false
+  },
+  "status": "ok",
+  "summaries": [
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 3.742031926567178e-07,
+        "mean": 3.742031926567177e-07,
+        "minimum": 3.742031926567178e-07,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 3.742031552670893e-07,
+        "mean": 3.7420315526708935e-07,
+        "minimum": 3.742031552670893e-07,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_map_rmse": {
+        "maximum": 6.3985758698490355e-09,
+        "mean": 6.398575869849035e-09,
+        "minimum": 6.3985758698490355e-09,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 4.1339444756260946e-08,
+        "mean": 4.1339444756260946e-08,
+        "minimum": 4.1339444756260946e-08,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_mu_rmse": {
+        "maximum": 2.718078262181997e-08,
+        "mean": 2.7180782621819966e-08,
+        "minimum": 2.718078262181997e-08,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "graph": "standard_sw_ne",
+      "local_operator_symbol_relative_error": {
+        "maximum": 5.000500000612323e-07,
+        "mean": 5.000500000612323e-07,
+        "minimum": 5.000500000612323e-07,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.0,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0001e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8599628417971835,
+        "mean": 0.8599628417971836,
+        "minimum": 0.8599628417971835,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8599628636482912,
+        "mean": 0.8599628636482912,
+        "minimum": 0.8599628636482912,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 5.000500000612322e-07,
+        "mean": 5.000500000612323e-07,
+        "minimum": 5.000500000612322e-07,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.007536074864305858,
+        "mean": 0.007536074864305858,
+        "minimum": 0.007536074864305858,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 3.742031552670893e-07,
+        "mean": 3.7420315526708935e-07,
+        "minimum": 3.742031552670893e-07,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.00012853786857950605,
+        "mean": 0.00012853786857950605,
+        "minimum": 0.00012853786857950605,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.000830185438597263,
+        "mean": 0.0008301854385972632,
+        "minimum": 0.000830185438597263,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.0005461313357262218,
+        "mean": 0.0005461313357262219,
+        "minimum": 0.0005461313357262218,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "graph": "standard_sw_ne",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.011539657206249969,
+        "mean": 0.01153965720624997,
+        "minimum": 0.011539657206249969,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.0,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 0.020121133082818328,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8595014107408284,
+        "mean": 0.8595014107408286,
+        "minimum": 0.8595014107408284,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8599628636482912,
+        "mean": 0.8599628636482912,
+        "minimum": 0.8599628636482912,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.010179876443783481,
+        "mean": 0.010179876443783483,
+        "minimum": 0.010179876443783481,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.11702810231528588,
+        "mean": 0.0790127139727946,
+        "minimum": 0.002512717981315676,
+        "worst_mu_argument_degrees": 269.0,
+        "worst_mu_argument_radians": 4.694935687864747
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.11612135268499735,
+        "mean": 0.03852605373817702,
+        "minimum": 4.0737254790809365e-17,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.0020972212957804733,
+        "mean": 0.0014065635019557478,
+        "minimum": 4.37076886072259e-05,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.013987054039781623,
+        "mean": 0.009445740587315114,
+        "minimum": 0.00029304372453341714,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.008874992571147253,
+        "mean": 0.005977159882002504,
+        "minimum": 0.0001861993833790511,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "graph": "standard_sw_ne",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.2777358042434422,
+        "mean": 0.08842406868726933,
+        "minimum": 1.4802973661668753e-16,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.2,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0001e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8596710656427713,
+        "mean": 0.8470320311004962,
+        "minimum": 0.8403698396634498,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8666462204270563,
+        "mean": 0.8506763350277451,
+        "minimum": 0.8446573102447716,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.3589248358743089,
+        "mean": 0.11427260675796035,
+        "minimum": 1.4347686211468073e-16,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.1261178650419421,
+        "mean": 0.07824779134703716,
+        "minimum": 0.004592493803440222,
+        "worst_mu_argument_degrees": 267.0,
+        "worst_mu_argument_radians": 4.6600291028248595
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.11612135268499735,
+        "mean": 0.03852605373817702,
+        "minimum": 4.0737254790809365e-17,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.0020974096374369055,
+        "mean": 0.0013899802464544151,
+        "minimum": 0.00010907199642915811,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.014232763508447944,
+        "mean": 0.009353739130732442,
+        "minimum": 0.0006579027094371346,
+        "worst_mu_argument_degrees": 257.0,
+        "worst_mu_argument_radians": 4.485496177625427
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.008875693532094863,
+        "mean": 0.005910350917050064,
+        "minimum": 0.0004542426184823855,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "graph": "standard_sw_ne",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.28202309282193877,
+        "mean": 0.09781152525554368,
+        "minimum": 0.0036507938682480735,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.2,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 3.1532757397695126e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8597572708459925,
+        "mean": 0.8470277468696783,
+        "minimum": 0.8398377069880323,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8666462204270563,
+        "mean": 0.8506763350277451,
+        "minimum": 0.8446573102447716,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.35897338271964313,
+        "mean": 0.12253774944310361,
+        "minimum": 0.004064056182058493,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.1795405693254602,
+        "mean": 0.1196742798863544,
+        "minimum": 0.004506303415325408,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.17953380366201588,
+        "mean": 0.06095095048011238,
+        "minimum": 4.072759430780076e-17,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.003455126598778955,
+        "mean": 0.0024873930994410887,
+        "minimum": 8.202465064803717e-05,
+        "worst_mu_argument_degrees": 219.0,
+        "worst_mu_argument_radians": 3.8222710618675815
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.023800850115296587,
+        "mean": 0.016990147539120495,
+        "minimum": 0.0005630969165572488,
+        "worst_mu_argument_degrees": 223.0,
+        "worst_mu_argument_radians": 3.8920842319473548
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.01450458020834523,
+        "mean": 0.010597772753073552,
+        "minimum": 0.0003532373180959763,
+        "worst_mu_argument_degrees": 221.0,
+        "worst_mu_argument_radians": 3.857177646907468
+      },
+      "graph": "standard_sw_ne",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.40810131437097624,
+        "mean": 0.1299291060164975,
+        "minimum": 4.758098676964957e-17,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.4,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0001e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8594418407843574,
+        "mean": 0.8392577352142,
+        "minimum": 0.8235564514861152,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8705043845586389,
+        "mean": 0.844093814468897,
+        "minimum": 0.8320947986172449,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.5676467854142221,
+        "mean": 0.18072433673899904,
+        "minimum": 6.618257093403053e-17,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.1795538703653522,
+        "mean": 0.11757446697182876,
+        "minimum": 0.013055315635977536,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.17953380366201588,
+        "mean": 0.06095095048011238,
+        "minimum": 4.072759430780076e-17,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.0035043137088019744,
+        "mean": 0.0024393663062348605,
+        "minimum": 0.0002085406037203228,
+        "worst_mu_argument_degrees": 212.99999999999997,
+        "worst_mu_argument_radians": 3.7175513067479216
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.022983257275555485,
+        "mean": 0.016589130446817486,
+        "minimum": 0.0015081644212232182,
+        "worst_mu_argument_degrees": 212.99999999999997,
+        "worst_mu_argument_radians": 3.7175513067479216
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.014571549562319711,
+        "mean": 0.010391019712647654,
+        "minimum": 0.0009150762186956416,
+        "worst_mu_argument_degrees": 212.99999999999997,
+        "worst_mu_argument_radians": 3.7175513067479216
+      },
+      "graph": "standard_sw_ne",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.4083092142272207,
+        "mean": 0.14053509879183365,
+        "minimum": 0.001899905380735105,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.4,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.000891981686786e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8595673867126092,
+        "mean": 0.8395965130353119,
+        "minimum": 0.8227773017153631,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8705043845586389,
+        "mean": 0.844093814468897,
+        "minimum": 0.8320947986172449,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.5676519470746076,
+        "mean": 0.19009033873300366,
+        "minimum": 0.002364550116589914,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.21099557800928928,
+        "mean": 0.1344328448508877,
+        "minimum": 0.005751939351753561,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.2109826542511707,
+        "mean": 0.10703074990859779,
+        "minimum": 1.940033568943062e-16,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.005496292994131195,
+        "mean": 0.003127984149839797,
+        "minimum": 0.00011177348223106212,
+        "worst_mu_argument_degrees": 209.0,
+        "worst_mu_argument_radians": 3.6477381366681487
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.033610924171442874,
+        "mean": 0.021396580111776645,
+        "minimum": 0.0007878644479851548,
+        "worst_mu_argument_degrees": 214.99999999999997,
+        "worst_mu_argument_radians": 3.752457891787808
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.0229119754558085,
+        "mean": 0.013388223465627047,
+        "minimum": 0.0004892795289903651,
+        "worst_mu_argument_degrees": 209.0,
+        "worst_mu_argument_radians": 3.6477381366681487
+      },
+      "graph": "standard_sw_ne",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.4686787321170586,
+        "mean": 0.1778561508334988,
+        "minimum": 7.811059183300783e-16,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.6,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0001e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.859298026255639,
+        "mean": 0.8357966579791224,
+        "minimum": 0.8085593377898217,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8725008008076801,
+        "mean": 0.836334868945412,
+        "minimum": 0.8134553091755917,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.6615210453569613,
+        "mean": 0.23961414683675572,
+        "minimum": 1.0453884913784406e-15,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.2109960592727601,
+        "mean": 0.1353089144206474,
+        "minimum": 0.007479248679562598,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.2109826542511707,
+        "mean": 0.10703074990859779,
+        "minimum": 1.940033568943062e-16,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.005828251350177781,
+        "mean": 0.0031321468030861134,
+        "minimum": 0.0001652226345656112,
+        "worst_mu_argument_degrees": 207.0,
+        "worst_mu_argument_radians": 3.612831551628262
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.03517820640207958,
+        "mean": 0.021569089271746795,
+        "minimum": 0.001376824381596387,
+        "worst_mu_argument_degrees": 207.0,
+        "worst_mu_argument_radians": 3.612831551628262
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.024242053980310985,
+        "mean": 0.013414035750405697,
+        "minimum": 0.0007257566569349349,
+        "worst_mu_argument_degrees": 207.0,
+        "worst_mu_argument_radians": 3.612831551628262
+      },
+      "graph": "standard_sw_ne",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.47147765880857223,
+        "mean": 0.18346335991002644,
+        "minimum": 0.010394050981129796,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.6,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.00000157114001e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8593870964346672,
+        "mean": 0.8360098271180416,
+        "minimum": 0.8078542547272581,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8725008008076801,
+        "mean": 0.836334868945412,
+        "minimum": 0.8134553091755917,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.6615340648360541,
+        "mean": 0.24461266420152528,
+        "minimum": 0.011429429124598867,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.22516173927263378,
+        "mean": 0.15495063891676458,
+        "minimum": 0.006345747497408145,
+        "worst_mu_argument_degrees": 229.0,
+        "worst_mu_argument_radians": 3.9968039870670147
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.2243615957853073,
+        "mean": 0.14116139744087447,
+        "minimum": 1.9819000799849752e-16,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.007380417495058311,
+        "mean": 0.0037029851396070046,
+        "minimum": 0.00013134015515201805,
+        "worst_mu_argument_degrees": 207.0,
+        "worst_mu_argument_radians": 3.612831551628262
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.045496719478935216,
+        "mean": 0.026246741890968192,
+        "minimum": 0.0009950437914549803,
+        "worst_mu_argument_degrees": 327.0,
+        "worst_mu_argument_radians": 5.707226654021458
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.03091064836926327,
+        "mean": 0.01603609090035575,
+        "minimum": 0.000581695228693872,
+        "worst_mu_argument_degrees": 207.0,
+        "worst_mu_argument_radians": 3.612831551628262
+      },
+      "graph": "standard_sw_ne",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.4937520037864897,
+        "mean": 0.20660433472327588,
+        "minimum": 1.264420666934206e-15,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.8,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0001e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8592287025607928,
+        "mean": 0.835051330921887,
+        "minimum": 0.7990632138904882,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8733695708950816,
+        "mean": 0.8312221738503691,
+        "minimum": 0.8015919765161867,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.6982175725395385,
+        "mean": 0.2724190679497516,
+        "minimum": 1.3960900404655129e-15,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.2244130626944635,
+        "mean": 0.15607527776354044,
+        "minimum": 0.003272427217989537,
+        "worst_mu_argument_degrees": 87.00000000000001,
+        "worst_mu_argument_radians": 1.5184364492350668
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.2243615957853073,
+        "mean": 0.14116139744087447,
+        "minimum": 1.9819000799849752e-16,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.007505956120953287,
+        "mean": 0.003651679897709729,
+        "minimum": 0.0001746912925153648,
+        "worst_mu_argument_degrees": 207.0,
+        "worst_mu_argument_radians": 3.612831551628262
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.046116889124227955,
+        "mean": 0.026438666208328538,
+        "minimum": 0.0010139534342836981,
+        "worst_mu_argument_degrees": 327.0,
+        "worst_mu_argument_radians": 5.707226654021458
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.03142566809189647,
+        "mean": 0.015853665292148874,
+        "minimum": 0.0007207993651365644,
+        "worst_mu_argument_degrees": 207.0,
+        "worst_mu_argument_radians": 3.612831551628262
+      },
+      "graph": "standard_sw_ne",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.49722599452882377,
+        "mean": 0.20967984490644156,
+        "minimum": 0.004678585823965537,
+        "worst_mu_argument_degrees": 87.00000000000001,
+        "worst_mu_argument_radians": 1.5184364492350668
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.8,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0000000032732362e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.859358363070006,
+        "mean": 0.8348858067714494,
+        "minimum": 0.799490235092037,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8733695708950816,
+        "mean": 0.8312221738503691,
+        "minimum": 0.8015919765161867,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.6982405539945511,
+        "mean": 0.274480080568081,
+        "minimum": 0.006579788130842825,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.23751705539342563,
+        "mean": 0.1610044428220706,
+        "minimum": 0.006630834176375158,
+        "worst_mu_argument_degrees": 230.99999999999997,
+        "worst_mu_argument_radians": 4.031710572106901
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.2269396921872432,
+        "mean": 0.1485534459281426,
+        "minimum": 0.004028087593371141,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.007848268064313603,
+        "mean": 0.003907834383495372,
+        "minimum": 0.000121821616558276,
+        "worst_mu_argument_degrees": 207.0,
+        "worst_mu_argument_radians": 3.612831551628262
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.048298305867668874,
+        "mean": 0.027832539825610677,
+        "minimum": 0.0010463836638094266,
+        "worst_mu_argument_degrees": 327.0,
+        "worst_mu_argument_radians": 5.707226654021458
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.03290952413834716,
+        "mean": 0.016995444877883504,
+        "minimum": 0.0006046639025154612,
+        "worst_mu_argument_degrees": 207.0,
+        "worst_mu_argument_radians": 3.612831551628262
+      },
+      "graph": "standard_sw_ne",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.49853904329390736,
+        "mean": 0.21243981260241468,
+        "minimum": 0.004712592330461843,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.9,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0001e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8592147016955151,
+        "mean": 0.8349547041435512,
+        "minimum": 0.7978023453763133,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8735383896687666,
+        "mean": 0.8295085350046343,
+        "minimum": 0.7975552321481673,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.7050379713987168,
+        "mean": 0.278968521888438,
+        "minimum": 0.004781433783256568,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.23587410319993052,
+        "mean": 0.16219876461248242,
+        "minimum": 0.016086303851607302,
+        "worst_mu_argument_degrees": 309.0,
+        "worst_mu_argument_radians": 5.3930673886624785
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.2269396921872432,
+        "mean": 0.1485534459281426,
+        "minimum": 0.004028087593371141,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.007995633584373104,
+        "mean": 0.003988829916054356,
+        "minimum": 0.0006299390044912659,
+        "worst_mu_argument_degrees": 335.0,
+        "worst_mu_argument_radians": 5.8468529941810035
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.048722050064488126,
+        "mean": 0.0283279022966085,
+        "minimum": 0.003813911780841895,
+        "worst_mu_argument_degrees": 329.0,
+        "worst_mu_argument_radians": 5.742133239061344
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.03346911554505501,
+        "mean": 0.017342418311930247,
+        "minimum": 0.0026645995152206215,
+        "worst_mu_argument_degrees": 333.0,
+        "worst_mu_argument_radians": 5.811946409141117
+      },
+      "graph": "standard_sw_ne",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.5035752711968775,
+        "mean": 0.2148654198270556,
+        "minimum": 0.014580623349297744,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.9,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0000000003189644e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8593991762058844,
+        "mean": 0.8350182041586383,
+        "minimum": 0.802146545351079,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8735383896687666,
+        "mean": 0.8295085350046343,
+        "minimum": 0.7975552321481673,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.7050838860924762,
+        "mean": 0.28034919275592524,
+        "minimum": 0.016035689853793108,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.3782954374778118,
+        "mean": 0.37829543747781175,
+        "minimum": 0.3782954374778118,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 5.264137288735993e-07,
+        "mean": 5.264137288735991e-07,
+        "minimum": 5.264137288735993e-07,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.0013806020237849379,
+        "mean": 0.0013806020237849374,
+        "minimum": 0.0013806020237849379,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.008734102206654002,
+        "mean": 0.008734102206654003,
+        "minimum": 0.008734102206654002,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.005793066992447589,
+        "mean": 0.005793066992447591,
+        "minimum": 0.005793066992447589,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "graph": "center_split",
+      "local_operator_symbol_relative_error": {
+        "maximum": 4.47531967169178e-16,
+        "mean": 4.475319671691781e-16,
+        "minimum": 4.47531967169178e-16,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.0,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 0.4999999999999999,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8633997727251791,
+        "mean": 0.863399772725179,
+        "minimum": 0.8633997727251791,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8565891330470811,
+        "mean": 0.8565891330470812,
+        "minimum": 0.8565891330470811,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 3.164622522642096e-16,
+        "mean": 3.1646225226420953e-16,
+        "minimum": 3.164622522642096e-16,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.24271833223773173,
+        "mean": 0.2427183322377317,
+        "minimum": 0.24271833223773173,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 5.264137288735993e-07,
+        "mean": 5.264137288735991e-07,
+        "minimum": 5.264137288735993e-07,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.0010010465663729006,
+        "mean": 0.0010010465663729004,
+        "minimum": 0.0010010465663729006,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.006340313835776984,
+        "mean": 0.006340313835776983,
+        "minimum": 0.006340313835776984,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.004214882065393598,
+        "mean": 0.004214882065393597,
+        "minimum": 0.004214882065393598,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "graph": "center_split",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.0035585238827022057,
+        "mean": 0.003558523882702205,
+        "minimum": 0.0035585238827022057,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.0,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 0.3549211528493041,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8614495805273701,
+        "mean": 0.8614495805273702,
+        "minimum": 0.8614495805273701,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8565891330470811,
+        "mean": 0.8565891330470812,
+        "minimum": 0.8565891330470811,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.0026813111831757728,
+        "mean": 0.0026813111831757723,
+        "minimum": 0.0026813111831757728,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.37779088103422764,
+        "mean": 0.3772893037319512,
+        "minimum": 0.37676889183499257,
+        "worst_mu_argument_degrees": 359.0,
+        "worst_mu_argument_radians": 6.265732014659643
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.09144547048721023,
+        "mean": 0.058047741453245316,
+        "minimum": 0.0015816635781093946,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.002084368508460031,
+        "mean": 0.001736711736052332,
+        "minimum": 0.0013963942876254278,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.020476889495707005,
+        "mean": 0.016354748444378456,
+        "minimum": 0.009879337283504173,
+        "worst_mu_argument_degrees": 281.0,
+        "worst_mu_argument_radians": 4.9043751981040655
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.012571402202630285,
+        "mean": 0.009420326192596393,
+        "minimum": 0.006037854745194931,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "graph": "center_split",
+      "local_operator_symbol_relative_error": {
+        "maximum": 6.591116421504766e-16,
+        "mean": 3.241715210393429e-16,
+        "minimum": 0.0,
+        "worst_mu_argument_degrees": 57.00000000000001,
+        "worst_mu_argument_radians": 0.9948376736367679
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.2,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 0.1250634603515036,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8511635422933886,
+        "mean": 0.8485544459733998,
+        "minimum": 0.8475225440583999,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8503051393633421,
+        "mean": 0.8451256600887136,
+        "minimum": 0.8430825629083336,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 6.914069779254069e-16,
+        "mean": 3.249723309350831e-16,
+        "minimum": 0.0,
+        "worst_mu_argument_degrees": 257.0,
+        "worst_mu_argument_radians": 4.485496177625427
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.33748562123242803,
+        "mean": 0.2858994416401655,
+        "minimum": 0.2071487839850345,
+        "worst_mu_argument_degrees": 169.0,
+        "worst_mu_argument_radians": 2.949606435870417
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.09144547048721023,
+        "mean": 0.058047741453245316,
+        "minimum": 0.0015816635781093946,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.0015417385668620367,
+        "mean": 0.0013245927597810236,
+        "minimum": 0.0010841892640952046,
+        "worst_mu_argument_degrees": 120.99999999999999,
+        "worst_mu_argument_radians": 2.1118483949131384
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.015702939475682614,
+        "mean": 0.012145443014278938,
+        "minimum": 0.008806218427310535,
+        "worst_mu_argument_degrees": 120.99999999999999,
+        "worst_mu_argument_radians": 2.1118483949131384
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.008828640064870727,
+        "mean": 0.006849622814333468,
+        "minimum": 0.00537041765806895,
+        "worst_mu_argument_degrees": 101.0,
+        "worst_mu_argument_radians": 1.7627825445142729
+      },
+      "graph": "center_split",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.01697183483101773,
+        "mean": 0.00986652663058135,
+        "minimum": 0.000735427231640271,
+        "worst_mu_argument_degrees": 135.0,
+        "worst_mu_argument_radians": 2.356194490192345
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.2,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 0.05934959356248372,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8521364199819226,
+        "mean": 0.8483482283617071,
+        "minimum": 0.8470825904637496,
+        "worst_mu_argument_degrees": 271.0,
+        "worst_mu_argument_radians": 4.729842272904633
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8503051393633421,
+        "mean": 0.8451256600887136,
+        "minimum": 0.8430825629083336,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.016247498295594194,
+        "mean": 0.00962377284512981,
+        "minimum": 0.0006734339263210808,
+        "worst_mu_argument_degrees": 133.0,
+        "worst_mu_argument_radians": 2.321287905152458
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.5732891457744033,
+        "mean": 0.382355260984497,
+        "minimum": 0.20609042412355974,
+        "worst_mu_argument_degrees": 359.0,
+        "worst_mu_argument_radians": 6.265732014659643
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.1620888649300463,
+        "mean": 0.1022241716409563,
+        "minimum": 0.0027497156201204513,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.0026605305011175046,
+        "mean": 0.0022026031349161594,
+        "minimum": 0.0017227780902715586,
+        "worst_mu_argument_degrees": 329.0,
+        "worst_mu_argument_radians": 5.742133239061344
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.03131309230391066,
+        "mean": 0.02429981206091105,
+        "minimum": 0.01392156378116148,
+        "worst_mu_argument_degrees": 212.99999999999997,
+        "worst_mu_argument_radians": 3.7175513067479216
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.01606038598306685,
+        "mean": 0.013234300069778722,
+        "minimum": 0.008649653934688297,
+        "worst_mu_argument_degrees": 35.00000000000001,
+        "worst_mu_argument_radians": 0.6108652381980154
+      },
+      "graph": "center_split",
+      "local_operator_symbol_relative_error": {
+        "maximum": 1.4107354398389086e-15,
+        "mean": 7.171115750623289e-16,
+        "minimum": 0.0,
+        "worst_mu_argument_degrees": 176.99999999999997,
+        "worst_mu_argument_radians": 3.089232776029963
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.4,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0001e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8438587445167555,
+        "mean": 0.8355563855938388,
+        "minimum": 0.8320948113455511,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.836905292716222,
+        "mean": 0.8323511731670437,
+        "minimum": 0.8287161210771445,
+        "worst_mu_argument_degrees": 359.0,
+        "worst_mu_argument_radians": 6.265732014659643
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 1.5220417598979108e-15,
+        "mean": 7.985976224798731e-16,
+        "minimum": 0.0,
+        "worst_mu_argument_degrees": 187.0,
+        "worst_mu_argument_radians": 3.263765701229396
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.5749776398714167,
+        "mean": 0.3614822739623417,
+        "minimum": 0.15577760820841102,
+        "worst_mu_argument_degrees": 178.99999999999997,
+        "worst_mu_argument_radians": 3.1241393610698496
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.1620888649300463,
+        "mean": 0.1022241716409563,
+        "minimum": 0.0027497156201204513,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.002448548323236179,
+        "mean": 0.001957468252513769,
+        "minimum": 0.0015017371618427937,
+        "worst_mu_argument_degrees": 151.0,
+        "worst_mu_argument_radians": 2.6354471705114375
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.027823546478483965,
+        "mean": 0.021121726386089716,
+        "minimum": 0.013676773543388936,
+        "worst_mu_argument_degrees": 31.0,
+        "worst_mu_argument_radians": 0.5410520681182421
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.01483679029751297,
+        "mean": 0.011718161222215823,
+        "minimum": 0.008577570989844803,
+        "worst_mu_argument_degrees": 149.0,
+        "worst_mu_argument_radians": 2.600540585471551
+      },
+      "graph": "center_split",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.02707901092877647,
+        "mean": 0.013589598461190509,
+        "minimum": 0.0019593853892124597,
+        "worst_mu_argument_degrees": 219.0,
+        "worst_mu_argument_radians": 3.8222710618675815
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.4,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 0.0030001189608964474,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8439369494363441,
+        "mean": 0.8365457561493069,
+        "minimum": 0.8316464842014056,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.836905292716222,
+        "mean": 0.8323511731670437,
+        "minimum": 0.8287161210771445,
+        "worst_mu_argument_degrees": 359.0,
+        "worst_mu_argument_radians": 6.265732014659643
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.027183673518776465,
+        "mean": 0.014390362829392671,
+        "minimum": 0.0022304623532796047,
+        "worst_mu_argument_degrees": 219.0,
+        "worst_mu_argument_radians": 3.8222710618675815
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.7596354004208269,
+        "mean": 0.38608610385110465,
+        "minimum": 0.06925563183096951,
+        "worst_mu_argument_degrees": 359.0,
+        "worst_mu_argument_radians": 6.265732014659643
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.20522454857894493,
+        "mean": 0.12870570014442506,
+        "minimum": 0.0034244812638705895,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.004216063679092726,
+        "mean": 0.002511736979386019,
+        "minimum": 0.0007529913747422442,
+        "worst_mu_argument_degrees": 171.0,
+        "worst_mu_argument_radians": 2.9845130209103035
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.047876323617579854,
+        "mean": 0.025132106764829368,
+        "minimum": 0.008088876251901151,
+        "worst_mu_argument_degrees": 189.0,
+        "worst_mu_argument_radians": 3.2986722862692828
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.02503259856897868,
+        "mean": 0.01457816165061062,
+        "minimum": 0.0049332123054561935,
+        "worst_mu_argument_degrees": 171.0,
+        "worst_mu_argument_radians": 2.9845130209103035
+      },
+      "graph": "center_split",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.10595428652639126,
+        "mean": 0.05728167282609369,
+        "minimum": 1.0408340855860846e-17,
+        "worst_mu_argument_degrees": 135.0,
+        "worst_mu_argument_radians": 2.356194490192345
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.6,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0001e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8417462534196383,
+        "mean": 0.8299832250209312,
+        "minimum": 0.8161831452406932,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8338344351907279,
+        "mean": 0.8201488604981778,
+        "minimum": 0.813704498399194,
+        "worst_mu_argument_degrees": 178.99999999999997,
+        "worst_mu_argument_radians": 3.1241393610698496
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.10729312439961133,
+        "mean": 0.05800548377829975,
+        "minimum": 1.4690951501680127e-17,
+        "worst_mu_argument_degrees": 135.0,
+        "worst_mu_argument_radians": 2.356194490192345
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.7645940537478643,
+        "mean": 0.387633993180955,
+        "minimum": 0.0740661721241273,
+        "worst_mu_argument_degrees": 178.99999999999997,
+        "worst_mu_argument_radians": 3.1241393610698496
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.20522454857894493,
+        "mean": 0.12870570014442506,
+        "minimum": 0.0034244812638705895,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.003494185876831208,
+        "mean": 0.0024371542741501544,
+        "minimum": 0.0007070554513192931,
+        "worst_mu_argument_degrees": 19.0,
+        "worst_mu_argument_radians": 0.33161255787892263
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.035843934337073,
+        "mean": 0.023863991948086163,
+        "minimum": 0.008737998704868025,
+        "worst_mu_argument_degrees": 13.0,
+        "worst_mu_argument_radians": 0.22689280275926285
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.020837258934430072,
+        "mean": 0.013967043869104733,
+        "minimum": 0.0048104332846945165,
+        "worst_mu_argument_degrees": 17.0,
+        "worst_mu_argument_radians": 0.29670597283903605
+      },
+      "graph": "center_split",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.10913105751203865,
+        "mean": 0.06397563518046426,
+        "minimum": 0.0015123331772682821,
+        "worst_mu_argument_degrees": 315.0,
+        "worst_mu_argument_radians": 5.497787143782138
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.6,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 3.7368862445268195e-05,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8418373078369622,
+        "mean": 0.8308061258639169,
+        "minimum": 0.8178654345249274,
+        "worst_mu_argument_degrees": 359.0,
+        "worst_mu_argument_radians": 6.265732014659643
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8338344351907279,
+        "mean": 0.8201488604981778,
+        "minimum": 0.813704498399194,
+        "worst_mu_argument_degrees": 178.99999999999997,
+        "worst_mu_argument_radians": 3.1241393610698496
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.10921763988167936,
+        "mean": 0.06573515324649852,
+        "minimum": 0.001589056860997707,
+        "worst_mu_argument_degrees": 225.0,
+        "worst_mu_argument_radians": 3.9269908169872414
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.8320461774926404,
+        "mean": 0.38504763260505226,
+        "minimum": 0.013658674844055118,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.22558567926709394,
+        "mean": 0.14104528560124366,
+        "minimum": 0.0037308398657930437,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.004801449921804642,
+        "mean": 0.0037187178787324382,
+        "minimum": 0.00018018104240308925,
+        "worst_mu_argument_degrees": 341.0,
+        "worst_mu_argument_radians": 5.951572749300664
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.04852657957235387,
+        "mean": 0.03347366312980482,
+        "minimum": 0.001899476283639878,
+        "worst_mu_argument_degrees": 176.99999999999997,
+        "worst_mu_argument_radians": 3.089232776029963
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.02797352991417618,
+        "mean": 0.01944806233842503,
+        "minimum": 0.0011695251534665392,
+        "worst_mu_argument_degrees": 176.99999999999997,
+        "worst_mu_argument_radians": 3.089232776029963
+      },
+      "graph": "center_split",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.15467419711035646,
+        "mean": 0.09881260332129478,
+        "minimum": 3.947459643111666e-16,
+        "worst_mu_argument_degrees": 315.0,
+        "worst_mu_argument_radians": 5.497787143782138
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.8,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0001e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8405570318678918,
+        "mean": 0.8288230742754042,
+        "minimum": 0.8015919811605066,
+        "worst_mu_argument_degrees": 178.99999999999997,
+        "worst_mu_argument_radians": 3.1241393610698496
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8215161001157254,
+        "mean": 0.8091977339823156,
+        "minimum": 0.802068889033025,
+        "worst_mu_argument_degrees": 178.99999999999997,
+        "worst_mu_argument_radians": 3.1241393610698496
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.15692231847112845,
+        "mean": 0.10024880100901641,
+        "minimum": 4.0921179890310426e-16,
+        "worst_mu_argument_degrees": 135.0,
+        "worst_mu_argument_radians": 2.356194490192345
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.8304822364285247,
+        "mean": 0.3862732935611757,
+        "minimum": 0.01890945945941178,
+        "worst_mu_argument_degrees": 178.99999999999997,
+        "worst_mu_argument_radians": 3.1241393610698496
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.22558567926709394,
+        "mean": 0.14104528560124366,
+        "minimum": 0.0037308398657930437,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.00481637352762648,
+        "mean": 0.00351731935498798,
+        "minimum": 0.0004455897611321764,
+        "worst_mu_argument_degrees": 155.0,
+        "worst_mu_argument_radians": 2.705260340591211
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.04243752040109527,
+        "mean": 0.031921753660701706,
+        "minimum": 0.004541145577407945,
+        "worst_mu_argument_degrees": 209.0,
+        "worst_mu_argument_radians": 3.6477381366681487
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.025322694596162456,
+        "mean": 0.018451983945494035,
+        "minimum": 0.002382330599126364,
+        "worst_mu_argument_degrees": 21.0,
+        "worst_mu_argument_radians": 0.3665191429188092
+      },
+      "graph": "center_split",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.15529012039379422,
+        "mean": 0.10160184253510846,
+        "minimum": 0.005480407985344013,
+        "worst_mu_argument_degrees": 225.0,
+        "worst_mu_argument_radians": 3.9269908169872414
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.8,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0249421420780216e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8410532665259962,
+        "mean": 0.8286204901913171,
+        "minimum": 0.8039558633343039,
+        "worst_mu_argument_degrees": 359.0,
+        "worst_mu_argument_radians": 6.265732014659643
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8215161001157254,
+        "mean": 0.8091977339823156,
+        "minimum": 0.802068889033025,
+        "worst_mu_argument_degrees": 178.99999999999997,
+        "worst_mu_argument_radians": 3.1241393610698496
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.15703513621120618,
+        "mean": 0.10424369244067232,
+        "minimum": 0.00605713484217835,
+        "worst_mu_argument_degrees": 225.0,
+        "worst_mu_argument_radians": 3.9269908169872414
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.8393422779147135,
+        "mean": 0.3851360044988049,
+        "minimum": 0.006610338085110804,
+        "worst_mu_argument_degrees": 181.0,
+        "worst_mu_argument_radians": 3.159045946109736
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.22966026456233007,
+        "mean": 0.14350124530255579,
+        "minimum": 0.003791140518596358,
+        "worst_mu_argument_degrees": 178.99999999999997,
+        "worst_mu_argument_radians": 3.1241393610698496
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.005199176780490219,
+        "mean": 0.004134476695284751,
+        "minimum": 0.0003345524790009504,
+        "worst_mu_argument_degrees": 158.99999999999997,
+        "worst_mu_argument_radians": 2.7750735106709836
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.05034685862365404,
+        "mean": 0.036368706816594175,
+        "minimum": 0.0029985313411678444,
+        "worst_mu_argument_degrees": 178.99999999999997,
+        "worst_mu_argument_radians": 3.1241393610698496
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.029077501960673394,
+        "mean": 0.02127806703173111,
+        "minimum": 0.0016756994061896194,
+        "worst_mu_argument_degrees": 178.99999999999997,
+        "worst_mu_argument_radians": 3.1241393610698496
+      },
+      "graph": "center_split",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.16397588013565678,
+        "mean": 0.10743538363557126,
+        "minimum": 0.004712634689321202,
+        "worst_mu_argument_degrees": 135.0,
+        "worst_mu_argument_radians": 2.356194490192345
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.9,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0001e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.840402369524297,
+        "mean": 0.8286762852790278,
+        "minimum": 0.7992712586636675,
+        "worst_mu_argument_degrees": 178.99999999999997,
+        "worst_mu_argument_radians": 3.1241393610698496
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8176772796606007,
+        "mean": 0.8063008631364182,
+        "minimum": 0.7976776581093118,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.16637123645342453,
+        "mean": 0.10900479753187334,
+        "minimum": 0.004781476760893332,
+        "worst_mu_argument_degrees": 45.0,
+        "worst_mu_argument_radians": 0.7853981633974483
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.8130041366596926,
+        "mean": 0.3850440450835421,
+        "minimum": 0.03091510145687928,
+        "worst_mu_argument_degrees": 178.99999999999997,
+        "worst_mu_argument_radians": 3.1241393610698496
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.22966026456233007,
+        "mean": 0.14350124530255579,
+        "minimum": 0.003791140518596358,
+        "worst_mu_argument_degrees": 178.99999999999997,
+        "worst_mu_argument_radians": 3.1241393610698496
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.005402669080723405,
+        "mean": 0.004176424966764541,
+        "minimum": 0.0021885795687939,
+        "worst_mu_argument_degrees": 341.0,
+        "worst_mu_argument_radians": 5.951572749300664
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.0452911583662837,
+        "mean": 0.036224894091765436,
+        "minimum": 0.01671970669999367,
+        "worst_mu_argument_degrees": 339.0,
+        "worst_mu_argument_radians": 5.916666164260777
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.028119281826620268,
+        "mean": 0.021279297839971883,
+        "minimum": 0.010600786531292357,
+        "worst_mu_argument_degrees": 345.0,
+        "worst_mu_argument_radians": 6.021385919380437
+      },
+      "graph": "center_split",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.16471356939352805,
+        "mean": 0.11005236552574983,
+        "minimum": 0.026632031587276228,
+        "worst_mu_argument_degrees": 135.0,
+        "worst_mu_argument_radians": 2.356194490192345
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.9,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.000531878644634e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.8411932316126006,
+        "mean": 0.8292557259275785,
+        "minimum": 0.8082294643085868,
+        "worst_mu_argument_degrees": 359.0,
+        "worst_mu_argument_radians": 6.265732014659643
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8176772796606007,
+        "mean": 0.8063008631364182,
+        "minimum": 0.7976776581093118,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.16662084059040858,
+        "mean": 0.1126345518080639,
+        "minimum": 0.03483019595530665,
+        "worst_mu_argument_degrees": 225.0,
+        "worst_mu_argument_radians": 3.9269908169872414
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.5529977213237122,
+        "mean": 0.5529977213237122,
+        "minimum": 0.5529977213237122,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.22414716534086854,
+        "mean": 0.2241471653408685,
+        "minimum": 0.22414716534086854,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.028902220776312444,
+        "mean": 0.02890222077631244,
+        "minimum": 0.028902220776312444,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.29749159990715934,
+        "mean": 0.2974915999071594,
+        "minimum": 0.29749159990715934,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.26220441836075886,
+        "mean": 0.2622044183607589,
+        "minimum": 0.26220441836075886,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "graph": "stellar_triangle_centroids",
+      "local_operator_symbol_relative_error": {
+        "maximum": 7.648423335255848e-16,
+        "mean": 7.648423335255848e-16,
+        "minimum": 7.648423335255848e-16,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.0,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 0.19626168224299084,
+      "student_minimum_area_ratio": {
+        "maximum": 0.575305171875357,
+        "mean": 0.5753051718753569,
+        "minimum": 0.575305171875357,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8599628636482887,
+        "mean": 0.8599628636482886,
+        "minimum": 0.8599628636482887,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 5.453105385130469e-16,
+        "mean": 5.453105385130469e-16,
+        "minimum": 5.453105385130469e-16,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.6213183884943595,
+        "mean": 0.6213183884943596,
+        "minimum": 0.6213183884943595,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.22414716534086854,
+        "mean": 0.2241471653408685,
+        "minimum": 0.22414716534086854,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.05180027591834852,
+        "mean": 0.051800275918348536,
+        "minimum": 0.05180027591834852,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 0.6381805655008008,
+        "mean": 0.638180565500801,
+        "minimum": 0.6381805655008008,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.49125987238688207,
+        "mean": 0.4912598723868821,
+        "minimum": 0.49125987238688207,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "graph": "stellar_triangle_centroids",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.013492665764955314,
+        "mean": 0.013492665764955308,
+        "minimum": 0.013492665764955314,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.0,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 0.101979053027752,
+      "student_minimum_area_ratio": {
+        "maximum": 0.2793135907211158,
+        "mean": 0.2793135907211158,
+        "minimum": 0.2793135907211158,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8599628636482887,
+        "mean": 0.8599628636482886,
+        "minimum": 0.8599628636482887,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.012360809695561798,
+        "mean": 0.012360809695561801,
+        "minimum": 0.012360809695561798,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.5826106435636312,
+        "mean": 0.5686800455634298,
+        "minimum": 0.5611383855525368,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.23664471811146862,
+        "mean": 0.2271264759461171,
+        "minimum": 0.2139978273113029,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.06709109278296457,
+        "mean": 0.04717025618854142,
+        "minimum": 0.013707095327338303,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 1.028478415288847,
+        "mean": 0.6808050193834987,
+        "minimum": 0.18934703418784715,
+        "worst_mu_argument_degrees": 39.00000000000001,
+        "worst_mu_argument_radians": 0.6806784082777886
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.6704723126750682,
+        "mean": 0.46722322372613934,
+        "minimum": 0.1317359324412777,
+        "worst_mu_argument_degrees": 49.00000000000001,
+        "worst_mu_argument_radians": 0.8552113334772216
+      },
+      "graph": "stellar_triangle_centroids",
+      "local_operator_symbol_relative_error": {
+        "maximum": 1.456612954819685e-15,
+        "mean": 8.13169676676094e-16,
+        "minimum": 1.5676600674991953e-16,
+        "worst_mu_argument_degrees": 325.0,
+        "worst_mu_argument_radians": 5.672320068981571
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.2,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0001e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.6893765479271802,
+        "mean": 0.27917102755549555,
+        "minimum": 0.026523730671150242,
+        "worst_mu_argument_degrees": 240.99999999999997,
+        "worst_mu_argument_radians": 4.206243497306334
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8666462204270539,
+        "mean": 0.8506763350277424,
+        "minimum": 0.8446573102447692,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 1.3359109323714148e-15,
+        "mean": 7.680125327551841e-16,
+        "minimum": 1.4347686211468073e-16,
+        "worst_mu_argument_degrees": 325.0,
+        "worst_mu_argument_radians": 5.672320068981571
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.6605331214171682,
+        "mean": 0.5904616829123462,
+        "minimum": 0.4715880894656275,
+        "worst_mu_argument_degrees": 156.99999999999997,
+        "worst_mu_argument_radians": 2.740166925631097
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.23664471811146862,
+        "mean": 0.2271264759461171,
+        "minimum": 0.2139978273113029,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.08572151813248376,
+        "mean": 0.055744058656472875,
+        "minimum": 0.0038697330431421836,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 1.054848072212746,
+        "mean": 0.720521248100271,
+        "minimum": 0.04449289640052231,
+        "worst_mu_argument_degrees": 111.0,
+        "worst_mu_argument_radians": 1.9373154697137058
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.8378582673247238,
+        "mean": 0.5387459230096757,
+        "minimum": 0.027468129692279804,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "graph": "stellar_triangle_centroids",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.028334284727726946,
+        "mean": 0.01714667482139943,
+        "minimum": 0.008592261426788615,
+        "worst_mu_argument_degrees": 79.0,
+        "worst_mu_argument_radians": 1.3788101090755203
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.2,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 0.005410995306817175,
+      "student_minimum_area_ratio": {
+        "maximum": 0.7960508832792909,
+        "mean": 0.24811130953502428,
+        "minimum": 0.011998352983364588,
+        "worst_mu_argument_degrees": 273.0,
+        "worst_mu_argument_radians": 4.76474885794452
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8666462204270539,
+        "mean": 0.8506763350277424,
+        "minimum": 0.8446573102447692,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.027795232766502146,
+        "mean": 0.016792719577615984,
+        "minimum": 0.010045779005717365,
+        "worst_mu_argument_degrees": 79.0,
+        "worst_mu_argument_radians": 1.3788101090755203
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.660860398130512,
+        "mean": 0.6170381893185205,
+        "minimum": 0.579585822854887,
+        "worst_mu_argument_degrees": 25.000000000000004,
+        "worst_mu_argument_radians": 0.43633231299858244
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.2457672114993778,
+        "mean": 0.2353415188323144,
+        "minimum": 0.21686123758183462,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.10354540602720536,
+        "mean": 0.0771858653031379,
+        "minimum": 0.044844988390809117,
+        "worst_mu_argument_degrees": 209.0,
+        "worst_mu_argument_radians": 3.6477381366681487
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 1.1532688769192945,
+        "mean": 1.0673677912751898,
+        "minimum": 0.9344833031902958,
+        "worst_mu_argument_degrees": 171.0,
+        "worst_mu_argument_radians": 2.9845130209103035
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.868755412181475,
+        "mean": 0.7421792610233965,
+        "minimum": 0.5852341429796354,
+        "worst_mu_argument_degrees": 61.0,
+        "worst_mu_argument_radians": 1.064650843716541
+      },
+      "graph": "stellar_triangle_centroids",
+      "local_operator_symbol_relative_error": {
+        "maximum": 1.1668844317593223e-15,
+        "mean": 5.307700340058276e-16,
+        "minimum": 5.0924754735753935e-17,
+        "worst_mu_argument_degrees": 95.0,
+        "worst_mu_argument_radians": 1.6580627893946132
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.4,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0001e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.31040172329250715,
+        "mean": 0.03402930675983607,
+        "minimum": 1.3483192027842897e-06,
+        "worst_mu_argument_degrees": 221.0,
+        "worst_mu_argument_radians": 3.857177646907468
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8705043845586369,
+        "mean": 0.8440938144688936,
+        "minimum": 0.8320947986172363,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 1.1986173384794907e-15,
+        "mean": 5.598814198572958e-16,
+        "minimum": 5.675330317741564e-17,
+        "worst_mu_argument_degrees": 101.0,
+        "worst_mu_argument_radians": 1.7627825445142729
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.7401844214940831,
+        "mean": 0.5973736827127126,
+        "minimum": 0.4221415691245123,
+        "worst_mu_argument_degrees": 173.0,
+        "worst_mu_argument_radians": 3.01941960595019
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.2457672114993778,
+        "mean": 0.2353415188323144,
+        "minimum": 0.21686123758183462,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.10463250904983604,
+        "mean": 0.08183568506709478,
+        "minimum": 0.03131085283331496,
+        "worst_mu_argument_degrees": 217.0,
+        "worst_mu_argument_radians": 3.787364476827695
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 1.0770663794127087,
+        "mean": 1.008220890239854,
+        "minimum": 0.5481669322880985,
+        "worst_mu_argument_degrees": 158.99999999999997,
+        "worst_mu_argument_radians": 2.7750735106709836
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.867081765890936,
+        "mean": 0.7442076791213801,
+        "minimum": 0.3506630217017014,
+        "worst_mu_argument_degrees": 87.00000000000001,
+        "worst_mu_argument_radians": 1.5184364492350668
+      },
+      "graph": "stellar_triangle_centroids",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.033261463829268395,
+        "mean": 0.020213601137354723,
+        "minimum": 0.007186340389201931,
+        "worst_mu_argument_degrees": 131.0,
+        "worst_mu_argument_radians": 2.2863813201125716
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.4,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 0.00016688301571716105,
+      "student_minimum_area_ratio": {
+        "maximum": 0.3109167875603181,
+        "mean": 0.08516656055956666,
+        "minimum": 0.00021557217084493705,
+        "worst_mu_argument_degrees": 299.0,
+        "worst_mu_argument_radians": 5.218534463463045
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8705043845586369,
+        "mean": 0.8440938144688936,
+        "minimum": 0.8320947986172363,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.04050295242185416,
+        "mean": 0.022150765239773263,
+        "minimum": 0.007208172988712326,
+        "worst_mu_argument_degrees": 135.0,
+        "worst_mu_argument_radians": 2.356194490192345
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.8361360143433101,
+        "mean": 0.6531974845285746,
+        "minimum": 0.5246565382024643,
+        "worst_mu_argument_degrees": 7.0,
+        "worst_mu_argument_radians": 0.12217304763960307
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.25097709143846403,
+        "mean": 0.24520332328346306,
+        "minimum": 0.23330796541361531,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.140246864655183,
+        "mean": 0.10271745273981914,
+        "minimum": 0.04556011767735987,
+        "worst_mu_argument_degrees": 207.0,
+        "worst_mu_argument_radians": 3.612831551628262
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 1.1665290955071552,
+        "mean": 1.0785411428432663,
+        "minimum": 1.0538080937956824,
+        "worst_mu_argument_degrees": 176.99999999999997,
+        "worst_mu_argument_radians": 3.089232776029963
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.8777933191594107,
+        "mean": 0.8374459776993398,
+        "minimum": 0.6225588111751044,
+        "worst_mu_argument_degrees": 203.0,
+        "worst_mu_argument_radians": 3.543018381548489
+      },
+      "graph": "stellar_triangle_centroids",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.10595464869463882,
+        "mean": 0.028640985304437733,
+        "minimum": 5.551115123125783e-17,
+        "worst_mu_argument_degrees": 135.0,
+        "worst_mu_argument_radians": 2.356194490192345
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.6,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0001e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 4.477663178243494e-06,
+        "mean": 1.4783503050930937e-06,
+        "minimum": 6.771270277380403e-07,
+        "worst_mu_argument_degrees": 7.0,
+        "worst_mu_argument_radians": 0.12217304763960307
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8725008008076784,
+        "mean": 0.8363348689454091,
+        "minimum": 0.8134553091755853,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.10729349114421519,
+        "mean": 0.029002892661931692,
+        "minimum": 7.835174134229398e-17,
+        "worst_mu_argument_degrees": 135.0,
+        "worst_mu_argument_radians": 2.356194490192345
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.8258013445560527,
+        "mean": 0.6342863118598727,
+        "minimum": 0.46041152941682373,
+        "worst_mu_argument_degrees": 176.99999999999997,
+        "worst_mu_argument_radians": 3.089232776029963
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.25097709143846403,
+        "mean": 0.24520332328346306,
+        "minimum": 0.23330796541361531,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.13551686293353046,
+        "mean": 0.09841166962784201,
+        "minimum": 0.0440857598541982,
+        "worst_mu_argument_degrees": 217.0,
+        "worst_mu_argument_radians": 3.787364476827695
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 1.1605642414613688,
+        "mean": 1.0751162150428737,
+        "minimum": 1.0317846713918206,
+        "worst_mu_argument_degrees": 3.0000000000000004,
+        "worst_mu_argument_radians": 0.05235987755982989
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.8689451621722715,
+        "mean": 0.8207660100906072,
+        "minimum": 0.5925545791238986,
+        "worst_mu_argument_degrees": 67.0,
+        "worst_mu_argument_radians": 1.1693705988362009
+      },
+      "graph": "stellar_triangle_centroids",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.11328473566723989,
+        "mean": 0.044836090995846296,
+        "minimum": 0.004880148157913111,
+        "worst_mu_argument_degrees": 135.0,
+        "worst_mu_argument_radians": 2.356194490192345
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.6,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 4.234013379095453e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.049486686799887776,
+        "mean": 0.009289909239963888,
+        "minimum": 2.9810506910502935e-06,
+        "worst_mu_argument_degrees": 309.0,
+        "worst_mu_argument_radians": 5.3930673886624785
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8725008008076784,
+        "mean": 0.8363348689454091,
+        "minimum": 0.8134553091755853,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.11400050503445577,
+        "mean": 0.04649259111455052,
+        "minimum": 0.006082082355074353,
+        "worst_mu_argument_degrees": 135.0,
+        "worst_mu_argument_radians": 2.356194490192345
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.8887567842801508,
+        "mean": 0.6761108096673841,
+        "minimum": 0.5709590881813746,
+        "worst_mu_argument_degrees": 178.99999999999997,
+        "worst_mu_argument_radians": 3.1241393610698496
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.2533428709441194,
+        "mean": 0.2519281092057119,
+        "minimum": 0.24880604258332953,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.14094677029915104,
+        "mean": 0.11291904299161576,
+        "minimum": 0.05444098810352433,
+        "worst_mu_argument_degrees": 311.0,
+        "worst_mu_argument_radians": 5.427973973702365
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 1.1284967121785294,
+        "mean": 1.075717693344898,
+        "minimum": 1.053787993808419,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.8799962888413418,
+        "mean": 0.8673283996942261,
+        "minimum": 0.6431866163194677,
+        "worst_mu_argument_degrees": 265.0,
+        "worst_mu_argument_radians": 4.625122517784973
+      },
+      "graph": "stellar_triangle_centroids",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.15467435807402208,
+        "mean": 0.05831759198347172,
+        "minimum": 2.9005032757711607e-16,
+        "worst_mu_argument_degrees": 135.0,
+        "worst_mu_argument_radians": 2.356194490192345
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.8,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0001e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 9.786172892500957e-06,
+        "mean": 1.0419513750303943e-06,
+        "minimum": 2.843921488989459e-07,
+        "worst_mu_argument_degrees": 178.99999999999997,
+        "worst_mu_argument_radians": 3.1241393610698496
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8733695708950806,
+        "mean": 0.8312221738503663,
+        "minimum": 0.8015919765161835,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.15692248177433007,
+        "mean": 0.05904715834479913,
+        "minimum": 2.982490858427507e-16,
+        "worst_mu_argument_degrees": 135.0,
+        "worst_mu_argument_radians": 2.356194490192345
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.8661902122651607,
+        "mean": 0.6546640716610715,
+        "minimum": 0.5039686965400505,
+        "worst_mu_argument_degrees": 3.0000000000000004,
+        "worst_mu_argument_radians": 0.05235987755982989
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.2533428709441194,
+        "mean": 0.2519281092057119,
+        "minimum": 0.24880604258332953,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.1401930032263014,
+        "mean": 0.10523996627205669,
+        "minimum": 0.045046880523151936,
+        "worst_mu_argument_degrees": 209.0,
+        "worst_mu_argument_radians": 3.6477381366681487
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 1.1705160097085177,
+        "mean": 1.0764030687957082,
+        "minimum": 1.0417357856966452,
+        "worst_mu_argument_degrees": 3.0000000000000004,
+        "worst_mu_argument_radians": 0.05235987755982989
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.8777519547026439,
+        "mean": 0.8422582517020067,
+        "minimum": 0.6219218023573504,
+        "worst_mu_argument_degrees": 205.0,
+        "worst_mu_argument_radians": 3.5779249665883754
+      },
+      "graph": "stellar_triangle_centroids",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.1578208959003163,
+        "mean": 0.07463575922536544,
+        "minimum": 0.01224768207531861,
+        "worst_mu_argument_degrees": 45.0,
+        "worst_mu_argument_radians": 0.7853981633974483
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.8,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.023592321431017e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.0006518923338228739,
+        "mean": 5.186142559685481e-05,
+        "minimum": 2.910809754176034e-07,
+        "worst_mu_argument_degrees": 323.0,
+        "worst_mu_argument_radians": 5.6374134839416845
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8733695708950806,
+        "mean": 0.8312221738503663,
+        "minimum": 0.8015919765161835,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.15804353350544195,
+        "mean": 0.075822216785542,
+        "minimum": 0.012604108955018982,
+        "worst_mu_argument_degrees": 45.0,
+        "worst_mu_argument_radians": 0.7853981633974483
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.8953100633875418,
+        "mean": 0.6774712051863608,
+        "minimum": 0.571705192172776,
+        "worst_mu_argument_degrees": 1.0,
+        "worst_mu_argument_radians": 0.017453292519943295
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.25380939403284514,
+        "mean": 0.2534782485966111,
+        "minimum": 0.2527375393301414,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.14102910845556157,
+        "mean": 0.11501452581583815,
+        "minimum": 0.08927486853748293,
+        "worst_mu_argument_degrees": 309.0,
+        "worst_mu_argument_radians": 5.3930673886624785
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 1.1302247071229723,
+        "mean": 1.0752894724990776,
+        "minimum": 1.0541524946413159,
+        "worst_mu_argument_degrees": 269.0,
+        "worst_mu_argument_radians": 4.694935687864747
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.8804829017940443,
+        "mean": 0.8740250131265401,
+        "minimum": 0.8690026241063705,
+        "worst_mu_argument_degrees": 269.0,
+        "worst_mu_argument_radians": 4.694935687864747
+      },
+      "graph": "stellar_triangle_centroids",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.1639759563816037,
+        "mean": 0.06685765889585144,
+        "minimum": 7.448093311065507e-16,
+        "worst_mu_argument_degrees": 135.0,
+        "worst_mu_argument_radians": 2.356194490192345
+      },
+      "method": "deterministic_lower_bound_nnls",
+      "radius": 0.9,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0001e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 9.835307338818783e-06,
+        "mean": 6.467176397282523e-07,
+        "minimum": 1.3206601650456015e-07,
+        "worst_mu_argument_degrees": 178.99999999999997,
+        "worst_mu_argument_radians": 3.1241393610698496
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8735383896687634,
+        "mean": 0.8295085350046316,
+        "minimum": 0.7975552321481651,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.16637131381317066,
+        "mean": 0.06765904380020886,
+        "minimum": 7.464746087297195e-16,
+        "worst_mu_argument_degrees": 135.0,
+        "worst_mu_argument_radians": 2.356194490192345
+      }
+    },
+    {
+      "assembled_fixed_boundary_operator_relative_error": {
+        "maximum": 0.817186421862314,
+        "mean": 0.6495819696982147,
+        "minimum": 0.5026474978908131,
+        "worst_mu_argument_degrees": 5.0,
+        "worst_mu_argument_radians": 0.08726646259971647
+      },
+      "best_global_class_operator_nnls_relative_error": {
+        "maximum": 0.25380939403284514,
+        "mean": 0.2534782485966111,
+        "minimum": 0.2527375393301414,
+        "worst_mu_argument_degrees": 89.0,
+        "worst_mu_argument_radians": 1.5533430342749532
+      },
+      "decoded_map_rmse": {
+        "maximum": 0.14022413526266833,
+        "mean": 0.10316104254048576,
+        "minimum": 0.04494796533012171,
+        "worst_mu_argument_degrees": 207.0,
+        "worst_mu_argument_radians": 3.612831551628262
+      },
+      "decoded_maximum_mu_error": {
+        "maximum": 1.1750656310793641,
+        "mean": 1.0762704591663257,
+        "minimum": 1.0391312504123933,
+        "worst_mu_argument_degrees": 5.0,
+        "worst_mu_argument_radians": 0.08726646259971647
+      },
+      "decoded_mu_rmse": {
+        "maximum": 0.8780909798314294,
+        "mean": 0.8348221640368024,
+        "minimum": 0.6218224620670864,
+        "worst_mu_argument_degrees": 201.0,
+        "worst_mu_argument_radians": 3.508111796508602
+      },
+      "graph": "stellar_triangle_centroids",
+      "local_operator_symbol_relative_error": {
+        "maximum": 0.16748337466812918,
+        "mean": 0.0882231099787823,
+        "minimum": 0.042232766063475494,
+        "worst_mu_argument_degrees": 135.0,
+        "worst_mu_argument_radians": 2.356194490192345
+      },
+      "method": "learned_softplus_local_map",
+      "radius": 0.9,
+      "sample_count": 180,
+      "split": "held_out_half_step_angle_grid",
+      "strict_minimum_conductance": 1.0005217140423167e-06,
+      "student_minimum_area_ratio": {
+        "maximum": 0.00021817083117553232,
+        "mean": 8.946801025578584e-06,
+        "minimum": 1.436432922764675e-07,
+        "worst_mu_argument_degrees": 327.0,
+        "worst_mu_argument_radians": 5.707226654021458
+      },
+      "student_topology_failure_count": 0,
+      "teacher_minimum_area_ratio": {
+        "maximum": 0.8735383896687634,
+        "mean": 0.8295085350046316,
+        "minimum": 0.7975552321481651,
+        "worst_mu_argument_degrees": 91.0,
+        "worst_mu_argument_radians": 1.5882496193148399
+      },
+      "teacher_topology_failure_count": 0,
+      "tensor_frobenius_relative_error": {
+        "maximum": 0.16773809665673495,
+        "mean": 0.08946297587126864,
+        "minimum": 0.045305571014646315,
+        "worst_mu_argument_degrees": 135.0,
+        "worst_mu_argument_radians": 2.356194490192345
+      }
+    }
+  ],
+  "utc": "2026-09-22T09:18:34.998884+00:00",
+  "wall_seconds": 44.164998691529036
+}
