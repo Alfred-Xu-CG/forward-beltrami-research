@@ -158,6 +158,7 @@ def main() -> None:
     parser.add_argument("--target-family", choices=("base", "high32"), default="base")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--save-state", default=None)
+    parser.add_argument("--load-state", default=None, help="warm-start encoder weights; Adam state is restarted")
     args = parser.parse_args()
     if min(args.side, args.image_side, args.train_count, args.test_count, args.batch, args.steps) < 1 or args.strain_weight < 0:
         raise ValueError("all dimensions, counts and steps must be positive")
@@ -183,6 +184,13 @@ def main() -> None:
         axes = ("vertical", "horizontal")
         encoder = AlternatingImageEncoder(args.side, axes).to(device)
         decoder = ExactAlternatingMonotoneComposition(args.side, table, axes)
+    if args.load_state:
+        previous = torch.load(args.load_state, map_location=device, weights_only=False)
+        previous_args = previous["args"]
+        for key in ("method", "side", "image_side", "target_family", "a2_head_mode"):
+            if previous_args.get(key, "base" if key == "target_family" else "multilevel" if key == "a2_head_mode" else None) != getattr(args, key):
+                raise ValueError(f"loaded checkpoint does not match {key}")
+        encoder.load_state_dict(previous["encoder"])
     optimizer = torch.optim.Adam(encoder.parameters(), lr=args.learning_rate)
 
     def forward(
@@ -298,6 +306,7 @@ def main() -> None:
         "strain_weight": args.strain_weight,
         "a2_head_mode": args.a2_head_mode if args.method == "A2" else None,
         "target_family": args.target_family,
+        "loaded_state": args.load_state,
         "device": str(device),
         "device_name": torch.cuda.get_device_name(device) if device.type == "cuda" else platform.processor(),
         "torch_version": torch.__version__,

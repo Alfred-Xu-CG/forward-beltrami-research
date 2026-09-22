@@ -28,19 +28,26 @@ from qcopt.neural_bijection.dense import (
 from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 
 
-def target_map(side: int, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
+def target_map(side: int, device: torch.device, dtype: torch.dtype, target_kind: str = "base") -> torch.Tensor:
     """Smooth global motion plus a safe localized high-frequency component.
 
-    The perturbation is globally Lipschitz below one: the low-frequency vector
-    norm times its scalar gradient bound is <0.519; the high-frequency term is
-    <0.302, so the sum is <0.821. It vanishes on the square boundary. Hence
-    identity plus this perturbation is injective and maps the square onto itself.
+    Both variants have a globally subunit displacement Lipschitz bound and
+    fix the square boundary. In the base variant, the loose two-term bound is
+    below 0.821; in high32 it is below 0.895. Identity plus either perturbation
+    is therefore injective and maps the square onto itself.
     """
     line = torch.linspace(0.0, 1.0, side, device=device, dtype=dtype)
     yy, xx = torch.meshgrid(line, line, indexing="ij")
     low = torch.sin(2 * math.pi * xx) * torch.sin(2 * math.pi * yy)
-    high = torch.sin(16 * math.pi * xx) * torch.sin(16 * math.pi * yy)
-    return torch.stack((xx + 0.03 * low + 0.003 * high, yy + 0.05 * low + 0.003 * high), dim=-1)[None]
+    if target_kind == "base":
+        high = torch.sin(16 * math.pi * xx) * torch.sin(16 * math.pi * yy)
+        ax, ay, af = 0.03, 0.05, 0.003
+    elif target_kind == "high32":
+        high = torch.sin(64 * math.pi * xx) * torch.sin(64 * math.pi * yy)
+        ax, ay, af = 0.015, 0.025, 0.0025
+    else:
+        raise ValueError("target_kind must be base or high32")
+    return torch.stack((xx + ax * low + af * high, yy + ay * low + af * high), dim=-1)[None]
 
 
 def main() -> None:
@@ -52,14 +59,16 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=1000)
     parser.add_argument("--learning-rate", type=float, default=0.05)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--target-kind", choices=("base", "high32"), default="base")
     parser.add_argument("--save-state", default=None)
+    parser.add_argument("--load-state", default=None, help="warm-start latent tensors; Adam state restarts")
     args = parser.parse_args()
     torch.manual_seed(20260923)
     device = torch.device(args.device)
     dtype = torch.float32
     side = args.side
     mesh = structured_rectangle(side - 1, side - 1)
-    target = target_map(side, device, dtype)
+    target = target_map(side, device, dtype, args.target_kind)
     table = StructuredDenseQueryTable.from_mesh(mesh, height=side, width=side)
     table.prepare(device=device, dtype=dtype)
     if args.method.startswith("single_"):
@@ -135,6 +144,17 @@ def main() -> None:
             result = decoder(tuple(latents))
             return result.dense, result.controls
 
+    if args.load_state is not None:
+        previous = torch.load(args.load_state, map_location=device, weights_only=True)
+        if previous["method"] != args.method or previous["side"] != side:
+            raise ValueError("loaded latent checkpoint method/side mismatch")
+        if len(previous["parameters"]) != len(parameters):
+            raise ValueError("loaded latent checkpoint count mismatch")
+        with torch.no_grad():
+            for parameter, prior in zip(parameters, previous["parameters"]):
+                if parameter.shape != prior.shape:
+                    raise ValueError("loaded latent tensor shape mismatch")
+                parameter.copy_(prior)
     optimizer = torch.optim.Adam(parameters, lr=args.learning_rate)
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(device)
@@ -160,6 +180,7 @@ def main() -> None:
     if args.save_state is not None:
         torch.save({
             "method": args.method,
+            "target_kind": args.target_kind,
             "side": side,
             "layers": 1 if args.method.startswith(("single_", "convex_quad")) else args.layers,
             "patch_cells": args.patch_cells if args.method == "patches" else None,
@@ -167,6 +188,7 @@ def main() -> None:
         }, args.save_state)
     print(json.dumps({
         "task": "direct_latent_map_oracle_not_image_training",
+        "target_kind": args.target_kind,
         "method": args.method,
         "representation": "original_grid_P1" if args.method.startswith(("single_", "convex_quad")) else "exact_PL_composition",
         "control_side": side,
@@ -181,6 +203,7 @@ def main() -> None:
         "learning_rate": args.learning_rate,
         "dtype": "float32",
         "device": str(device),
+        "loaded_state": args.load_state,
         "device_name": torch.cuda.get_device_name(device) if device.type == "cuda" else platform.processor(),
         "torch_version": torch.__version__,
         "training_seconds": training_seconds,

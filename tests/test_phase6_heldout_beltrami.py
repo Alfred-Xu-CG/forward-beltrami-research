@@ -10,6 +10,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from phase6_evaluate_heldout_beltrami import _mu, _target_on_faces  # noqa: E402
+from phase6_train_multisample_image import make_dataset  # noqa: E402
 from qcopt.mesh import structured_rectangle
 
 
@@ -65,3 +66,12 @@ def test_high32_target_jacobian_matches_central_difference() -> None:
         minus, _ = _target_on_faces(points - shift, coefficients, fine_cycles=32)
         observed = (plus - minus) / (2 * step)
         assert torch.allclose(jacobian[..., :, direction], observed, rtol=1e-7, atol=1e-8)
+
+
+def test_high32_synthesis_map_matches_independent_face_formula() -> None:
+    _, _, synthesized, coefficients = make_dataset(3, 67, 55101, return_coefficients=True, target_family="high32")
+    line = torch.linspace(0.0, 1.0, 67)
+    yy, xx = torch.meshgrid(line, line, indexing="ij")
+    points = torch.stack((xx, yy), dim=-1)[None].expand(3, -1, -1, -1).reshape(3, -1, 2)
+    independent, _ = _target_on_faces(points, coefficients, fine_cycles=32)
+    assert torch.allclose(synthesized.reshape(3, -1, 2), independent, atol=2e-7, rtol=0)

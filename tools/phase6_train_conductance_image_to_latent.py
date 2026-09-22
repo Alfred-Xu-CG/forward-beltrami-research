@@ -13,9 +13,12 @@ import torch
 import torch.nn.functional as F
 
 from phase6_benchmark_edge_woodbury import cut_selected_edges, regular_selected_edges
+from phase6_evaluate_heldout_beltrami import _mu, _target_on_faces
 from phase6_train_image_to_latent import _minimum_area_ratio, _synthetic_pair
+from phase6_train_multisample_image import make_dataset
 from qcopt.mesh import structured_rectangle
 from qcopt.neural_bijection.dense import ExactBlockSchurTutteLayer, SparseEdgeWoodburyTutteLayer
+from qcopt.neural_bijection.dense import evaluate_structured_p1_with_jacobian
 from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 from qcopt.neural_bijection.tutte.symmetric import MatrixFreeSymmetricTutteLayer
 
@@ -59,8 +62,9 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=50)
     parser.add_argument("--record-every", type=int, default=10)
     parser.add_argument("--learning-rate", type=float, default=0.003)
-    parser.add_argument("--target-kind", choices=("smooth", "high_frequency"), default="high_frequency")
+    parser.add_argument("--target-kind", choices=("smooth", "high_frequency", "high32"), default="high_frequency")
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--save-state", default=None)
     args = parser.parse_args()
     if args.record_every < 1:
         raise ValueError("record-every must be positive")
@@ -79,7 +83,14 @@ def main() -> None:
         solver = SparseEdgeWoodburyTutteLayer(mesh, selected).to(device=device, dtype=torch.float32)
         active_edges = reference.active_edges[selected]
     encoder = MultiscaleEdgeImageEncoder(args.side, mesh.vertices[active_edges].mean(axis=1)).to(device)
-    fixed, moving, true_map = _synthetic_pair(args.image_side, args.batch, device, args.target_kind)
+    coefficients = None
+    if args.target_kind == "high32":
+        fixed, moving, true_map, coefficients = (
+            value[:args.batch].to(device)
+            for value in make_dataset(max(32, args.batch), args.image_side, 55101, return_coefficients=True, target_family="high32")
+        )
+    else:
+        fixed, moving, true_map = _synthetic_pair(args.image_side, args.batch, device, args.target_kind)
     pair = torch.cat((fixed, moving), dim=1)
     table = StructuredDenseQueryTable.from_mesh(mesh, height=args.image_side, width=args.image_side)
     table.prepare(device=device, dtype=torch.float32)
@@ -129,6 +140,28 @@ def main() -> None:
         final_loss, final_query, final_control = evaluate()
         map_rmse = (final_query - true_map).square().mean().sqrt().item()
         area_ratio = _minimum_area_ratio(final_control.reshape(args.batch, args.side, args.side, 2))
+        qc_geometry = None
+        if coefficients is not None:
+            vertices = torch.tensor(mesh.vertices.copy(), dtype=torch.float32, device=device)
+            faces = torch.tensor(mesh.faces.copy(), dtype=torch.int64, device=device)
+            centroids = vertices[faces].mean(dim=1)[None].expand(args.batch, -1, -1)
+            _, predicted_jacobian = evaluate_structured_p1_with_jacobian(
+                final_control.reshape(args.batch, args.side, args.side, 2), centroids
+            )
+            _, target_jacobian = _target_on_faces(centroids, coefficients, 32)
+            sampled_target, _ = _target_on_faces(vertices[None].expand(args.batch, -1, -1), coefficients, 32)
+            _, sampled_jacobian = evaluate_structured_p1_with_jacobian(
+                sampled_target.reshape(args.batch, args.side, args.side, 2), centroids
+            )
+            predicted_mu, target_mu, sampled_mu = (_mu(jacobian) for jacobian in (predicted_jacobian, target_jacobian, sampled_jacobian))
+            qc_geometry = {
+                "face_beltrami_rmse": (predicted_mu - target_mu).abs().square().mean().sqrt().item(),
+                "sampled_target_P1_beltrami_discretization_rmse": (sampled_mu - target_mu).abs().square().mean().sqrt().item(),
+                "maximum_predicted_beltrami_modulus": predicted_mu.abs().max().item(),
+                "maximum_target_beltrami_modulus": target_mu.abs().max().item(),
+            }
+    if args.save_state:
+        torch.save({"encoder": encoder.state_dict(), "args": vars(args)}, args.save_state)
     print(json.dumps({
         "route": "C",
         "method": "all_edge_exact_block_schur" if args.solver == "schur" else "selected_edge_woodbury",
@@ -160,6 +193,7 @@ def main() -> None:
         "last_solver_relative_residual": solver.last_forward_stats[0].relative_residual if args.solver == "schur" else None,
         "step_records": records,
         "first_head_gradient_norms": first_head_gradient_norms,
+        "qc_geometry": qc_geometry,
     }, sort_keys=True))
 
 

@@ -85,11 +85,14 @@ def main() -> None:
     face_map_error_sum = 0.0
     jacobian_error_sum = 0.0
     mu_error_sum = 0.0
+    sampled_target_mu_error_sum = 0.0
+    predicted_to_sampled_target_mu_error_sum = 0.0
     count = 0
     min_area = float("inf")
     min_determinant = float("inf")
     max_predicted_mu = 0.0
     max_target_mu = 0.0
+    fine_projection_estimates = []
     began = time.perf_counter()
     with torch.no_grad():
         for start in range(0, args.test_count, args.batch):
@@ -97,6 +100,17 @@ def main() -> None:
             current = end - start
             pair = torch.cat((fixed[start:end], moving[start:end]), dim=1)
             control = decoder(*encoder(pair))
+            if target_family == "high32":
+                source_grid = vertices.reshape(args.side, args.side, 2)
+                high_basis = torch.sin(64 * math.pi * source_grid[..., 0]) * torch.sin(64 * math.pi * source_grid[..., 1])
+                displacement = control - source_grid
+                projected = (displacement * high_basis[None, :, :, None]).sum(dim=(1, 2)) / high_basis.square().sum()
+                for index in range(current):
+                    fine_projection_estimates.append({
+                        "true_amplitude": coefficients[start + index, 2].item(),
+                        "projected_x_amplitude": projected[index, 0].item(),
+                        "projected_y_amplitude": projected[index, 1].item(),
+                    })
             min_area = min(min_area, certify_convex_quad_output(control))
             dense = table.interpolate(control.reshape(current, -1, 2))
             warped = F.grid_sample(moving[start:end], 2 * dense - 1, mode="bilinear", padding_mode="border", align_corners=True)
@@ -105,11 +119,18 @@ def main() -> None:
             query = centroids[None].expand(current, -1, -1)
             predicted_value, predicted_jacobian = evaluate_structured_p1_with_jacobian(control, query)
             target_value, target_jacobian = _target_on_faces(query, coefficients[start:end], fine_cycles)
+            sampled_target, _ = _target_on_faces(vertices[None].expand(current, -1, -1), coefficients[start:end], fine_cycles)
+            _, sampled_target_jacobian = evaluate_structured_p1_with_jacobian(
+                sampled_target.reshape(current, args.side, args.side, 2), query
+            )
             face_map_error_sum += (predicted_value - target_value).square().mean().item() * current
             jacobian_error_sum += (predicted_jacobian - target_jacobian).square().mean().item() * current
             predicted_mu = _mu(predicted_jacobian)
             target_mu = _mu(target_jacobian)
+            sampled_target_mu = _mu(sampled_target_jacobian)
             mu_error_sum += (predicted_mu - target_mu).abs().square().mean().item() * current
+            sampled_target_mu_error_sum += (sampled_target_mu - target_mu).abs().square().mean().item() * current
+            predicted_to_sampled_target_mu_error_sum += (predicted_mu - sampled_target_mu).abs().square().mean().item() * current
             determinant = predicted_jacobian[..., 0, 0] * predicted_jacobian[..., 1, 1] - predicted_jacobian[..., 0, 1] * predicted_jacobian[..., 1, 0]
             min_determinant = min(min_determinant, determinant.min().item())
             max_predicted_mu = max(max_predicted_mu, predicted_mu.abs().max().item())
@@ -135,10 +156,13 @@ def main() -> None:
         "heldout_face_centroid_map_rmse": math.sqrt(face_map_error_sum / count),
         "heldout_face_jacobian_component_rmse": math.sqrt(jacobian_error_sum / count),
         "heldout_source_area_weighted_beltrami_rmse": math.sqrt(mu_error_sum / count),
+        "heldout_sampled_target_P1_beltrami_discretization_rmse": math.sqrt(sampled_target_mu_error_sum / count),
+        "heldout_predicted_vs_sampled_target_P1_beltrami_rmse": math.sqrt(predicted_to_sampled_target_mu_error_sum / count),
         "minimum_source_normalized_face_area": min_area,
         "minimum_face_jacobian_determinant": min_determinant,
         "maximum_predicted_beltrami_modulus": max_predicted_mu,
         "maximum_target_beltrami_modulus": max_target_mu,
+        "fine_projection_estimates": fine_projection_estimates if target_family == "high32" else None,
         "evaluation_seconds": time.perf_counter() - began,
     }, sort_keys=True))
 
