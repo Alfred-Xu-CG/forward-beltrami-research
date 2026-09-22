@@ -152,6 +152,26 @@ An exact restricted-family alternative fixes every edge touching a strict patch-
 
 The update entries of \(D\) may be negative when a positive learned conductance drops below baseline one; the full graph and hence the reduced Schur matrix remain SPD because *all actual* conductances stay positive. This is not the small-rank Woodbury formula. Each forward factors the current complete interface Schur matrix, but reuses all patch factors and inverse couplings; each backward uses that current interface factor and the fixed patch factors for the exact adjoint. The output remains the original fine-grid P1 map under the same positive-weight/boundary theorem and represented face checks. A 17² independent full sparse solve agreed to \(2.3\times10^{-15}\), the full relative residual was below \(10^{-12}\), and a directional VJP matched central differences within \(10^{-7}\). The 257² speed/expressivity measurement is pending; the method should not be called an all-edge fast solver because it cannot vary patch-interior edges.
 
+The 257² CPU float64, batch-one repeated map-loss benchmark is now available. Every row uses the same 66,049 vertices, 131,072 faces and 196,094 active base edges; `variable edges` counts the subset the neural latent may change. The full sparse-direct comparator independently reassembles and refactors the complete system. Times are repeated medians after construction; the one-time precomputation is separate. Results are from the same Element host, although its shared load can vary.
+
+| Patch width in cells | Variable edges | Interface vertices | One-time precompute | Forward | VJP | Independent full direct forward | Max coordinate discrepancy | Peak process RSS |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 16 | 8190 | 7425 | 12.23 s | 0.2205 s | 0.0266 s | 0.4410 s | \(5.14\times10^{-14}\) | 800 MB |
+| 32 | 3710 | 3521 | 12.22 s | 0.1835 s | 0.0196 s | 0.5123 s | \(6.62\times10^{-14}\) | 816 MB |
+| 64 | 1566 | 1521 | 12.46 s | 0.0852 s | 0.0216 s | 0.4619 s | \(6.68\times10^{-14}\) | 921 MB |
+
+The full relative residuals were \(5.9\)–\(8.4\times10^{-15}\); every benchmark map had positive represented face areas. At p64, interface factorization took about 54 ms and recovery plus full residual/face validation about 30 ms. This is a real exact-solve repeated-call speed improvement over full direct and the all-edge Schur prototype, **conditional on accepting interface-only conductance variation** and amortizing the 12.5 s setup. It remains slower than A2+'s full CPU image forward on the common task, and the control family is smaller.
+
+On the same **one training pair** of high32 images used for the all-edge 300-step experiment above, p16/p64 interface models gave:
+
+| Conductance family | Variable edges | Initial image MSE | Final image MSE | Query-map RMSE | Face-Beltrami RMSE | Smallest face-area ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| all 196,094 active edges, refactor every step | 196,094 | 0.004186 | 0.001778 | 0.004604 | 0.1594 | 0.0811 |
+| p16 reusable interface | 8190 | 0.004196 | 0.001997 | 0.004543 | 0.1539 | 0.0703 |
+| p64 reusable interface | 1566 | 0.004196 | 0.002416 | 0.004684 | 0.1145 | 0.2165 |
+
+This target's sampled-P1 Beltrami floor was 0.0212, so none of the trained C variants came close. p64 trades away image fit for repeated-call speed; the lower *mean* \(\mu\) error does not mean uniformly gentle geometry (its maximum observed \(|\mu|\) was 0.740, versus target 0.167). The models have different numbers and locations of learnable conductances and slightly different initial losses; the table is a family comparison, not an isolated solver ablation. The experiment does establish that exact hierarchical elimination can yield a forward/VJP advantage when the update support is structurally restricted, without interpolating a coarse map or weakening the fine-grid topology theorem. Raw benchmark and training records are in `raw_results/routeC_reusable_interface257_p*.json` and `raw_results/trainpair_C_high32_interface257_p*_cpu300.json`.
+
 ## 8. Current conclusion, not a stop rule
 
 Woodbury has a compelling repeated-call speed when a small set of **physically useful** fine edges changes and its one-time setup is amortized. The currently selected isolated-edge lattice is too restricted for the image task. Exact Schur supports arbitrary positive all-edge conductances and a correct implicit VJP at 257², but its CPU factorization is presently slower than a fresh complete direct solve and far slower per step than the explicit two-layer candidate. This does not justify abandoning the conductance route: structured cutsets, batched GPU patch factors, or an exact reusable-interface formulation deserve further targeted tests. Any subsequent acceleration must be compared at matching map quality, not only matching algebraic residual.
