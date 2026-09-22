@@ -7,6 +7,7 @@ from .exact_block_schur import ExactBlockSchurTutteLayer
 from .reusable_interface_schur import ReusableInterfaceSchurTutteLayer
 from .alternating import ExactAlternatingMonotoneComposition, evaluate_structured_p1_with_jacobian
 from .convex_quad import HierarchicalConvexQuadLayer, HierarchicalConvexQuadFreeCenterLayer, certify_convex_quad_output, split_convex_quad_grid
+from .convex_quad_composition import CoarseFineConvexQuadComposition, CoarseFineConvexQuadResult
 
 __all__ = [
     "DenseMonotoneGridLayer",
@@ -22,4 +23,6 @@ __all__ = [
     "HierarchicalConvexQuadFreeCenterLayer",
     "certify_convex_quad_output",
     "split_convex_quad_grid",
+    "CoarseFineConvexQuadComposition",
+    "CoarseFineConvexQuadResult",
 ]

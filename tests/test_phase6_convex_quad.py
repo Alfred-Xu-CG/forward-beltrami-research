@@ -121,3 +121,28 @@ def test_standalone_certificate_rejects_coordinates_outside_unit_square() -> Non
     control[0, 2, 2, 0] = 2.0
     with pytest.raises(ValueError, match="outside the unit square"):
         certify_convex_quad_output(control)
+
+
+def test_every_hierarchical_edge_midpoint_stays_on_parent_segment() -> None:
+    generator = torch.Generator().manual_seed(191)
+    layer = HierarchicalConvexQuadFreeCenterLayer(17)
+    root = torch.randn(1, 1, 1, 2, generator=generator, dtype=torch.float64)
+    latents = tuple(
+        (
+            torch.randn(1, n, n - 1, generator=generator, dtype=torch.float64),
+            torch.randn(1, n - 1, n, generator=generator, dtype=torch.float64),
+            torch.randn(1, n - 1, n - 1, 2, generator=generator, dtype=torch.float64),
+        )
+        for n in layer.latent_sides
+    )
+    mapped = layer(root, latents)[0]
+    for step in (16, 8, 4, 2):
+        for a, m, b in (
+            (mapped[::step, :-step:step], mapped[::step, step // 2::step], mapped[::step, step::step]),
+            (mapped[:-step:step, ::step], mapped[step // 2::step, ::step], mapped[step::step, ::step]),
+        ):
+            direction = b - a
+            fraction = ((m - a) * direction).sum(dim=-1) / direction.square().sum(dim=-1)
+            residual = m - (a + fraction[..., None] * direction)
+            assert torch.linalg.vector_norm(residual, dim=-1).max() < 1e-14
+            assert fraction.min() > 0 and fraction.max() < 1

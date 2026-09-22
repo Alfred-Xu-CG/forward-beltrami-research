@@ -19,6 +19,7 @@ from phase6_train_image_to_latent import _minimum_area_ratio
 from qcopt.mesh import structured_rectangle
 from qcopt.neural_bijection.dense import (
     DenseMonotoneGridLayer,
+    CoarseFineConvexQuadComposition,
     ExactAlternatingMonotoneComposition,
     HierarchicalConvexQuadFreeCenterLayer,
     HierarchicalConvexQuadLayer,
@@ -52,8 +53,9 @@ def target_map(side: int, device: torch.device, dtype: torch.dtype, target_kind:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--method", choices=("single_vertical", "single_horizontal", "alternating", "patches", "convex_quad", "convex_quad_free"), required=True)
+    parser.add_argument("--method", choices=("single_vertical", "single_horizontal", "alternating", "patches", "convex_quad", "convex_quad_free", "convex_quad_coarse_fine"), required=True)
     parser.add_argument("--side", type=int, default=257)
+    parser.add_argument("--coarse-side", type=int, default=17)
     parser.add_argument("--layers", type=int, choices=(2, 4), default=2)
     parser.add_argument("--patch-cells", type=int, default=16)
     parser.add_argument("--steps", type=int, default=1000)
@@ -110,6 +112,37 @@ def main() -> None:
             control = decoder(tuple(zip(horizontal_logits_list, vertical_logits_list)))
             return control, (control,)
 
+    elif args.method == "convex_quad_coarse_fine":
+        decoder = CoarseFineConvexQuadComposition(args.coarse_side, side, side)
+        decoder.prepare(device=device, dtype=dtype)
+
+        def make_factor_latents(factor: HierarchicalConvexQuadFreeCenterLayer):
+            root = torch.nn.Parameter(torch.zeros(1, 1, 1, 2, dtype=dtype, device=device))
+            horizontal = torch.nn.ParameterList(
+                torch.nn.Parameter(torch.zeros(1, current, current - 1, dtype=dtype, device=device))
+                for current in factor.latent_sides
+            )
+            vertical = torch.nn.ParameterList(
+                torch.nn.Parameter(torch.zeros(1, current - 1, current, dtype=dtype, device=device))
+                for current in factor.latent_sides
+            )
+            centers = torch.nn.ParameterList(
+                torch.nn.Parameter(torch.zeros(1, current - 1, current - 1, 2, dtype=dtype, device=device))
+                for current in factor.latent_sides
+            )
+            return root, horizontal, vertical, centers
+
+        coarse_root, coarse_h, coarse_v, coarse_c = make_factor_latents(decoder.coarse)
+        fine_root, fine_h, fine_v, fine_c = make_factor_latents(decoder.fine)
+        parameters = [coarse_root, *coarse_h, *coarse_v, *coarse_c, fine_root, *fine_h, *fine_v, *fine_c]
+
+        def decode() -> tuple[torch.Tensor, tuple[torch.Tensor, ...]]:
+            result = decoder(
+                coarse_root, tuple(zip(coarse_h, coarse_v, coarse_c)),
+                fine_root, tuple(zip(fine_h, fine_v, fine_c)),
+            )
+            return result.dense, result.controls
+
     elif args.method == "convex_quad_free":
         decoder = HierarchicalConvexQuadFreeCenterLayer(side)
         root_center = torch.nn.Parameter(torch.zeros(1, 1, 1, 2, dtype=dtype, device=device))
@@ -148,6 +181,8 @@ def main() -> None:
         previous = torch.load(args.load_state, map_location=device, weights_only=True)
         if previous["method"] != args.method or previous["side"] != side:
             raise ValueError("loaded latent checkpoint method/side mismatch")
+        if args.method == "convex_quad_coarse_fine" and previous.get("coarse_side") != args.coarse_side:
+            raise ValueError("loaded latent checkpoint coarse-side mismatch")
         if len(previous["parameters"]) != len(parameters):
             raise ValueError("loaded latent checkpoint count mismatch")
         with torch.no_grad():
@@ -182,7 +217,8 @@ def main() -> None:
             "method": args.method,
             "target_kind": args.target_kind,
             "side": side,
-            "layers": 1 if args.method.startswith(("single_", "convex_quad")) else args.layers,
+            "layers": 1 if args.method.startswith("single_") or args.method in ("convex_quad", "convex_quad_free") else 2 if args.method == "convex_quad_coarse_fine" else args.layers,
+            "coarse_side": args.coarse_side if args.method == "convex_quad_coarse_fine" else None,
             "patch_cells": args.patch_cells if args.method == "patches" else None,
             "parameters": [parameter.detach().cpu().clone() for parameter in parameters],
         }, args.save_state)
@@ -190,13 +226,14 @@ def main() -> None:
         "task": "direct_latent_map_oracle_not_image_training",
         "target_kind": args.target_kind,
         "method": args.method,
-        "representation": "original_grid_P1" if args.method.startswith(("single_", "convex_quad")) else "exact_PL_composition",
+        "representation": "original_grid_P1" if args.method.startswith("single_") or args.method in ("convex_quad", "convex_quad_free") else "exact_PL_composition",
         "control_side": side,
         "control_vertices": mesh.n_vertices,
         "control_faces_per_layer": mesh.n_faces,
         "query_side": side,
         "query_count": side**2,
-        "layers": 1 if args.method.startswith(("single_", "convex_quad")) else args.layers,
+        "layers": 1 if args.method.startswith("single_") or args.method in ("convex_quad", "convex_quad_free") else 2 if args.method == "convex_quad_coarse_fine" else args.layers,
+        "coarse_side": args.coarse_side if args.method == "convex_quad_coarse_fine" else None,
         "patch_cells": args.patch_cells if args.method == "patches" else None,
         "latent_values": sum(parameter.numel() for parameter in parameters),
         "steps": args.steps,
