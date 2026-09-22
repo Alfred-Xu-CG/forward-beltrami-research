@@ -47,3 +47,21 @@ def test_reusable_interface_batched_backward_is_finite() -> None:
     output.square().mean().backward()
     assert logits.grad is not None
     assert torch.isfinite(logits.grad).all()
+
+
+def test_variable_interface_weights_leave_patch_interiors_unit_harmonic() -> None:
+    mesh = structured_rectangle(16, 16)
+    layer = ReusableInterfaceSchurTutteLayer(mesh, patch_cells=4)
+    torch.manual_seed(20260923)
+    mapped = layer(torch.randn(layer.n_variable_edges, dtype=torch.float64)).detach().numpy()
+    faces = np.asarray(mesh.faces, dtype=np.int64)
+    edges = np.unique(np.sort(np.concatenate((faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [0, 2]])), axis=1), axis=0)
+    residual = np.zeros_like(mapped)
+    difference = mapped[edges[:, 0]] - mapped[edges[:, 1]]
+    np.add.at(residual, edges[:, 0], difference)
+    np.add.at(residual, edges[:, 1], -difference)
+    index = np.arange(17**2)
+    x, y = index % 17, index // 17
+    strict_patch_interior = ((x > 0) & (x < 16) & (y > 0) & (y < 16) & (x % 4 != 0) & (y % 4 != 0))
+    assert strict_patch_interior.sum() == 144
+    assert np.max(np.abs(residual[strict_patch_interior])) < 1e-11

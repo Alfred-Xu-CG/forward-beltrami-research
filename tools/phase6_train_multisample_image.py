@@ -184,6 +184,7 @@ def main() -> None:
     parser.add_argument("--strain-weight", type=float, default=0.0)
     parser.add_argument("--a2-head-mode", choices=("multilevel", "shared"), default="multilevel")
     parser.add_argument("--a2-body-mode", choices=("local", "context"), default="local")
+    parser.add_argument("--oracle-map-loss", action="store_true", help="diagnostic target-map supervision; not image-only training")
     parser.add_argument("--target-family", choices=("base", "high32"), default="base")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--save-state", default=None)
@@ -197,6 +198,8 @@ def main() -> None:
         raise ValueError("a2-head-mode applies only to A2")
     if args.a2_body_mode != "local" and args.method != "A2":
         raise ValueError("a2-body-mode applies only to A2")
+    if args.oracle_map_loss and args.method != "A2":
+        raise ValueError("the oracle-map-loss diagnostic is defined only for A2")
     torch.manual_seed(20260923)
     device = torch.device(args.device)
     train = tuple(t.to(device) for t in make_dataset(args.train_count, args.image_side, 55101, target_family=args.target_family))
@@ -291,8 +294,10 @@ def main() -> None:
         draw = torch.randint(args.train_count, (args.batch,), generator=train_generator).to(device)
         optimizer.zero_grad(set_to_none=True)
         began = time.perf_counter()
-        image_mse, _, controls = forward(draw, train, measure_map_error=False)
-        total_loss = image_mse + args.strain_weight * _edge_strain(controls[0]) if args.strain_weight else image_mse
+        image_mse, map_mse, controls = forward(draw, train, measure_map_error=args.oracle_map_loss)
+        total_loss = map_mse if args.oracle_map_loss else image_mse
+        if args.strain_weight:
+            total_loss = total_loss + args.strain_weight * _edge_strain(controls[0])
         if device.type == "cuda":
             torch.cuda.synchronize(device)
         middle = time.perf_counter()
@@ -338,6 +343,7 @@ def main() -> None:
         "strain_weight": args.strain_weight,
         "a2_head_mode": args.a2_head_mode if args.method == "A2" else None,
         "a2_body_mode": args.a2_body_mode if args.method == "A2" else None,
+        "oracle_map_loss": args.oracle_map_loss,
         "target_family": args.target_family,
         "loaded_state": args.load_state,
         "device": str(device),
