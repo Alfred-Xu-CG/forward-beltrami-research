@@ -132,6 +132,9 @@ def test_common_table_adds_p1_and_pref_without_false_ranking() -> None:
     assert p1_map["latent_dimension"] == 2304
     assert p1_map["gradient_check_relative_error"] is None
     assert p1_map["hard_topology_scope"] == "positive_symmetric_Tutte_fixed_graph_and_convex_boundary"
+    assert p1_map["initialization_scope"] == (
+        "zero_face_w_hence_mu_zero_then_frozen_projector_target_independent"
+    )
 
     pref_map = by_key["map", "P-ref_full_Whitney_teacher"]
     assert pref_map["route_label"] == "P-ref"

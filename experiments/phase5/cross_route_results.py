@@ -557,7 +557,9 @@ def _one_p1_row(path: Path, receipt: dict[str, Any]) -> dict[str, Any]:
             "process HWM also includes runtime and independent dense final audit"
         ),
         "hard_topology_scope": "positive_symmetric_Tutte_fixed_graph_and_convex_boundary",
-        "initialization_scope": "uniform_positive_conductance_latent_target_independent",
+        "initialization_scope": (
+            "zero_face_w_hence_mu_zero_then_frozen_projector_target_independent"
+        ),
         "control_side": config["control_side"],
         "resolution": config["resolution"],
         "seed": config["seed"],
