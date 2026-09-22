@@ -21,7 +21,6 @@ import math
 from typing import Callable
 
 import numpy as np
-from scipy.optimize import nnls
 import torch
 from torch import nn
 import torch.nn.functional as torch_functional
@@ -391,17 +390,39 @@ def _nnls_kkt_tolerance(design: np.ndarray, target: np.ndarray, values: np.ndarr
     return 8192.0 * np.finfo(np.float64).eps * scale
 
 
-def _verified_nnls(design: np.ndarray, target: np.ndarray) -> tuple[np.ndarray, str]:
-    """Small deterministic NNLS with a verified exhaustive fallback.
+def _verified_nnls(
+    design: np.ndarray,
+    target: np.ndarray,
+    *,
+    conductance_offset: np.ndarray,
+) -> tuple[np.ndarray, str]:
+    """Solve the small NNLS problem with a canonical secondary objective.
 
-    SciPy's fast active-set routine is retained for the ordinary path, but a
-    known six-direction Beltrami case can cycle.  Because the observation space
-    here has dimension three, conic Caratheodory guarantees an optimum with at
-    most three positive generators.  Enumerating all subsets of size at most
-    three is therefore complete even when callers supply more than six
-    directions.  Every returned solution is screened against primal and KKT
-    feasibility.
+    The primary problem is ``min_{x >= 0} ||D x - b||_2^2``.  Redundant
+    directions can make its coefficient vector non-unique even though the
+    projected tensor ``D x`` is unique.  We therefore use the explicit
+    lexicographic definition
+
+    1. minimize the primary residual; then
+    2. among all primary minimizers, minimize ``||conductance_offset + x||_2``.
+
+    All supports are enumerated.  On each support ``lstsq`` returns the
+    minimum-norm least-squares coefficients, and the global candidate is
+    screened by the primary NNLS KKT conditions.  The secondary objective is
+    strictly convex, so its optimizer is unique.  Exhaustive enumeration is
+    deliberately limited to the small direction dictionaries used here (at
+    most six columns in the declared graph family); the larger hard limit only
+    prevents an accidental exponential-time call from masquerading as a fast
+    projector.
     """
+
+    count = int(design.shape[1])
+    if conductance_offset.shape != (count,):
+        raise ValueError("conductance_offset must match the design columns")
+    if not np.all(conductance_offset == conductance_offset[0]):
+        raise ValueError("canonical NNLS requires the uniform conductance floor used here")
+    if count > 16:
+        raise ValueError("canonical exhaustive NNLS supports at most 16 directions")
 
     def valid(values: np.ndarray) -> bool:
         tolerance = _nnls_kkt_tolerance(design, target, values)
@@ -415,20 +436,13 @@ def _verified_nnls(design: np.ndarray, target: np.ndarray) -> tuple[np.ndarray, 
             and (not np.any(active) or np.max(np.abs(gradient[active])) <= tolerance)
         )
 
-    try:
-        scipy_values, _ = nnls(design, target)
-    except RuntimeError:
-        scipy_values = None
-    if scipy_values is not None and valid(scipy_values):
-        return scipy_values, "scipy_nnls_verified"
-
-    count = design.shape[1]
     feasibility_scale = max(1.0, float(np.linalg.norm(target)))
     feasibility_tolerance = 8192.0 * np.finfo(np.float64).eps * feasibility_scale
     best_values: np.ndarray | None = None
     best_objective = math.inf
+    best_conductance_norm_squared = math.inf
     best_key: tuple[float, ...] | None = None
-    for active_count in range(min(3, count) + 1):
+    for active_count in range(count + 1):
         for active_indices in combinations(range(count), active_count):
             candidate = np.zeros(count, dtype=np.float64)
             if active_indices:
@@ -441,24 +455,47 @@ def _verified_nnls(design: np.ndarray, target: np.ndarray) -> tuple[np.ndarray, 
                 candidate[active_array] = np.maximum(solution, 0.0)
             residual = design @ candidate - target
             objective = float(residual @ residual)
+            if not valid(candidate):
+                continue
+            conductance = conductance_offset + candidate
+            conductance_norm_squared = float(conductance @ conductance)
             key = tuple(candidate.tolist())
-            comparison_tolerance = 64.0 * np.finfo(np.float64).eps * max(
+            objective_tolerance = 8192.0 * np.finfo(np.float64).eps * max(
                 1.0, best_objective if math.isfinite(best_objective) else 1.0, objective
+            )
+            norm_tolerance = 8192.0 * np.finfo(np.float64).eps * max(
+                1.0,
+                best_conductance_norm_squared
+                if math.isfinite(best_conductance_norm_squared)
+                else 1.0,
+                conductance_norm_squared,
             )
             if (
                 best_values is None
-                or objective < best_objective - comparison_tolerance
+                or objective < best_objective - objective_tolerance
                 or (
-                    abs(objective - best_objective) <= comparison_tolerance
-                    and (best_key is None or key < best_key)
+                    abs(objective - best_objective) <= objective_tolerance
+                    and (
+                        conductance_norm_squared
+                        < best_conductance_norm_squared - norm_tolerance
+                        or (
+                            abs(
+                                conductance_norm_squared
+                                - best_conductance_norm_squared
+                            )
+                            <= norm_tolerance
+                            and (best_key is None or key < best_key)
+                        )
+                    )
                 )
             ):
                 best_values = candidate
                 best_objective = objective
+                best_conductance_norm_squared = conductance_norm_squared
                 best_key = key
     if best_values is None or not valid(best_values):
         raise RuntimeError("exhaustive active-set NNLS failed its KKT verification")
-    return best_values, "exhaustive_active_set_fallback_verified"
+    return best_values, "exhaustive_primary_then_minimum_conductance_norm_nnls_verified"
 
 
 def fit_direction_tensor_nnls(
@@ -492,7 +529,11 @@ def fit_direction_tensor_nnls(
     target_vector = _symmetric_vector(target)
     lower = minimum_conductance + minimum_excess
     offset = np.full(design.shape[1], lower, dtype=np.float64)
-    free, solver_method = _verified_nnls(design, target_vector - design @ offset)
+    free, solver_method = _verified_nnls(
+        design,
+        target_vector - design @ offset,
+        conductance_offset=offset,
+    )
     conductances = offset + free
     fitted_vector = design @ conductances
     fitted = _vector_symmetric(fitted_vector)

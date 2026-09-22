@@ -156,6 +156,21 @@ def test_frobenius_direction_design_and_strict_nnls_floor() -> None:
     )
 
 
+def test_redundant_direction_nnls_uses_unique_minimum_norm_tie_break() -> None:
+    """An exact tensor fit must not depend on the platform NNLS active set."""
+
+    directions = build_center_split_square_graph(2).direction_angles
+    expected = np.full(4, 0.5, dtype=np.float64)
+    canonical = fit_direction_tensor_nnls(np.eye(2), directions)
+    np.testing.assert_allclose(canonical.conductances, expected, rtol=0.0, atol=2.0e-12)
+
+    permutation = np.asarray([2, 0, 3, 1], dtype=np.int64)
+    permuted = fit_direction_tensor_nnls(np.eye(2), directions[permutation])
+    restored = np.empty_like(permuted.conductances)
+    restored[permutation] = permuted.conductances
+    np.testing.assert_allclose(restored, expected, rtol=0.0, atol=2.0e-12)
+
+
 def test_stellar_nnls_cycling_phase_has_verified_active_set_fallback() -> None:
     graph = build_stellar_square_graph(2)
     phase = 5.342014692511909
