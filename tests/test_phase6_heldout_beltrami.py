@@ -10,6 +10,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from phase6_evaluate_heldout_beltrami import _mu, _target_on_faces  # noqa: E402
+from qcopt.mesh import structured_rectangle
 
 
 def test_target_jacobian_matches_independent_central_difference() -> None:
@@ -33,3 +34,34 @@ def test_beltrami_identity_and_positive_shear() -> None:
     coefficient = _mu(shear)
     assert coefficient.abs().item() < 1.0
     assert math.isclose(coefficient.abs().item(), 0.4 / math.sqrt(4.0 + 0.4**2), rel_tol=1e-14)
+
+
+def test_high32_target_sampled_p1_faces_remain_positive_at_amplitude_corners() -> None:
+    mesh = structured_rectangle(256, 256)
+    points = torch.tensor(mesh.vertices.copy(), dtype=torch.float64)[None]
+    coefficients = torch.tensor(
+        [[0.015, 0.025, -0.002], [0.015, 0.025, 0.0025],
+         [0.005, 0.010, -0.002], [0.005, 0.010, 0.0025]], dtype=torch.float64
+    )
+    mapped, _ = _target_on_faces(points, coefficients, fine_cycles=32)
+    faces = torch.tensor(mesh.faces.copy())
+    triangles = mapped[:, faces]
+    first = triangles[:, :, 1] - triangles[:, :, 0]
+    second = triangles[:, :, 2] - triangles[:, :, 0]
+    areas = first[..., 0] * second[..., 1] - first[..., 1] * second[..., 0]
+    assert areas.min().item() * 256**2 > 0.01
+    assert 2 * math.pi * math.hypot(0.015, 0.025) + 64 * math.pi * math.sqrt(2) * 0.0025 < 1.0
+
+
+def test_high32_target_jacobian_matches_central_difference() -> None:
+    points = torch.tensor([[[0.217, 0.344], [0.613, 0.776]]], dtype=torch.float64)
+    coefficients = torch.tensor([[0.015, 0.025, 0.0025]], dtype=torch.float64)
+    _, jacobian = _target_on_faces(points, coefficients, fine_cycles=32)
+    step = 1e-7
+    for direction in range(2):
+        shift = torch.zeros_like(points)
+        shift[..., direction] = step
+        plus, _ = _target_on_faces(points + shift, coefficients, fine_cycles=32)
+        minus, _ = _target_on_faces(points - shift, coefficients, fine_cycles=32)
+        observed = (plus - minus) / (2 * step)
+        assert torch.allclose(jacobian[..., :, direction], observed, rtol=1e-7, atol=1e-8)

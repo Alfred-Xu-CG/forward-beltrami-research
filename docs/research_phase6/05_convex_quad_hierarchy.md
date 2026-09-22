@@ -108,3 +108,14 @@ We reran the identical image-only schedule with a target-independent edge-strain
 This improves the observed distortion margin with a modest image-error increase, but it neither recovers the target Beltrami field exactly nor proves all future samples will have a given \(|\mu|\) bound. The hard homeomorphism argument comes from the decoder, not from this loss term. The saved states and raw evaluation records are in `checkpoints/` and `raw_results/`.
 
 An independent checker separately reviewed the exact convex-child and fixed-grid P1 arguments, searched 50,000 random convex-parent/split/center cases without a counterexample, and compared a 257² directional VJP to central differences (relative discrepancy about \(6.7\times10^{-8}\)). It also identified that the standalone numerical checker relied on a unit coordinate scale without testing that condition. The checker now explicitly rejects coordinates outside the unit square; its test suite includes that failure case. These numerical checks support implementation correctness but are not substitutes for the exact subdivision proof.
+
+## 8. Shared-head ablation: decoder benefit versus encoder capacity
+
+The original A2+ encoder predicts independent edge/center logits at every dyadic level. A controlled ablation ties its three small 1×1 convolution heads across all seven non-root levels, retaining the identical two-convolution image body, root head, A2+ decoder, dataset, GPU, optimizer and 1000-step schedule. Parameters drop from 1006 to 790, close to AB2's 772. The shared heads are evaluated on each level's downsampled image features, so the latent tensors retain the same shapes and the fixed-grid P1 theorem is unchanged.
+
+| A2+ heads | Encoder parameters | Held-out image MSE | Query-map RMSE | Face Beltrami RMSE | Maximum \(|\mu|\) | Minimum face area ratio | Train wall | Median full forward/VJP |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| independent per level | 1006 | 0.002387 | 0.004196 | 0.10092 | 0.91152 | 0.04855 | 17.13 s | 4.75/10.70 ms |
+| shared across levels | 790 | 0.004099 | 0.005320 | 0.08156 | 0.37289 | 0.48932 | 16.85 s | 4.80/10.63 ms |
+
+Thus independent heads improve image and map accuracy, but on this split they also permit much worse local distortion. The shared-head A2+ still substantially outperforms the 772-parameter AB2 encoder–decoder's 0.01188 held-out image MSE in the equal-update run. This supports a contribution from the decoder's cross-coupled fixed-grid representation, but is not a fully controlled decoder-only comparison: AB2 still uses a different latent geometry and network head layout. All \(\mu\) values here are computed from the **actual A2+ P1 face Jacobians** against the analytic target at source-face centroids; the target's image pixel field was not used to supervise \(\mu\).

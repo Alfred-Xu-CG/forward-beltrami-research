@@ -30,9 +30,11 @@ from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 
 
 def make_dataset(
-    count: int, image_side: int, seed: int, *, return_coefficients: bool = False
+    count: int, image_side: int, seed: int, *, return_coefficients: bool = False, target_family: str = "base"
 ) -> tuple[torch.Tensor, ...]:
     """Make independent textures with uniformly bounded, boundary-fixed maps."""
+    if target_family not in ("base", "high32"):
+        raise ValueError("target_family must be base or high32")
     generator = torch.Generator(device="cpu").manual_seed(seed)
     line = torch.linspace(0.0, 1.0, image_side)
     yy, xx = torch.meshgrid(line, line, indexing="ij")
@@ -49,11 +51,18 @@ def make_dataset(
         + 0.16 * torch.sin(22 * math.pi * xx + 4 * math.pi * yy + phases[:, 2])
         * torch.cos(18 * math.pi * yy - 3 * math.pi * xx + phases[:, 3])
     )
-    ax = 0.012 + 0.023 * torch.rand(count, 1, 1, generator=generator)
-    ay = 0.025 + 0.030 * torch.rand(count, 1, 1, generator=generator)
-    af = -0.002 + 0.005 * torch.rand(count, 1, 1, generator=generator)
+    if target_family == "base":
+        ax = 0.012 + 0.023 * torch.rand(count, 1, 1, generator=generator)
+        ay = 0.025 + 0.030 * torch.rand(count, 1, 1, generator=generator)
+        af = -0.002 + 0.005 * torch.rand(count, 1, 1, generator=generator)
+        fine_cycles = 8
+    else:
+        ax = 0.005 + 0.010 * torch.rand(count, 1, 1, generator=generator)
+        ay = 0.010 + 0.015 * torch.rand(count, 1, 1, generator=generator)
+        af = -0.002 + 0.0045 * torch.rand(count, 1, 1, generator=generator)
+        fine_cycles = 32
     bump = torch.sin(2 * math.pi * xx) * torch.sin(2 * math.pi * yy)
-    fine = torch.sin(16 * math.pi * xx) * torch.sin(16 * math.pi * yy)
+    fine = torch.sin(2 * math.pi * fine_cycles * xx) * torch.sin(2 * math.pi * fine_cycles * yy)
     disp_x = ax * bump + af * fine
     disp_y = ay * bump + af * fine
     true_map = torch.stack((xx + disp_x, yy + disp_y), dim=-1)
@@ -146,6 +155,7 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--strain-weight", type=float, default=0.0)
     parser.add_argument("--a2-head-mode", choices=("multilevel", "shared"), default="multilevel")
+    parser.add_argument("--target-family", choices=("base", "high32"), default="base")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--save-state", default=None)
     args = parser.parse_args()
@@ -157,8 +167,8 @@ def main() -> None:
         raise ValueError("a2-head-mode applies only to A2")
     torch.manual_seed(20260923)
     device = torch.device(args.device)
-    train = tuple(t.to(device) for t in make_dataset(args.train_count, args.image_side, 55101))
-    test = tuple(t.to(device) for t in make_dataset(args.test_count, args.image_side, 99317))
+    train = tuple(t.to(device) for t in make_dataset(args.train_count, args.image_side, 55101, target_family=args.target_family))
+    test = tuple(t.to(device) for t in make_dataset(args.test_count, args.image_side, 99317, target_family=args.target_family))
     table = StructuredDenseQueryTable.from_mesh(
         structured_rectangle(args.side - 1, args.side - 1), height=args.image_side, width=args.image_side
     )
@@ -287,6 +297,7 @@ def main() -> None:
         "learning_rate": args.learning_rate,
         "strain_weight": args.strain_weight,
         "a2_head_mode": args.a2_head_mode if args.method == "A2" else None,
+        "target_family": args.target_family,
         "device": str(device),
         "device_name": torch.cuda.get_device_name(device) if device.type == "cuda" else platform.processor(),
         "torch_version": torch.__version__,

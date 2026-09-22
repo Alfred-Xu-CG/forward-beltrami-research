@@ -33,17 +33,18 @@ def _mu(jacobian: torch.Tensor) -> torch.Tensor:
 
 
 def _target_on_faces(
-    points: torch.Tensor, coefficients: torch.Tensor
+    points: torch.Tensor, coefficients: torch.Tensor, fine_cycles: int = 8
 ) -> tuple[torch.Tensor, torch.Tensor]:
     x = points[..., 0]
     y = points[..., 1]
     ax, ay, af = (coefficients[:, index, None] for index in range(3))
     low = torch.sin(2 * math.pi * x) * torch.sin(2 * math.pi * y)
-    high = torch.sin(16 * math.pi * x) * torch.sin(16 * math.pi * y)
+    omega = 2 * math.pi * fine_cycles
+    high = torch.sin(omega * x) * torch.sin(omega * y)
     low_x = 2 * math.pi * torch.cos(2 * math.pi * x) * torch.sin(2 * math.pi * y)
     low_y = 2 * math.pi * torch.sin(2 * math.pi * x) * torch.cos(2 * math.pi * y)
-    high_x = 16 * math.pi * torch.cos(16 * math.pi * x) * torch.sin(16 * math.pi * y)
-    high_y = 16 * math.pi * torch.sin(16 * math.pi * x) * torch.cos(16 * math.pi * y)
+    high_x = omega * torch.cos(omega * x) * torch.sin(omega * y)
+    high_y = omega * torch.sin(omega * x) * torch.cos(omega * y)
     value = torch.stack((x + ax * low + af * high, y + ay * low + af * high), dim=-1)
     row_x = torch.stack((1 + ax * low_x + af * high_x, ax * low_y + af * high_y), dim=-1)
     row_y = torch.stack((ay * low_x + af * high_x, 1 + ay * low_y + af * high_y), dim=-1)
@@ -63,13 +64,15 @@ def main() -> None:
     state = torch.load(args.checkpoint, map_location=device, weights_only=False)
     if state["args"]["method"] != "A2" or state["args"]["side"] != args.side:
         raise ValueError("checkpoint does not match A2 and requested side")
-    encoder = ConvexQuadImageEncoder(args.side).to(device)
+    target_family = state["args"].get("target_family", "base")
+    fine_cycles = 8 if target_family == "base" else 32
+    encoder = ConvexQuadImageEncoder(args.side, head_mode=state["args"].get("a2_head_mode", "multilevel")).to(device)
     encoder.load_state_dict(state["encoder"])
     encoder.eval()
     decoder = HierarchicalConvexQuadFreeCenterLayer(args.side)
     fixed, moving, true_map, coefficients = (
         value.to(device)
-        for value in make_dataset(args.test_count, args.image_side, 99317, return_coefficients=True)
+        for value in make_dataset(args.test_count, args.image_side, 99317, return_coefficients=True, target_family=target_family)
     )
     mesh = structured_rectangle(args.side - 1, args.side - 1)
     vertices = torch.tensor(mesh.vertices, device=device, dtype=torch.float32)
@@ -101,7 +104,7 @@ def main() -> None:
             pixel_map_error_sum += (dense - true_map[start:end]).square().mean().item() * current
             query = centroids[None].expand(current, -1, -1)
             predicted_value, predicted_jacobian = evaluate_structured_p1_with_jacobian(control, query)
-            target_value, target_jacobian = _target_on_faces(query, coefficients[start:end])
+            target_value, target_jacobian = _target_on_faces(query, coefficients[start:end], fine_cycles)
             face_map_error_sum += (predicted_value - target_value).square().mean().item() * current
             jacobian_error_sum += (predicted_jacobian - target_jacobian).square().mean().item() * current
             predicted_mu = _mu(predicted_jacobian)
@@ -115,6 +118,7 @@ def main() -> None:
     print(json.dumps({
         "checkpoint": args.checkpoint,
         "method": "A2_free_center_image_trained",
+        "target_family": target_family,
         "representation": "original_grid_P1",
         "control_side": args.side,
         "control_vertices": mesh.n_vertices,
