@@ -4,7 +4,7 @@
   "device": "CPU, torch 2.5.1+cu124, float32, OMP_NUM_THREADS=4, MKL_NUM_THREADS=4",
   "batch": 1,
   "image_queries": 262144,
-  "protocol": "Two warmups, five timed repeats, median seconds. A2 via phase6_benchmark_convex_quad.py; A and AB2 via phase6_benchmark_explicit_scaling.py. Six A/AB2 jobs ran concurrently and are not uncontended single-job timings. RSS is sampled process peak and includes runtime/setup overhead.",
+  "protocol": "Two warmups, five timed repeats, median seconds. A2 via phase6_benchmark_convex_quad.py; A and AB2 via phase6_benchmark_explicit_scaling.py. The 129/257/513 A/AB2 jobs ran concurrently and are not uncontended single-job timings; the 1025 jobs ran sequentially. RSS is sampled process peak and includes runtime/setup overhead.",
   "rows": [
     {"method":"A2","side":129,"control_vertices":16641,"faces_per_layer":32768,"latent_values":22094,"decode_query_s":0.006878667,"warp_loss_s":0.001121849,"vjp_s":0.008060925,"peak_rss_bytes":522641408,"min_area_ratio":0.582237},
     {"method":"A2","side":257,"control_vertices":66049,"faces_per_layer":131072,"latent_values":87886,"decode_query_s":0.006409917,"warp_loss_s":0.000837431,"vjp_s":0.009777233,"peak_rss_bytes":536051712,"min_area_ratio":0.557891},
@@ -13,8 +13,10 @@
     {"method":"A","side":129,"control_vertices":16641,"faces_per_layer":32768,"decode_query_s":0.005370844,"warp_loss_s":0.001205083,"vjp_s":0.007247612,"peak_rss_bytes":522133504,"min_area_ratio":0.583807},
     {"method":"A","side":257,"control_vertices":66049,"faces_per_layer":131072,"decode_query_s":0.004120864,"warp_loss_s":0.000946429,"vjp_s":0.007050216,"peak_rss_bytes":534773760,"min_area_ratio":0.543979},
     {"method":"A","side":513,"control_vertices":263169,"faces_per_layer":524288,"decode_query_s":0.005259939,"warp_loss_s":0.000953887,"vjp_s":0.011804074,"peak_rss_bytes":550703104,"min_area_ratio":0.550640},
+    {"method":"A","side":1025,"control_vertices":1050625,"faces_per_layer":2097152,"decode_query_s":0.008771494,"warp_loss_s":0.001040403,"vjp_s":0.031198431,"peak_rss_bytes":602497024,"min_area_ratio":0.510947},
     {"method":"AB2","side":129,"control_vertices":16641,"faces_per_layer":32768,"decode_query_s":0.012845192,"warp_loss_s":0.001160733,"vjp_s":0.016742479,"peak_rss_bytes":610562048,"min_area_ratio":[0.583807,0.600356]},
     {"method":"AB2","side":257,"control_vertices":66049,"faces_per_layer":131072,"decode_query_s":0.014378868,"warp_loss_s":0.001195513,"vjp_s":0.018717054,"peak_rss_bytes":607129600,"min_area_ratio":[0.543979,0.579095]},
-    {"method":"AB2","side":513,"control_vertices":263169,"faces_per_layer":524288,"decode_query_s":0.017178264,"warp_loss_s":0.001175024,"vjp_s":0.027447537,"peak_rss_bytes":627109888,"min_area_ratio":[0.550640,0.524748]}
+    {"method":"AB2","side":513,"control_vertices":263169,"faces_per_layer":524288,"decode_query_s":0.017178264,"warp_loss_s":0.001175024,"vjp_s":0.027447537,"peak_rss_bytes":627109888,"min_area_ratio":[0.550640,0.524748]},
+    {"method":"AB2","side":1025,"control_vertices":1050625,"faces_per_layer":2097152,"decode_query_s":0.028385617,"warp_loss_s":0.001164731,"vjp_s":0.065903135,"peak_rss_bytes":682123264,"min_area_ratio":[0.510947,0.426313]}
   ]
 }

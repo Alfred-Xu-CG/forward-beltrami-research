@@ -89,9 +89,12 @@ def _edge_strain(control: torch.Tensor) -> torch.Tensor:
 class ConvexQuadImageEncoder(torch.nn.Module):
     """Image pyramid to shared-edge and free-center logits at every level."""
 
-    def __init__(self, side: int, width: int = 8) -> None:
+    def __init__(self, side: int, width: int = 8, *, head_mode: str = "multilevel") -> None:
         super().__init__()
+        if head_mode not in ("multilevel", "shared"):
+            raise ValueError("head_mode must be multilevel or shared")
         self.side = side
+        self.head_mode = head_mode
         self.latent_sides = HierarchicalConvexQuadFreeCenterLayer(side).latent_sides
         self.body = torch.nn.Sequential(
             torch.nn.Conv2d(2, width, 3, padding=1),
@@ -100,9 +103,10 @@ class ConvexQuadImageEncoder(torch.nn.Module):
             torch.nn.GELU(),
         )
         self.root_head = torch.nn.Linear(width, 2)
-        self.horizontal_heads = torch.nn.ModuleList(torch.nn.Conv2d(width, 1, 1) for _ in self.latent_sides)
-        self.vertical_heads = torch.nn.ModuleList(torch.nn.Conv2d(width, 1, 1) for _ in self.latent_sides)
-        self.center_heads = torch.nn.ModuleList(torch.nn.Conv2d(width, 2, 1) for _ in self.latent_sides)
+        head_count = len(self.latent_sides) if head_mode == "multilevel" else 1
+        self.horizontal_heads = torch.nn.ModuleList(torch.nn.Conv2d(width, 1, 1) for _ in range(head_count))
+        self.vertical_heads = torch.nn.ModuleList(torch.nn.Conv2d(width, 1, 1) for _ in range(head_count))
+        self.center_heads = torch.nn.ModuleList(torch.nn.Conv2d(width, 2, 1) for _ in range(head_count))
         for head in (self.root_head, *self.horizontal_heads, *self.vertical_heads, *self.center_heads):
             torch.nn.init.zeros_(head.weight)
             torch.nn.init.zeros_(head.bias)
@@ -115,10 +119,11 @@ class ConvexQuadImageEncoder(torch.nn.Module):
         root = self.root_head(fine.mean(dim=(2, 3)))[:, None, None, :]
         levels = []
         for index, current in enumerate(self.latent_sides):
+            head_index = index if self.head_mode == "multilevel" else 0
             feature = F.interpolate(fine, size=(current, current), mode="bilinear", align_corners=True)
-            horizontal_vertices = self.horizontal_heads[index](feature)[:, 0]
-            vertical_vertices = self.vertical_heads[index](feature)[:, 0]
-            center_vertices = self.center_heads[index](feature).permute(0, 2, 3, 1)
+            horizontal_vertices = self.horizontal_heads[head_index](feature)[:, 0]
+            vertical_vertices = self.vertical_heads[head_index](feature)[:, 0]
+            center_vertices = self.center_heads[head_index](feature).permute(0, 2, 3, 1)
             horizontal = 0.5 * (horizontal_vertices[:, :, :-1] + horizontal_vertices[:, :, 1:])
             vertical = 0.5 * (vertical_vertices[:, :-1, :] + vertical_vertices[:, 1:, :])
             center = 0.25 * (
@@ -140,6 +145,7 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=1000)
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--strain-weight", type=float, default=0.0)
+    parser.add_argument("--a2-head-mode", choices=("multilevel", "shared"), default="multilevel")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--save-state", default=None)
     args = parser.parse_args()
@@ -147,6 +153,8 @@ def main() -> None:
         raise ValueError("all dimensions, counts and steps must be positive")
     if args.strain_weight and args.method != "A2":
         raise ValueError("the current strain ablation is defined only for A2")
+    if args.a2_head_mode != "multilevel" and args.method != "A2":
+        raise ValueError("a2-head-mode applies only to A2")
     torch.manual_seed(20260923)
     device = torch.device(args.device)
     train = tuple(t.to(device) for t in make_dataset(args.train_count, args.image_side, 55101))
@@ -159,7 +167,7 @@ def main() -> None:
         encoder = SmallImageEncoder(args.side).to(device)
         decoder = MultiscaleMonotoneGridLayer(args.side)
     elif args.method == "A2":
-        encoder = ConvexQuadImageEncoder(args.side).to(device)
+        encoder = ConvexQuadImageEncoder(args.side, head_mode=args.a2_head_mode).to(device)
         decoder = HierarchicalConvexQuadFreeCenterLayer(args.side)
     else:
         axes = ("vertical", "horizontal")
@@ -278,6 +286,7 @@ def main() -> None:
         "steps": args.steps,
         "learning_rate": args.learning_rate,
         "strain_weight": args.strain_weight,
+        "a2_head_mode": args.a2_head_mode if args.method == "A2" else None,
         "device": str(device),
         "device_name": torch.cuda.get_device_name(device) if device.type == "cuda" else platform.processor(),
         "torch_version": torch.__version__,

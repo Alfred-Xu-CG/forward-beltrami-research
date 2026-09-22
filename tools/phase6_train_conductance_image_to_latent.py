@@ -57,10 +57,13 @@ def main() -> None:
     parser.add_argument("--edge-pattern", choices=("lattice", "cut"), default="lattice")
     parser.add_argument("--batch", type=int, default=1)
     parser.add_argument("--steps", type=int, default=50)
+    parser.add_argument("--record-every", type=int, default=10)
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--target-kind", choices=("smooth", "high_frequency"), default="high_frequency")
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
+    if args.record_every < 1:
+        raise ValueError("record-every must be positive")
     if args.solver == "schur" and args.device != "cpu":
         raise ValueError("the current exact Schur implementation supports CPU only")
     torch.manual_seed(20260923)
@@ -99,7 +102,7 @@ def main() -> None:
         torch.cuda.reset_peak_memory_stats(device)
     records = []
     first_head_gradient_norms = None
-    for _ in range(args.steps):
+    for step in range(args.steps):
         optimizer.zero_grad(set_to_none=True)
         began = time.perf_counter()
         loss, _, _ = evaluate()
@@ -120,7 +123,8 @@ def main() -> None:
             torch.cuda.synchronize(device)
         ended = time.perf_counter()
         maximum_rss = max(maximum_rss, process.memory_info().rss)
-        records.append({"loss_before_update": loss.item(), "forward_seconds": middle - began, "backward_seconds": after_backward - middle, "optimizer_seconds": ended - after_backward})
+        if step == 0 or (step + 1) % args.record_every == 0 or step + 1 == args.steps:
+            records.append({"step": step + 1, "loss_before_update": loss.item(), "forward_seconds": middle - began, "backward_seconds": after_backward - middle, "optimizer_seconds": ended - after_backward})
     with torch.no_grad():
         final_loss, final_query, final_control = evaluate()
         map_rmse = (final_query - true_map).square().mean().sqrt().item()
