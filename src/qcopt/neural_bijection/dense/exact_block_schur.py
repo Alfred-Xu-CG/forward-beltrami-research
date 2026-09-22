@@ -17,7 +17,8 @@ import scipy.sparse.linalg as sparse_linalg
 import torch
 from torch.autograd.function import once_differentiable
 
-from ...mesh import TriMesh
+from ...mesh import TriMesh, structured_rectangle
+from ...forward.tutte_directed_implicit import _validate_dividing_edges, _validate_weakly_convex_boundary
 from ..tutte.symmetric import MatrixFreeSymmetricTutteLayer
 
 
@@ -111,7 +112,13 @@ class ExactBlockSchurTutteLayer(torch.nn.Module):
             raise ValueError("invalid patch_cells")
         if not np.isfinite(minimum_conductance) or minimum_conductance <= 0:
             raise ValueError("minimum_conductance must be positive and finite")
+        expected = structured_rectangle(side - 1, side - 1)
+        if not np.array_equal(mesh.vertices, expected.vertices) or not np.array_equal(mesh.faces, expected.faces):
+            raise ValueError("exact block partition currently requires the canonical unit-square grid")
         reference = MatrixFreeSymmetricTutteLayer(mesh)
+        source_boundary = np.asarray(mesh.vertices[reference.boundary_vertices], dtype=np.float64)
+        _validate_weakly_convex_boundary(source_boundary)
+        _validate_dividing_edges(source_boundary, reference.system.dividing_edges)
         edges = reference.active_edges
         interior = reference.interior_vertices
         n = len(interior)

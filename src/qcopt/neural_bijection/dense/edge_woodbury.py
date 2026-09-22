@@ -15,6 +15,7 @@ import torch
 import torch.nn.functional as F
 
 from ...mesh import TriMesh
+from ...forward.tutte_directed_implicit import _validate_dividing_edges, _validate_weakly_convex_boundary
 from ..tutte.symmetric import MatrixFreeSymmetricTutteLayer
 
 
@@ -41,6 +42,9 @@ class SparseEdgeWoodburyTutteLayer(torch.nn.Module):
             raise ValueError("minimum_increment must be positive and finite")
         started = time.perf_counter()
         reference = MatrixFreeSymmetricTutteLayer(mesh)
+        source_boundary = np.asarray(mesh.vertices[reference.boundary_vertices], dtype=np.float64)
+        _validate_weakly_convex_boundary(source_boundary)
+        _validate_dividing_edges(source_boundary, reference.system.dividing_edges)
         edges = reference.active_edges
         chosen = np.asarray(selected_edges, dtype=np.int64)
         if chosen.ndim != 1 or len(chosen) < 1 or len(np.unique(chosen)) != len(chosen):
