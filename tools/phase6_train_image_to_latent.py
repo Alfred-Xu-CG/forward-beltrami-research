@@ -65,7 +65,10 @@ def _synthetic_pair(
     image_side: int,
     batch: int,
     device: torch.device,
+    target_kind: str = "smooth",
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    if target_kind not in ("smooth", "high_frequency"):
+        raise ValueError("target_kind must be smooth or high_frequency")
     line = torch.linspace(0.0, 1.0, image_side, device=device)
     yy, xx = torch.meshgrid(line, line, indexing="ij")
     moving_scalar = (
@@ -74,11 +77,18 @@ def _synthetic_pair(
         + 0.35 * torch.exp(-((xx - 0.36) ** 2 + (yy - 0.43) ** 2) / 0.012)
         + 0.30 * torch.exp(-((xx - 0.73) ** 2 + (yy - 0.68) ** 2) / 0.008)
     )
+    if target_kind == "high_frequency":
+        moving_scalar = moving_scalar + 0.16 * torch.sin(22 * math.pi * xx + 4 * math.pi * yy) * torch.cos(18 * math.pi * yy - 3 * math.pi * xx)
     moving = moving_scalar[None, None].expand(batch, 1, -1, -1).contiguous()
     strengths = torch.linspace(0.7, 1.0, batch, device=device)[:, None, None]
     bump = torch.sin(2 * math.pi * xx) * torch.sin(2 * math.pi * yy)
+    fine_bump = (
+        0.003 * torch.sin(16 * math.pi * xx) * torch.sin(16 * math.pi * yy)
+        if target_kind == "high_frequency"
+        else 0.0
+    )
     true_map = torch.stack(
-        (xx[None] + strengths * 0.03 * bump, yy[None] + strengths * 0.05 * bump),
+        (xx[None] + strengths * (0.03 * bump + fine_bump), yy[None] + strengths * (0.05 * bump + fine_bump)),
         dim=-1,
     )
     fixed = torch_functional.grid_sample(
@@ -113,6 +123,7 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=30)
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--target-kind", choices=("smooth", "high_frequency"), default="smooth")
     args = parser.parse_args()
     if args.side < 2 or args.image_side < 2 or args.batch < 1 or args.steps < 1:
         raise ValueError("side, image-side, batch, and steps must be positive")
@@ -120,7 +131,7 @@ def main() -> None:
     device = torch.device(args.device)
     if device.type == "cuda" and not torch.cuda.is_available():
         raise RuntimeError("requested CUDA device is unavailable")
-    fixed, moving, _ = _synthetic_pair(args.image_side, args.batch, device)
+    fixed, moving, true_map = _synthetic_pair(args.image_side, args.batch, device, args.target_kind)
     pair = torch.cat((fixed, moving), dim=1)
     encoder = SmallImageEncoder(args.side).to(device)
     decoder = MultiscaleMonotoneGridLayer(args.side)
@@ -179,14 +190,22 @@ def main() -> None:
         cy, cx = torch.meshgrid(control_line, control_line, indexing="ij")
         strengths = torch.linspace(0.7, 1.0, args.batch, device=device)[:, None, None]
         bump = torch.sin(2 * math.pi * cx) * torch.sin(2 * math.pi * cy)
+        fine_bump = (
+            0.003 * torch.sin(16 * math.pi * cx) * torch.sin(16 * math.pi * cy)
+            if args.target_kind == "high_frequency"
+            else 0.0
+        )
         true_control = torch.stack(
-            (cx[None] + strengths * 0.03 * bump, cy[None] + strengths * 0.05 * bump),
+            (cx[None] + strengths * (0.03 * bump + fine_bump), cy[None] + strengths * (0.05 * bump + fine_bump)),
             dim=-1,
         )
         map_rmse = (final_control - true_control).square().mean().sqrt().item()
         minimum_ratio = _minimum_area_ratio(final_control)
+        final_query = table.interpolate(final_control.reshape(args.batch, -1, 2))
+        query_map_rmse = (final_query - true_map).square().mean().sqrt().item()
     payload = {
         "route": "A",
+        "target_kind": args.target_kind,
         "latent_sides": [encoder.coarse_side, args.side],
         "control_side": args.side,
         "control_vertices": args.side**2,
@@ -202,6 +221,7 @@ def main() -> None:
         "initial_image_mse": initial_loss,
         "final_image_mse": final_loss.item(),
         "final_map_rmse": map_rmse,
+        "final_query_map_rmse": query_map_rmse,
         "minimum_signed_area_ratio": minimum_ratio,
         "peak_cuda_allocated_bytes": torch.cuda.max_memory_allocated(device) if device.type == "cuda" else None,
         "step_records": steps,

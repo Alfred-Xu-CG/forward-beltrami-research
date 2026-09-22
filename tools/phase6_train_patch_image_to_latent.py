@@ -62,12 +62,13 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=300)
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--target-kind", choices=("smooth", "high_frequency"), default="smooth")
     args = parser.parse_args()
     if args.side < args.patch_cells + 1 or args.patch_cells % 2 or args.steps < 1:
         raise ValueError("invalid side, patch side, or steps")
     torch.manual_seed(20260923)
     device = torch.device(args.device)
-    fixed, moving, true_map = _synthetic_pair(args.image_side, args.batch, device)
+    fixed, moving, true_map = _synthetic_pair(args.image_side, args.batch, device, args.target_kind)
     pair = torch.cat((fixed, moving), dim=1)
     layers = []
     for layer_id in range(args.layers):
@@ -117,6 +118,7 @@ def main() -> None:
         min_ratios = [_minimum_area_ratio(control) for control in controls]
     print(json.dumps({
         "route": "B",
+        "target_kind": args.target_kind,
         "representation": "exact_PL_composition_not_P1_on_original_mesh",
         "control_side": args.side,
         "control_vertices": args.side**2,

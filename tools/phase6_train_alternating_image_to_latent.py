@@ -60,12 +60,13 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=300)
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--target-kind", choices=("smooth", "high_frequency"), default="smooth")
     args = parser.parse_args()
     if args.side < 3 or args.image_side < 2 or args.batch < 1 or args.steps < 1:
         raise ValueError("invalid side, image side, batch, or steps")
     torch.manual_seed(20260923)
     device = torch.device(args.device)
-    fixed, moving, true_map = _synthetic_pair(args.image_side, args.batch, device)
+    fixed, moving, true_map = _synthetic_pair(args.image_side, args.batch, device, args.target_kind)
     pair = torch.cat((fixed, moving), dim=1)
     axes = tuple("vertical" if layer_id % 2 == 0 else "horizontal" for layer_id in range(args.layers))
     encoder = AlternatingImageEncoder(args.side, axes).to(device)
@@ -107,6 +108,7 @@ def main() -> None:
         area_ratios = [_minimum_area_ratio(control) for control in controls]
     print(json.dumps({
         "route": "A/B",
+        "target_kind": args.target_kind,
         "method": "exact_alternating_full_grid_monotone_composition",
         "representation": "exact_PL_composition_not_original_grid_P1",
         "control_side": args.side,
