@@ -1,0 +1,305 @@
+{
+  "backward": {
+    "boundary_is_fixed": true,
+    "diagnostic_only": true,
+    "excluded_from_common_primary_objective": true,
+    "loss_kind": "image_mse_plus_weighted_warp_probe",
+    "loss_value": 1.018139224304217e-05,
+    "scope": "first-order tensor VJP through solve and dense map/image path; the weighted probe exists only to avoid a zero gradient at exact recovery",
+    "tensor_gradient_l2": 2.2922310333092925e-06
+  },
+  "configuration": {
+    "control_side": 25,
+    "device": "cpu",
+    "dtype": "float64",
+    "fd_control_side": 5,
+    "fd_epsilon": 1e-06,
+    "fd_resolution": 17,
+    "image_name": "medical_phantom",
+    "resolution": 256,
+    "seed": 20260922,
+    "target_height": 1.0,
+    "target_strength": 0.25,
+    "task": "image",
+    "threads": 1,
+    "warp_convention": "backward_map_fixed_to_moving"
+  },
+  "environment": {
+    "commit": "0da8ffa7b0816c7dc6fc541fbabf48c37fe65247",
+    "device": "cpu",
+    "dirty": false,
+    "dtype": "float64",
+    "hostname": "ai",
+    "mkl_num_threads": "1",
+    "numpy": "1.26.4",
+    "omp_num_threads": "1",
+    "platform": "Linux-5.15.0-88-generic-x86_64-with-glibc2.31",
+    "python": "3.11.7",
+    "scipy": "1.11.4",
+    "torch": "2.4.0+cu121",
+    "torch_threads": 1
+  },
+  "exact_p1_recovery": {
+    "boundary_max_abs": 0.0,
+    "claim_scope": "this target-derived facewise exact P1 mu, determinant-one A(mu), and imposed exact target boundary",
+    "independent_operator_residual_linf": 1.4432899320127035e-15,
+    "independent_p1_vs_target_max_abs": 3.4416913763379853e-15,
+    "target_mu_max_abs": 0.44641780332626335,
+    "tensor_determinant_max_abs_error": 5.551115123125783e-16,
+    "whitney_solver_residual_linf": 3.899658373995862e-15,
+    "whitney_vs_independent_p1_max_abs": 1.887379141862766e-15,
+    "whitney_vs_target_max_abs": 2.55351295663786e-15,
+    "whitney_vs_target_rmse": 7.714127982707807e-16
+  },
+  "limitations": [
+    "one-shot fixed-boundary teacher/reference, not instance optimization",
+    "observed injectivity of this output is not a general topology guarantee",
+    "CPU float64 sparse reference; no GPU, batch, or matrix-free claim"
+  ],
+  "memory": {
+    "after_diagnostics": {
+      "process_hwm_bytes": 511397888,
+      "rss_bytes": 511397888,
+      "source": "linux_proc_status"
+    },
+    "after_primary": {
+      "process_hwm_bytes": 511397888,
+      "rss_bytes": 511397888,
+      "source": "linux_proc_status"
+    },
+    "before": {
+      "process_hwm_bytes": 453210112,
+      "rss_bytes": 453210112,
+      "source": "linux_proc_status"
+    },
+    "explicit_scope": "listed dense/control/image/tensor/query tensors only; excludes Python, SciPy sparse factor internals, allocator overhead, and shared libraries",
+    "explicit_tensor_and_query_state_bytes": 6864144,
+    "primary_rss_delta_bytes": 58187776
+  },
+  "metrics": {
+    "boundary_order_min_gap": 0.024048915260125647,
+    "flip_count": 0,
+    "global_injectivity_certificate": true,
+    "image_mse": 1.5987359137365195e-29,
+    "map_rmse": 7.714127982707807e-16,
+    "maximum_map_error": 3.457769959779852e-15,
+    "maximum_mu_error": 3.633090346580768e-14,
+    "minimum_area_ratio": 0.49835458158095297,
+    "minimum_signed_area": 0.0004325994631779108,
+    "mu_rmse": 5.993952303089547e-15
+  },
+  "optimization": {
+    "iterations": null,
+    "performed": false,
+    "stopping_threshold": null
+  },
+  "primary_objective": {
+    "kind": "backward_warp_image_mse",
+    "optimized": false,
+    "scope": "common-input evaluation objective; no parameter update was performed",
+    "value": 1.5987359137365195e-29
+  },
+  "problem_size": {
+    "control_side": 25,
+    "control_vertex_count": 625,
+    "dense_query_count": 65536,
+    "face_count": 1152,
+    "image_resolution": 256
+  },
+  "protocol_kind": "one_shot_fixed_boundary_structure_preserving_reference",
+  "replayable_state": {
+    "authority_numeric_identity": {
+      "boundary_logits": {
+        "l2": 2.477433980252188,
+        "maximum": 0.5983959189765382,
+        "minimum": -0.5183390920571174,
+        "shape": [
+          96
+        ],
+        "sum": 0.9457548203413042
+      },
+      "control": {
+        "l2": 20.29414436631711,
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "shape": [
+          625,
+          2
+        ],
+        "sum": 611.298547235479
+      },
+      "dense": {
+        "l2": 205.46519723260525,
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "shape": [
+          256,
+          256,
+          2
+        ],
+        "sum": 63956.29216338156
+      },
+      "interior_logits": {
+        "l2": 14.25685265438479,
+        "maximum": 0.8295773591895071,
+        "minimum": -0.8838256517279378,
+        "shape": [
+          529,
+          6
+        ],
+        "sum": -11.15548031530342
+      },
+      "raw_modulus": {
+        "l2": 0.46103204171015355,
+        "maximum": 0.46103204171015355,
+        "minimum": 0.46103204171015355,
+        "shape": [],
+        "sum": 0.46103204171015355
+      }
+    },
+    "note": "replay at the recorded Git commit and runtime; no optimized latent state exists",
+    "reference_pipeline": "face_beltrami(target.control) -> determinant-one A(mu) -> WhitneyHodge.solve(A, target boundary)",
+    "target_builder": {
+      "control_side": 25,
+      "function": "build_directed_target",
+      "height": 1.0,
+      "image_height": 256,
+      "image_width": 256,
+      "seed": 20260922,
+      "strength": 0.25
+    }
+  },
+  "research_question": "P-ref common-input exact-P1 projection through the full Whitney-Hodge reference",
+  "route_label": "P-ref",
+  "schema": "phase5_route3_pref_common_benchmark_v1",
+  "shared_target": {
+    "authority_device": "cpu",
+    "authority_dtype": "float64",
+    "generated_once": true,
+    "numeric_identity": {
+      "boundary_logits": {
+        "l2": 2.477433980252188,
+        "maximum": 0.5983959189765382,
+        "minimum": -0.5183390920571174,
+        "shape": [
+          96
+        ],
+        "sum": 0.9457548203413042
+      },
+      "control": {
+        "l2": 20.29414436631711,
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "shape": [
+          625,
+          2
+        ],
+        "sum": 611.298547235479
+      },
+      "dense": {
+        "l2": 205.46519723260525,
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "shape": [
+          256,
+          256,
+          2
+        ],
+        "sum": 63956.29216338156
+      },
+      "interior_logits": {
+        "l2": 14.25685265438479,
+        "maximum": 0.8295773591895071,
+        "minimum": -0.8838256517279378,
+        "shape": [
+          529,
+          6
+        ],
+        "sum": -11.15548031530342
+      },
+      "raw_modulus": {
+        "l2": 0.46103204171015355,
+        "maximum": 0.46103204171015355,
+        "minimum": 0.46103204171015355,
+        "shape": [],
+        "sum": 0.46103204171015355
+      }
+    },
+    "route2_authority_match": {
+      "atol": 1e-12,
+      "authority_commit": "74b452c39c39601bf5d1204288307e9a02a2aaa5",
+      "authority_path": "docs/research_phase5/raw_results/route2_mvc_instance_formal_image_gpu_O1_ai_74b452c_clean.json",
+      "compared_fields": [
+        "shape",
+        "sum",
+        "l2",
+        "minimum",
+        "maximum"
+      ],
+      "matched": true,
+      "required": true,
+      "rtol": 1e-12
+    },
+    "setup_primal_solves": 1,
+    "topology": {
+      "boundary_order_min_gap": 0.024048915260125647,
+      "flip_count": 0,
+      "global_injectivity_certificate": true,
+      "minimum_area_ratio": 0.49835458158095314,
+      "minimum_signed_area": 0.0004325994631779109
+    }
+  },
+  "solve_counts": {
+    "count_scope": "primary count 2 is only the differentiable Whitney path; target setup, the independent P1 validation solve, and finite-difference diagnostics are enumerated separately",
+    "finite_difference_diagnostic_excluded_from_primary": true,
+    "finite_difference_target_setup_primal_global_solves": 1,
+    "finite_difference_whitney_backward_global_adjoint_calls": 1,
+    "finite_difference_whitney_forward_global_solve_calls": 3,
+    "independent_validation_p1_global_solve_calls": 1,
+    "independent_validation_p1_scalar_rhs": 2,
+    "primary_backward_global_adjoint_calls": 1,
+    "primary_backward_reused_factorizations": 1,
+    "primary_backward_scalar_rhs": 2,
+    "primary_forward_factorizations": 1,
+    "primary_forward_global_solve_calls": 1,
+    "primary_forward_scalar_rhs": 2,
+    "primary_total_global_solve_calls_including_adjoint": 2,
+    "target_setup_primal_global_solves": 1
+  },
+  "status": "ok",
+  "task": "image",
+  "timings_seconds": {
+    "backward": 0.09986541047692299,
+    "dense_interpolation": 0.008903108537197113,
+    "dense_warp_and_image_objective": 0.0016321949660778046,
+    "differentiable_reference_path": 0.1176764965057373,
+    "finite_difference_check": 0.016346458345651627,
+    "forward_solve": 0.006058353930711746,
+    "pre_fd_total_including_target_setup_reference_setup_and_validation": 0.4236313998699188,
+    "reference_setup": 0.02736550197005272,
+    "scope": "differentiable_reference_path spans Whitney forward, dense interpolation, task objective construction, and diagnostic-probe backward; validation and finite-difference timings are excluded and reported separately",
+    "target_setup": 0.20008845627307892,
+    "total_with_diagnostics": 0.4613090679049492,
+    "validation_metrics_and_independent_p1_oracle": 0.0702001340687275
+  },
+  "topology_scope": "observed_P1_topology_for_this_target_only_no_general_guarantee",
+  "utc": "2026-09-22T04:05:55.890610+00:00",
+  "vjp_check": {
+    "absolute_error": 6.125149033842667e-15,
+    "analytic_vjp": -7.946194080207273e-07,
+    "control_side": 5,
+    "diagnostic_backward_scalar_rhs": 2,
+    "diagnostic_forward_scalar_rhs": 6,
+    "diagnostic_target_setup_primal_global_solves": 1,
+    "diagnostic_whitney_backward_global_adjoint_calls": 1,
+    "diagnostic_whitney_forward_global_solve_calls": 3,
+    "elapsed_seconds": 0.016346458345651627,
+    "epsilon": 1e-06,
+    "excluded_from_primary_solve_counts": true,
+    "finite_difference": -7.946194141458763e-07,
+    "loss_kind": "image_mse_plus_weighted_warp_probe",
+    "path": "tensor_to_whitney_solve_to_dense_map_to_backward_image_warp",
+    "relative_error": 7.708280121026859e-09,
+    "resolution": 17
+  }
+}
