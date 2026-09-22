@@ -66,7 +66,11 @@ def main() -> None:
         raise ValueError("checkpoint does not match A2 and requested side")
     target_family = state["args"].get("target_family", "base")
     fine_cycles = 8 if target_family == "base" else 32
-    encoder = ConvexQuadImageEncoder(args.side, head_mode=state["args"].get("a2_head_mode", "multilevel")).to(device)
+    encoder = ConvexQuadImageEncoder(
+        args.side,
+        head_mode=state["args"].get("a2_head_mode", "multilevel"),
+        body_mode=state["args"].get("a2_body_mode", "local"),
+    ).to(device)
     encoder.load_state_dict(state["encoder"])
     encoder.eval()
     decoder = HierarchicalConvexQuadFreeCenterLayer(args.side)

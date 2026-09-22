@@ -95,22 +95,50 @@ def _edge_strain(control: torch.Tensor) -> torch.Tensor:
     )
 
 
+class ContextualA2Body(torch.nn.Module):
+    """Three pooled scales supply context while retaining fine-grid features."""
+
+    def __init__(self, width: int) -> None:
+        super().__init__()
+        self.local = torch.nn.Sequential(
+            torch.nn.Conv2d(2, width, 3, padding=1), torch.nn.GELU(),
+            torch.nn.Conv2d(width, width, 3, padding=1), torch.nn.GELU(),
+        )
+        self.context = torch.nn.ModuleList(
+            torch.nn.Sequential(torch.nn.Conv2d(width, width, 3, padding=1), torch.nn.GELU())
+            for _ in range(3)
+        )
+        self.fuse = torch.nn.Sequential(torch.nn.Conv2d(width, width, 3, padding=1), torch.nn.GELU())
+
+    def forward(self, pair: torch.Tensor) -> torch.Tensor:
+        local = self.local(pair)
+        current = local
+        fused = local
+        for block in self.context:
+            current = block(F.avg_pool2d(current, kernel_size=2, stride=2))
+            fused = fused + F.interpolate(current, size=local.shape[-2:], mode="bilinear", align_corners=True)
+        return self.fuse(fused)
+
+
 class ConvexQuadImageEncoder(torch.nn.Module):
     """Image pyramid to shared-edge and free-center logits at every level."""
 
-    def __init__(self, side: int, width: int = 8, *, head_mode: str = "multilevel") -> None:
+    def __init__(self, side: int, width: int = 8, *, head_mode: str = "multilevel", body_mode: str = "local") -> None:
         super().__init__()
         if head_mode not in ("multilevel", "shared"):
             raise ValueError("head_mode must be multilevel or shared")
+        if body_mode not in ("local", "context"):
+            raise ValueError("body_mode must be local or context")
         self.side = side
         self.head_mode = head_mode
+        self.body_mode = body_mode
         self.latent_sides = HierarchicalConvexQuadFreeCenterLayer(side).latent_sides
         self.body = torch.nn.Sequential(
             torch.nn.Conv2d(2, width, 3, padding=1),
             torch.nn.GELU(),
             torch.nn.Conv2d(width, width, 3, padding=1),
             torch.nn.GELU(),
-        )
+        ) if body_mode == "local" else ContextualA2Body(width)
         self.root_head = torch.nn.Linear(width, 2)
         head_count = len(self.latent_sides) if head_mode == "multilevel" else 1
         self.horizontal_heads = torch.nn.ModuleList(torch.nn.Conv2d(width, 1, 1) for _ in range(head_count))
@@ -155,6 +183,7 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--strain-weight", type=float, default=0.0)
     parser.add_argument("--a2-head-mode", choices=("multilevel", "shared"), default="multilevel")
+    parser.add_argument("--a2-body-mode", choices=("local", "context"), default="local")
     parser.add_argument("--target-family", choices=("base", "high32"), default="base")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--save-state", default=None)
@@ -166,6 +195,8 @@ def main() -> None:
         raise ValueError("the current strain ablation is defined only for A2")
     if args.a2_head_mode != "multilevel" and args.method != "A2":
         raise ValueError("a2-head-mode applies only to A2")
+    if args.a2_body_mode != "local" and args.method != "A2":
+        raise ValueError("a2-body-mode applies only to A2")
     torch.manual_seed(20260923)
     device = torch.device(args.device)
     train = tuple(t.to(device) for t in make_dataset(args.train_count, args.image_side, 55101, target_family=args.target_family))
@@ -178,7 +209,7 @@ def main() -> None:
         encoder = SmallImageEncoder(args.side).to(device)
         decoder = MultiscaleMonotoneGridLayer(args.side)
     elif args.method == "A2":
-        encoder = ConvexQuadImageEncoder(args.side, head_mode=args.a2_head_mode).to(device)
+        encoder = ConvexQuadImageEncoder(args.side, head_mode=args.a2_head_mode, body_mode=args.a2_body_mode).to(device)
         decoder = HierarchicalConvexQuadFreeCenterLayer(args.side)
     else:
         axes = ("vertical", "horizontal")
@@ -187,8 +218,9 @@ def main() -> None:
     if args.load_state:
         previous = torch.load(args.load_state, map_location=device, weights_only=False)
         previous_args = previous["args"]
-        for key in ("method", "side", "image_side", "target_family", "a2_head_mode"):
-            if previous_args.get(key, "base" if key == "target_family" else "multilevel" if key == "a2_head_mode" else None) != getattr(args, key):
+        defaults = {"target_family": "base", "a2_head_mode": "multilevel", "a2_body_mode": "local"}
+        for key in ("method", "side", "image_side", "target_family", "a2_head_mode", "a2_body_mode"):
+            if previous_args.get(key, defaults.get(key)) != getattr(args, key):
                 raise ValueError(f"loaded checkpoint does not match {key}")
         encoder.load_state_dict(previous["encoder"])
     optimizer = torch.optim.Adam(encoder.parameters(), lr=args.learning_rate)
@@ -305,6 +337,7 @@ def main() -> None:
         "learning_rate": args.learning_rate,
         "strain_weight": args.strain_weight,
         "a2_head_mode": args.a2_head_mode if args.method == "A2" else None,
+        "a2_body_mode": args.a2_body_mode if args.method == "A2" else None,
         "target_family": args.target_family,
         "loaded_state": args.load_state,
         "device": str(device),
