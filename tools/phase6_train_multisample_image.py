@@ -96,8 +96,12 @@ def main() -> None:
         decoder = ExactAlternatingMonotoneComposition(args.side, table, axes)
     optimizer = torch.optim.Adam(encoder.parameters(), lr=args.learning_rate)
 
-    def forward(indices: torch.Tensor, dataset: tuple[torch.Tensor, ...]) -> tuple[torch.Tensor, torch.Tensor, tuple[torch.Tensor, ...]]:
-        fixed, moving, truth = (part[indices] for part in dataset)
+    def forward(
+        indices: torch.Tensor,
+        dataset: tuple[torch.Tensor, ...],
+        measure_map_error: bool = True,
+    ) -> tuple[torch.Tensor, torch.Tensor | None, tuple[torch.Tensor, ...]]:
+        fixed, moving = (part[indices] for part in dataset[:2])
         latent = encoder(torch.cat((fixed, moving), dim=1))
         if args.method == "A":
             control = decoder(latent)
@@ -109,7 +113,7 @@ def main() -> None:
             controls = result.controls
         warped = F.grid_sample(moving, 2 * predicted - 1, mode="bilinear", padding_mode="border", align_corners=True)
         image_mse = (warped - fixed).square().mean()
-        map_mse = (predicted - truth).square().mean()
+        map_mse = (predicted - dataset[2][indices]).square().mean() if measure_map_error else None
         return image_mse, map_mse, controls
 
     @torch.no_grad()
@@ -122,6 +126,7 @@ def main() -> None:
             stop = min(start + args.batch, count)
             indices = torch.arange(start, stop, device=device)
             image_mse, map_mse, controls = forward(indices, dataset)
+            assert map_mse is not None
             image_sum += image_mse.item() * (stop - start)
             map_sum += map_mse.item() * (stop - start)
             for index, control in enumerate(controls):
@@ -147,7 +152,7 @@ def main() -> None:
         draw = torch.randint(args.train_count, (args.batch,), generator=train_generator).to(device)
         optimizer.zero_grad(set_to_none=True)
         began = time.perf_counter()
-        image_mse, _, _ = forward(draw, train)
+        image_mse, _, _ = forward(draw, train, measure_map_error=False)
         if device.type == "cuda":
             torch.cuda.synchronize(device)
         middle = time.perf_counter()
