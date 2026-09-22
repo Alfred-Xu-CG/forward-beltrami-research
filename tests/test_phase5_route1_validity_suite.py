@@ -48,7 +48,8 @@ def test_default_coverage_and_tiny_independent_metrics(tmp_path):
     assert all(r['inverse_consistency'] is None for r in report['rows'])
     m.write_results(report,tmp_path/'out.json',tmp_path/'out.csv')
     assert json.loads((tmp_path/'out.json').read_text())['status']=='ok'
-    assert len(list(csv.DictReader((tmp_path/'out.csv').open())))==13
+    with (tmp_path/'out.csv').open(newline='') as csv_file:
+        assert len(list(csv.DictReader(csv_file)))==13
 
 
 def test_cached_sample_certificate_cannot_override_independent_fold_detection(monkeypatch):
@@ -138,8 +139,9 @@ def test_environment_and_csv_record_reproducibility_context(tmp_path):
     assert isinstance(environment['git_dirty'],bool)
     assert environment['scipy']
     m.write_results(report,tmp_path/'out.json',tmp_path/'out.csv')
-    image=next(row for row in csv.DictReader((tmp_path/'out.csv').open())
-               if row['kind']=='image')
+    with (tmp_path/'out.csv').open(newline='') as csv_file:
+        image=next(row for row in csv.DictReader(csv_file)
+                   if row['kind']=='image')
     assert float(image['sampling_tolerance'])>0
 
 
