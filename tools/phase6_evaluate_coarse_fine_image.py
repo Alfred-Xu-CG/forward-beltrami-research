@@ -1,4 +1,4 @@
-"""Held-out geometry of image-trained exact coarse-fine PL compositions."""
+"""Held-out geometry of image-trained exact two-factor PL compositions."""
 
 from __future__ import annotations
 
@@ -10,31 +10,54 @@ import torch
 import torch.nn.functional as F
 
 from phase6_evaluate_heldout_beltrami import _mu, _target_on_faces
+from phase6_train_alternating_image_to_latent import AlternatingImageEncoder
+from phase6_train_image_to_latent import _minimum_area_ratio
 from phase6_train_multisample_image import CoarseFineConvexQuadImageEncoder, make_dataset
 from qcopt.mesh import structured_rectangle
-from qcopt.neural_bijection.dense import CoarseFineConvexQuadComposition, certify_convex_quad_output, evaluate_structured_p1_with_jacobian
+from qcopt.neural_bijection.dense import CoarseFineConvexQuadComposition, ExactAlternatingMonotoneComposition, certify_convex_quad_output, evaluate_structured_p1_with_jacobian
+from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 
 
 def evaluate(checkpoint: str, batch: int, device: str) -> dict:
     state = torch.load(checkpoint, map_location=device, weights_only=False)
     args = state["args"]
-    if args["method"] != "CF2":
-        raise ValueError("expected an image-trained CF2 checkpoint")
+    if args["method"] not in ("CF2", "AB2"):
+        raise ValueError("expected an image-trained CF2 or AB2 checkpoint")
     side = args["side"]
-    coarse_side = args["coarse_side"]
+    coarse_side = args.get("coarse_side", side)
     image_side = args["image_side"]
     family = args["target_family"]
     cycles = 8 if family == "base" else 32
-    encoder = CoarseFineConvexQuadImageEncoder(
-        coarse_side, side,
-        width=args.get("a2_width", 8),
-        head_mode=args.get("a2_head_mode", "multilevel"),
-        body_mode=args.get("a2_body_mode", "local"),
-    ).to(device)
+    if args["method"] == "CF2":
+        encoder = CoarseFineConvexQuadImageEncoder(
+            coarse_side, side,
+            width=args.get("a2_width", 8),
+            head_mode=args.get("a2_head_mode", "multilevel"),
+            body_mode=args.get("a2_body_mode", "local"),
+        ).to(device)
+        decoder = CoarseFineConvexQuadComposition(coarse_side, side, image_side)
+        decoder.prepare(device=device, dtype=torch.float32)
+
+        def decode(pair):
+            coarse_latent, fine_latent = encoder(pair)
+            return decoder(*coarse_latent, *fine_latent)
+
+        factor_certificate = certify_convex_quad_output
+    else:
+        axes = ("vertical", "horizontal")
+        encoder = AlternatingImageEncoder(side, axes).to(device)
+        table = StructuredDenseQueryTable.from_mesh(
+            structured_rectangle(side - 1, side - 1), height=image_side, width=image_side
+        )
+        table.prepare(device=device, dtype=torch.float32)
+        decoder = ExactAlternatingMonotoneComposition(side, table, axes)
+
+        def decode(pair):
+            return decoder(encoder(pair))
+
+        factor_certificate = _minimum_area_ratio
     encoder.load_state_dict(state["encoder"])
     encoder.eval()
-    decoder = CoarseFineConvexQuadComposition(coarse_side, side, image_side)
-    decoder.prepare(device=device, dtype=torch.float32)
     fixed, moving, true_map, coefficients = (
         value.to(device) for value in make_dataset(8, image_side, 99317, return_coefficients=True, target_family=family)
     )
@@ -53,10 +76,9 @@ def evaluate(checkpoint: str, batch: int, device: str) -> dict:
             stop = min(start + batch, count)
             current = stop - start
             pair = torch.cat((fixed[start:stop], moving[start:stop]), dim=1)
-            coarse_latent, fine_latent = encoder(pair)
-            result = decoder(*coarse_latent, *fine_latent)
+            result = decode(pair)
             for index, control in enumerate(result.controls):
-                minimum_areas[index] = min(minimum_areas[index], certify_convex_quad_output(control))
+                minimum_areas[index] = min(minimum_areas[index], factor_certificate(control))
             warped = F.grid_sample(moving[start:stop], 2 * result.dense - 1, mode="bilinear", padding_mode="border", align_corners=True)
             image_sum += (warped - fixed[start:stop]).square().mean().item() * current
             pixel_map_sum += (result.dense - true_map[start:stop]).square().mean().item() * current
@@ -93,9 +115,11 @@ def evaluate(checkpoint: str, batch: int, device: str) -> dict:
                     })
     return {
         "checkpoint": checkpoint,
-        "method": "CF2_image_only_training",
+        "method": f"{args['method']}_image_only_training",
         "representation": "exact_PL_composition_not_original_grid_P1",
         "target_family": family,
+        "first_factor_control_side": coarse_side,
+        "second_factor_control_side": side,
         "coarse_control_side": coarse_side,
         "fine_control_side": side,
         "coarse_control_vertices": coarse_side**2,
