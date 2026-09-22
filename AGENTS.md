@@ -1,226 +1,38 @@
-# AGENTS.md — Phase V Sequential Deep-Research Mode
+# AGENTS.md — Phase VI Dense Homeomorphism Research Mode
 
 ## Mission
 
-This repository is in **Phase V sequential deep-research mode**.
-
-Authoritative plan:
+The current 18-hour research objective is a fast, memory-efficient, differentiable neural layer that maps multiscale latent variables to a piecewise-affine homeomorphism on a dense triangulated rectangle. The authoritative plan and start time are:
 
 ```text
-docs/research_phase5/PLAN.md
+docs/research_phase6/PLAN.md
+docs/research_phase6/START_TIME.json
 ```
 
-Goal: develop a fast, memory-efficient, differentiable neural layer producing a guaranteed-bijective discrete deformation.
+Explore all three routes: A, explicit dense-grid monotone construction; B, local patch maps and exact PL composition; C, multiscale positive conductances and structured solves. Woodbury is one candidate within C. Theory and counterexamples guide implementation but do not replace it. At least two distinct mechanisms should reach actual 257×257 control-vertex forward/VJP tests. Do not stop other routes after one succeeds.
 
-Routes must be explored **sequentially and deeply**:
+## User override: no installed skills
 
-1. Fast Tutte neural layer.
-2. MVC canonical coordinates + geometric incremental optimization.
-3. Primal-dual / RT / Whitney / Hodge.
+Do not read, invoke, or follow any installed skill or its workflow during this Phase VI run. This user instruction overrides earlier skill-routing advice in Phase V documentation. Use direct reasoning, repository code, targeted primary literature, and actual experiments.
 
-Do not start the next route until the current route passes its independent checker.
+## Model and time
 
-## Real wall-clock requirement
+The user selected GPT-6 Sol as the execution model. Use medium reasoning for routine implementation and experiments, high for hard topology, sparse adjoints, and algorithm design. Record actual wall-clock progress from the Phase VI start time. Do not reuse Phase V start or completion files. At around 16.5 hours independently check major results and write the self-contained final report. Do not label the phase complete before 18 hours unless the user explicitly stops or the goal is otherwise terminated by system controls.
 
-This is an 18-hour real wall-clock phase.
+## Scientific claims
 
-Use:
+Distinguish a fixed-grid P1 homeomorphism from an exact composition of PL homeomorphisms: the composition need not be P1 on the original grid. Resampling its vertices and reinterpolating does not inherit the composition theorem. Separate theorem, implementation, finite-precision evidence, and untested hypothesis. SPD, positive conductances, small residual, positive sampled area, and global injectivity are different claims. State boundary and triangulation hypotheses. Never count post-hoc repair as the primary topology guarantee.
 
-```text
-docs/research_phase5/START_TIME.json
-tools/check_phase5_elapsed.py
-```
+## Research method
 
-Do not simulate `T+Nh` labels.
+Every experiment answers a named question. Begin with a precise construction and a small correctness test, then implement a full forward/VJP, then scale to 129×129 and 257×257 control grids. Include an actual multi-step image-to-latent training run at the main scale for at least one candidate. Compare against the existing symmetric-CG and sparse-direct baselines using identical quality requirements. Measure complete forward, VJP, dense query, training step, and peak memory. Label control vertices and image pixels separately. Preserve failures and negative results.
 
-Do not mark complete before real elapsed time reaches 18 hours.
+Keep work focused on implementable solutions. After two reasonable fixes to a local failure, analyze and redirect effort; do not spend the phase only deriving obstructions. A route is not closed from literature alone.
 
-A successful result is not a stop criterion.
+## Remote compute and ports
 
-## Research depth
+Use idle CPUs and GPUs on `turing-codex-mihomo-codex`, `element-codex-mihomo-codex`, and `ai-codex-mihomo-codex` for meaningful medium/large experiments. Check active GPU processes, free VRAM, and CPU load before jobs. Do not preempt or kill unrelated processes. The existing aliases configure `RemoteForward 18082`; research SSH calls must specify `ClearAllForwardings=yes` so they do not bind that occupied port. Keep the original SSH configuration unchanged. Retry an SSH failure at most twice, then continue elsewhere and recheck later.
 
-Before a core theorem, solver design, or experiment, state:
+## Files and communication
 
-```text
-Question:
-Precise claim/hypothesis:
-Assumptions:
-What falsifies it:
-Smallest decisive test:
-```
-
-Prefer:
-
-1. precise formulation;
-2. proof/counterexample;
-3. independent check;
-4. minimal decisive code;
-5. realistic benchmark;
-6. engineering optimization.
-
-## Independent checker
-
-Each route requires an independent checker.
-
-High-risk words require review:
-
-```text
-unique
-iff
-necessary
-sufficient
-universal
-exact
-guaranteed
-canonical
-bijective
-```
-
-The builder may not be the sole reviewer.
-
-## Model routing
-
-Minimum baseline: GPT-5.6.
-
-- coordinator: GPT-5.6 Sol high;
-- core implementation: GPT-5.6 Sol high;
-- utilities/tests: GPT-5.6 Sol medium;
-- hard mathematics: GPT-6 high if available;
-- independent theorem checker: GPT-6 high/xhigh if available;
-- conceptual impasse after two attempts: highest available GPT-6 reasoning, otherwise GPT-5.6 Sol maximum effort.
-
-Do not automatically fall below GPT-5.6.
-
-## Route order
-
-Route I Tutte must close before Route II MVC.
-
-Route II MVC must close before Route III primal-dual.
-
-No parallel route exploration.
-
-Independent checker work for the current route is allowed.
-
-## Experiments
-
-Use one shared benchmark.
-
-Mandatory realistic scale:
-
-```text
-256×256 image/query
-```
-
-512×512 preferred when resources allow.
-
-Always distinguish control mesh resolution from dense image/query resolution.
-
-Every route must execute code and produce numerical evidence; literature-only exploration is insufficient.
-
-## Tutte rules
-
-Audit TutteNet paper, official code, and `torch_sparse_solve`.
-
-Implement and benchmark:
-
-- reference direct solve;
-- improved direct/factor reuse where possible;
-- matrix-free iterative solve;
-- custom implicit backward;
-- fixed-query dense-warp precomputation.
-
-Do not call CPU reference code production-ready.
-
-## MVC rules
-
-MVC is primarily a canonicalization / optimization-geometry route, not a separate hard decoder.
-
-Distinguish:
-
-```text
-D(E(Y)) = Y
-```
-
-from the false general claim:
-
-```text
-E(D(p)) = p.
-```
-
-Analyze redundancy, decoder Jacobian nullspace, covariance lift, canonical re-encoding, trainability, and incremental correction.
-
-Treat covariance lift as one latent gauge/right-inverse, not the derivative of MVC unless proved.
-
-## Primal-dual rules
-
-Do not stop at “DEC/RT is promising”.
-
-Implement at least one concrete compatible reference operator and one positive hard-valid approximation/hybrid.
-
-Do not equate:
-
-- conservation with bijection;
-- SPD with M-matrix;
-- positive wide stencil with planar graph;
-- fixed-direction failure with route failure.
-
-Quantify anisotropy/accuracy vs positivity/topology.
-
-## Anti-bureaucracy
-
-Do not add by default:
-
-- hashes/checksums;
-- manifests;
-- frozen contracts;
-- completion ledgers;
-- per-run artifact trees;
-- speculative frameworks.
-
-Allowed gates:
-
-- route checker;
-- real 18h finalization clock;
-- destructive/security/release boundaries.
-
-## Skills
-
-- do not use `ars/experiment-agent`;
-- do not use `academic-paper` before final synthesis;
-- use research/deep-research only for targeted prior-art/theorem questions;
-- use systematic debugging only for real code failures;
-- use verification-before-completion at each route closure and final review.
-
-## Remote compute
-
-VPN failure does not pause the objective.
-
-Retry briefly, then continue locally.
-
-Use remote compute for meaningful medium/large runs.
-
-Avoid high-frequency polling.
-
-Never interfere with unrelated processes or ports.
-
-## Scientific integrity
-
-Always distinguish:
-
-- theorem vs evidence;
-- exact vs approximate;
-- expressivity vs trainability;
-- control-map bijection vs dense-query evaluation;
-- continuous diffeo vs sampled PL homeomorphism;
-- directed positive Tutte weights vs symmetric conductance family;
-- discrete exactness/conservation vs spatial injectivity.
-
-Do not use post-hoc fold repair as the primary topology guarantee.
-
-## Git and files
-
-Use Git as normal version history without extra hashing infrastructure. Work on the
-Phase V feature branch in the D-drive worktree. Prefer isolated modules and minimal
-corrections to confirmed legacy bugs; do not refactor unrelated code. Keep temporary
-logs under `tmp/`, and make meaningful milestone commits only after fresh verification.
-
+Keep all new code, results, logs, and reports on D drive in this repository. Use ordinary Git commits and sync meaningful milestones to GitHub. Do not add checksum systems, per-run artifact trees, speculative infrastructure, or duplicate audit gates. Keep a compact shared results table and a self-contained report defining formulas, experimental setups, metric calculations, observed results, and limitations. Give the user a concise evidence-backed progress update about every 2–3 hours of ongoing work.
