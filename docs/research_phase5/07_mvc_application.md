@@ -68,9 +68,11 @@ ordered boundary positions \(b\), the directed logit decoder \(D_\ell\) solves
 The CPU direct backend assembles \(A=I-P_{II}\), factors it once per sample,
 and solves both coordinate columns.  Its first-order reverse pass solves with
 \(A^{\mathsf T}\).  The GPU backend applies \(A\) and \(A^{\mathsf T}\)
-matrix-free and uses implicit BiCGStab differentiation.  In the measurements
-below its relative residual tolerance is \(10^{-5}\) in float32 and
-\(10^{-10}\) in float64, with zero absolute tolerance and at most 2,000 primary
+matrix-free and uses implicit BiCGStab differentiation.  In the layer matrix
+of Sections 3--6 its relative residual tolerance is \(10^{-5}\) in float32
+and \(10^{-11}\) in float64, with zero absolute tolerance and at most 2,000
+primary iterations.  The formal instance cohort in Section 8 instead uses
+\(10^{-5}\) and \(10^{-10}\), respectively, with at most 500 primary
 iterations.  A completed iterative call has also passed the solver's freshly
 recomputed represented-residual check.
 
@@ -105,11 +107,14 @@ The encoder returns the zero-supported-mean logit gauge
 \tag{2.4}
 \]
 
-together with the unchanged boundary.  It rejects zero edges, inconsistent
-winding, nonpositive consecutive angles, nonpositive weights, large
-barycentric residual, or a rank-deficient local covariance.  All geometry in
-(2.3)--(2.4) is computed with Torch operations; the combinatorial cyclic order
-is precomputed once from the mesh.
+together with the unchanged boundary.  It rejects under-resolved one-ring
+edges, inconsistent winding, consecutive rays that are not strictly
+counterclockwise and separated from both zero and \(\pi\), nonpositive or
+nonfinite weights/row denominators, and a rank-deficient local covariance.
+The barycentric residual is recorded as a diagnostic but is not
+threshold-rejected by the encoder.  All geometry in (2.3)--(2.4) is computed
+with Torch operations; the combinatorial cyclic order is precomputed once
+from the mesh.
 
 ### 2.3 M1 canonicalization layer
 
@@ -834,7 +839,8 @@ seed, latent definition, and decoded problem within that recorded roundoff.
 These strict forward/audit outcomes do not repair the separate gradient and
 memory negatives from Sections 5--6: the float32 \(N=49\) M2 finite-difference
 error is about 0.19987, a tighter-tolerance probe still bottoms out near
-\(1.34\times10^{-3}\), and the fresh-process A40 M2 peak is about 1.15 GiB.
+\(1.34\times10^{-3}\), and the fresh-process A40 M2 peak is
+1,150,018,048 bytes, or about 1.150 GB (1.071 GiB).
 Accordingly, the clean CUDA rerun is not evidence of universally accurate GPU
 gradients or a low-memory implementation.
 
@@ -892,8 +898,9 @@ The bounded trust experiment is therefore a counterexample to the proposition
 that local backtracking alone makes this O4 optimization practically stable.
 It postpones a forbidden step, but repeated accepted updates still approach
 the boundary of the discrete-homeomorphism set while scales vanish and solve
-cost grows.  Enlarging the trial limit would mainly buy nearly zero updates,
-not a fast layer.  The per-method sensitivity instead shows that O4's vertex
+cost grows.  The observed shrinking scales give no evidence that a larger
+trial limit would recover an efficient method; larger limits were not tested.
+The per-method sensitivity instead shows that O4's vertex
 coordinates require a substantially smaller step scale on this image task:
 \(10^{-4}\) completes with a useful area margin, while \(3\times10^{-4}\)
 still fails.  Because coordinate units differ, this is a separately labelled

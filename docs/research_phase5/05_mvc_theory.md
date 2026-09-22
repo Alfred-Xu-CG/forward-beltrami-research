@@ -525,10 +525,11 @@ Define
 
 **Proposition 5.2 (weighted-minimum-norm decoder right inverse).**  If the
 boundary is fixed, require \(v_B=0\).  If the boundary moves, include the
-parameter tangent \(\dot b=v_B\).  In either case, (5.12) satisfies
+parameter tangent \(\dot b=v_B\).  Choose any supported logits \(\ell\) whose
+row softmax is \(p\).  In either case, (5.12) is a logit tangent and satisfies
 
 \[
-dD_{(p,b)}(L_Yv,v_B)=v.
+d(D_\ell)_{(\ell,b)}(L_Yv,v_B)=v.
 \tag{5.13}
 \]
 

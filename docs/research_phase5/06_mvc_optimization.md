@@ -373,7 +373,9 @@ raw-logit and boundary VJPs are
 The positive sign in the logit formula follows from
 \(\delta A=-\delta P_{II}\); reversing that sign is an implementation error.
 Equation (7.13) is invariant to an additive constant in a logit row because
-the probability-weighted row sum is zero at equilibrium.  If the legal
+\(\sum_jp_{ij}(Y_j-Y_i)=0\) at equilibrium, so the **ordinary** supported-row
+sum of the logit-gradient components is zero.  This does not say that the
+gradient itself has zero \(p\)-weighted row sum.  If the legal
 boundary is parameterized by \(b=b(q)\), its parameter VJP is
 \(J_b(q)^{\mathsf T}(g_B+P_{IB}^{\mathsf T}\Lambda)\).  For a fixed boundary,
 the boundary cotangent is reported for diagnostics but is not propagated to a
@@ -470,8 +472,11 @@ different approximate problem.
 ## 10. Four optimization coordinates to compare
 
 All comparisons use the same mesh, boundary family, target object, dense query
-table, decoder backend, loss, initialization, number of accepted evaluations,
-and public solve/topology tolerances.
+table, decoder backend, loss, initialization, declared update cap, and public
+solve/topology tolerances.  They do **not** have the same number of accepted
+updates: the primary view fixes 83 completed global solves, whereas the
+secondary view fixes 40 outer updates.  Attempted and completed work are
+retained separately when a method fails.
 
 ### O1: bounded positive raw weights
 
