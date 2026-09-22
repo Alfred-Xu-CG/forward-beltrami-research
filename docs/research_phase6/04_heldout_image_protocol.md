@@ -32,13 +32,13 @@ Method A is the one-layer vertical monotone decoder. Its output is P1 on the sta
 
 Image MSE is the average squared intensity difference over every pixel and held-out sample. Query-map RMSE is the square root of the average squared coordinate-component error against \(F_\star\); it is evaluation-only. The reported minimum signed-area ratio is the minimum output-face signed double area divided by the source-face signed double area, checked **per represented layer**. A positive minimum plus the analytic layer construction establishes each layer's represented topology; it does not certify an AB2 map reinterpolated as P1 on the original grid. Forward timing covers encoder, decoder, query evaluation, one image resampling and loss; backward timing covers the first-order VJP. One-time data and query-table construction and held-out evaluation are excluded from per-step times. CPU peak is sampled resident-process memory, not an allocator-exact peak.
 
-## 3. Preliminary 1000-step 257² results
+## 3. Clean 1000-step 257² results
 
-The first two runs accidentally evaluated the target-map metric during each training forward but did **not** backpropagate it; the training objective was still image-only. The script was then corrected to skip map error completely during training, so these numbers are provisional timing data until a clean rerun. Initial and final image/map metrics remain valid. On Element CPU, 32 train and 8 held-out samples, the observations were:
+The first two exploratory runs computed, but did not backpropagate, an unused target-map metric during training forward. The script was corrected so training never reads the true map; both methods were then rerun from the same deterministic initialization and samples. The following are those clean reruns on Element CPU, 32 train and 8 held-out samples:
 
 | Method | Held-out image MSE initial→final | Held-out map RMSE final | Train seconds | Median forward/backward | Sampled peak RSS |
 |---|---:|---:|---:|---:|---:|
-| A | 0.03713→0.01262 | 0.01259 | 34.34 | 13.6/19.6 ms | 841 MB |
-| AB2 | 0.03729→0.01187 | 0.01215 | 81.23 | 35.7/44.2 ms | 1002 MB |
+| A | 0.03713→0.01262 | 0.01259 | 33.56 | 12.9/19.9 ms | 821 MB |
+| AB2 | 0.03729→0.01187 | 0.01215 | 82.16 | 35.2/45.7 ms | 980 MB |
 
-AB2 has modestly better held-out quality after the same number of updates, but its time and memory are higher. This is one synthetic family and one seed pair, not evidence of generalization to medical images. A final quality-vs-wall-time comparison must also consider that a 1000-step AB2 budget permits more A updates.
+AB2 has modestly better held-out quality after the same number of updates, but its time and memory are higher. The unmodified per-sample initial loss is different because independently initialized A and AB2 maps differ slightly; the *data* are identical. This is one synthetic family and one seed pair, not evidence of generalization to medical images. A final quality-vs-wall-time comparison must also consider that a 1000-step AB2 budget permits more A updates. Full machine-readable results are in [A](raw_results/heldout_A_257_512_element_cpu_1000.json) and [AB2](raw_results/heldout_AB2_257_512_element_cpu_1000.json).
