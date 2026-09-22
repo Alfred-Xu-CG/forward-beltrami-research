@@ -2,10 +2,11 @@
 
 ## 1. Scope and result status
 
-This document answers the theoretical part of Route II.  It does **not** close
-Route II: the differentiable implementation, finite-difference checks,
-round-trip measurements, optimization comparisons, incremental-solve study,
-and independent checker are separate obligations.
+This document answers the theoretical part of Route II.  It does **not** by
+itself close Route II.  The companion chapters now contain differentiable
+implementation, finite-difference, round-trip, optimization, and incremental
+solve evidence, while adjudication of the O4 image failure and the independent
+final checker remain separate obligations.
 
 The main exact conclusion is the following.  On a fixed oriented triangulated
 disk, every nondegenerate piecewise-affine homeomorphism with an admissible
@@ -102,14 +103,32 @@ one.  Hence
 
 The Neumann series \((I-Q)^{-1}=\sum_{k\geq0}Q^k\) therefore exists. \(\square\)
 
-This algebraic lemma does not use convexity of \(b\).  Convexity belongs to the
-separate theorem that *arbitrary* positive rows yield an injective planar P1
-map.  For a strict convex boundary, the classical Tutte/Floater hypotheses give
-that guarantee.  For a weakly convex cycle, such as a rectangle with multiple
-vertices on each side, the additional dividing-edge condition is required; see
-[Floater's one-to-one P1 theorem](https://doi.org/10.1090/S0025-5718-02-01466-7)
-and the exact Route I statement in
-[`04_tutte_checker.md`](04_tutte_checker.md#22-tutte--floater-hypotheses).
+This algebraic lemma does not use convexity of \(b\).  Convexity belongs to a
+separate sufficient theorem for global topology.  The exact theorem package
+used throughout Route II is the following.
+
+**Tutte--Floater sufficient hypotheses.**  The source is a finite, coherently
+oriented triangulation of a closed disk; every interior equation uses all graph
+neighbors with strictly positive coefficients summing to one; and the ordered
+boundary is mapped homeomorphically, with the correct orientation, onto the
+boundary of a convex polygonal region.  A *dividing edge* is a mesh edge that is
+not a boundary-loop edge but whose two endpoints are boundary vertices.  If the
+target polygon is only weakly convex, no dividing edge may be mapped entirely
+into its boundary.  Under these hypotheses, the exact P1 solution of (2.2) is
+one-to-one.  A strictly convex target makes the dividing-edge obstruction
+automatic.  A rectangle with subdivided sides is weakly convex; the structured
+rectangle used here satisfies the condition by preserving corner/side
+incidence and strict order within each side.  This is the scope of
+[Floater's one-to-one P1 theorem](https://doi.org/10.1090/S0025-5718-02-01466-7).
+
+These are **sufficient**, not asserted necessary, conditions for arbitrary
+positive rows to decode to a P1 homeomorphism.  They are stronger than the
+conditions needed for Lemma 2.1 and stronger than the local conditions needed
+to evaluate one MVC row.  Conversely, exact reconstruction of one already
+valid map does not prove that arbitrary perturbations remain globally valid.
+The implementation therefore also performs finite-precision face, boundary,
+and global P1 audits; those numerical screens are evidence about the returned
+array, not a replacement for the exact theorem.
 
 ### 2.2 Probability and logit spaces
 
@@ -149,9 +168,9 @@ following:
    \]
 3. **Admissible boundary.** \(Y_B\) is a simple counter-clockwise convex cycle
    in the boundary class accepted by the decoder.  Strict convexity suffices.
-   A weakly convex, side-subdivided rectangle is included only together with
-   the Route I side/corner incidence, strict side order, and dividing-edge
-   hypotheses.
+   A weakly convex, side-subdivided rectangle is included only with the
+   side/corner incidence, strict side order, and no-mapped-dividing-edge
+   condition defined in Section 2.1.
 4. **Fixed combinatorics.** The cyclic link order comes from \(T\); it is not
    recomputed by sorting floating-point angles.
 
@@ -195,8 +214,11 @@ Every segment from \(Y_i\) to a point of the link edge
 \(Y_i\) lies in the strict kernel of \(\Psi_i\). \(\square\)
 
 The one-ring polygon need **not** be convex.  Strict star-shapedness with the
-center in the kernel is the correct local condition.  Requiring convex
-one-rings would incorrectly exclude valid P1 maps.
+center in the kernel is the sufficient local condition supplied by a valid P1
+star and used in the proof below.  It is not asserted to be a necessary
+characterization of every isolated configuration whose normalized MVC weights
+happen to be positive.  Requiring convex one-rings would incorrectly exclude
+valid P1 maps.
 
 ## 4. Mean value coordinates on an interior one-ring
 
@@ -324,120 +346,154 @@ injectivity theorem below.
 
 ## 5. Exact canonical-subset theorem
 
-Define the probability-valued MVC encoder
+Probability coordinates and gauge-fixed logit coordinates are related but are
+not the same space.  Define the two encoders
 
 \[
-E:\mathcal H\longrightarrow
-\left(\prod_{i\in I}\operatorname{int}\Delta^{d_i-1}\right)
-\times\mathbb R^{|B|\times2},
+E_p(Y)=\bigl(p^{\mathrm{MVC}}(Y),Y_B\bigr),
 \qquad
-E(Y)=\bigl(p^{\mathrm{MVC}}(Y),Y_B\bigr).
+E_\ell(Y)=\bigl(\ell^{\mathrm{MVC}}(Y),Y_B\bigr),
 \tag{5.1}
 \]
 
-Let
+with codomains
 
 \[
-\mathcal C=E(\mathcal H)
+\mathcal P=
+\left(\prod_{i\in I}\operatorname{int}\Delta^{d_i-1}\right)
+\times\mathbb R^{|B|\times2},
+\qquad
+\mathcal L_0=
+\left(\prod_{i\in I}\{\ell_i:\mathbf1^{\mathsf T}\ell_i=0\}\right)
+\times\mathbb R^{|B|\times2}.
 \tag{5.2}
 \]
 
-be its image.  The adjective *canonical* always refers to this explicit MVC
-selection for the fixed mesh link order; it does not assert that \(\mathcal C\)
-is linear, convex, or a globally complete Riemannian manifold.
+Let \(S(\ell,b)=(\operatorname{softmax}(\ell),b)\) row by row.  Then
+\(S\circ E_\ell=E_p\).  Write \(D_p\) for the probability decoder (2.2) and
+\(D_\ell=D_p\circ S\) for the logit decoder.  Their canonical images are
+
+\[
+\mathcal C_p=E_p(\mathcal H),
+\qquad
+\mathcal C_\ell=E_\ell(\mathcal H).
+\tag{5.3}
+\]
+
+The adjective *canonical* always refers to these explicit MVC selections for
+the fixed mesh link order and, in \(\mathcal C_\ell\), the arithmetic-zero-mean
+row gauge.  It does not assert that either image is linear, convex, or a
+globally complete Riemannian manifold.
 
 **Theorem 5.1 (exact MVC encode--decode).**  Under the assumptions defining
 \(\mathcal H\),
 
 \[
-\boxed{D(E(Y))=Y\quad\text{for every }Y\in\mathcal H.}
-\tag{5.3}
+\boxed{
+D_p(E_p(Y))=D_\ell(E_\ell(Y))=Y
+\quad\text{for every }Y\in\mathcal H.}
+\tag{5.4}
 \]
 
-Moreover, \(E:\mathcal H\to\mathcal C\) is injective and
-\(D|_{\mathcal C}:\mathcal C\to\mathcal H\) is its two-sided inverse.
+Moreover, \(E_p:\mathcal H\to\mathcal C_p\) and
+\(E_\ell:\mathcal H\to\mathcal C_\ell\) are injective, and the corresponding
+restricted decoders are their two-sided inverses.
 
 **Proof.**  Lemma 3.1 makes every row (4.2) finite and strictly positive.
 Equation (4.7) says that the given \(Y_I\), together with boundary
-\(Y_B\), satisfies every row of the decoder system.  Lemma 2.1 says that this
-system has only one solution, so its decoded solution is exactly \(Y\).  If
-\(E(Y)=E(Z)\), applying \(D\) to both sides and using (5.3) gives \(Y=Z\), so
-\(E\) is injective.  For any \(c=E(Y)\in\mathcal C\),
+\(Y_B\), satisfies every row of the probability decoder.  Lemma 2.1 says that
+this system has only one solution, so \(D_p(E_p(Y))=Y\).  Equation (4.9) and
+\(D_\ell=D_p\circ S\) give the logit identity.  Equality of either encoded pair
+for two maps, followed by the corresponding decoder, implies equality of the
+maps.  For \(c_p=E_p(Y)\in\mathcal C_p\), for example,
 
 \[
-(E\circ D)(c)=E(D(E(Y)))=E(Y)=c,
+(E_p\circ D_p)(c_p)=E_p(D_p(E_p(Y)))=E_p(Y)=c_p,
 \]
 
-which proves the inverse statement. \(\square\)
+and the logit case is identical. \(\square\)
 
 ### 5.1 The canonicalization projector
 
-On the safe latent subset
+On the two safe latent subsets
 
 \[
-\mathcal Z_{\mathcal H}
-=\{(p,b):D(p,b)\in\mathcal H\},
-\tag{5.4}
+\mathcal Z_{p,\mathcal H}
+=\{(p,b):D_p(p,b)\in\mathcal H\},
+\qquad
+\mathcal Z_{\ell,\mathcal H}
+=\{(\ell,b):D_\ell(\ell,b)\in\mathcal H\},
+\tag{5.5}
 \]
 
 define
 
 \[
-P_{\mathrm{MVC}}=E\circ D.
-\tag{5.5}
+P_{\mathrm{MVC}}^p=E_p\circ D_p,
+\qquad
+P_{\mathrm{MVC}}^\ell=E_\ell\circ D_\ell.
+\tag{5.6}
 \]
 
-Then
+Each preserves its decoded map and is idempotent; explicitly,
 
 \[
-D(P_{\mathrm{MVC}}(p,b))=D(p,b),
+D_p(P_{\mathrm{MVC}}^p(p,b))=D_p(p,b),
 \qquad
-P_{\mathrm{MVC}}^2=P_{\mathrm{MVC}}.
-\tag{5.6}
+(P_{\mathrm{MVC}}^p)^2=P_{\mathrm{MVC}}^p,
+\\
+D_\ell(P_{\mathrm{MVC}}^\ell(\ell,b))=D_\ell(\ell,b),
+\qquad
+(P_{\mathrm{MVC}}^\ell)^2=P_{\mathrm{MVC}}^\ell.
+\tag{5.7}
 \]
 
 Thus an M1 layer can re-encode a raw positive Tutte representation without
 changing its decoded map.  This statement is exact in real arithmetic and only
-on (5.4).  It does not define a global projector for folded, degenerate, or
+on (5.5).  It does not define a global projector for folded, degenerate, or
 boundary-invalid decoder outputs.
 
 ### 5.2 Differential consequence and latent lifts
 
-Away from degenerate stars, all operations in (4.2)--(4.8) are smooth.  Since
-\(D\circ E=\operatorname{id}_{\mathcal H}\), differentiation gives
+Away from degenerate stars, all operations in (4.2)--(4.8) are smooth.  The
+probability and gauge-fixed-logit versions give equivalent tangent identities.
+Using \(D_\ell\circ E_\ell=\operatorname{id}_{\mathcal H}\), differentiation
+gives
 
 \[
-dD_{E(Y)}\circ dE_Y=\operatorname{id}_{T_Y\mathcal H}.
-\tag{5.7}
+dD_{\ell,E_\ell(Y)}\circ dE_{\ell,Y}
+=\operatorname{id}_{T_Y\mathcal H}.
+\tag{5.8}
 \]
 
-Therefore \(dE_Y\) is one right inverse, or latent lift, of the decoder
+Therefore \(dE_{\ell,Y}\) is one right inverse, or latent lift, of the decoder
 differential.  If a covariance construction \(L_Y\) is separately proved to
 satisfy
 
 \[
-dD_{E(Y)}\circ L_Y=\operatorname{id},
-\tag{5.8}
+dD_{\ell,E_\ell(Y)}\circ L_Y=\operatorname{id},
+\tag{5.9}
 \]
 
 then only the following follows automatically:
 
 \[
-(L_Y-dE_Y)\dot Y\in\ker dD_{E(Y)}.
-\tag{5.9}
+(L_Y-dE_{\ell,Y})\dot Y
+\in\ker dD_{\ell,E_\ell(Y)}.
+\tag{5.10}
 \]
 
 It does **not** follow that the covariance lift equals the MVC derivative.
 Boundary semantics cannot be omitted: for a fixed boundary,
 \(\dot Y_B=0\); for a moving boundary, the lift must include
-\(\dot b=\dot Y_B\).  At a canonical point, differentiating (5.5) also gives
+\(\dot b=\dot Y_B\).  At a canonical point, differentiating (5.6) also gives
 the idempotent linear projection
 
 \[
-dP_{\mathrm{MVC}}=dE\,dD,
+dP_{\mathrm{MVC}}^\ell=dE_\ell\,dD_\ell,
 \qquad
-(dP_{\mathrm{MVC}})^2=dP_{\mathrm{MVC}}.
-\tag{5.10}
+(dP_{\mathrm{MVC}}^\ell)^2=dP_{\mathrm{MVC}}^\ell.
+\tag{5.10a}
 \]
 
 These identities provide decisive finite-difference tests for M1/M2.  They do
@@ -447,7 +503,7 @@ the norm on probability or logit perturbations is stated explicitly.
 ### 5.3 Exact covariance lift and its metric
 
 The alternative covariance lift can also be stated without ambiguity.  Let
-\((p,b)\in\mathcal Z_{\mathcal H}\), let \(Y=D(p,b)\), and prescribe a full
+\((p,b)\in\mathcal Z_{p,\mathcal H}\), let \(Y=D_p(p,b)\), and prescribe a full
 vertex tangent \(v\in\mathbb R^{|V|\times2}\).  For each interior row set
 
 \[
@@ -486,7 +542,8 @@ p_{ij}(\delta\ell_{ij})^2.
 \]
 
 It is generally **not** the minimum Euclidean-norm probability perturbation,
-the minimum unweighted-logit perturbation, or the MVC differential \(dE_Yv\).
+the minimum unweighted-logit perturbation, or the MVC logit differential
+\(dE_{\ell,Y}v\).
 
 **Proof.**  Differentiating the \(i\)-th equilibrium row gives
 
@@ -569,7 +626,7 @@ is zero.  Differentiating the arithmetic-mean-centered canonical logits (4.8)
 instead gives
 
 \[
-dE_Yv=(-8h/3,10h/3,-2h/3).
+dE_{\ell,Y}v=(-8h/3,10h/3,-2h/3).
 \tag{5.20}
 \]
 
@@ -599,6 +656,99 @@ At \(\varepsilon=0\), \(C\) has rank one and (5.12) cannot lift a general
 two-dimensional tangent.  This is an exact degeneracy counterexample and a
 quantitative reason to report covariance condition numbers rather than merely
 checking finite weights.
+
+### 5.4 A common-gauge Moore--Penrose comparison
+
+The phrase “the pseudoinverse of the decoder Jacobian” is ambiguous until both
+padding and the row-shift gauge have been removed.  Let \(d_i=|N(i)|\), and
+define the supported arithmetic-zero-row-mean space
+
+\[
+\mathcal G_i=\{z_i\in\mathbb R^{d_i}:\mathbf 1^{\mathsf T}z_i=0\},
+\qquad
+\mathcal G=\bigoplus_{i\in I}\mathcal G_i.
+\tag{5.22}
+\]
+
+Unsupported padded slots are fixed to zero and are not coordinates.  Choose a
+block-diagonal orthonormal injection
+
+\[
+Q:\mathbb R^m\longrightarrow\mathcal G,
+\qquad
+Q^{\mathsf T}Q=I_m,
+\qquad
+m=\sum_{i\in I}(d_i-1).
+\tag{5.23}
+\]
+
+In the experiment \(Q_i\) is the deterministic Helmert basis in sorted
+supported-slot order.  Hold the boundary argument fixed and retain *all*
+decoder output coordinates, including the constant boundary coordinates:
+
+\[
+J_{\mathcal G}
+=\left.\frac{\partial}{\partial\theta}
+D(\ell+Q\theta,b)\right|_{\theta=0}
+\in\mathbb R^{2|V|\times m}.
+\tag{5.24}
+\]
+
+The \(2|B|\) boundary rows of \(J_{\mathcal G}\) are zero.  Under the full-rank
+covariance hypotheses of Proposition 5.2, the covariance construction lifts
+every fixed-boundary interior tangent, so
+
+\[
+\operatorname{rank}J_{\mathcal G}=2|I|.
+\tag{5.25}
+\]
+
+The rank equality in (5.25) is necessary and sufficient for a linear right
+inverse on *every* fixed-boundary interior tangent.  Positive-definite row
+covariances are a convenient sufficient condition through (5.12)--(5.13);
+they are not claimed necessary for representability of one particular tangent,
+nor is the local condition asserted to be the only possible proof of global
+surjectivity.
+
+For a tangent \(v\) with \(v_B=0\), define
+
+\[
+z_{\rm MP}=QJ_{\mathcal G}^{+}\operatorname{vec}(v).
+\tag{5.26}
+\]
+
+Because \(Q\) is orthonormal, (5.26) is the unique solution in
+\(\mathcal G\cap(\ker dD)^{\perp}\), and it minimizes the *unweighted
+Euclidean* supported-logit norm over all \(z\in\mathcal G\) satisfying
+\(dD[z,0]=v\).  This is a different variational problem from (5.14).
+
+The native covariance lift \(z_C=L_Yv\) has
+\(\sum_jp_{ij}z_{C,ij}=0\), not generally
+\(\sum_jz_{C,ij}=0\).  Its common-gauge representative is therefore
+
+\[
+\widehat z_{C,ij}
+=z_{C,ij}-\frac1{d_i}\sum_{k\in N(i)}z_{C,ik}.
+\tag{5.27}
+\]
+
+Equation (5.27) changes no softmax probability tangent and hence no decoder
+tangent.  It does, however, generally increase
+\(\sum_{ij}p_{ij}z_{ij}^2\): the weighted-minimum statement belongs to the
+native probability-mean-zero representative, whereas (5.27) exists only to
+make an unambiguous same-gauge comparison with \(z_{\rm MP}\) and
+\(dE_{\ell,Y}v\).
+All three common-gauge lifts obey
+
+\[
+dD_\ell\,z_{\rm MP}=dD_\ell\,dE_{\ell,Y}v
+=dD_\ell\,\widehat z_C=v,
+\tag{5.28}
+\]
+
+and therefore every pairwise difference is in
+\(\ker dD|_{\mathcal G}\).  Equality of the three latent vectors is neither
+implied nor expected when a row has degree greater than three.
 
 ## 6. Why the unrestricted decoder is not injective
 
@@ -710,11 +860,11 @@ any global “Tutte latent and map are one-to-one” statement.
 |---|---|---|
 | \(Y_j\neq Y_i\) | \(\rho_j=0\) in (4.2) | Encoder undefined; reject rather than clamp and claim exactness. |
 | Strict face area | Adjacent rays can have \(\alpha_j=0\) | A triangle is collapsed; no valid P1 homeomorphism. |
-| Every wedge below \(\pi\) | \(t_j\) is singular at \(\pi\) and changes sign beyond it | Positive MVC row and conditioning fail. |
+| Every wedge below \(\pi\) | \(t_j\) is singular at \(\pi\) and changes sign beyond it | The stated positivity guarantee fails; some configurations may still have positive combined weights, so this is not an iff characterization. |
 | Correct cyclic link | Telescoping proof (4.5) uses true consecutive rays | Arbitrary geometric sorting or an off-by-one link can silently destroy linear precision. |
 | Closed interior link | A boundary vertex has an open fan | Do not apply the closed-ring formula to boundary vertices; pass the boundary through. |
-| Center in polygon kernel | MVC for a general nonconvex polygon need not be positive | “Simple polygon” is insufficient for a positive Tutte row. |
-| Boundary included in \(E\) | MVC is similarity-invariant | Weights alone do not identify the map. |
+| Center in polygon kernel | MVC for a general nonconvex polygon need not be positive | Kernel membership is a sufficient positivity condition used here, not a claimed necessary condition for every individual positive row. |
+| Boundary included in \(E_p,E_\ell\) | MVC is similarity-invariant | Weights or logits alone do not identify the map. |
 | Boundary in the hard-safe class | Linear solve can still exist for a concave boundary | Exact reconstruction of one known map does not extend to a topology guarantee for arbitrary perturbed rows. |
 | Boundary reachability | \(I-Q\) can contain a closed stochastic class | Decoder may be singular or nonunique. |
 | Floating-point margins | Positive exact quantities may underflow, overflow, or round to degeneracy | The implementation needs fail-closed finite, residual, boundary, and face checks. |
@@ -753,7 +903,8 @@ Two distinct numerical mechanisms must be reported separately:
    ill-conditioned.
 
 **Numerical expectation.**  For a well-conditioned float64 direct solve, the
-round trip \(Y\to E(Y)\to D(E(Y))\) should be close to machine precision.  This
+round trips \(Y\to E_p(Y)\to D_p(E_p(Y))\) and
+\(Y\to E_\ell(Y)\to D_\ell(E_\ell(Y))\) should be close to machine precision.  This
 is not an unconditional tolerance theorem.  If the assembled right-hand side
 or solve has residual perturbation \(e\), then
 
@@ -797,7 +948,8 @@ The literature therefore rules out several novelty overclaims:
 
 The scoped candidate contribution of Route II is narrower: use the local planar
 MVC formula as an explicit, differentiable section of the redundant directed
-Tutte map; implement the exact map-preserving projector \(E_{\rm MVC}\circ D\);
+Tutte map; implement the exact logit-space map-preserving projector
+\(E_\ell\circ D_\ell\);
 compare its derivative to a separately derived covariance right inverse; and
 measure whether that gauge choice improves solve count, conditioning, memory,
 or optimization at realistic resolution.  This remains a research hypothesis
@@ -817,7 +969,7 @@ decisive rather than cosmetic.
    \]
    This isolates the encoder from the global solve.
 3. **Global round trip.**  Record max vertex error and RMSE for
-   \(Y\to E(Y)\to D(E(Y))\), along with the linear residual and an estimate of
+   \(Y\to E_\ell(Y)\to D_\ell(E_\ell(Y))\), along with the linear residual and an estimate of
    decoder conditioning.  Do not repair a failed round trip with an optimizer.
 4. **Canonical logit test.**  Verify finite logits, zero row mean, strict
    realized probabilities, and `softmax(ell_mvc) == p_mvc` within dtype-aware
@@ -826,8 +978,8 @@ decisive rather than cosmetic.
    positive rows with identical decoded vertices and show that MVC selects the
    uniform row.  Separately test row-shift invariance.
 6. **Projector test.**  For a safe raw latent, verify
-   \(D(P_{\rm MVC}(z))\approx D(z)\) and
-   \(P_{\rm MVC}(P_{\rm MVC}(z))\approx P_{\rm MVC}(z)\).
+   \(D_\ell(P_{\rm MVC}^\ell(z))\approx D_\ell(z)\) and
+   \(P_{\rm MVC}^\ell(P_{\rm MVC}^\ell(z))\approx P_{\rm MVC}^\ell(z)\).
 7. **Derivative test.**  Apply gradcheck/directional finite differences to the
    encoder and projector.  Check (5.7) for fixed-boundary and moving-boundary
    tangents separately.
@@ -839,6 +991,12 @@ decisive rather than cosmetic.
    condition, triangle quality, barycentric residual, and global round-trip
    error.  These are numerical observations, not theorem substitutes.
 
+The local and remote 27-case matrices, M1/M2 differential tests, projector
+tests, and degeneracy negatives have now been executed and are summarized in
+the application chapter.  This checklist remains here to define what those
+receipts mean; it is not a declaration that every Route-II closure question
+has passed.
+
 ## 11. Bottom line
 
 Under explicit disk, valid-P1-star, positive-margin, boundary, and reachability
@@ -846,14 +1004,18 @@ hypotheses, MVC provides an exact canonical *representation* of every map in
 \(\mathcal H\):
 
 \[
-\boxed{D\circ E=\operatorname{id}_{\mathcal H},
+\boxed{D_p\circ E_p=D_\ell\circ E_\ell=\operatorname{id}_{\mathcal H},
 \qquad
-E:\mathcal H\leftrightarrow\mathcal C:D|_{\mathcal C}.}
+E_p:\mathcal H\leftrightarrow\mathcal C_p:D_p|_{\mathcal C_p},
+\qquad
+E_\ell:\mathcal H\leftrightarrow\mathcal C_\ell:D_\ell|_{\mathcal C_\ell}.}
 \]
 
 The unrestricted positive Tutte decoder is nevertheless noninjective, with a
 degree-\(d_i\) directed probability row carrying \(d_i-3\) local geometric
 fiber dimensions and raw logits carrying one additional row-shift gauge.  MVC
-chooses one point in each such fiber.  Whether this canonical choice is faster,
-better conditioned, or more trainable is not a theorem and must be decided by
-the remaining Route II experiments.
+chooses one point in each such fiber.  The bounded experiments do not establish
+that this canonical choice is uniformly faster, better conditioned, or more
+trainable: the map instance is favorable to O4, the image instance contains a
+reproducible O4 failure, and a parameterization-fair speed conclusion remains
+open.  No Route-II pass follows from the theorem.
