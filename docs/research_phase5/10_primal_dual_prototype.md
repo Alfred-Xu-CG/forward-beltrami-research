@@ -132,7 +132,30 @@ Across these ten runs, P1/Whitney relative operator difference is at most `4.45e
 
 The legacy primal-tree stream maximum conjugacy error goes from `1.40` to `1.67` for isotropy and remains about `1.74` for the fine anisotropic case. Its shrinking unscaled cycle differences do not imply convergent derivatives. The Whitney dual residual is much smaller, but it measures a different representation; it must not be called a reduction of the same nodal conjugacy norm.
 
-Raw data: `raw_results/route3_whitney_hodge_tiny.json` and `raw_results/route3_whitney_hodge_medium.json`. Tiny tests ran before N17/N25/N49. The medium sweep completed in under ten seconds locally; this CPU-only reference did not need a long remote compute allocation.
+Builder-local raw data: `raw_results/route3_whitney_hodge_tiny.json` and
+`raw_results/route3_whitney_hodge_medium.json`. Tiny tests ran before
+N17/N25/N49. The medium sweep completed in under ten seconds locally.
+
+A clean Linux replay on remote host `ai` at commit `e9129bc` is recorded in
+`raw_results/route3_whitney_hodge_tiny_ai_e9129bc.json`,
+`raw_results/route3_whitney_hodge_medium_ai_e9129bc.json`, and
+`raw_results/route3_whitney_hodge_scale_ai_e9129bc.json`. Each receipt records
+the full commit, `dirty=false`, host, numerical stack, and threading policy.
+The focused tests passed `8/8` there. The first clean replay exposed a test-only
+portability issue: Linux LSQR returned relative residual `2.67e-12` for an
+exactly compatible affine cochain while the original assertion required below
+`1e-12`. Commit `4962310` changed that numerical assertion to `1e-10`, below
+the finest-mesh diagnostic scale, without changing the exact rank theorem,
+solver, or reported residual. The independent checker accepted this distinction.
+
+The remote scale continuation reaches N129: 16,641 vertices, 32,768 faces,
+and 49,408 edges. The anisotropic row has P1/Whitney operator discrepancy
+`4.33e-16`, weak balance `1.24e-14`, dual residual `5.61e-10`, conjugacy L2
+`2.40e-2`, cold forward/backward `0.128/0.0161` seconds, and explicitly counted
+Hodge/stiffness/LU/quadrature arrays totalling about 29.7 MB. The latter is not
+process peak memory. This is a realistic control-mesh scaling check, not the
+separate mandatory 256-squared dense image experiment supplied by the positive
+student route.
 
 ## Complexity, memory, timing, and reproduction
 
