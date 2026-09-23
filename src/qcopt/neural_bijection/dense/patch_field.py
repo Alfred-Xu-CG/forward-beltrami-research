@@ -169,6 +169,88 @@ class StaggeredPatchP1Layer(nn.Module):
         return current
 
 
+class TiedStaggeredPatchP1Layer(nn.Module):
+    """Reuse one bounded per-vertex latent across shifted patch passes.
+
+    Each active visit receives an equal fraction of the vertex's proposed
+    displacement. This avoids separate, mutually cancelling latent fields
+    while retaining the area-bound guarantee of every constituent pass.
+    """
+
+    def __init__(self, side: int, patch_cells: int = 8, *, cycles: int = 1,
+                 **kwargs: float | None) -> None:
+        super().__init__()
+        if cycles < 1:
+            raise ValueError("cycles must be positive")
+        self.side = side
+        self.cycles = cycles
+        self.staggered = StaggeredPatchP1Layer(side, patch_cells, **kwargs)
+        visits = np.zeros((side - 2) ** 2, dtype=np.float32)
+        for patch_pass in self.staggered.passes:
+            np.add.at(visits, patch_pass.latent_ids.reshape(-1).numpy(), cycles)
+        if np.any(visits == 0):
+            raise AssertionError("every interior vertex needs at least one visit")
+        self.register_buffer("visit_counts", torch.from_numpy(visits), persistent=False)
+
+    def forward(self, base: torch.Tensor, latent: torch.Tensor) -> torch.Tensor:
+        if latent.shape != (base.shape[0], self.side - 2, self.side - 2, 2):
+            raise ValueError("latent must give one vector per interior vertex")
+        if latent.dtype != base.dtype or latent.device != base.device:
+            raise ValueError("base and latent must match dtype/device")
+        eps = 4 * torch.finfo(latent.dtype).eps
+        bounded = torch.tanh(latent).clamp(-1 + eps, 1 - eps)
+        flat = bounded.reshape(base.shape[0], -1, 2)
+        counts = self.visit_counts.to(dtype=latent.dtype)
+        current = base
+        for _ in range(self.cycles):
+            for patch_pass in self.staggered.passes:
+                ids = patch_pass.latent_ids.reshape(-1)
+                field = torch.atanh(flat[:, ids] / counts[ids][None, :, None])
+                current = patch_pass(current, field)
+        return current
+
+
+class ResidualStaggeredPatchP1Layer(nn.Module):
+    """One latent endpoint field, approached by repeated safe patch passes.
+
+    The latent endpoint itself need not be a homeomorphism; only the sequence
+    of accepted patch updates is returned. Every pass is topology-preserving
+    under the constituent pass's exact-arithmetic assumptions.
+    """
+
+    def __init__(self, side: int, patch_cells: int = 8, *, cycles: int = 1,
+                 **kwargs: float | None) -> None:
+        super().__init__()
+        if cycles < 1:
+            raise ValueError("cycles must be positive")
+        self.side = side
+        self.cycles = cycles
+        self.staggered = StaggeredPatchP1Layer(side, patch_cells, **kwargs)
+
+    def forward(self, base: torch.Tensor, latent: torch.Tensor) -> torch.Tensor:
+        side = self.side
+        if base.ndim != 4 or base.shape[1:] != (side, side, 2):
+            raise ValueError("base must have shape (batch,side,side,2)")
+        if latent.shape != (base.shape[0], side - 2, side - 2, 2):
+            raise ValueError("latent must give one vector per interior vertex")
+        if latent.dtype != base.dtype or latent.device != base.device:
+            raise ValueError("base and latent must match dtype/device")
+        span = self.staggered.passes[0].raw_span * self.staggered.passes[0].patch_cells / (side - 1)
+        delta = torch.zeros_like(base)
+        delta[:, 1:-1, 1:-1] = span * torch.tanh(latent)
+        eps = 4 * torch.finfo(base.dtype).eps
+        current = base
+        for cycle in range(self.cycles):
+            stage_target = base + ((cycle + 1) / self.cycles) * delta
+            flat_target = stage_target.reshape(base.shape[0], -1, 2)
+            for patch_pass in self.staggered.passes:
+                ids = patch_pass.interior_ids
+                desired = (flat_target[:, ids] - current.reshape(base.shape[0], -1, 2)[:, ids]) / span
+                field = torch.atanh(desired.clamp(-1 + eps, 1 - eps))
+                current = patch_pass(current, field)
+        return current
+
+
 class ForwardPatchP1Pyramid(nn.Module):
     """Coarse-to-fine fixed-grid P1 decoder using simultaneous patch fields.
 

@@ -4,6 +4,7 @@ import math
 import torch
 
 from qcopt.neural_bijection.dense import ForwardPatchP1Pyramid, SafePatchFieldPass, StaggeredPatchP1Layer
+import qcopt.neural_bijection.dense as dense
 from qcopt.neural_bijection.dense.convex_quad import certify_convex_quad_output
 
 
@@ -185,3 +186,73 @@ def test_patch_pyramid_accepts_compact_active_latents() -> None:
     assert certify_convex_quad_output(output) > 0.05 - 1e-12
     output.square().mean().backward()
     assert all(field.grad is not None and torch.isfinite(field.grad).all() for field in level)
+
+
+def test_tied_staggered_patch_latent_reaches_small_shifted_target_and_backpropagates() -> None:
+    assert hasattr(dense, "TiedStaggeredPatchP1Layer")
+    side = 33
+    base = _identity(side)
+    x, y = base[..., 0], base[..., 1]
+    window_x = torch.sin(math.pi * (x - 0.3125) / 0.25).square()
+    window_y = torch.sin(math.pi * (y - 0.3125) / 0.25).square()
+    mask = ((x >= 0.3125) & (x <= 0.5625) &
+            (y >= 0.3125) & (y <= 0.5625))
+    displacement = 0.001 * window_x * window_y * mask
+    target = base + torch.stack((displacement, displacement), dim=-1)
+    layer = dense.TiedStaggeredPatchP1Layer(side, patch_cells=8, cycles=2,
+                                           minimum_jacobian=0.05)
+    span = 0.5 * 8 / (side - 1)
+    latent = torch.atanh(((target - base)[:, 1:-1, 1:-1] / span)).requires_grad_()
+    output = layer(base, latent)
+    assert (output - target).abs().amax() < 1e-12
+    assert certify_convex_quad_output(output) >= 0.05 - 1e-12
+    cotangent = torch.randn_like(output)
+    gradient = torch.autograd.grad((output * cotangent).sum(), latent)[0]
+    assert torch.isfinite(gradient).all()
+    assert gradient.abs().amax() > 0
+
+
+def test_residual_staggered_patch_latent_catches_up_across_seams() -> None:
+    assert hasattr(dense, "ResidualStaggeredPatchP1Layer")
+    side = 33
+    base = _identity(side)
+    x, y = base[..., 0], base[..., 1]
+    tx, ty = (x - 0.3125) / 0.25, (y - 0.3125) / 0.25
+    wx = torch.where((tx >= 0) & (tx <= 1), torch.sin(math.pi * tx).square(), 0)
+    wy = torch.where((ty >= 0) & (ty <= 1), torch.sin(math.pi * ty).square(), 0)
+    displacement = 0.006 * wx * wy
+    target = base + torch.stack((displacement, displacement), dim=-1)
+    layer = dense.ResidualStaggeredPatchP1Layer(
+        side, patch_cells=8, cycles=2, minimum_jacobian=0.05,
+    )
+    span = 0.5 * 8 / (side - 1)
+    latent = torch.atanh((target - base)[:, 1:-1, 1:-1] / span).requires_grad_()
+    output = layer(base, latent)
+    assert (output - target).abs().amax() < 1e-12
+    assert certify_convex_quad_output(output) > 0.05
+    gradient = torch.autograd.grad((output * torch.randn_like(output)).sum(), latent)[0]
+    assert torch.isfinite(gradient).all() and gradient.abs().amax() > 0
+
+
+def test_residual_staggered_patch_extreme_latents_and_directional_vjp() -> None:
+    side = 33
+    base = _identity(side)
+    layer = dense.ResidualStaggeredPatchP1Layer(
+        side, patch_cells=8, cycles=2, minimum_jacobian=0.05,
+    )
+    torch.manual_seed(9127)
+    extreme = 50 * torch.randn(1, side - 2, side - 2, 2, dtype=base.dtype)
+    output = layer(base, extreme)
+    assert torch.isfinite(output).all()
+    assert certify_convex_quad_output(output) >= 0.05 - 1e-10
+    assert torch.equal(output[:, 0], base[:, 0])
+    assert torch.equal(output[:, -1], base[:, -1])
+    small = (0.002 * torch.randn_like(extreme)).requires_grad_()
+    direction = torch.randn_like(small)
+    cotangent = torch.randn_like(base)
+    objective = lambda value: (layer(base, value) * cotangent).sum()
+    analytic = (torch.autograd.grad(objective(small), small)[0] * direction).sum()
+    step = 1e-6
+    numerical = (objective(small + step * direction)
+                 - objective(small - step * direction)) / (2 * step)
+    assert torch.allclose(analytic, numerical, atol=1e-6, rtol=2e-4)

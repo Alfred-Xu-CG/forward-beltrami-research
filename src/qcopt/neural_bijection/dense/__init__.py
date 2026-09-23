@@ -12,7 +12,7 @@ from .convex_quad_composition import CoarseFineConvexQuadComposition, CoarseFine
 from .colored_vertex_relaxation import SafeColoredVertexRelaxation, HierarchicalConvexQuadLocalLayer
 from .forward_p1_pyramid import ForwardP1Pyramid, exact_dyadic_p1_refine
 from .forward_p1_encoder import ForwardP1ImageEncoder, PatchPyramidImageEncoder
-from .patch_field import SafePatchFieldPass, StaggeredPatchP1Layer, ForwardPatchP1Pyramid
+from .patch_field import SafePatchFieldPass, StaggeredPatchP1Layer, TiedStaggeredPatchP1Layer, ResidualStaggeredPatchP1Layer, ForwardPatchP1Pyramid
 from .spectral_p1_refinement import SineModeP1Refiner
 from .monotone_fiber_p1 import MonotoneFiberP1Layer, MultiscaleMonotoneFiberP1Layer, SoftplusPotentialFiberP1Layer, SoftplusPotentialFiberRefiner, HybridMonotoneFiberP1Layer
 from .photometric_hint import local_photometric_logits, physical_image_gradient
