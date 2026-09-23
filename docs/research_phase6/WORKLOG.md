@@ -323,3 +323,47 @@ Follow-up after train/photo evidence: two untrained refinement passes improved p
 - What would falsify it：peak没有显著下降、时间超过可接受冷启动预算、响应/最终map偏差超浮点预期、梯度或拓扑发生改变。若18边基本身成为主峰，要测出而不是继续堆内存方案。
 - Smallest decisive test：side257 chunk2 vs18响应/输出；然后1025 chunk2的GPU2峰值和时间；若顺利再扫描其他块大小，选无需模型精度调参的工程默认值。
 - Prior work：同一多右端SPD系统可按列解是线性代数直接结论；本仓库20、21节给出7.46/7.60GB的实际冷启动峰值及完整训练低于1.1GB的对比。
+
+# Route A8 million-control resolution-transfer card（2026-09-23）
+
+- Question：Route A8 在257²同high32任务上优于C的image/map精度，1025²目前只有未训练零head扩展性测试。能否把257²已学卷积体与现有7级头按相同几何尺度迁移到1025²，再让新增细两级头保持零初始化，完成真实1025²的高频image-to-latent forward/VJP及必要时多步继续训练？这提供与C更有意义的百万控制顶点对照。
+- Exact claim：ConvexQuadLocalImageEncoder的前7级head与shared body/local head权重张量尺寸不依赖side，故可装入1025²架构；新增级head保持该类的零初始化。输出仍由1025² HierarchicalConvexQuadLocalLayer和SpectralSafeFeedbackLayer在原网格构造，不能称只是257² map插值。每个最终原面需要检查正定向；A8的0.8 Beltrami cap依赖初始map已达标，不能因迁移自动声称硬0.8 cap。
+- Assumptions：训练/保留high32数据、512²图像、32周期、相同A8设置；先无再训练评价8例，量初始cap资格、最终map/μ/面积与完整fwd/VJP/峰值。若有效，再以同图像损失对32训练样本继续300步，报告8例和新种子。新增级可能改变粗层参数语义，故装载成功不等于函数等价。
+- What would falsify it：头索引尺度不对、映射出现非正面、显存超出空闲GPU、初始cap在大多数样本失败、精度远差于257²或训练不能改善。若失败，区分分辨率迁移问题和A8构造本身的问题，不以C成功替代A路线。
+- Smallest decisive test：检查latent_sides和state_dict缺键仅对应新增头，GPU2上一个512²图像/1025²map的前向VJP和全面，再8例；仅前级正确才启动300步。
+- Prior work：11/14节A8的257²训练、摄影评估和1025²未训练伸缩；22节C在相同控制规模的低显存实训作为对照。
+
+# Route A8 physical-feature-scale diagnostic card（2026-09-23）
+
+- Question：把257² A8权重直接用于1025²后，图像特征卷积核的物理尺度缩小四倍，保留image/map误差较原257²显著变差。若仅让共享体仍在257²物理特征网格运行，同时完整1025²解码、新两级head仍零初始化，精度是否大幅恢复？
+- Exact test：同一已训练257²权重、1025²解码、8张heldout high32、512²图像，无再训练。基线encoder把图像resize到1025²再运行卷积；对照先resize到257²再运行同权卷积，前七级head直接从该feature插值取样，新增head零输出；local_head的257²logit bilinear提升到1025²后裁边。这只是改变feature采样尺度，不改变控制顶点数、decoder、训练权重或image查询。比较8例image/map/面μ/拓扑和cap资格、forward/VJP/显存。
+- Assumptions：257²卷积输入尺度是原训练习惯，提到1025²的local logit会变平滑，故改善不代表细控制自由度已充分使用。若大幅改善，下一步才设计低频coarse-feature+真正fine-feature增量，避免只靠粗图重采样。
+- What would falsify it：结果无改善或更差，表明零新增头/细层几何/光度提示等其他因素主导；仍需区别尺度失配的多个来源。
+- Smallest decisive test：同一第0例基线与对照，检查前七级head逐元素与原257²网络一致；再同8例完整评估及一次VJP。
+- Prior work：23节直接迁移损失，卷积有限物理感受野及已有ConvexQuadLocalImageEncoder的结构；这只是控制变量诊断，不称新的已训练layer。
+
+# Route A coarse-to-fine exact P1 refinement card（2026-09-23）
+
+- Question：A8从257²重新解码到1025²使保留image/map明显恶化。能否保留已学257²连续P1映射本身，利用网格嵌套把它**精确**细分为1025²原网格P1，再在这个安全base上进行一到两次由当前图像残差产生的细网格局部正向更新，从而既保持粗层质量又打开真实细控制自由度？
+- Exact claim：257与1025顶点数分别是2^8+1和2^10+1，且两网格均采用相同SW–NE对角线。任一细三角形包含于一个粗三角形，故对粗P1 map在细顶点做**三角形重心插值**后，按细网格P1延拓与原粗map逐点相同；不是双线性插值，也不改变其homeomorphism。随后 SafeColoredVertexRelaxation / SafeColoredQCRadialRelaxation 使用图像残差提议细顶点更新，并以解析有向面积界选择幅度，每步返回固定边界、全部细面正向map；整个过程是从image-conditioned coarse latent和fine residual hint生成映射，不是对最终loss做f+t(-∇L)线搜索。最终输出固定1025² P1，训练梯度对coarse encoder可经fine update反传。
+- Assumptions：底图A8在257²原面已正；中间P1细分的拓扑等价依赖严格嵌套和同对角线；细更新的QC cap若使用仍依赖base符合cap，不能由正面积自动推出；photometric hint在1025²从512²图像过采样，可能改善有限。先固定257²已学权重，无再训练测试8例，对照粗映射本身、一次与两次细反馈，再决定训练。
+- What would falsify it：细分map与粗map在512²查询不一致、细分出现非正面、细更新使图像/map明显恶化、VJP/显存不可接受，或新增细更新幅度几乎为零而没有实际细控制能力。
+- Smallest decisive test：side9到33上的随机有效粗map，精确重心插值并比较大量query与所有细面；随后257→1025一个high32样本的forward/VJP和面积，再8例/训练。
+- Prior work：A8显式细网格安全局部更新及本阶段23节分辨率迁移失败；嵌套单纯形网格的P1细化是有限元基本性质。此处重点是让同一安全映射在新细网格保真，并从图像条件latent加细尺度校正。
+
+Follow-up after eight heldout images: exact 257→1025 P1 refinement preserves image/map to float32 query tolerance; two safe fine feedback passes improve heldout image MSE from1.85e-5 to8.30e-6 and query-map RMSE from0.000409 to0.000269, all fine faces positive and final maximum |mu|0.783. A subsequent 300-step image-only train through this 1025 layer runs but heldout image/map slightly worsen, so retain frozen coarse weights as primary candidate. Independent fresh128 and six photographic-content sources with 16 variants each are now required before claiming useful generalization; the target maps remain known synthetic high32 and photos are not clinical registration.
+
+Photo-domain protocol detail: the original257² A8 initial map exceeds the 0.8 QC cap for 30/96 photographic-content variants. Because the fine SafeColoredQCRadialRelaxation assumes an input under that cap, use the already-tested identity-to-initial homotopy cap on the 257² coarse decoder for both the pass0 comparison and the pass2 refinement. The homotopy is not a post-hoc fold repair; it is a continuous, analytically bounded step from identity inside the decoder before the QC-preserving feedback. Report this branch separately from the uncapped synthetic branch and verify all 96 coarse inputs satisfy the fine-refiner precondition.
+
+Finite-precision follow-up: on photo96 with nominal 0.8 cap, observed final max |mu|=0.8000009, about9e-7 over threshold, although all faces remain positive and image/map improve. Test a planned internal cap0.795 for both coarse homotopy and fine refiner; this should leave a numerical margin under 0.8 while quantifying any image/map/μ cost. Do not describe theoretical exact cap as a verified strict float32 cap unless the output check passes.
+
+Image-versus-Beltrami trade-off follow-up: with internal cap0.795, two fine passes improve image and query-map errors on all 96 photographic variants, but improve face μ MSE on only 3/96 (aggregate RMSE0.1211→0.1483). Test exactly one pass at gain1 and two passes at gain0.5 under the same frozen weights/cap, to quantify whether smaller safe correction retains most positional gain with less distortion. This is a predeclared two-point ablation, not a broad hyperparameter search; include all three metrics and topology margins.
+
+# Reusable exact nested refinement layer card（2026-09-23）
+
+- Question：1025²精确细分+安全反馈目前在研究脚本中拼接。能否把它封装成可插在任何合格257² P1 coarse-map层后的PyTorch模块，使输入/输出、准备成本、先验拓扑条件和VJP接口可直接复用，而不是只能复现一个脚本？
+- Exact claim：模块输入同设备float32 fixed/moving图像(B,1,H,H)及coarse_map(B,257,257,2)，输出fine_map(B,1025,1025,2)。prepare建立固定重心插值table；forward先检查coarse边界固定、全部原面正向、最大|μ|<内部cap，再精确P1细分，按配置的0/1/2次图像残差细安全更新，最后检查所有fine原面正向与数值最大|μ|<cap。反向路径穿过粗图/图像到损失，不保存无关Krylov轨迹；局部refiner可checkpoint。默认拒绝不满足前提的输入，而不是默默产出越界图。
+- Assumptions：两个结构化网格同SW–NE对角线，fine_side-1是coarse_side-1的整数倍；边界身份固定；QC安全层的精确证明对每步输入满足cap，float32还须实际逐面证书。显式证书需要额外扫描O(N²)，速度测量应清楚列入。
+- What would falsify it：模块与脚本同数据输出差大、梯度到coarse_map消失/非有限、先验不满足却未拒绝、photo内部cap0.795仍有数值越界、面证书失效或速度显著降低。
+- Smallest decisive test：side9→33的随机安全map、fake64图像，一步模块输出正面且VJP到coarse/map；违反cap/boundary应抛错。再1025²一个预训练A8保留样本与研究脚本逐点对照、完整forward/VJP显存/速度。
+- Prior work：现有SpectralSafeFeedbackLayer、SafeColoredQCRadialRelaxation、24节脚本与精确网格细分单元测试；这是API封装，不宣称新拓扑定理。

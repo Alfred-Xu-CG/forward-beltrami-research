@@ -18,6 +18,7 @@ from .conductance_synthesis import synthesize_bounded_conductances
 from .spectral_feedback import SpectralSafeFeedbackLayer
 from .qc_radial_relaxation import SafeColoredQCRadialRelaxation
 from .photometric_conductance import PhotometricSpectralTutteLayer
+from .nested_p1_feedback import NestedP1PhotometricFeedbackLayer
 
 __all__ = [
     "DenseMonotoneGridLayer",
@@ -52,4 +53,5 @@ __all__ = [
     "SpectralSafeFeedbackLayer",
     "SafeColoredQCRadialRelaxation",
     "PhotometricSpectralTutteLayer",
+    "NestedP1PhotometricFeedbackLayer",
 ]
