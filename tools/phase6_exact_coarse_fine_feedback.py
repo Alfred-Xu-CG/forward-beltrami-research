@@ -48,13 +48,15 @@ def main() -> None:
                         help="measure the final fine map component outside coarse P1 space")
     parser.add_argument("--steps",type=int,default=0)
     parser.add_argument("--benchmark-repeats",type=int,default=3)
+    parser.add_argument("--batch",type=int,default=1,
+                        help="number of distinct training images per full forward/VJP")
     parser.add_argument("--learning-rate",type=float,default=0.001)
     parser.add_argument("--save-state",default=None)
     parser.add_argument("--device",default="cpu")
     args=parser.parse_args()
     if (args.fine_side < 257 or (args.fine_side-1)%256
             or args.passes < 0 or args.learning_rate <= 0
-            or args.benchmark_repeats < 3):
+            or args.benchmark_repeats < 3 or not 1 <= args.batch <= 32):
         raise ValueError("fine side must be nested over 257; passes nonnegative")
     if args.checkpoint_mode!="refiner" and not args.use_module:
         raise ValueError("checkpoint mode requires --use-module")
@@ -314,7 +316,7 @@ def main() -> None:
     began_all=time.perf_counter()
     repeats=args.benchmark_repeats if args.steps==0 else args.steps
     for step in range(repeats):
-        draw=torch.randint(32,(1,),generator=generator).to(device)
+        draw=torch.randperm(32,generator=generator)[:args.batch].to(device)
         fixed,moving=train[0][draw],train[1][draw]
         optimizer.zero_grad(set_to_none=True)
         synchronize();began=time.perf_counter()
@@ -358,7 +360,7 @@ def main() -> None:
         "fine_qc_cap":args.fine_qc_cap,
         "use_module":args.use_module,
         "checkpoint_mode":args.checkpoint_mode,
-        "steps":args.steps,"batch":1,"device":str(device),
+        "steps":args.steps,"batch":args.batch,"device":str(device),
         "benchmark_repeats":args.benchmark_repeats,
         "learning_rate":args.learning_rate,
         "evaluation_kind":("photo_content" if args.photo_variants else

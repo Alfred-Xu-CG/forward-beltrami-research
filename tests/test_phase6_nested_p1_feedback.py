@@ -76,3 +76,17 @@ def test_checkpoint_modes_preserve_output_and_input_vjp():
         torch.testing.assert_close(mapped,reference,rtol=0,atol=1e-6)
         for actual,expected in zip(gradients,reference_gradients):
             torch.testing.assert_close(actual,expected,rtol=1e-4,atol=1e-6)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+def test_prepare_generic_cuda_name_uses_current_device():
+    layer=NestedP1PhotometricFeedbackLayer(5,9,fine_passes=0).cuda()
+    layer.prepare(device="cuda")
+    assert layer._prepared_device==torch.device("cuda",torch.cuda.current_device())
+    axis=torch.linspace(0,1,5,device="cuda")
+    yy,xx=torch.meshgrid(axis,axis,indexing="ij")
+    coarse=torch.stack((xx,yy),dim=-1)[None]
+    image=torch.zeros((1,1,16,16),device="cuda")
+    mapped=layer(image,image,coarse)
+    assert mapped.shape==(1,9,9,2)
+    assert layer.last_stats["minimum_signed_area_ratio"]>0

@@ -19,6 +19,6 @@ AI主机同一空闲物理GPU2，batch1、512²最终图像/query、257²已训�
 | `full` 整次反馈重算 | 79.49 / 209.02 ms | **1.960 GB** | **2.196 GB** | 相同 |
 | `none` 不重算 | **78.02 / 160.64 ms** | 3.050 GB | 3.402 GB | 相同 |
 
-相对默认，`full`节约活动显存0.190 GB（约8.8%）、reserved 0.222 GB（约9.2%），VJP增约4ms（约2%）；`none`多占活动显存0.899 GB（约42%），却使VJP短约44ms（约21.6%）。这不是独立求解算法的比较；同一层可按部署显存预算选择模式。当前保持 `refiner` 为默认，因其已有1025²训练证据且处于两者之间；用户若显存接近2GB可选 `full`，若有足够显存并重视吞吐可选 `none`。没有测batch>1、混合精度、torch.compile或多卡，不能外推吞吐拐点。显存还有图像提示、静态查询、粗网络等固定成本，仅靠这一级checkpoint不可能消掉全部2GB。
+相对默认，`full`节约活动显存0.190 GB（约8.8%）、reserved 0.222 GB（约9.2%），VJP增约4ms（约2%）；`none`多占活动显存0.899 GB（约42%），却使VJP短约44ms（约21.6%）。这不是独立求解算法的比较；同一层可按部署显存预算选择模式。当前保持 `refiner` 为默认，因其已有1025²训练证据且处于两者之间；用户若显存接近2GB可选 `full`，若有足够显存并重视吞吐可选 `none`。本节**这组**测试只有batch1；随后追加的[batch 1/2/4/8 实测](33_route_a_million_control_batch_scaling.md)另列显存与吞吐。仍未测混合精度、torch.compile或多卡，不能外推这些配置的吞吐拐点。显存还有图像提示、静态查询、粗网络等固定成本，仅靠这一级checkpoint不可能消掉全部2GB。
 
 复现：`tools/phase6_exact_coarse_fine_feedback.py --use-module --checkpoint-mode {refiner,full,none} --benchmark-repeats 10 --fine-cycles 64`；层参数为 `checkpoint_refiner` 与 `checkpoint_full_pass`。主原始JSON为 `raw_results/a8_high64_1025_checkpoint_{refiner,full,none}_grad_gpu2.json`；前两轮短测与未含reserved/梯度范数的JSON仍留作噪声对照，不作为表中主值。相关测试 `tests/test_phase6_nested_p1_feedback.py`。

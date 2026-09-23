@@ -63,6 +63,8 @@ class NestedP1PhotometricFeedbackLayer(nn.Module):
 
     def prepare(self, *, device: torch.device | str) -> None:
         device=torch.device(device)
+        if device.type=="cuda" and device.index is None:
+            device=torch.device("cuda",torch.cuda.current_device())
         self._table.prepare(device=device,dtype=torch.float32)
         self._prepared_device=device
 
