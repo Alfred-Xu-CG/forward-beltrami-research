@@ -469,3 +469,14 @@ Training result：lr0.001的300步真实训练89.74s、完整forward/VJP中位90
 - Prior work：30节A high64、27节B1025预训练、17/20节C正导纳层。该共同压力测试是补充，不替代既有high32同GPU表。
 
 Follow-up：共享make_dataset high64的8例在A重新评价后与早先GPU现场生成值只差约1e-11 image MSE，目标一致到float32 CPU/GPU插值差。1025²细控制下A/B/C image MSE8.982e-6/5.493e-4/1.064e-4，map RMSE0.000285/0.001924/0.000903；面μ RMSE A0.10936、B源重心链式0.32241、C全原面0.13749。B两个因子全部面最小面积比0.86794/0.48031且源重心链det min0.46330；C全部面min det0.8354，输出最大μ仅0.096，显示64周期导数基本没被当前18模态恢复。C257→1025 image/map近乎不变。完整设置、成本及不同μ积分口径见31节。
+
+# Route A 1025²反传激活重计算的显存—速度取舍卡（2026-09-23）
+
+- Question：A已能输出1025²固定P1同胚，但batch1 VJP约204ms且peak allocated2.15GB。现有代码只对四色安全refiner做checkpoint，图像局部岭回归和16模态谱提议仍保留中间激活。若把整次细反馈（提议+安全更新）作为一个纯函数checkpoint，能否显著降显存且保留精确输出/VJP？反过来完全不checkpoint是否以可接受显存换来显著VJP加速？
+- Exact test：在可复用NestedP1PhotometricFeedbackLayer增加full-pass checkpoint选项，维持现有refiner-only为默认；第三档no-checkpoint。三档从同一个冻结257² A8 encoder出发、相同8例high64、1025²控制、512²图像/query、batch1、同GPU2、两次安全反馈与同输入/输出证书，热身后重复完整forward/VJP。比较逐顶点输出、像素loss、对粗map/encoder的梯度数值、所有面证书，记录peak allocated。此处只改变autograd存储策略，不改变latent、位移或拓扑条件。
+- Assumptions：checkpoint的函数无随机态且不修改输入；局部hint与top-16谱模态排序在同一次前后向确定，切换策略不应改变分支。若GPU共享负载有噪声，重复计时并主要以较大差异判断。peak allocated不是总显卡占用。
+- What would falsify it：输出/梯度偏离、证书失效、显存未明显变化或VJP变慢过多；若full-pass节省不足，则保持现有实现而不是为了形式上“更低显存”增加复杂度。
+- Smallest decisive test：先9→33小网格三档输出及VJP一致性单测，再1025²同数据三档计时；不引入新求解器或额外框架。
+- Prior work：24节默认模块完整计时与2.15GB；PyTorch现有torch.utils.checkpoint已在refiner-only中使用。
+
+Follow-up：9→33三模式输出和对coarse/fixed/moving的逐分量VJP测试一致。1025²同high64 8例、batch1、10重复丢首轮，默认refiner/full/none的forward中位79.08/79.49/78.02ms，VJP205.02/209.02/160.64ms；peak allocated2.150/1.960/3.050GB、reserved2.418/2.196/3.402GB。全部输出指标相同，末次编码器梯度范数均4.693806e-5。保留默认居中策略，full提供约9%峰值节省，none以约42%额外活动显存换约22%更短VJP。完整数据和口径见32节。

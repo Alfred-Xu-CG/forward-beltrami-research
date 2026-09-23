@@ -44,3 +44,35 @@ def test_nested_p1_feedback_certificate_and_vjp():
     strict.prepare(device="cpu")
     with pytest.raises(RuntimeError,match="QC cap"):
         strict(fixed.detach(),moving.detach(),coarse.detach())
+
+
+def test_checkpoint_modes_preserve_output_and_input_vjp():
+    torch.set_num_threads(4)
+    axis=torch.linspace(0,1,9)
+    yy,xx=torch.meshgrid(axis,axis,indexing="ij")
+    envelope=torch.sin(math.pi*xx)*torch.sin(math.pi*yy)
+    coarse_base=torch.stack((xx+0.01*envelope,yy-0.01*envelope),dim=-1)[None]
+    grid=torch.linspace(0,1,64)
+    gy,gx=torch.meshgrid(grid,grid,indexing="ij")
+    moving_base=(torch.sin(8*gx)+torch.cos(6*gy))[None,None].float()
+    fixed_base=moving_base+0.01*torch.sin(4*gx)[None,None]
+    outputs=[]
+    for mode in ("refiner","full","none"):
+        coarse=coarse_base.detach().clone().requires_grad_()
+        fixed=fixed_base.detach().clone().requires_grad_()
+        moving=moving_base.detach().clone().requires_grad_()
+        layer=NestedP1PhotometricFeedbackLayer(
+            9,33,fine_passes=1,qc_cap=0.795,spectral_modes=16,
+            checkpoint_refiner=mode=="refiner",
+            checkpoint_full_pass=mode=="full")
+        layer.prepare(device="cpu")
+        mapped=layer(fixed,moving,coarse)
+        gradients=torch.autograd.grad(
+            mapped.square().mean()+0.1*mapped[...,0].mean(),
+            (coarse,fixed,moving))
+        outputs.append((mapped.detach(),tuple(value.detach() for value in gradients)))
+    reference,reference_gradients=outputs[0]
+    for mapped,gradients in outputs[1:]:
+        torch.testing.assert_close(mapped,reference,rtol=0,atol=1e-6)
+        for actual,expected in zip(gradients,reference_gradients):
+            torch.testing.assert_close(actual,expected,rtol=1e-4,atol=1e-6)

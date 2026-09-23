@@ -37,6 +37,8 @@ def main() -> None:
     parser.add_argument("--coarse-initial-cap",type=float,default=None)
     parser.add_argument("--fine-qc-cap",type=float,default=0.8)
     parser.add_argument("--use-module",action="store_true")
+    parser.add_argument("--checkpoint-mode",choices=("refiner","full","none"),
+                        default="refiner")
     parser.add_argument("--test-count",type=int,default=8)
     parser.add_argument("--test-seed",type=int,default=99317)
     parser.add_argument("--photo-variants",type=int,default=0)
@@ -45,13 +47,17 @@ def main() -> None:
     parser.add_argument("--coarse-restriction-audit",action="store_true",
                         help="measure the final fine map component outside coarse P1 space")
     parser.add_argument("--steps",type=int,default=0)
+    parser.add_argument("--benchmark-repeats",type=int,default=3)
     parser.add_argument("--learning-rate",type=float,default=0.001)
     parser.add_argument("--save-state",default=None)
     parser.add_argument("--device",default="cpu")
     args=parser.parse_args()
     if (args.fine_side < 257 or (args.fine_side-1)%256
-            or args.passes < 0 or args.learning_rate <= 0):
+            or args.passes < 0 or args.learning_rate <= 0
+            or args.benchmark_repeats < 3):
         raise ValueError("fine side must be nested over 257; passes nonnegative")
+    if args.checkpoint_mode!="refiner" and not args.use_module:
+        raise ValueError("checkpoint mode requires --use-module")
     device=torch.device(args.device)
     torch.manual_seed(20260923)
     state=torch.load(args.checkpoint,map_location=device,weights_only=False)
@@ -77,7 +83,9 @@ def main() -> None:
     fine_layer=(NestedP1PhotometricFeedbackLayer(
         coarse_side,fine_side,fine_passes=args.passes,gain=args.gain,
         qc_cap=args.fine_qc_cap,window=3,ridge=1,
-        spectral_modes=16,floor_fraction=0.8).to(device)
+        spectral_modes=16,floor_fraction=0.8,
+        checkpoint_refiner=args.checkpoint_mode=="refiner",
+        checkpoint_full_pass=args.checkpoint_mode=="full").to(device)
         if args.use_module else None)
     if fine_layer is not None:
         fine_layer.prepare(device=device)
@@ -304,7 +312,7 @@ def main() -> None:
     forward_times,backward_times,records=[],[],[]
     minimum_train_area=math.inf
     began_all=time.perf_counter()
-    repeats=max(3,args.steps) if args.steps==0 else args.steps
+    repeats=args.benchmark_repeats if args.steps==0 else args.steps
     for step in range(repeats):
         draw=torch.randint(32,(1,),generator=generator).to(device)
         fixed,moving=train[0][draw],train[1][draw]
@@ -327,8 +335,13 @@ def main() -> None:
                             "sampled_image_mse_before_update":float(loss),
                             "elapsed_seconds":time.perf_counter()-began_all})
     training_seconds=time.perf_counter()-began_all
+    encoder_grad_norm=math.sqrt(sum(
+        float(parameter.grad.detach().square().sum())
+        for parameter in encoder.parameters() if parameter.grad is not None))
     peak=(torch.cuda.max_memory_allocated(device)
           if device.type=="cuda" else None)
+    reserved_peak=(torch.cuda.max_memory_reserved(device)
+                   if device.type=="cuda" else None)
     final=evaluate(heldout,evaluation_count) if args.steps else initial
     if args.save_state:
         torch.save({"encoder":encoder.state_dict(),"args":settings,
@@ -344,7 +357,9 @@ def main() -> None:
         "coarse_initial_cap":args.coarse_initial_cap,
         "fine_qc_cap":args.fine_qc_cap,
         "use_module":args.use_module,
+        "checkpoint_mode":args.checkpoint_mode,
         "steps":args.steps,"batch":1,"device":str(device),
+        "benchmark_repeats":args.benchmark_repeats,
         "learning_rate":args.learning_rate,
         "evaluation_kind":("photo_content" if args.photo_variants else
                            f"high{args.fine_cycles}_synthetic"),
@@ -356,7 +371,9 @@ def main() -> None:
         "median_full_forward_seconds_after_first":statistics.median(forward_times),
         "median_full_vjp_seconds_after_first":statistics.median(backward_times),
         "training_seconds":training_seconds,
-        "peak_cuda_allocated_bytes":peak,"records":records,
+        "last_encoder_gradient_norm":encoder_grad_norm,
+        "peak_cuda_allocated_bytes":peak,
+        "peak_cuda_reserved_bytes":reserved_peak,"records":records,
     },sort_keys=True,separators=(",",":")))
 
 

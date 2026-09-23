@@ -38,6 +38,8 @@
 
 因此又设计[64周期决定性目标](30_route_a_high64_fine_control_decisive_test.md)：512²图像每周期8像素，257²控制每周期仅4顶点，1025²控制每周期16顶点；连续真map有解析正Jacobian下界0.119。真map在257²/1025²节点P1插值的8例图像误差分别约$2.885\times10^{-6}$/$1.618\times10^{-8}$，目标确有细表示需求。冻结high32网络的A细反馈在8例使事后粗P1投影→完整F的image MSE$1.207\times10^{-5}\to8.982\times10^{-6}$、面$\mu$ RMSE0.1264→0.1094；新128例的image/map逐例改善127/128，面$\mu$改善96/128。故**细空间能贡献真实收益**，不是纯多余顶点；同时完整F的绝对误差仍远高于真map的1025节点P1插值参考，说明图像条件恢复远未解决。300步high64 image-only更新高学习率使保留指标恶化，低学习率仅微降image误差、map/面$\mu$变差；可微训练成立，但训练收益不稳。
 
+[32节显存—速度消融](32_route_a_activation_memory_tradeoff.md)在同一A输出上比较三种反传激活策略：默认仅重算安全更新的forward/VJP约79/205ms、peak allocated/reserved 2.150/2.418GB；整次反馈重算约79/209ms、1.960/2.196GB；不重算约78/161ms、3.050/3.402GB。9→33测试的输出及输入VJP逐元素一致，1025²输出和编码器梯度范数一致。当前保留居中的默认策略，部署时可按显存/吞吐选其他模式；没有以单个显存数字宣称已解决大batch问题。
+
 ## 4. Route B：精确 PL 组合的收益和代价
 
 一个竖直单调因子 $V$ 与水平单调因子 $H$ 可精确组合为 $F=H\circ V$。若两个因子各是固定网格 P1 同胚，连续组合必为 PL 同胚；查询 $q$ 先在 $V$ 的三角形中定位并仿射映射，再在 $H$ 的网格中**重新定位** $V(q)$，所以第二层不是使用静态源面索引，也不重复采样图像。链式 Jacobian 为 $DH(V(q))DV(q)$，链式 VJP 将最终损失经两次查询送回两个 latent。因第二层网格边的逆像会切过第一层源面，复合一般不再是原固定网格 P1，需保留因子表示或显式叠加分片。
@@ -78,4 +80,4 @@ A8 image/map最优、C面 $\mu$ 与内存最好、B完整 forward最快但 image
 
 ## 7. 代码和可复现入口
 
-Route A 的可复用层：`src/qcopt/neural_bijection/dense/nested_p1_feedback.py`，主脚本 `tools/phase6_exact_coarse_fine_feedback.py`；细空间消融见[29节](29_route_a_fine_space_audit.md)和[30节](30_route_a_high64_fine_control_decisive_test.md)。Route B 组合与 point-query 实现及脚本索引见[02节](02_alternating_factorization.md)、[27节](27_route_b_million_control_composition.md)。Route C 的可复用层：`src/qcopt/neural_bijection/dense/photometric_conductance.py`；相关计时、预计算和逆诊断脚本索引在[17节](17_photometric_conductance_layer.md)、[22节](22_streamed_response_precompute.md)、[26节](26_positive_conductance_inverse_diagnostic.md)、[28节](28_route_c_photo_resolution_ablation.md)。共同high64压力测试见[31节](31_high64_crossroute_stress_test.md)。本阶段原始数值在 `raw_results/`，模型检查点在 `checkpoints/`，整合索引在 `results.csv`。完整测试为 `tests/test_phase6_*.py`；请通过上述文档的具体原始 JSON 与脚本复核所关注的一条结论，不把总报告的四舍五入数字当作独立证据。
+Route A 的可复用层：`src/qcopt/neural_bijection/dense/nested_p1_feedback.py`，主脚本 `tools/phase6_exact_coarse_fine_feedback.py`；细空间消融见[29节](29_route_a_fine_space_audit.md)和[30节](30_route_a_high64_fine_control_decisive_test.md)，反传显存取舍见[32节](32_route_a_activation_memory_tradeoff.md)。Route B 组合与 point-query 实现及脚本索引见[02节](02_alternating_factorization.md)、[27节](27_route_b_million_control_composition.md)。Route C 的可复用层：`src/qcopt/neural_bijection/dense/photometric_conductance.py`；相关计时、预计算和逆诊断脚本索引在[17节](17_photometric_conductance_layer.md)、[22节](22_streamed_response_precompute.md)、[26节](26_positive_conductance_inverse_diagnostic.md)、[28节](28_route_c_photo_resolution_ablation.md)。共同high64压力测试见[31节](31_high64_crossroute_stress_test.md)。本阶段原始数值在 `raw_results/`，模型检查点在 `checkpoints/`，整合索引在 `results.csv`。完整测试为 `tests/test_phase6_*.py`；请通过上述文档的具体原始 JSON 与脚本复核所关注的一条结论，不把总报告的四舍五入数字当作独立证据。

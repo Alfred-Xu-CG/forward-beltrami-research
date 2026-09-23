@@ -34,6 +34,7 @@ class NestedP1PhotometricFeedbackLayer(nn.Module):
         qc_cap: float = 0.795, window: int = 3, ridge: float = 1.0,
         spectral_modes: int = 16, floor_fraction: float = 0.8,
         checkpoint_refiner: bool = True,
+        checkpoint_full_pass: bool = False,
     ) -> None:
         super().__init__()
         if (coarse_side < 3 or fine_side < coarse_side
@@ -51,6 +52,7 @@ class NestedP1PhotometricFeedbackLayer(nn.Module):
         self.ridge=float(ridge)
         self.spectral_modes=spectral_modes
         self.checkpoint_refiner=bool(checkpoint_refiner)
+        self.checkpoint_full_pass=bool(checkpoint_full_pass)
         self.refiner=SafeColoredQCRadialRelaxation(
             fine_side,qc_cap=qc_cap,floor_fraction=floor_fraction)
         self._table=StructuredDenseQueryTable.from_mesh(
@@ -130,18 +132,31 @@ class NestedP1PhotometricFeedbackLayer(nn.Module):
         def refine(current:torch.Tensor,proposal:torch.Tensor,
                    floor:torch.Tensor|None)->torch.Tensor:
             return self.refiner(current,proposal,area_floor=floor)
-        for _ in range(self.fine_passes):
+        def full_refine(current:torch.Tensor,fixed_image:torch.Tensor,
+                        moving_image:torch.Tensor,
+                        floor:torch.Tensor|None)->torch.Tensor:
             hint=local_photometric_logits(
-                fixed,moving,mapped,window=self.window,ridge=self.ridge,
-                raw_span=self.refiner.raw_span)
+                fixed_image,moving_image,current,window=self.window,
+                ridge=self.ridge,raw_span=self.refiner.raw_span)
             hint=spectralize_bounded_logits(
                 hint,side=self.fine_side,raw_span=self.refiner.raw_span,
                 count=self.spectral_modes)
-            proposal=self.gain*hint
-            mapped=(checkpoint(refine,mapped,proposal,area_floor,
-                               use_reentrant=False)
-                    if self.checkpoint_refiner and torch.is_grad_enabled()
-                    else refine(mapped,proposal,area_floor))
+            return refine(current,self.gain*hint,floor)
+        for _ in range(self.fine_passes):
+            if self.checkpoint_full_pass and torch.is_grad_enabled():
+                mapped=checkpoint(full_refine,mapped,fixed,moving,area_floor,
+                                  use_reentrant=False)
+            elif self.checkpoint_refiner and torch.is_grad_enabled():
+                hint=local_photometric_logits(
+                    fixed,moving,mapped,window=self.window,ridge=self.ridge,
+                    raw_span=self.refiner.raw_span)
+                hint=spectralize_bounded_logits(
+                    hint,side=self.fine_side,raw_span=self.refiner.raw_span,
+                    count=self.spectral_modes)
+                mapped=checkpoint(refine,mapped,self.gain*hint,area_floor,
+                                  use_reentrant=False)
+            else:
+                mapped=full_refine(mapped,fixed,moving,area_floor)
         fine_stats=self._certificate(mapped,requires_cap=self.fine_passes>0)
         self.last_stats={
             "coarse_minimum_signed_area_ratio":
