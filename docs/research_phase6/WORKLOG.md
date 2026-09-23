@@ -249,3 +249,30 @@ Route C PARDISO baseline card. Question: Is the observed 0.44–0.57 s all-edge 
 - What would falsify it：单次反馈细频明显不足、最大 μ 或面积退化、无法减少训练墙钟或 VJP 时间，或者保留集收益不能在 fresh128 重现。
 - Smallest decisive test：side9 一次 pass VJP/逐面已有测试；直接两次1000步同源GPU运行并保存逐例数组；如果两者明显差再考虑是否需要新的融合策略。
 - Prior work：A7 单次 gain0.25 无硬 cap，A8 两次 gain1硬cap；更强一次反馈尚未在同一协议下测过。
+
+# Cross-route photographic-content card（2026-09-23）
+
+- Question：Route B 的精确两层257²组合与 Route C 的正边权正弦-PCG在同一真实摄影内容+合成已知形变数据上如何表现？与已测试A8相比，是否有不同的图像/map/μ/面积取舍？
+- Exact test：冻结训练完的 B 双细层 image-only、C 普通 edge CNN、C 六频 edge CNN，以及 A8 检查点；96例六种摄影灰度内容、种子973031、高32解析形变，512²图像、257²原控制网格、batch2同GPU，报告 image/query-map、源面重心链式μ、全部原面或两个因子全部原面最小面积和最终拓扑的表示类型。
+- Assumptions：B 的输出是两个各自认证的PL homeomorphism精确复合，源面重心链式Jacobian只是误差采样，不能把512²查询插值看作新的有保证P1；C 和 A8 是原网格P1。B的几何误差基于复合的导数，C/A8基于原面常值导数，基准可比较但数值采样方式需标出。
+- What would falsify it：模型装载或复合顺序错误、B任一因子面翻转、C真实残差超界、评价图像不同源、或者仅以photo image MSE掩盖map/μ差异。
+- Smallest decisive test：每路线一个双样本smoke，与各自原 high32 检查点值核对；再96例一次性评价，按照片分组，以便定位纹理差异。不得重新选择训练配置以迎合此测试。
+- Prior work：02、09、11、13的合成纹理训练和14的A6/A7/A8摄影输入评估；本试验仅统一内容域外对照，不把照片+合成形变称为真实临床配准。
+
+# Route C photometric spectral response card（2026-09-23）
+
+- Question：六频 conductance 字典可用18个直接几何 oracle 系数产生32周期目标，但CNN从图像只恢复约1–3%振幅。能否把每个边系数在单位矩形均匀正边权解附近的映射响应预计算，用显式图像光度法小型正规方程估计系数，形成不依赖全边CNN的快速可微 image-to-latent 层？
+- Exact formulation：边 logit 为 z_e=z_0+Σ_{k=1}^{18}a_kφ_{ke}，c_e=1+15σ(z_e)>0；平衡解Y(a)定义为 A(c(a))Y_I=b(c(a))。在a=0预计算响应 V_k=∂Y/∂a_k，可由中央有限差分两次高精度PCG数值逼近，并用更小步长检验收敛；运行时把 V_k 插值到512²查询点，设 r=I_f-I_m、G_k=∇I_m·V_k，求 (GᵀG+λI)a=Gᵀr，再经同一个正conductance/PCG解生成最终原网格P1 map。用适当截断的a保持数值有界，正conductance保证精确平衡解拓扑；有限精度仍检查真实残差和所有原面。
+- Assumptions：同一18基含已知频率32，是强任务先验；光度一阶近似只在目标位移小、图像采样可微区域近似成立；正规方程可能病态，需要记录条件数、λ、系数大小，不把小线性系统说成无成本。闭式层应可从图像损失向图像/可训练校准参数传VJP，若系数裁剪或分支切换则仅分段可微。
+- What would falsify it：高频响应近零、中央差分不收敛、G的32周期列严重相关无法分辨、估计系数太大且真实解不改善image/map/μ、或者512²设计矩阵与小系统代价超过A8。若失败，仍能定位是几何响应、光度可识别性还是线性化问题。
+- Smallest decisive test：side33响应差分与VJP/面积；257²预计算18响应，先一个预定train item29和heldout8的图像-only估计，再新摄影96例；真实目标只用于事后评价。先单步，不引入大规模网络或外部求逆。
+- Prior work：Route C 六频 conductance oracle（13节）、Lucas–Kanade光度线性化与隐式映射灵敏度是已有数学思想；这里检验具体正边权神经层的工程可行性，不宣称通用 forward Beltrami solver。
+
+# Route C photometric-calibration training card（2026-09-23）
+
+- Question：128²光度正规方程+18预计算 conductance 响应在257²控制/512²图像上已能恢复约50%细频、完整VJP可算且约36/31毫秒；能否只学习18个模式增益，在真正32训练/8保留图像到latent多步训练中改善最终图像/map，同时保留较低μ误差和小显存？
+- Exact test：固定响应、fit128、全细网格正边权PCG、mean ridge0.005，令解析估计a_k(I_f,I_m)乘以可训练正增益g_k=exp(θ_k)，θ初始0。最终边logit z=z0+Σg_ka_kφ_k，训练损失只为最后一次512²图像warp MSE，32训练/8保留、batch2、1000 Adam；目标map和真μ只用于报告。记录每模态增益、真残差、全部原面、fwd/VJP/显存、fresh128。与同架构未训练g=1直接比较，不能与C edge-CNN差异解读为纯solver收益。
+- Assumptions：训练图像与已有high32协议完全相同；模式正增益不破坏c∈(1,16)但极大值可恶化条件数或面数值，故限制θ在有限范围且每步检查求解残差；显式频率32是任务先验。若非线性裁剪模式参数，普通一阶VJP只在不触发边界的区间成立。
+- What would falsify it：梯度为零/不稳定、1000步图像损失未降、保留/fresh map与μ明显恶化、正PCG不收敛、峰值显存/时间无优势，或者训练仅把18增益推至边界却无法拟合目标。
+- Smallest decisive test：129²/128²五步 smoke 检查有限VJP和面；257²先100步趋势，再1000步完整训练，独立8保留和新种子1170031比较。
+- Prior work：本阶段C 18基的几何oracle与光度闭式诊断，以及结构化Tutte隐式VJP；18增益仅是低维校准，不宣称已经学习任意μ。
