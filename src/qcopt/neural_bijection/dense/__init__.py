@@ -10,6 +10,7 @@ from .alternating import ExactAlternatingMonotoneComposition, evaluate_structure
 from .convex_quad import HierarchicalConvexQuadLayer, HierarchicalConvexQuadFreeCenterLayer, certify_convex_quad_output, split_convex_quad_grid
 from .convex_quad_composition import CoarseFineConvexQuadComposition, CoarseFineConvexQuadResult
 from .colored_vertex_relaxation import SafeColoredVertexRelaxation, HierarchicalConvexQuadLocalLayer
+from .forward_p1_pyramid import ForwardP1Pyramid, exact_dyadic_p1_refine
 from .photometric_hint import local_photometric_logits, physical_image_gradient
 from .sine_spectral import dst1, dst2, idst2, keep_vector_sine_modes, spectralize_bounded_logits
 from .face_qc import structured_p1_face_beltrami_modulus, structured_p1_qc_tail_penalty
