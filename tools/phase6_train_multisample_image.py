@@ -38,8 +38,8 @@ def make_dataset(
     count: int, image_side: int, seed: int, *, return_coefficients: bool = False, target_family: str = "base"
 ) -> tuple[torch.Tensor, ...]:
     """Make independent textures with uniformly bounded, boundary-fixed maps."""
-    if target_family not in ("base", "high32"):
-        raise ValueError("target_family must be base or high32")
+    if target_family not in ("base", "high32", "high64"):
+        raise ValueError("target_family must be base, high32, or high64")
     generator = torch.Generator(device="cpu").manual_seed(seed)
     line = torch.linspace(0.0, 1.0, image_side)
     yy, xx = torch.meshgrid(line, line, indexing="ij")
@@ -65,7 +65,9 @@ def make_dataset(
         ax = 0.005 + 0.010 * torch.rand(count, 1, 1, generator=generator)
         ay = 0.010 + 0.015 * torch.rand(count, 1, 1, generator=generator)
         af = -0.002 + 0.0045 * torch.rand(count, 1, 1, generator=generator)
-        fine_cycles = 32
+        fine_cycles = 64 if target_family == "high64" else 32
+        if target_family == "high64":
+            af = 0.5 * af
     bump = torch.sin(2 * math.pi * xx) * torch.sin(2 * math.pi * yy)
     fine = torch.sin(2 * math.pi * fine_cycles * xx) * torch.sin(2 * math.pi * fine_cycles * yy)
     disp_x = ax * bump + af * fine
@@ -233,10 +235,12 @@ def main() -> None:
     parser.add_argument("--qc-weight", type=float, default=0.0, help="original-face |mu| tail penalty weight")
     parser.add_argument("--qc-threshold", type=float, default=0.6, help="original-face |mu| tail threshold")
     parser.add_argument("--oracle-map-loss", action="store_true", help="diagnostic target-map supervision; not image-only training")
-    parser.add_argument("--target-family", choices=("base", "high32"), default="base")
+    parser.add_argument("--target-family", choices=("base", "high32", "high64"), default="base")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--save-state", default=None)
     parser.add_argument("--load-state", default=None, help="warm-start encoder weights; Adam state is restarted")
+    parser.add_argument("--allow-target-transfer", action="store_true",
+                        help="evaluate a saved encoder on a different target family")
     args = parser.parse_args()
     if min(args.side, args.image_side, args.train_count, args.test_count, args.batch, args.steps, args.a2_width) < 1 or args.strain_weight < 0 or args.image_gradient_weight < 0:
         raise ValueError("all dimensions, counts and steps must be positive")
@@ -296,6 +300,8 @@ def main() -> None:
         previous_args = previous["args"]
         defaults = {"target_family": "base", "coarse_side": 17, "a2_head_mode": "multilevel", "a2_body_mode": "local", "a2_width": 8}
         for key in ("method", "side", "coarse_side", "image_side", "target_family", "a2_head_mode", "a2_body_mode", "a2_width"):
+            if key == "target_family" and args.allow_target_transfer:
+                continue
             if key == "method" and args.method in ("A5", "A6") and previous_args.get(key) == "A4":
                 continue
             if previous_args.get(key, defaults.get(key)) != getattr(args, key):

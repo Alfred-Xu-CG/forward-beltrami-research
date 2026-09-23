@@ -101,33 +101,19 @@ def main() -> None:
     centroids=fine_vertices[torch.tensor(
         fine_mesh.faces.copy(),device=device)].mean(dim=1)
     train=tuple(value.to(device) for value in make_dataset(
-        32,image_side,55101,target_family="high32",
+        32,image_side,55101,target_family=f"high{args.fine_cycles}",
         return_coefficients=True))
     photo_names,photo_indices=None,None
     if args.photo_variants:
+        if args.fine_cycles!=32:
+            raise ValueError("photographic variants use the high32 target only")
         photo_names,photo_indices,heldout=photographic_dataset(
             args.photo_variants,image_side,args.test_seed,device)
     else:
         heldout=tuple(value.to(device) for value in make_dataset(
-            args.test_count,image_side,args.test_seed,target_family="high32",
+            args.test_count,image_side,args.test_seed,
+            target_family=f"high{args.fine_cycles}",
             return_coefficients=True))
-    if args.fine_cycles==64:
-        def high64(dataset):
-            _,moving,_,coeff=dataset
-            line=torch.linspace(0,1,image_side,device=device)
-            yy,xx=torch.meshgrid(line,line,indexing="ij")
-            ax,ay,af=(coeff[:,index,None,None] for index in range(3))
-            low=torch.sin(2*math.pi*xx)*torch.sin(2*math.pi*yy)
-            fine=torch.sin(128*math.pi*xx)*torch.sin(128*math.pi*yy)
-            updated_coeff=coeff.clone()
-            updated_coeff[:,2]*=0.5
-            target=torch.stack((xx+ax*low+0.5*af*fine,
-                                yy+ay*low+0.5*af*fine),dim=-1)
-            fixed=F.grid_sample(moving,2*target-1,mode="bilinear",
-                                padding_mode="border",align_corners=True).detach()
-            return fixed,moving,target,updated_coeff
-        train=high64(train)
-        heldout=high64(heldout)
     evaluation_count=len(heldout[0])
 
     def synchronize():

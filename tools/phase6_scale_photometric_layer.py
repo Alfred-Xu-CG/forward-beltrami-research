@@ -30,6 +30,8 @@ def main():
     parser.add_argument("--response-chunk-size",type=int,default=1)
     parser.add_argument("--photo-variants",type=int,default=0,
                         help="use six photographic images with this many high32 variants each")
+    parser.add_argument("--target-family",choices=("high32","high64"),
+                        default="high32")
     parser.add_argument("--device",default="cpu")
     args=parser.parse_args()
     side,image_side= args.side,512
@@ -42,6 +44,8 @@ def main():
     if args.photo_variants < 0:
         raise ValueError("photo variants must be nonnegative")
     if args.photo_variants:
+        if args.target_family!="high32":
+            raise ValueError("photographic variants use the high32 target only")
         photo_names, _, dataset=photographic_dataset(
             args.photo_variants,image_side,973031,device)
         count=6*args.photo_variants
@@ -49,10 +53,10 @@ def main():
     else:
         photo_names=[]
         dataset=tuple(value.to(device) for value in make_dataset(
-            args.count,image_side,99317,target_family="high32",
+            args.count,image_side,99317,target_family=args.target_family,
             return_coefficients=True))
         count=args.count
-        dataset_kind="synthetic_high32_heldout"
+        dataset_kind=f"synthetic_{args.target_family}_heldout"
     mesh=structured_rectangle(side-1,side-1)
     table=StructuredDenseQueryTable.from_mesh(
         mesh,height=image_side,width=image_side)
@@ -90,7 +94,9 @@ def main():
     faces=torch.tensor(mesh.faces.copy(),device=device,dtype=torch.int64)
     centroids=vertices[faces].mean(dim=1)
     source=vertices.reshape(side,side,2)
-    fine=torch.sin(64*math.pi*source[...,0])*torch.sin(64*math.pi*source[...,1])
+    cycles=64 if args.target_family=="high64" else 32
+    fine=torch.sin(2*cycles*math.pi*source[...,0])*torch.sin(
+        2*cycles*math.pi*source[...,1])
     sample_rows=[]
     with torch.no_grad():
         for index in range(count):
@@ -101,7 +107,7 @@ def main():
                                  padding_mode="border",align_corners=True)
             face_query=centroids[None]
             _,jacobian=evaluate_structured_p1_with_jacobian(mapped,face_query)
-            _,target_jacobian=_target_on_faces(face_query,coeff,32)
+            _,target_jacobian=_target_on_faces(face_query,coeff,cycles)
             mu=_mu(jacobian)
             projection=((mapped-source)*fine[None,:,:,None]).sum(dim=(1,2))/fine.square().sum()
             sample_rows.append({
@@ -124,6 +130,7 @@ def main():
         "checkpoint":args.checkpoint,
         "count":count,
         "dataset_kind":dataset_kind,
+        "target_family":args.target_family,
         "photo_names":photo_names,
         "prepare_seconds":prepare_seconds,
         "prepare_peak_cuda_allocated_bytes":prepare_peak,
