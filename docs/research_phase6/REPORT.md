@@ -40,6 +40,8 @@
 
 在 257²+257² 双因子的同族8例 image-trained 检查点上，保留 image MSE 0.00050483、map RMSE 0.0019299；两个因子的最小面积比分别 0.09936 和0.75636。冻结层 batch1 完整 forward/VJP 约20.58/33.00 ms、peak allocated 298 MB，是这组三路热启动中最快，却远不及 A 的图像/位置精度。直接对 latent 用真 map 作 oracle 优化可以在局部高频目标上达到远低于 image-trained encoder 的误差，显示瓶颈至少一部分来自逆推断/训练而非精确组合本身。17²反例证实重新导出单张固定原网格 P1 时可翻折；不能把 B 的组合保证移交给导出结果。局部 patch 与 coarse+fine、错位层、表达成本和失败训练详见[Route B 总记录](02_alternating_factorization.md)与[凸块层级](05_convex_quad_hierarchy.md)。
 
+新增的[百万细控制组合实验](27_route_b_million_control_composition.md)在257²粗因子＋1025²细因子、512²最终query上实测了全部1,488,028个latent标量的VJP：随机小幅latent完整forward/VJP约14.96/35.68ms、峰值202MB，但冷启动静态表准备11.19秒；这只是计算扩展，不是图像精度。随后真正接入双图像编码器进行300步image-only训练，保留image MSE0.000609、map RMSE0.002022，完整训练期forward/VJP约22.63/38.15ms、峰值520MB。再用低学习率延长1000步只小幅改善到0.000599/0.002009，高学习率延长反而变差。可见百万细控制的精确组合本身可微且便宜，但现有图像到高频latent的估计未因网格加密自动变好；仍非固定细网格P1输出。
+
 ## 5. Route C：正导纳与结构化精确平衡
 
 令 $E$ 为全细网格无向边，$I$ 为内部顶点，$B_I$ 为边—内部顶点关联矩阵。每条边取 $c_e(z)>0$，固定边界为单位方形恒等映射；内部坐标解
@@ -70,4 +72,4 @@ A8 image/map最优、C面 $\mu$ 与内存最好、B完整 forward最快但 image
 
 ## 7. 代码和可复现入口
 
-Route A 的可复用层：`src/qcopt/neural_bijection/dense/nested_p1_feedback.py`，主脚本 `tools/phase6_exact_coarse_fine_feedback.py`。Route B 组合与 point-query 实现及脚本索引见[02节](02_alternating_factorization.md)。Route C 的可复用层：`src/qcopt/neural_bijection/dense/photometric_conductance.py`；相关计时、预计算和逆诊断脚本索引在[17节](17_photometric_conductance_layer.md)、[22节](22_streamed_response_precompute.md)、[26节](26_positive_conductance_inverse_diagnostic.md)。本阶段原始数值在 `raw_results/`，模型检查点在 `checkpoints/`，整合索引在 `results.csv`。完整测试为 `tests/test_phase6_*.py`；请通过上述文档的具体原始 JSON 与脚本复核所关注的一条结论，不把总报告的四舍五入数字当作独立证据。
+Route A 的可复用层：`src/qcopt/neural_bijection/dense/nested_p1_feedback.py`，主脚本 `tools/phase6_exact_coarse_fine_feedback.py`。Route B 组合与 point-query 实现及脚本索引见[02节](02_alternating_factorization.md)、[27节](27_route_b_million_control_composition.md)。Route C 的可复用层：`src/qcopt/neural_bijection/dense/photometric_conductance.py`；相关计时、预计算和逆诊断脚本索引在[17节](17_photometric_conductance_layer.md)、[22节](22_streamed_response_precompute.md)、[26节](26_positive_conductance_inverse_diagnostic.md)。本阶段原始数值在 `raw_results/`，模型检查点在 `checkpoints/`，整合索引在 `results.csv`。完整测试为 `tests/test_phase6_*.py`；请通过上述文档的具体原始 JSON 与脚本复核所关注的一条结论，不把总报告的四舍五入数字当作独立证据。

@@ -394,3 +394,25 @@ Image-versus-Beltrami trade-off follow-up: with internal cap0.795, two fine pass
 - 直接读取1025² A模块和C流式响应模块的原始JSON：均1,050,625控制顶点、2,097,152原面；A完整模块 forward/VJP 78.86/203.95 ms、2.151 GB peak allocated；C 164.39/195.38 ms、0.981 GB；512²只是图像/query。A与C均进行了实际多步image-only训练，额外1025²训练都未改善保留image MSE，不能把“可训练”误称“训练后更准”。
 - Route C新有界最小二乘诊断的257²优化达到3,000迭代上限，虽独立正问题重建最大坐标误差1.09e-8，仍不能称严格可行证书；其计算费时129秒，也不是快速latent推断。97²达优化器收敛，二者只涉及一个已知高频目标。
 - 接下来：继续查跨域结果和模块梯度/拓扑边界，补全自包含总报告；16.5h 后作独立最终复核，18h 时才结束本目标。
+
+# Route B 1025²精确组合扩展卡（2026-09-23）
+
+- Question：B 已有双257² image-trained 的完整前向/VJP，但其紧凑因子表示在超过百万细控制顶点时的动态点定位和梯度成本未知。把同一已验证组合实现从细257扩到细1025，是否仍能在512²最终query上完成 GPU forward/VJP 并保有两个因子的正面积？
+- Exact test：使用已有 CoarseFineConvexQuadComposition，coarse=257、fine∈{257,513,1025}，batch1、float32、512²图像、随机固定小幅latent、固定种子20260923、GPU2；每组热身2次、计时5次，完整计算双因子、动态dense query、一次图像warp、loss及对全部latent的VJP。记峰值allocated、准备时间、每因子全部面的最小面积。此测试只测表示/执行扩展，不称随机latent达到了high32图像任务精度。
+- Assumptions：两个因子decoder的面积证书都通过；组合定理只证明精确连续PL输出，而非重新采样的1025²单张原网格P1。粗257+细1025与257+257 latent量不同，不能把时间差解释成纯网格边数影响。
+- What would falsify it：OOM、动态查询失败、任一因子非正面积、VJP失败或成本远超细层可用预算。若1025运行失败，报告可达最大规模而非说B数学不成立。
+- Smallest decisive test：先已有257脚本复测，再513、1025；不为此次扩展另建框架。
+- Prior work：[02节](02_alternating_factorization.md)的精确组合证明、[05节](05_convex_quad_hierarchy.md)局部构造、既有 tools/phase6_benchmark_coarse_fine_scaling.py；此前B的257²端到端image-trained结果见25节。
+
+# Route B 1025²真实 image-to-latent 短训卡（2026-09-23）
+
+- Question：前述1025² B 扩展只是随机 latent；在同一 high32 image-only 32/8、512²最终query上，257²粗因子+1025²细因子的图像编码器能否实际多步反传、保持两个因子同胚并使保留图像误差下降？
+- Exact test：复用 phase6_train_multisample_image.py 的 CF2 架构，coarse_side257、side1025、batch1、float32、AI空闲GPU2、32训练/8保留high32、Adam lr0.003、300步，从随机初始网络训练，只对最终512² warp像素MSE反传。记录初/末保留image与map、原因子面积、训练墙钟、中位fwd/VJP、显存。其随机初始化与A/C的已训练257权重上采样不同，不能据此直接排名1025精度。
+- Assumptions：原工具对side1025的层级网络可用；单次小批量图像梯度是有限的。图像内容与真目标来自既有相同seed协议，真map只评价。
+- What would falsify it：超显存、梯度非有限、任一因子反向/面积证书失败，或300步保留图像误差不改善。即使改善也不表示已追上A/C。
+- Smallest decisive test：先把300步预算设为单次运行，前几步工具自身检查无异常；不调大量超参数。
+- Prior work：257²双因子1000步image-only和同GPU冻结结果见02/25节；1025²随机latent可微扩展数据见本节紧前卡片对应原始JSON。
+
+Follow-up：首个300步从零训练在1025²细控制网格实际成功，保留image MSE 0.00905→0.000609、map RMSE0.00785→0.00202，因子面积比均正，batch1中位forward/VJP22.63/38.15ms、峰值520MB、墙钟19.22s。为区分“300步不足”与表示/图像推断瓶颈，固定同一32/8 split、学习率和架构，从保存的300步网络再训练1000步（Adam状态按脚本重启），只此一次预定延长；若保留图像或map不改善，记录负例。不能把这个冷启动训练和A/C从257预训练权重迁移到1025的比较称为同等初始化。
+
+延长1000步、lr0.003的保留image MSE升至0.000784、map RMSE升至0.002243，训练image MSE也从0.000747升至0.000907；不是一般意义上的“训练越久越好”。作为一次有原因的优化修复，用300步检查点重新出发、保持全部协议不变，把Adam lr降到0.0003再跑1000步；若仍无稳定改善，停止在这一局部调参上继续消耗时间，保留300步模型作为当前B1025证据。
