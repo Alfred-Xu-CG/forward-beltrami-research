@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import platform
+import statistics
 import time
 
 import numpy as np
@@ -15,9 +16,9 @@ import torch.nn.functional as F
 from phase6_benchmark_edge_woodbury import cut_selected_edges, regular_selected_edges
 from phase6_evaluate_heldout_beltrami import _mu, _target_on_faces
 from phase6_train_image_to_latent import _minimum_area_ratio, _synthetic_pair
-from phase6_train_multisample_image import make_dataset
+from phase6_train_multisample_image import ContextualA2Body, make_dataset
 from qcopt.mesh import structured_rectangle
-from qcopt.neural_bijection.dense import ExactBlockSchurTutteLayer, PardisoAllEdgeTutteLayer, ReusableInterfaceSchurTutteLayer, SparseEdgeWoodburyTutteLayer
+from qcopt.neural_bijection.dense import ExactBlockSchurTutteLayer, PardisoAllEdgeTutteLayer, ReusableInterfaceSchurTutteLayer, SparseEdgeWoodburyTutteLayer, SinePreconditionedTutteLayer
 from qcopt.neural_bijection.dense import evaluate_structured_p1_with_jacobian
 from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 from qcopt.neural_bijection.tutte.symmetric import MatrixFreeSymmetricTutteLayer
@@ -26,8 +27,10 @@ from qcopt.neural_bijection.tutte.symmetric import MatrixFreeSymmetricTutteLayer
 class MultiscaleEdgeImageEncoder(torch.nn.Module):
     """Sample coarse and fine image features at selected fine-edge midpoints."""
 
-    def __init__(self, side: int, edge_midpoints: np.ndarray, width: int = 8) -> None:
+    def __init__(self, side: int, edge_midpoints: np.ndarray, width: int = 8, *, body_mode: str = "local") -> None:
         super().__init__()
+        if body_mode not in ("local", "context"):
+            raise ValueError("body_mode must be local or context")
         self.side = side
         self.coarse_side = min(side, max(3, (side - 1) // 8 + 1))
         self.body = torch.nn.Sequential(
@@ -35,7 +38,7 @@ class MultiscaleEdgeImageEncoder(torch.nn.Module):
             torch.nn.GELU(),
             torch.nn.Conv2d(width, width, 3, padding=1),
             torch.nn.GELU(),
-        )
+        ) if body_mode == "local" else ContextualA2Body(width)
         self.coarse_head = torch.nn.Conv2d(width, 1, 1)
         self.fine_head = torch.nn.Conv2d(width, 1, 1)
         grid = torch.tensor(2.0 * np.array(edge_midpoints, copy=True) - 1.0, dtype=torch.float32).reshape(1, 1, -1, 2)
@@ -52,7 +55,7 @@ class MultiscaleEdgeImageEncoder(torch.nn.Module):
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--solver", choices=("schur", "pardiso", "interface", "woodbury"), required=True)
+    parser.add_argument("--solver", choices=("schur", "pardiso", "interface", "woodbury", "sinepcg"), required=True)
     parser.add_argument("--side", type=int, default=257)
     parser.add_argument("--image-side", type=int, default=512)
     parser.add_argument("--patch-cells", type=int, default=16)
@@ -62,12 +65,17 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=50)
     parser.add_argument("--record-every", type=int, default=10)
     parser.add_argument("--learning-rate", type=float, default=0.003)
+    parser.add_argument("--encoder-body", choices=("local", "context"), default="local")
+    parser.add_argument("--image-gradient-weight", type=float, default=0.0)
     parser.add_argument("--target-kind", choices=("smooth", "high_frequency", "high32"), default="high_frequency")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--save-state", default=None)
+    parser.add_argument("--load-state", default=None, help="warm-start only encoder weights; reset Adam")
     args = parser.parse_args()
     if args.record_every < 1:
         raise ValueError("record-every must be positive")
+    if args.image_gradient_weight < 0:
+        raise ValueError("image-gradient-weight must be nonnegative")
     if args.solver in ("schur", "pardiso", "interface") and args.device != "cpu":
         raise ValueError("the current exact Schur implementations support CPU only")
     torch.manual_seed(20260923)
@@ -84,11 +92,27 @@ def main() -> None:
     elif args.solver == "interface":
         solver = ReusableInterfaceSchurTutteLayer(mesh, args.patch_cells)
         active_edges = reference.active_edges[solver.variable_edge_indices]
+    elif args.solver == "sinepcg":
+        solver = SinePreconditionedTutteLayer(args.side, maximum_conductance=16.0,
+                                              tolerance=1e-10, max_iterations=120).to(device)
+        grid = np.arange(args.side**2, dtype=np.int64).reshape(args.side, args.side)
+        active_edges = np.concatenate((
+            np.stack((grid[:, :-1].ravel(), grid[:, 1:].ravel()), axis=1),
+            np.stack((grid[:-1].ravel(), grid[1:].ravel()), axis=1),
+            np.stack((grid[:-1, :-1].ravel(), grid[1:, 1:].ravel()), axis=1),
+        ))
     else:
         selected = regular_selected_edges(args.side, args.woodbury_cells_per_axis) if args.edge_pattern == "lattice" else cut_selected_edges(args.side)
         solver = SparseEdgeWoodburyTutteLayer(mesh, selected).to(device=device, dtype=torch.float32)
         active_edges = reference.active_edges[selected]
-    encoder = MultiscaleEdgeImageEncoder(args.side, mesh.vertices[active_edges].mean(axis=1)).to(device)
+    encoder = MultiscaleEdgeImageEncoder(args.side, mesh.vertices[active_edges].mean(axis=1), body_mode=args.encoder_body).to(device)
+    if args.load_state:
+        previous = torch.load(args.load_state, map_location=device, weights_only=False)
+        previous_args = previous["args"]
+        for key in ("solver", "side", "image_side", "target_kind", "encoder_body", "image_gradient_weight"):
+            if previous_args.get(key, "local" if key == "encoder_body" else 0.0 if key == "image_gradient_weight" else None) != getattr(args, key):
+                raise ValueError(f"loaded checkpoint does not match {key}")
+        encoder.load_state_dict(previous["encoder"])
     coefficients = None
     if args.target_kind == "high32":
         fixed, moving, true_map, coefficients = (
@@ -102,15 +126,33 @@ def main() -> None:
     table.prepare(device=device, dtype=torch.float32)
     optimizer = torch.optim.Adam(encoder.parameters(), lr=args.learning_rate)
 
-    def evaluate() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def evaluate() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         logits = encoder(pair)
-        control = solver(logits.double() if args.solver in ("schur", "pardiso", "interface") else logits).float()
+        if args.solver == "sinepcg":
+            side = args.side
+            count_h = side * (side - 1)
+            count_v = (side - 1) * side
+            horizontal, vertical, diagonal = torch.split(logits.double(), (count_h, count_v, (side - 1)**2), dim=1)
+            control = solver(
+                horizontal.reshape(args.batch, side, side - 1),
+                vertical.reshape(args.batch, side - 1, side),
+                diagonal.reshape(args.batch, side - 1, side - 1),
+            ).float().reshape(args.batch, -1, 2)
+        else:
+            control = solver(logits.double() if args.solver in ("schur", "pardiso", "interface") else logits).float()
         queries = table.interpolate(control)
         warped = F.grid_sample(moving, 2.0 * queries - 1.0, mode="bilinear", padding_mode="border", align_corners=True)
-        return (warped - fixed).square().mean(), queries, control
+        residual = warped - fixed
+        image_mse = residual.square().mean()
+        image_gradient_mse = 0.5 * (
+            (residual[..., 1:] - residual[..., :-1]).square().mean()
+            + (residual[..., 1:, :] - residual[..., :-1, :]).square().mean()
+        )
+        return image_mse + args.image_gradient_weight * image_gradient_mse, image_mse, queries, control
 
     with torch.no_grad():
-        initial_loss = evaluate()[0].item()
+        initial_objective, initial_image_mse, _, _ = evaluate()
+        initial_loss = initial_image_mse.item()
     process = psutil.Process()
     initial_rss = process.memory_info().rss
     maximum_rss = initial_rss
@@ -118,11 +160,15 @@ def main() -> None:
         torch.cuda.synchronize(device)
         torch.cuda.reset_peak_memory_stats(device)
     records = []
+    forward_times = []
+    backward_times = []
+    optimizer_times = []
+    began_training = time.perf_counter()
     first_head_gradient_norms = None
     for step in range(args.steps):
         optimizer.zero_grad(set_to_none=True)
         began = time.perf_counter()
-        loss, _, _ = evaluate()
+        loss, image_mse, _, _ = evaluate()
         if device.type == "cuda":
             torch.cuda.synchronize(device)
         middle = time.perf_counter()
@@ -139,16 +185,31 @@ def main() -> None:
         if device.type == "cuda":
             torch.cuda.synchronize(device)
         ended = time.perf_counter()
+        forward_times.append(middle - began)
+        backward_times.append(after_backward - middle)
+        optimizer_times.append(ended - after_backward)
         maximum_rss = max(maximum_rss, process.memory_info().rss)
         if step == 0 or (step + 1) % args.record_every == 0 or step + 1 == args.steps:
-            records.append({"step": step + 1, "loss_before_update": loss.item(), "forward_seconds": middle - began, "backward_seconds": after_backward - middle, "optimizer_seconds": ended - after_backward})
+            records.append({"step": step + 1, "loss_before_update": loss.item(), "image_mse_before_update": image_mse.item(), "forward_seconds": middle - began, "backward_seconds": after_backward - middle, "optimizer_seconds": ended - after_backward})
+    train_seconds = time.perf_counter() - began_training
     with torch.no_grad():
-        final_loss, final_query, final_control = evaluate()
+        final_objective, final_image_mse, final_query, final_control = evaluate()
         map_rmse = (final_query - true_map).square().mean().sqrt().item()
         area_ratio = _minimum_area_ratio(final_control.reshape(args.batch, args.side, args.side, 2))
         qc_geometry = None
+        fine_projection = None
         if coefficients is not None:
             vertices = torch.tensor(mesh.vertices.copy(), dtype=torch.float32, device=device)
+            if args.target_kind == "high32":
+                control_grid = final_control.reshape(args.batch, args.side, args.side, 2)
+                source_grid = vertices.reshape(args.side, args.side, 2)
+                high_basis = torch.sin(64 * torch.pi * source_grid[..., 0]) * torch.sin(64 * torch.pi * source_grid[..., 1])
+                if high_basis.square().sum() > 1e-10:
+                    projected = ((control_grid - source_grid) * high_basis[None, :, :, None]).sum(dim=(1, 2)) / high_basis.square().sum()
+                    fine_projection = [{"true_amplitude": coefficients[index, 2].item(),
+                                        "projected_x_amplitude": projected[index, 0].item(),
+                                        "projected_y_amplitude": projected[index, 1].item()}
+                                       for index in range(args.batch)]
             faces = torch.tensor(mesh.faces.copy(), dtype=torch.int64, device=device)
             centroids = vertices[faces].mean(dim=1)[None].expand(args.batch, -1, -1)
             _, predicted_jacobian = evaluate_structured_p1_with_jacobian(
@@ -170,7 +231,7 @@ def main() -> None:
         torch.save({"encoder": encoder.state_dict(), "args": vars(args)}, args.save_state)
     print(json.dumps({
         "route": "C",
-        "method": {"schur": "all_edge_exact_block_schur", "pardiso": "all_edge_exact_pardiso_spd", "interface": "reusable_interface_schur", "woodbury": "selected_edge_woodbury"}[args.solver],
+        "method": {"schur": "all_edge_exact_block_schur", "pardiso": "all_edge_exact_pardiso_spd", "interface": "reusable_interface_schur", "woodbury": "selected_edge_woodbury", "sinepcg": "all_edge_bounded_sine_pcg"}[args.solver],
         "edge_pattern": args.edge_pattern if args.solver == "woodbury" else None,
         "target_kind": args.target_kind,
         "control_side": args.side,
@@ -179,26 +240,38 @@ def main() -> None:
         "active_edges": reference.n_conductances,
         "learned_edges": len(active_edges),
         "latent_sides": [encoder.coarse_side, args.side],
+        "encoder_body": args.encoder_body,
         "image_side": args.image_side,
         "image_queries": args.image_side**2,
         "batch": args.batch,
         "steps": args.steps,
+        "loaded_state": args.load_state,
         "learning_rate": args.learning_rate,
+        "encoder_parameters": sum(parameter.numel() for parameter in encoder.parameters()),
+        "image_gradient_weight": args.image_gradient_weight,
         "device": str(device),
         "device_name": torch.cuda.get_device_name(device) if device.type == "cuda" else platform.processor(),
-        "solver_precision": "float64" if args.solver in ("schur", "pardiso", "interface") else "float32",
+        "solver_precision": "float64" if args.solver in ("schur", "pardiso", "interface", "sinepcg") else "float32",
         "torch_version": torch.__version__,
         "initial_image_mse": initial_loss,
-        "final_image_mse": final_loss.item(),
+        "initial_objective": initial_objective.item(),
+        "final_image_mse": final_image_mse.item(),
+        "final_objective": final_objective.item(),
         "final_query_map_rmse": map_rmse,
+        "fine_projection_estimates": fine_projection,
         "minimum_signed_area_ratio": area_ratio,
         "initial_process_rss_bytes": initial_rss,
         "maximum_observed_process_rss_bytes": maximum_rss,
         "peak_cuda_allocated_bytes": torch.cuda.max_memory_allocated(device) if device.type == "cuda" else None,
+        "median_forward_seconds_after_first": statistics.median(forward_times[1:] or forward_times),
+        "median_backward_seconds_after_first": statistics.median(backward_times[1:] or backward_times),
+        "median_optimizer_seconds_after_first": statistics.median(optimizer_times[1:] or optimizer_times),
+        "total_training_seconds": train_seconds,
         "solver_setup_seconds": solver.setup_seconds if args.solver == "woodbury" else solver.precompute_seconds if args.solver == "interface" else None,
         "last_solver_relative_residual": (
             solver.last_forward_stats[0]["relative_residual"] if args.solver == "pardiso"
             else solver.last_forward_stats[0].relative_residual if args.solver in ("schur", "interface")
+            else solver.last_forward_stats["true_relative_residual"] if args.solver == "sinepcg"
             else None
         ),
         "step_records": records,
