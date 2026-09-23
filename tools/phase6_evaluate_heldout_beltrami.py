@@ -18,6 +18,7 @@ from qcopt.neural_bijection.dense import (
     certify_convex_quad_output,
     evaluate_structured_p1_with_jacobian,
     local_photometric_logits,
+    spectralize_bounded_logits,
 )
 from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 
@@ -59,14 +60,15 @@ def main() -> None:
     parser.add_argument("--side", type=int, default=257)
     parser.add_argument("--image-side", type=int, default=512)
     parser.add_argument("--test-count", type=int, default=8)
+    parser.add_argument("--test-seed", type=int, default=99317)
     parser.add_argument("--batch", type=int, default=2)
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
     device = torch.device(args.device)
     state = torch.load(args.checkpoint, map_location=device, weights_only=False)
     method = state["args"]["method"]
-    if method not in ("A2", "A3", "A4", "A5") or state["args"]["side"] != args.side:
-        raise ValueError("checkpoint does not match A2/A3/A4/A5 and requested side")
+    if method not in ("A2", "A3", "A4", "A5", "A6") or state["args"]["side"] != args.side:
+        raise ValueError("checkpoint does not match A2/A3/A4/A5/A6 and requested side")
     target_family = state["args"].get("target_family", "base")
     fine_cycles = 8 if target_family == "base" else 32
     encoder_type = ConvexQuadImageEncoder if method == "A2" else ConvexQuadLocalImageEncoder
@@ -80,11 +82,14 @@ def main() -> None:
     encoder.eval()
     decoder = (
         HierarchicalConvexQuadFreeCenterLayer(args.side) if method == "A2"
-        else HierarchicalConvexQuadLocalLayer(args.side, motion_mode="radial" if method in ("A4", "A5") else "disk")
+        else HierarchicalConvexQuadLocalLayer(args.side, motion_mode="radial" if method in ("A4", "A5", "A6") else "disk")
     ).to(device)
     fixed, moving, true_map, coefficients = (
         value.to(device)
-        for value in make_dataset(args.test_count, args.image_side, 99317, return_coefficients=True, target_family=target_family)
+        for value in make_dataset(
+            args.test_count, args.image_side, args.test_seed,
+            return_coefficients=True, target_family=target_family,
+        )
     )
     mesh = structured_rectangle(args.side - 1, args.side - 1)
     vertices = torch.tensor(mesh.vertices, device=device, dtype=torch.float32)
@@ -112,7 +117,7 @@ def main() -> None:
             current = end - start
             pair = torch.cat((fixed[start:end], moving[start:end]), dim=1)
             latent = encoder(pair)
-            if method == "A5":
+            if method in ("A5", "A6"):
                 base = decoder.base(latent[0], latent[1])
                 hint = local_photometric_logits(
                     fixed[start:end], moving[start:end], base,
@@ -120,6 +125,11 @@ def main() -> None:
                     ridge=state["args"]["hint_ridge"],
                     raw_span=decoder.local.raw_span,
                 )
+                if method == "A6":
+                    hint = spectralize_bounded_logits(
+                        hint, side=args.side, raw_span=decoder.local.raw_span,
+                        count=state["args"]["hint_sine_modes"],
+                    )
                 control = decoder.local(base, latent[2] + state["args"]["hint_gain"] * hint)
             else:
                 control = decoder(*latent)
@@ -170,8 +180,8 @@ def main() -> None:
         "image_side": args.image_side,
         "image_queries": args.image_side**2,
         "test_count": count,
+        "test_seed": args.test_seed,
         "batch": args.batch,
-        "test_seed": 99317,
         "dtype": "float32",
         "device": str(device),
         "heldout_image_mse": image_error_sum / count,

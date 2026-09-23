@@ -11,6 +11,8 @@ from .convex_quad import HierarchicalConvexQuadLayer, HierarchicalConvexQuadFree
 from .convex_quad_composition import CoarseFineConvexQuadComposition, CoarseFineConvexQuadResult
 from .colored_vertex_relaxation import SafeColoredVertexRelaxation, HierarchicalConvexQuadLocalLayer
 from .photometric_hint import local_photometric_logits, physical_image_gradient
+from .sine_spectral import dst1, dst2, idst2, keep_vector_sine_modes, spectralize_bounded_logits
+from .face_qc import structured_p1_face_beltrami_modulus, structured_p1_qc_tail_penalty
 
 __all__ = [
     "DenseMonotoneGridLayer",
@@ -33,4 +35,11 @@ __all__ = [
     "HierarchicalConvexQuadLocalLayer",
     "local_photometric_logits",
     "physical_image_gradient",
+    "dst1",
+    "dst2",
+    "idst2",
+    "keep_vector_sine_modes",
+    "spectralize_bounded_logits",
+    "structured_p1_face_beltrami_modulus",
+    "structured_p1_qc_tail_penalty",
 ]
