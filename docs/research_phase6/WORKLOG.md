@@ -199,3 +199,53 @@ Route C PARDISO baseline card. Question: Is the observed 0.44–0.57 s all-edge 
 - What would falsify it：1025² 的 batch1 OOM；时间/内存远超顶点数比例且无可解释工作区；checkpoint 改变输出或参数梯度；峰值实际由常驻数据而非 autograd 图主导。
 - Smallest decisive test：batch1/2 257² 与 batch1 513²/1025² 的热身后同步 GPU 全 forward/VJP；准确记录是否包含图像 query 与 warp、峰值 allocated/reserved；再只对瓶颈处试局部重算。
 - Prior work：A4 1025² 原网格安全更新和 C 正弦-PCG 1025² 已分别测过；A8 新增两次光度 normal-equation + DST + QC 面门控，不能直接沿用 A4 的内存数字。
+# C multi-sample research card（2026-09-23）
+
+- Question：有界全边正 conductance + 正弦-PCG 已在 257² 完成 fwd/VJP 和单图像对训练，是否能在与 A8 同一 high32 的 32 训练/8 保留协议下学习图像到 conductance，而不是仅对单例优化？
+- Exact claim：SinePreconditionedTutteLayer 在输出正权重与指定凸边界时给数学上的 Tutte P1 homeomorphism；有限精度训练要逐次控制真实残差并在最终所有面检查。由 edge-midpoint CNN 产生全部横、纵、对角边 logits，图像 MSE 经解码和一次 image warp 反传到 CNN。实验检验泛化及计算成本，不预设精度能追上 A8。
+- Assumptions：规则 SW-NE triangulation，控制侧 257²，图像512²，正 conductance 在 [1,16]，float64 PCG，batch2，训练32/测试8，同一高32生成器、图像损失、1000 Adam 更新。网络参数量与 A8 不同，比较应注明。
+- What would falsify it：VJP 非有限、残差超过容差、面翻转、held-out image MSE 接近初始不下降、细频振幅接近零、或耗时/内存失去可训练性。即使失败也不否定正权重表示本身，因为已有直接边 latent oracle 能拟合目标。
+- Smallest decisive test：先 2 步远程 smoke 与真实残差/面积，接着 300 步看下降趋势，再 1000 步与 fresh 128 评估；如果 300 步完全无信号，检查梯度头范数和训练图像的对比度后再决定是否继续。
+- Prior work：09_sine_pcg_and_conductance_synthesis.md 已给 257² direct solve/VJP、单例 image-to-latent、目标坐标 oracle 和失败的 A6 位移到正 conductance 桥接；此处只补多样本泛化，不重复证明。
+# C teacher-distillation research card（2026-09-23）
+
+- Question：多样本 C 的细频振幅几乎为零；如果把已训练 A8 从相同图像产生的安全 P1 map 当作训练期教师，C 的 edge CNN 能否 amortized 地学到细频正 conductance，还是其表达/架构依然阻断？
+- Exact claim：保持 C 正 conductance 区间、正弦-PCG、图像输入和推理路径不变；仅在训练 32 例的损失增加教师 P1 坐标在水平/竖直细边上的差分 MSE，教师不用于测试前向。正权重保证仍来自 C 解码器而非蒸馏。如果细频振幅仍为零，这排除“纯像素损失没有显式梯度信号”这一单独解释，但不证明所有边权编码器都不可能。
+- Assumptions：A8 教师检查点固定、只从训练图像预计算顶点图；不使用解析目标或测试图像标签；λ_teacher_grad 先固定 0.01，与此前 C 目标坐标 oracle 的差分 MSE 量纲一致。评价同 8 保留和 fresh128。
+- What would falsify it：教师监督使 C 细频振幅恢复显著且图像/μ 不恶化过多；反之若目标梯度损失下降但细频仍零，要检查 teacher edge-gradient 数据、CNN 输出谱和实际 C 映射误差，而非直接宣布结构不可能。
+- Smallest decisive test：两步 smoke，训练 300 步检查 teacher edge-gradient loss 和 fine projection，再 1000 步/保留集；必要时只改变一次 λ，不做广泛无控制扫描。
+- Prior work：A8 257² 32/8 image-only 教师已验证；C 单例 target-map oracle 加细边导数 MSE 可恢复细频；纯 C 多样本图像/残差梯度损失均几乎不恢复 fine 模式。
+# C multiscale Fourier-edge research card（2026-09-23）
+
+- Question：C 的 image CNN 在 32 周期 conductance Fourier bins 中几乎没有能量，而目标坐标 oracle 的正边权在相同 bins 具有显著能量。显式提供一个多频正弦 edge basis，并让图像网络预测每个频率的边权系数，能否在保持所有边权正、同一细网格 PCG 和小显存的同时恢复细模式？
+- Exact claim：取固定频率集合 {1,2,4,8,16,32}，在每类边定义相应 sine/cosine 连续基函数的边中点采样；CNN 输出每样本 3K 个谱系数，作为原 coarse/fine 边 logits 的加项。所有最终边权仍是 1+15 sigmoid(logit)，故精确 Tutte 解的拓扑条件不变。比较应标明这个 basis 包含目标已知的频率 32，是有利的任务先验，不是通用 Beltrami 输入。
+- Assumptions：32/8 high32 多样本图像、257²/512²、同一正弦-PCG、学习率/步数；CNN pooled features 与频率相关 pooled features预测系数，无目标 map/μ 监督时为 image-only 层。
+- What would falsify it：该 head 无梯度或模式系数能变大却 P1 映射细振幅仍零；若 teacher-gradient 训练也不能恢复，则至少当前基方向或图像幅度估计仍错误。若成功，也只证明带已知模式字典的受限目标族可行，需再测试频率/相位偏移和真实图像。
+- Smallest decisive test：小网格张量形状/VJP；257² 300 步 image-only，看 C 图像、map、32 频谱；若无信号再一次 300 步 teacher-gradient，并直接优化 18 个 Fourier edge 系数拟合目标坐标，区分字典容量与 CNN 推断；之后仅对有改进者做 1000/fresh。
+- Prior work：c_edge_spectrum_trainitem29.json 中直接边 latent oracle 的 32×32 Fourier bin power fraction 为水平约0.21、竖直约0.40，而多样本像素/图像梯度/教师 CNN 均低于 2e-5。这个观察支持针对性改变表示，而不继续只调 loss。
+# A8 photographic-content research card（2026-09-23）
+
+- Question：A8 在合成正弦/高斯纹理上准确，但其 image-to-latent 网络和光度 normal equation 对不同纹理是否仍有用？在保持相同 257² 控制网格及已知 high32 目标 map 的同时，仅将图像内容换成软件包随附的真实摄影/扫描灰度图，测试固定检查点的内容域外表现。
+- Exact claim：使用 camera、coins、moon、page、grass、gravel 这六张本地 scikit-image 示例灰度图，缩放/标准化为512²；按与训练 high32 相同的系数范围构造解析真 map，令 fixed=warp(moving,true_map)。A6/A7/A8 检查点不再更新，报告同一照片和形变实例的 image MSE、query-map RMSE、面 μ RMSE、最大 μ、最小面积及 A8 初始 cap 前提成立比例。它是“真实图像内容+合成已知形变”，不是临床真实配准。
+- Assumptions：示例图像来自已安装库，不下载外部数据；预处理只用图像自身统计，不使用目标 map；真实 map 仅用于 fixed 生成和事后评价。照片 ID 与系数配对在所有模型完全一致。
+- What would falsify it：A8 图像损失虽低但 map/μ 大幅恶化、摄影平坦区出现 cap 输入违反、或性能对某类纹理极不稳定。这会限制此前合成纹理结论的适用范围，不能通过剔除困难图像掩盖。
+- Smallest decisive test：每图至少 16 个系数变体，共 96 例，batch2 同源 GPU；对 A6、A7、A8 逐面测全部131072面。若差异大，再分析按图像类型的表，不训练到测试集。
+- Prior work：high32 合成纹理测试是训练同分布；A8 真实摄影输入的泛化未测。scikit-image 随包提供这六张固定示例数据，仅用作内容域变化试验。
+
+# A9 initial-QC homotopy card（2026-09-23）
+
+- Question：A8 的 QC-safe feedback 只保持输入已有的 |μ|<0.8，而摄影内容域外测试中 96 例仅 66 例满足该前提。能否用一个可微的全局 latent 相关标量使初始 P1 map 无条件进入该 QC 集，再调用已证明的局部 QC-safe feedback？
+- Exact claim：令固定单位矩形原网格的恒等 P1 map 为 I，任意初始顶点图为 F，每面复导数记 α=F_z、β=F_{\bar z}。考虑原网格 P1 顶点同伦 H_t=(1-t)I+tF，于是 α_t=1+t(α-1)、β_t=tβ。对每面二次多项式 q(t)=κ²|α_t|²-|β_t|²，q(0)=κ²>0。求它在 (0,1) 的最早实根，跨全部面取最小值，乘安全系数 η<1，并和1取小者，则所有面有 |μ(H_t)|<κ；固定边界不动，故输出为原网格 P1 homeomorphism。该缩放只是 A8 可选的初始 QC 约束，不是主要拓扑保障或求逆求解器。
+- Assumptions：F 边界保持恒等；源三角剖分一致；精确实数理论；有限精度还需独立全面证书；η=0.99、κ=0.8；从零到所选 t 的每面 q 连续且不越过最早根。若 q(1)>0 但在中间曾越界，也必须找到最早根，不能仅检查端点。
+- What would falsify it：任何面最终 |μ|≥κ、非正面积、错误求根、边界运动、梯度与中心有限差分不符，或大幅削弱真实图像上的精度使实际价值很低。
+- Smallest decisive test：side9 人工强扭曲与随机 A8 输出，逐面 q 和 VJP 对照；冻结 A8 在同一 96 个摄影内容实例上对比可选 homotopy 的 cap、map、image、时间；若尚有价值再做 257² 训练评估。
+- Prior work：平面 Beltrami 的 α/β 表示及二次不等式、A8 局部 QC-safe 更新；不主张该同伦是文献新定理，价值只在具体神经层实现和成本。
+
+# A8 one-pass Pareto card（2026-09-23）
+
+- Question：A8 两次安全谱反馈虽准确，但 batch2 完整 forward/VJP 为29.55/62.62毫秒、峰值657MB。一次更强的 QC-safe 反馈是否能以更少时间/显存达到相近的 image、map 和细频质量？
+- Exact test：从同一个 A6 QC045 检查点初始化 encoder，保持32/8 high32 图像、257²控制、512²查询、1000次 Adam image-only、QC cap0.8、area floor0.8、每次谱top16不变；仅把反馈次数从2改为1，并分别试 gain1与gain2。训练后逐面评价 Beltrami、面积、初始cap合格数和细频振幅，在 fresh128 种子939031交叉检验最优者。
+- Assumptions：两组与 A8 参考共享设备GPU2和同一数据生成及 batch2；反馈减少但构造拓扑保证不变；cap 前提仍需单独记录；计时须包含 CNN、所有query、一次最终图像采样和VJP。
+- What would falsify it：单次反馈细频明显不足、最大 μ 或面积退化、无法减少训练墙钟或 VJP 时间，或者保留集收益不能在 fresh128 重现。
+- Smallest decisive test：side9 一次 pass VJP/逐面已有测试；直接两次1000步同源GPU运行并保存逐例数组；如果两者明显差再考虑是否需要新的融合策略。
+- Prior work：A7 单次 gain0.25 无硬 cap，A8 两次 gain1硬cap；更强一次反馈尚未在同一协议下测过。

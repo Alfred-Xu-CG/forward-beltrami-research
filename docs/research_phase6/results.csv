@@ -1,3 +1,10 @@
 route,host,physical_gpu,control_side,control_vertices,control_faces,image_side,image_queries,batch,steps,dtype,initial_image_mse,final_image_mse,final_map_rmse,min_signed_area_ratio,median_forward_ms,median_backward_ms,peak_cuda_allocated_mb,notes
 A,element-codex-mihomo-codex,1,257,66049,131072,512,262144,2,300,float32,0.0297862608,0.00859470293,0.0118696149,0.365449846,1.0023,1.8340,91.1749,multiscale_image_to_latent_clean_e508e4e
 A,ai-codex-mihomo-codex,2,257,66049,131072,512,262144,2,300,float32,0.0297861621,0.00871669594,0.0119013544,0.348438263,2.3645,3.8958,90.1350,multiscale_image_to_latent_clean_e508e4e
+B_twofine,element-codex-mihomo-codex,,257,66049,131072,512,262144,2,1000,float32,,0.000505,0.001930,0.0993,51.0,69.5,,high32_imageonly_exact_twofactor_PL_first_factor_min_area_and_cpu_RSS990MB
+A8,ai-codex-mihomo-codex,2,257,66049,131072,512,262144,2,1000,float32,,0.00001848,0.000409,0.194,29.55,62.62,657,high32_imageonly_QCcap_conditional_original_P1
+A8_onepass_gain1,ai-codex-mihomo-codex,2,257,66049,131072,512,262144,2,1000,float32,,0.00002885,0.000501,0.189,20.30,41.14,489,high32_imageonly_one_safe_feedback
+A8_onepass_gain2,ai-codex-mihomo-codex,2,257,66049,131072,512,262144,2,1000,float32,,0.00003260,0.000533,0.204,21.91,44.52,489,high32_imageonly_one_safe_feedback
+C_edgeCNN,ai-codex-mihomo-codex,2,257,66049,131072,512,262144,2,1000,mixed_float32_image_float64_solver,0.00905,0.0008912,0.002721,0.434,43.0,43.8,290,high32_imageonly_all_positive_conductances
+C_edgeCNN_grad100,ai-codex-mihomo-codex,2,257,66049,131072,512,262144,2,1000,mixed_float32_image_float64_solver,0.00905,0.0008039,0.002583,0.536,50.5,39.0,290,high32_image_plus_residual_gradient
+C_spectraledge,ai-codex-mihomo-codex,2,257,66049,131072,512,262144,2,1000,mixed_float32_image_float64_solver,,0.0004016,0.001658,0.8633,31.96,43.88,314,high32_imageonly_known_frequency32_dictionary

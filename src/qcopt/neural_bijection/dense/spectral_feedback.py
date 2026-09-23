@@ -7,6 +7,7 @@ from torch.utils.checkpoint import checkpoint
 
 from .colored_vertex_relaxation import HierarchicalConvexQuadLocalLayer, SafeColoredVertexRelaxation
 from .photometric_hint import local_photometric_logits
+from .qc_initial_homotopy import cap_initial_map
 from .qc_radial_relaxation import SafeColoredQCRadialRelaxation
 from .sine_spectral import spectralize_bounded_logits
 
@@ -33,6 +34,7 @@ class SpectralSafeFeedbackLayer(torch.nn.Module):
         extra_modes: int = 16,
         floor_fraction: float = 0.2,
         extra_qc_cap: float | None = None,
+        initial_qc_cap: float | None = None,
         extra_checkpoint: bool = False,
     ) -> None:
         super().__init__()
@@ -47,6 +49,7 @@ class SpectralSafeFeedbackLayer(torch.nn.Module):
         self.extra_gain = extra_gain
         self.extra_modes = extra_modes
         self.extra_qc_cap = extra_qc_cap
+        self.initial_qc_cap = initial_qc_cap
         self.extra_checkpoint = bool(extra_checkpoint)
         self.initial = HierarchicalConvexQuadLocalLayer(side, motion_mode="radial")
         self.refiner = (
@@ -67,7 +70,9 @@ class SpectralSafeFeedbackLayer(torch.nn.Module):
             hint, side=self.side, raw_span=self.initial.local.raw_span,
             count=self.initial_modes,
         )
-        return self.initial.local(base, local_logits + self.initial_gain * hint)
+        mapped = self.initial.local(base, local_logits + self.initial_gain * hint)
+        return mapped if self.initial_qc_cap is None else cap_initial_map(
+            mapped, qc_cap=self.initial_qc_cap)
 
     def forward(self, fixed: torch.Tensor, moving: torch.Tensor, latent) -> torch.Tensor:
         mapped = self.initial_map(fixed, moving, latent)
