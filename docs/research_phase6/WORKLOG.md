@@ -305,3 +305,21 @@ Follow-up after train/photo evidence: two untrained refinement passes improved p
 - What would falsify it：1025² prepare/forward/VJP OOM、PCG达不到真实残差、面翻转、时间/显存不可接受、或同一增益跨尺度map/μ大幅退化。即使1025有正面结果也只是8例无再训练迁移，不是百万点训练泛化。
 - Smallest decisive test：side513一个样本和VJP，再side1025一个；资源充足且均正确才扩到8例几何与速度统计。准备前检查GPU空闲及可用显存；不碰其他任务。
 - Prior work：A8在1025²未训练扩展性已测，C正弦-PCG纯解码器1025²已测；本层新增18响应预计算和128²光度估计，不能沿用其时间/显存结论。
+
+# Route C million-control multi-step training card（2026-09-23）
+
+- Question：1025² 控制网格上 batch1 完整 forward/VJP 已经通过，但这不等于实际优化循环能够多步稳定运行。固定 18 模态解析图像到 latent 和 257² 已学 300 步增益作 warm start，是否能在真正百万控制顶点、512² 图像上继续进行 300 步 image-only Adam，并保持全部原面正向、有限梯度和可接受显存？
+- Exact test：使用相同 train32 seed55101 / heldout8 seed99317 high32，1025²控制、fit128、image512、batch1，加载257²的18增益，用学习率0.01训练300步；每步完整求1025²正conductance平衡 map、512² warp MSE与隐式VJP，只更新18 gain。记录初末训练/保留 image MSE、真实求解/伴随残差最大值、每步面积检查、loss轨迹、整段时间、中位fwd/VJP与训练峰值已分配显存；几何细指标用独立评价脚本读新检查点补测。预计算和训练分开计时/显存。
+- Assumptions：18已知频率是强任务先验，这只是同族继续训练，不是百万维自由 latent，也不是照片/临床泛化。优化器状态从空开始，故不是完全复现257训练轨迹；同一GPU2若中途被占用则改用空闲卡，不影响他人。
+- What would falsify it：迭代残差/面积失败、梯度非有限、OOM、训练保留误差明显恶化、耗时太高或预计算再次不稳定。若仅保留误差不改善，也要报告百万点训练在计算上可行但无精度收益。
+- Smallest decisive test：远程先10步并检查日志/资源，然后继续同一配置完整300步；不得把单个VJP当作多步训练。
+- Prior work：17节257²增益训练及20节1025²零训练转移；这里独立补齐实际百万控制顶点优化的工程证据。
+
+# Route C response-precompute memory card（2026-09-23）
+
+- Question：1025²的18响应一次批量PCG预计算峰值约7.6GB，明显超过每步训练1.1GB。能否将响应按小块求解，立即投影到128²拟合 query 后丢弃全分辨率响应，在不改变最终映射和VJP的前提下降低冷启动峰值？
+- Exact claim：18个响应满足同一个均匀正导纳线性算子作用于18个互不耦合的二维右端，因此批量求解与任意分块求解在精确算术中逐列相同。边模态基完整保留作运行时导纳；仅局部构造当前分块的导纳导数、右端、PCG轨迹和顶点响应，并将插值后的(块,128,128,2)响应存储。比较chunk=1,2,3,6,18 的precompute秒/peak allocated、响应查询max abs差、257/1025同检查点最终 map及VJP。不得把 GPU cache reserved 的变化冒称数学差异。
+- Assumptions：同一float64 PCG真实残差阈值1e-10，每个分块允许略不同迭代停止/舍入；边基总量仍为O(18N²)，此优化只去除批量PCG的大中间张量，不能宣称O(N²)内存变为常数。
+- What would falsify it：peak没有显著下降、时间超过可接受冷启动预算、响应/最终map偏差超浮点预期、梯度或拓扑发生改变。若18边基本身成为主峰，要测出而不是继续堆内存方案。
+- Smallest decisive test：side257 chunk2 vs18响应/输出；然后1025 chunk2的GPU2峰值和时间；若顺利再扫描其他块大小，选无需模型精度调参的工程默认值。
+- Prior work：同一多右端SPD系统可按列解是线性代数直接结论；本仓库20、21节给出7.46/7.60GB的实际冷启动峰值及完整训练低于1.1GB的对比。

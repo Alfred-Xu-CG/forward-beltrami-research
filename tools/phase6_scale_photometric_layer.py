@@ -26,12 +26,14 @@ def main():
     parser.add_argument("--checkpoint",required=True)
     parser.add_argument("--count",type=int,default=8)
     parser.add_argument("--repeats",type=int,default=3)
+    parser.add_argument("--response-chunk-size",type=int,default=1)
     parser.add_argument("--device",default="cpu")
     args=parser.parse_args()
     side,image_side= args.side,512
     device=torch.device(args.device)
     state=torch.load(args.checkpoint,map_location=device,weights_only=False)
-    layer=PhotometricSpectralTutteLayer(side,fit_side=128).to(device)
+    layer=PhotometricSpectralTutteLayer(
+        side,fit_side=128,response_chunk_size=args.response_chunk_size).to(device)
     with torch.no_grad():
         layer.raw_mode_gains.copy_(state["raw_gains"].to(device))
     dataset=tuple(value.to(device) for value in make_dataset(
@@ -104,6 +106,7 @@ def main():
         "control_faces":2*(side-1)**2,
         "image_side":image_side,"image_queries":image_side**2,
         "fit_side":128,"batch":1,"device":str(device),
+        "response_chunk_size":args.response_chunk_size,
         "checkpoint":args.checkpoint,
         "count":args.count,
         "prepare_seconds":prepare_seconds,

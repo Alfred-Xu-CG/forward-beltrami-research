@@ -69,3 +69,28 @@ def test_photometric_conductance_response_and_gain_vjp():
     gradient = torch.autograd.grad(objective,layer.raw_mode_gains)[0]
     assert torch.isfinite(gradient).all()
     assert gradient.abs().max() > 0
+
+
+def test_response_chunking_preserves_map_and_gain_vjp():
+    torch.set_num_threads(4)
+    fixed,moving,*_ = make_dataset(1,64,7401,target_family="base",
+                                   return_coefficients=True)
+    reference = PhotometricSpectralTutteLayer(
+        67,fit_side=64,response_chunk_size=18)
+    streamed = PhotometricSpectralTutteLayer(
+        67,fit_side=64,response_chunk_size=2)
+    with torch.no_grad():
+        gains = torch.linspace(-0.1,0.1,18,dtype=torch.float64)
+        reference.raw_mode_gains.copy_(gains)
+        streamed.raw_mode_gains.copy_(gains)
+    reference.prepare(device="cpu")
+    streamed.prepare(device="cpu")
+    assert (reference._response_query-streamed._response_query).abs().max() < 1e-6
+    mapped_reference = reference(fixed,moving)
+    mapped_streamed = streamed(fixed,moving)
+    assert (mapped_reference-mapped_streamed).abs().max() < 1e-6
+    grad_reference = torch.autograd.grad(
+        mapped_reference.square().mean(),reference.raw_mode_gains)[0]
+    grad_streamed = torch.autograd.grad(
+        mapped_streamed.square().mean(),streamed.raw_mode_gains)[0]
+    assert torch.allclose(grad_reference,grad_streamed,rtol=1e-5,atol=1e-8)
