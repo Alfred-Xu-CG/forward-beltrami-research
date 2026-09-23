@@ -43,17 +43,24 @@ def _photo_bank(side: int, names: list[str] | None = None) -> tuple[list[str], t
 
 
 def _dataset(variants_per_photo: int, image_side: int, seed: int, device: torch.device,
-             photo_names: list[str] | None = None):
+             photo_names: list[str] | None = None,
+             target_family: str = "high32"):
+    if target_family not in ("high32", "high64"):
+        raise ValueError("photographic target family must be high32 or high64")
     names, bank = _photo_bank(image_side, photo_names)
     count = len(names) * variants_per_photo
     generator = torch.Generator(device="cpu").manual_seed(seed)
     ax = 0.005 + 0.010 * torch.rand(count, 1, 1, generator=generator)
     ay = 0.010 + 0.015 * torch.rand(count, 1, 1, generator=generator)
     af = -0.002 + 0.0045 * torch.rand(count, 1, 1, generator=generator)
+    if target_family == "high64":
+        af = 0.5 * af
     line = torch.linspace(0, 1, image_side)
     yy, xx = torch.meshgrid(line, line, indexing="ij")
     low = torch.sin(2 * math.pi * xx) * torch.sin(2 * math.pi * yy)
-    fine = torch.sin(64 * math.pi * xx) * torch.sin(64 * math.pi * yy)
+    cycles = 64 if target_family == "high64" else 32
+    fine = torch.sin(2 * cycles * math.pi * xx) * torch.sin(
+        2 * cycles * math.pi * yy)
     target = torch.stack((xx + ax * low + af * fine,
                           yy + ay * low + af * fine), dim=-1)
     source_indices = torch.arange(count) // variants_per_photo

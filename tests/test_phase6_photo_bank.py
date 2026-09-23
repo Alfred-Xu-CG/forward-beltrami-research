@@ -24,3 +24,7 @@ def test_unseen_rgb_photo_bank_and_variant_count():
     assert actual_names == names
     assert photo_ids == [0, 0, 1, 1, 2, 2, 3, 3]
     assert dataset[0].shape == (8, 1, 32, 32)
+    _, _, high64 = _dataset(2, 32, 703231, torch.device("cpu"), names,
+                            target_family="high64")
+    torch.testing.assert_close(high64[3][:, :2], dataset[3][:, :2])
+    torch.testing.assert_close(high64[3][:, 2], 0.5 * dataset[3][:, 2])
