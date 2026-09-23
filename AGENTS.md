@@ -1,12 +1,15 @@
 # AGENTS.md — Phase VI Dense Homeomorphism Research Mode
 
+> Phase VI's 18-hour window ended on 2026-09-23 at 12:59:58 UTC; see `docs/research_phase6/END_TIME.json`. The instructions below record the completed Phase VI run, including its user-specific no-installed-skills rule. They do not silently define a new research phase.
+
 ## Mission
 
-The current 18-hour research objective is a fast, memory-efficient, differentiable neural layer that maps multiscale latent variables to a piecewise-affine homeomorphism on a dense triangulated rectangle. The authoritative plan and start time are:
+The completed Phase VI research objective was to investigate a fast, memory-efficient, differentiable neural layer that maps multiscale latent variables to a piecewise-affine homeomorphism on a dense triangulated rectangle. The authoritative plan and timing are:
 
 ```text
 docs/research_phase6/PLAN.md
 docs/research_phase6/START_TIME.json
+docs/research_phase6/END_TIME.json
 ```
 
 Explore all three routes: A, explicit dense-grid monotone construction; B, local patch maps and exact PL composition; C, multiscale positive conductances and structured solves. Woodbury is one candidate within C. Theory and counterexamples guide implementation but do not replace it. At least two distinct mechanisms should reach actual 257×257 control-vertex forward/VJP tests. Do not stop other routes after one succeeds.

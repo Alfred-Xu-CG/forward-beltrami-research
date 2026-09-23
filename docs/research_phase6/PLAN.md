@@ -1,6 +1,6 @@
 # Phase VI 计划书：稠密矩形三角网格上的快速可微 homeomorphism layer
 
-> **状态：执行中。** 本轮 18 小时目标模式的真实开始时间见 [START_TIME.json](START_TIME.json)。
+> **状态：18小时研究窗口已完成；通用目标solver尚未实现。** 真实起止时间见 [START_TIME.json](START_TIME.json) 与 [END_TIME.json](END_TIME.json)，技术结论见 [REPORT.md](REPORT.md)。
 >
 > **执行模型：GPT-6 Sol。** 这是一项用户选择，不以未经核实的价格或性能比较作为依据。
 

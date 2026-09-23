@@ -1,6 +1,6 @@
 # Phase VI 执行规范：Dense Homeomorphism Research Mode
 
-> **状态：执行中。** 当前阶段规则已纳入根 `AGENTS.md`；以 [PLAN.md](PLAN.md) 为研究议程。
+> **状态：Phase VI研究窗口已完成。** 本文件记录本轮执行规范；真实起止时间见 [START_TIME.json](START_TIME.json) 和 [END_TIME.json](END_TIME.json)，技术结论见 [REPORT.md](REPORT.md)。
 
 ## 核心约束
 
