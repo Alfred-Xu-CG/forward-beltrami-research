@@ -11,6 +11,7 @@ from phase6_evaluate_heldout_beltrami import _mu, _target_on_faces
 from qcopt.mesh import structured_rectangle
 from qcopt.neural_bijection.dense import (
     HierarchicalConvexQuadFreeCenterLayer,
+    SafeColoredVertexRelaxation,
     certify_convex_quad_output,
     evaluate_structured_p1_with_jacobian,
 )
@@ -22,8 +23,8 @@ def main() -> None:
     parser.add_argument("--target-kind", choices=("base", "high32"), default=None, help="for older checkpoints without target_kind")
     args = parser.parse_args()
     state = torch.load(args.checkpoint, map_location="cpu", weights_only=True)
-    if state["method"] != "convex_quad_free" or state["side"] != 257:
-        raise ValueError("requires a 257-square free-center direct-map checkpoint")
+    if state["method"] not in ("convex_quad_free", "convex_quad_local") or state["side"] != 257:
+        raise ValueError("requires a 257-square free-center or local-relaxation direct-map checkpoint")
     target_kind = state.get("target_kind", args.target_kind or "base")
     if target_kind == "base":
         coefficients = torch.tensor([[0.03, 0.05, 0.003]], dtype=torch.float32)
@@ -36,14 +37,16 @@ def main() -> None:
     decoder = HierarchicalConvexQuadFreeCenterLayer(257)
     parameters = state["parameters"]
     levels = len(decoder.latent_sides)
-    if len(parameters) != 1 + 3 * levels:
+    if len(parameters) != 1 + 3 * levels + (state["method"] == "convex_quad_local"):
         raise ValueError("checkpoint latent count mismatch")
     root = parameters[0]
     horizontal = parameters[1:1 + levels]
     vertical = parameters[1 + levels:1 + 2 * levels]
-    centers = parameters[1 + 2 * levels:]
+    centers = parameters[1 + 2 * levels:1 + 3 * levels]
     with torch.no_grad():
         control = decoder(root, tuple(zip(horizontal, vertical, centers)))
+        if state["method"] == "convex_quad_local":
+            control = SafeColoredVertexRelaxation(257, safety_fraction=0.85)(control, parameters[-1])
         minimum_area = certify_convex_quad_output(control)
         mesh = structured_rectangle(256, 256)
         vertices = torch.tensor(mesh.vertices.copy(), dtype=torch.float32)
@@ -63,6 +66,7 @@ def main() -> None:
     print(json.dumps({
         "task": "direct_latent_oracle_not_image_training",
         "checkpoint": args.checkpoint,
+        "method": state["method"],
         "target_kind": target_kind,
         "control_vertices": 257**2,
         "control_faces": 2 * 256**2,

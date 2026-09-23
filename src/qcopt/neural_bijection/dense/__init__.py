@@ -8,6 +8,7 @@ from .reusable_interface_schur import ReusableInterfaceSchurTutteLayer
 from .alternating import ExactAlternatingMonotoneComposition, evaluate_structured_p1_with_jacobian
 from .convex_quad import HierarchicalConvexQuadLayer, HierarchicalConvexQuadFreeCenterLayer, certify_convex_quad_output, split_convex_quad_grid
 from .convex_quad_composition import CoarseFineConvexQuadComposition, CoarseFineConvexQuadResult
+from .colored_vertex_relaxation import SafeColoredVertexRelaxation, HierarchicalConvexQuadLocalLayer
 
 __all__ = [
     "DenseMonotoneGridLayer",
@@ -25,4 +26,6 @@ __all__ = [
     "split_convex_quad_grid",
     "CoarseFineConvexQuadComposition",
     "CoarseFineConvexQuadResult",
+    "SafeColoredVertexRelaxation",
+    "HierarchicalConvexQuadLocalLayer",
 ]

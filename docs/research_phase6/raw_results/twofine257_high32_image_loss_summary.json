@@ -1,0 +1,53 @@
+{
+  "task": "image_to_latent_heldout_training_without_target_map_in_loss",
+  "host": "element-codex-mihomo-codex",
+  "dtype": "float32",
+  "cpu_threads": 4,
+  "control_sides": [257, 257],
+  "image_side": 512,
+  "batch": 2,
+  "train_count": 32,
+  "test_count": 8,
+  "train_seed": 55101,
+  "test_seed": 99317,
+  "steps": 1000,
+  "learning_rate": 0.003,
+  "encoder_parameters": 2012,
+  "runs": [
+    {
+      "image_gradient_weight": 0,
+      "heldout_image_mse": 0.0005049049213994294,
+      "heldout_query_map_rmse": 0.0019300452268502253,
+      "minimum_factor_signed_area_ratios": [0.09932287037372589, 0.7562807202339172],
+      "median_forward_seconds": 0.05103878676891327,
+      "median_backward_seconds": 0.06948894634842873,
+      "training_seconds": 123.49661890417337,
+      "sampled_peak_process_rss_bytes": 989728768,
+      "checkpoint": "checkpoints/twofine257_high32_image1000.pt"
+    },
+    {
+      "image_gradient_weight": 10,
+      "heldout_image_mse": 0.0005076653105788864,
+      "heldout_image_gradient_mse": 0.000014571947076547076,
+      "heldout_query_map_rmse": 0.001898777014847757,
+      "minimum_factor_signed_area_ratios": [0.33387741446495056, 0.7737340331077576],
+      "median_forward_seconds": 0.05157674849033356,
+      "median_backward_seconds": 0.07153263315558434,
+      "training_seconds": 126.365892957896,
+      "sampled_peak_process_rss_bytes": 997199872,
+      "checkpoint": "checkpoints/twofine257_high32_imgrad10_1000.pt"
+    },
+    {
+      "image_gradient_weight": 100,
+      "heldout_image_mse": 0.0005863196929567493,
+      "heldout_image_gradient_mse": 0.000014720315903105075,
+      "heldout_query_map_rmse": 0.001976162074529403,
+      "minimum_factor_signed_area_ratios": [0.7957611680030823, 0.7955586314201355],
+      "median_forward_seconds": 0.05539891496300697,
+      "median_backward_seconds": 0.08051055669784546,
+      "training_seconds": 137.93613823503256,
+      "sampled_peak_process_rss_bytes": 1014960128,
+      "checkpoint": "checkpoints/twofine257_high32_imgrad100_1000.pt"
+    }
+  ]
+}

@@ -51,3 +51,22 @@ def test_coarse_fine_root_vjp_matches_directional_difference() -> None:
         - objective(coarse_root - step * directions[0], fine_root - step * directions[1])
     ) / (2 * step)
     assert torch.allclose(predicted, observed, rtol=1e-5, atol=1e-6)
+
+
+def test_two_equal_fine_factors_can_bend_a_dyadic_edge() -> None:
+    torch.manual_seed(20260923)
+    layer = CoarseFineConvexQuadComposition(17, 17, 17)
+    layer.prepare(device="cpu", dtype=torch.float64)
+
+    def random_levels(factor):
+        return tuple(tuple(0.3 * torch.randn_like(value) for value in level) for level in _zero_levels(factor, torch.float64))
+
+    first = random_levels(layer.coarse)
+    second = random_levels(layer.fine)
+    result = layer(0.3 * torch.randn(1, 1, 1, 2, dtype=torch.float64), first,
+                   0.3 * torch.randn(1, 1, 1, 2, dtype=torch.float64), second)
+    assert all(certify_convex_quad_output(control) > 0 for control in result.controls)
+    points = result.dense[0]
+    left, middle, right = points[8, 4], points[8, 5], points[8, 6]
+    cross = torch.linalg.det(torch.stack((middle - left, right - left)))
+    assert abs(cross.item()) > 1e-9

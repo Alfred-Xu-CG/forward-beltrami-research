@@ -25,6 +25,7 @@ from qcopt.neural_bijection.dense import (
     CoarseFineConvexQuadComposition,
     ExactAlternatingMonotoneComposition,
     HierarchicalConvexQuadFreeCenterLayer,
+    HierarchicalConvexQuadLocalLayer,
     MultiscaleMonotoneGridLayer,
 )
 from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
@@ -149,11 +150,13 @@ class ConvexQuadImageEncoder(torch.nn.Module):
             torch.nn.init.zeros_(head.weight)
             torch.nn.init.zeros_(head.bias)
 
-    def forward(
-        self, pair: torch.Tensor
-    ) -> tuple[torch.Tensor, tuple[tuple[torch.Tensor, torch.Tensor, torch.Tensor], ...]]:
+    def features(self, pair: torch.Tensor) -> torch.Tensor:
         reduced = F.interpolate(pair, size=(self.side, self.side), mode="bilinear", align_corners=True)
-        fine = self.body(reduced)
+        return self.body(reduced)
+
+    def latents_from_features(
+        self, fine: torch.Tensor
+    ) -> tuple[torch.Tensor, tuple[tuple[torch.Tensor, torch.Tensor, torch.Tensor], ...]]:
         root = self.root_head(fine.mean(dim=(2, 3)))[:, None, None, :]
         levels = []
         for index, current in enumerate(self.latent_sides):
@@ -171,6 +174,26 @@ class ConvexQuadImageEncoder(torch.nn.Module):
             levels.append((horizontal, vertical, center))
         return root, tuple(levels)
 
+    def forward(self, pair: torch.Tensor):
+        return self.latents_from_features(self.features(pair))
+
+
+class ConvexQuadLocalImageEncoder(torch.nn.Module):
+    """Shared fine features predict A2 hierarchy and one safe local vertex pass."""
+
+    def __init__(self, side: int, *, width: int = 8, head_mode: str, body_mode: str) -> None:
+        super().__init__()
+        self.base = ConvexQuadImageEncoder(side, width=width, head_mode=head_mode, body_mode=body_mode)
+        self.local_head = torch.nn.Conv2d(width, 2, 1)
+        torch.nn.init.zeros_(self.local_head.weight)
+        torch.nn.init.zeros_(self.local_head.bias)
+
+    def forward(self, pair: torch.Tensor):
+        features = self.base.features(pair)
+        root, levels = self.base.latents_from_features(features)
+        local_logits = self.local_head(features)[:, :, 1:-1, 1:-1].permute(0, 2, 3, 1)
+        return root, levels, local_logits
+
 
 class CoarseFineConvexQuadImageEncoder(torch.nn.Module):
     """Separate image heads for the coarse and fine exact-composition factors."""
@@ -186,7 +209,7 @@ class CoarseFineConvexQuadImageEncoder(torch.nn.Module):
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--method", choices=("A", "AB2", "A2", "CF2"), required=True)
+    parser.add_argument("--method", choices=("A", "AB2", "A2", "A3", "CF2"), required=True)
     parser.add_argument("--side", type=int, default=257)
     parser.add_argument("--coarse-side", type=int, default=17)
     parser.add_argument("--image-side", type=int, default=512)
@@ -196,6 +219,7 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=1000)
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--strain-weight", type=float, default=0.0)
+    parser.add_argument("--image-gradient-weight", type=float, default=0.0)
     parser.add_argument("--a2-head-mode", choices=("multilevel", "shared"), default="multilevel")
     parser.add_argument("--a2-body-mode", choices=("local", "context"), default="local")
     parser.add_argument("--a2-width", type=int, default=8)
@@ -205,15 +229,17 @@ def main() -> None:
     parser.add_argument("--save-state", default=None)
     parser.add_argument("--load-state", default=None, help="warm-start encoder weights; Adam state is restarted")
     args = parser.parse_args()
-    if min(args.side, args.image_side, args.train_count, args.test_count, args.batch, args.steps, args.a2_width) < 1 or args.strain_weight < 0:
+    if min(args.side, args.image_side, args.train_count, args.test_count, args.batch, args.steps, args.a2_width) < 1 or args.strain_weight < 0 or args.image_gradient_weight < 0:
         raise ValueError("all dimensions, counts and steps must be positive")
+    if args.oracle_map_loss and args.image_gradient_weight:
+        raise ValueError("image-gradient loss is for image-only training")
     if args.strain_weight and args.method != "A2":
         raise ValueError("the current strain ablation is defined only for A2")
-    if args.a2_head_mode != "multilevel" and args.method not in ("A2", "CF2"):
+    if args.a2_head_mode != "multilevel" and args.method not in ("A2", "A3", "CF2"):
         raise ValueError("a2-head-mode applies only to A2 or CF2")
-    if args.a2_body_mode != "local" and args.method not in ("A2", "CF2"):
+    if args.a2_body_mode != "local" and args.method not in ("A2", "A3", "CF2"):
         raise ValueError("a2-body-mode applies only to A2 or CF2")
-    if args.a2_width != 8 and args.method not in ("A2", "CF2"):
+    if args.a2_width != 8 and args.method not in ("A2", "A3", "CF2"):
         raise ValueError("a2-width applies only to A2 or CF2")
     if args.oracle_map_loss and args.method != "A2":
         raise ValueError("the oracle-map-loss diagnostic is defined only for A2")
@@ -233,6 +259,9 @@ def main() -> None:
     elif args.method == "A2":
         encoder = ConvexQuadImageEncoder(args.side, width=args.a2_width, head_mode=args.a2_head_mode, body_mode=args.a2_body_mode).to(device)
         decoder = HierarchicalConvexQuadFreeCenterLayer(args.side)
+    elif args.method == "A3":
+        encoder = ConvexQuadLocalImageEncoder(args.side, width=args.a2_width, head_mode=args.a2_head_mode, body_mode=args.a2_body_mode).to(device)
+        decoder = HierarchicalConvexQuadLocalLayer(args.side)
     elif args.method == "CF2":
         encoder = CoarseFineConvexQuadImageEncoder(
             args.coarse_side, args.side, width=args.a2_width, head_mode=args.a2_head_mode, body_mode=args.a2_body_mode
@@ -257,7 +286,7 @@ def main() -> None:
         indices: torch.Tensor,
         dataset: tuple[torch.Tensor, ...],
         measure_map_error: bool = True,
-    ) -> tuple[torch.Tensor, torch.Tensor | None, tuple[torch.Tensor, ...]]:
+    ) -> tuple[torch.Tensor, torch.Tensor | None, tuple[torch.Tensor, ...], torch.Tensor]:
         fixed, moving = (part[indices] for part in dataset[:2])
         latent = encoder(torch.cat((fixed, moving), dim=1))
         if args.method == "A":
@@ -265,6 +294,10 @@ def main() -> None:
             predicted = table.interpolate(control.reshape(len(indices), -1, 2))
             controls = (control,)
         elif args.method == "A2":
+            control = decoder(*latent)
+            predicted = table.interpolate(control.reshape(len(indices), -1, 2))
+            controls = (control,)
+        elif args.method == "A3":
             control = decoder(*latent)
             predicted = table.interpolate(control.reshape(len(indices), -1, 2))
             controls = (control,)
@@ -277,13 +310,19 @@ def main() -> None:
             predicted = result.dense
             controls = result.controls
         warped = F.grid_sample(moving, 2 * predicted - 1, mode="bilinear", padding_mode="border", align_corners=True)
-        image_mse = (warped - fixed).square().mean()
+        residual = warped - fixed
+        image_mse = residual.square().mean()
+        image_gradient_mse = 0.5 * (
+            (residual[..., 1:] - residual[..., :-1]).square().mean()
+            + (residual[..., 1:, :] - residual[..., :-1, :]).square().mean()
+        )
         map_mse = (predicted - dataset[2][indices]).square().mean() if measure_map_error else None
-        return image_mse, map_mse, controls
+        return image_mse, map_mse, controls, image_gradient_mse
 
     @torch.no_grad()
     def evaluate(dataset: tuple[torch.Tensor, ...]) -> dict[str, object]:
         image_sum = 0.0
+        image_gradient_sum = 0.0
         map_sum = 0.0
         strain_sum = 0.0
         minimum = [float("inf")] * (2 if args.method in ("AB2", "CF2") else 1)
@@ -291,9 +330,10 @@ def main() -> None:
         for start in range(0, count, args.batch):
             stop = min(start + args.batch, count)
             indices = torch.arange(start, stop, device=device)
-            image_mse, map_mse, controls = forward(indices, dataset)
+            image_mse, map_mse, controls, image_gradient_mse = forward(indices, dataset)
             assert map_mse is not None
             image_sum += image_mse.item() * (stop - start)
+            image_gradient_sum += image_gradient_mse.item() * (stop - start)
             map_sum += map_mse.item() * (stop - start)
             if args.method == "A2":
                 strain_sum += _edge_strain(controls[0]).item() * (stop - start)
@@ -301,6 +341,7 @@ def main() -> None:
                 minimum[index] = min(minimum[index], _minimum_area_ratio(control))
         result = {
             "image_mse": image_sum / count,
+            "image_gradient_mse": image_gradient_sum / count,
             "map_rmse": math.sqrt(map_sum / count),
             "minimum_layer_signed_area_ratios": minimum,
         }
@@ -323,8 +364,10 @@ def main() -> None:
         draw = torch.randint(args.train_count, (args.batch,), generator=train_generator).to(device)
         optimizer.zero_grad(set_to_none=True)
         began = time.perf_counter()
-        image_mse, map_mse, controls = forward(draw, train, measure_map_error=args.oracle_map_loss)
+        image_mse, map_mse, controls, image_gradient_mse = forward(draw, train, measure_map_error=args.oracle_map_loss)
         total_loss = map_mse if args.oracle_map_loss else image_mse
+        if args.image_gradient_weight:
+            total_loss = total_loss + args.image_gradient_weight * image_gradient_mse
         if args.strain_weight:
             total_loss = total_loss + args.strain_weight * _edge_strain(controls[0])
         if device.type == "cuda":
@@ -373,9 +416,10 @@ def main() -> None:
         "steps": args.steps,
         "learning_rate": args.learning_rate,
         "strain_weight": args.strain_weight,
-        "a2_head_mode": args.a2_head_mode if args.method in ("A2", "CF2") else None,
-        "a2_body_mode": args.a2_body_mode if args.method in ("A2", "CF2") else None,
-        "a2_width": args.a2_width if args.method in ("A2", "CF2") else None,
+        "image_gradient_weight": args.image_gradient_weight,
+        "a2_head_mode": args.a2_head_mode if args.method in ("A2", "A3", "CF2") else None,
+        "a2_body_mode": args.a2_body_mode if args.method in ("A2", "A3", "CF2") else None,
+        "a2_width": args.a2_width if args.method in ("A2", "A3", "CF2") else None,
         "oracle_map_loss": args.oracle_map_loss,
         "target_family": args.target_family,
         "loaded_state": args.load_state,

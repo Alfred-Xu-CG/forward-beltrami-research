@@ -1,0 +1,33 @@
+{
+  "task": "direct_latent_coordinate_supervised_oracle_not_image_training",
+  "host": "element-codex-mihomo-codex",
+  "dtype": "float32",
+  "cpu_threads": 4,
+  "control_sides": [257, 257],
+  "control_vertices_per_factor": 66049,
+  "control_faces_per_factor": 131072,
+  "latent_values": 175772,
+  "query_vertices": 66049,
+  "target_family": "high32",
+  "stages": [
+    {
+      "steps": 1000,
+      "learning_rate": 0.05,
+      "wall_seconds": 24.98599273338914,
+      "vertex_coordinate_rmse": 0.00026883199461735785,
+      "maximum_pointwise_coordinate_error": 0.0017372219590470195,
+      "minimum_factor_signed_area_ratios": [0.3166753351688385, 0.47321417927742004],
+      "checkpoint": "checkpoints/twofine257_high32_mapfit1000.pt"
+    },
+    {
+      "additional_steps": 2000,
+      "total_steps": 3000,
+      "learning_rate": 0.01,
+      "wall_seconds": 46.167278576642275,
+      "vertex_coordinate_rmse": 0.00019098256598226726,
+      "maximum_pointwise_coordinate_error": 0.0013744039461016655,
+      "minimum_factor_signed_area_ratios": [0.3135083019733429, 0.42689424753189087],
+      "checkpoint": "checkpoints/twofine257_high32_mapfit3000.pt"
+    }
+  ]
+}

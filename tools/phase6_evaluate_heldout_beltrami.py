@@ -1,4 +1,4 @@
-"""Evaluate face-wise Beltrami geometry of an image-trained A2 checkpoint."""
+"""Evaluate face-wise Beltrami geometry of an image-trained A2 or A3 checkpoint."""
 
 from __future__ import annotations
 
@@ -10,10 +10,11 @@ import time
 import torch
 import torch.nn.functional as F
 
-from phase6_train_multisample_image import ConvexQuadImageEncoder, make_dataset
+from phase6_train_multisample_image import ConvexQuadImageEncoder, ConvexQuadLocalImageEncoder, make_dataset
 from qcopt.mesh import structured_rectangle
 from qcopt.neural_bijection.dense import (
     HierarchicalConvexQuadFreeCenterLayer,
+    HierarchicalConvexQuadLocalLayer,
     certify_convex_quad_output,
     evaluate_structured_p1_with_jacobian,
 )
@@ -62,11 +63,13 @@ def main() -> None:
     args = parser.parse_args()
     device = torch.device(args.device)
     state = torch.load(args.checkpoint, map_location=device, weights_only=False)
-    if state["args"]["method"] != "A2" or state["args"]["side"] != args.side:
-        raise ValueError("checkpoint does not match A2 and requested side")
+    method = state["args"]["method"]
+    if method not in ("A2", "A3") or state["args"]["side"] != args.side:
+        raise ValueError("checkpoint does not match A2/A3 and requested side")
     target_family = state["args"].get("target_family", "base")
     fine_cycles = 8 if target_family == "base" else 32
-    encoder = ConvexQuadImageEncoder(
+    encoder_type = ConvexQuadImageEncoder if method == "A2" else ConvexQuadLocalImageEncoder
+    encoder = encoder_type(
         args.side,
         width=state["args"].get("a2_width", 8),
         head_mode=state["args"].get("a2_head_mode", "multilevel"),
@@ -74,7 +77,7 @@ def main() -> None:
     ).to(device)
     encoder.load_state_dict(state["encoder"])
     encoder.eval()
-    decoder = HierarchicalConvexQuadFreeCenterLayer(args.side)
+    decoder = HierarchicalConvexQuadFreeCenterLayer(args.side) if method == "A2" else HierarchicalConvexQuadLocalLayer(args.side)
     fixed, moving, true_map, coefficients = (
         value.to(device)
         for value in make_dataset(args.test_count, args.image_side, 99317, return_coefficients=True, target_family=target_family)
@@ -143,7 +146,7 @@ def main() -> None:
             count += current
     print(json.dumps({
         "checkpoint": args.checkpoint,
-        "method": "A2_free_center_image_trained",
+        "method": f"{method}_image_trained",
         "target_family": target_family,
         "representation": "original_grid_P1",
         "control_side": args.side,

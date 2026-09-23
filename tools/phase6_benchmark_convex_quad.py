@@ -14,7 +14,7 @@ import torch
 import torch.nn.functional as F
 
 from qcopt.mesh import structured_rectangle
-from qcopt.neural_bijection.dense import HierarchicalConvexQuadFreeCenterLayer, certify_convex_quad_output
+from qcopt.neural_bijection.dense import HierarchicalConvexQuadFreeCenterLayer, SafeColoredVertexRelaxation, certify_convex_quad_output
 from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 
 
@@ -39,6 +39,8 @@ def main() -> None:
     parser.add_argument("--repeat", type=int, default=5)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--dtype", choices=("float32", "float64"), default="float32")
+    parser.add_argument("--local-relaxation", action="store_true", help="add one four-color original-grid P1 latent pass")
+    parser.add_argument("--safety-fraction", type=float, default=0.85)
     args = parser.parse_args()
     if args.side < 5 or args.image_side < 2 or args.batch < 1 or args.repeat < 1:
         raise ValueError("invalid grid, batch, or repeat")
@@ -47,6 +49,7 @@ def main() -> None:
     dtype = getattr(torch, args.dtype)
     setup_start = time.perf_counter()
     decoder = HierarchicalConvexQuadFreeCenterLayer(args.side)
+    relaxation = SafeColoredVertexRelaxation(args.side, safety_fraction=args.safety_fraction).to(device) if args.local_relaxation else None
     root = torch.nn.Parameter(0.08 * torch.randn(args.batch, 1, 1, 2, device=device, dtype=dtype))
     latents = tuple(
         (
@@ -56,7 +59,8 @@ def main() -> None:
         )
         for current in decoder.latent_sides
     )
-    parameters = (root, *(parameter for level in latents for parameter in level))
+    local_logits = torch.nn.Parameter(0.08 * torch.randn(args.batch, args.side - 2, args.side - 2, 2, device=device, dtype=dtype)) if args.local_relaxation else None
+    parameters = (root, *(parameter for level in latents for parameter in level), *((local_logits,) if local_logits is not None else ()))
     table = StructuredDenseQueryTable.from_mesh(
         structured_rectangle(args.side - 1, args.side - 1),
         height=args.image_side,
@@ -73,6 +77,8 @@ def main() -> None:
 
     def decode() -> tuple[torch.Tensor, torch.Tensor]:
         control = decoder(root, latents)
+        if relaxation is not None:
+            control = relaxation(control, local_logits)
         dense = table.interpolate(control.reshape(args.batch, -1, 2))
         return control, dense
 
@@ -111,7 +117,7 @@ def main() -> None:
             parameter.grad = None
     minimum_area = certify_convex_quad_output(control)
     print(json.dumps({
-        "method": "A2_free_center",
+        "method": "A3_colored_local" if args.local_relaxation else "A2_free_center",
         "representation": "original_grid_P1",
         "side": args.side,
         "control_vertices": args.side**2,

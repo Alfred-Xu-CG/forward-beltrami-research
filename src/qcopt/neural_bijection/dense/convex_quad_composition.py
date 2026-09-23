@@ -23,8 +23,8 @@ class CoarseFineConvexQuadComposition(torch.nn.Module):
 
     def __init__(self, coarse_side: int, fine_side: int, query_side: int) -> None:
         super().__init__()
-        if not 3 <= coarse_side < fine_side or query_side < 2:
-            raise ValueError("require 3 <= coarse_side < fine_side and query_side >= 2")
+        if not 3 <= coarse_side <= fine_side or query_side < 2:
+            raise ValueError("require 3 <= first-side <= second-side and query-side >= 2")
         self.coarse = HierarchicalConvexQuadFreeCenterLayer(coarse_side)
         self.fine = HierarchicalConvexQuadFreeCenterLayer(fine_side)
         self.coarse_table = StructuredDenseQueryTable.from_mesh(

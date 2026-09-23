@@ -44,6 +44,19 @@ def evaluate(checkpoint: str, batch_faces: int) -> dict:
     centroids = vertices[faces].mean(dim=1)
     target_vertices, _ = _target_on_faces(vertices[None], coefficients, cycles)
     target_p1 = target_vertices.reshape(1, side, side, 2)
+    fine_projection = None
+    if state["target_kind"] == "high32":
+        with torch.no_grad():
+            first_vertices, _ = evaluate_structured_p1_with_jacobian(coarse, vertices[None])
+            composed_vertices, _ = evaluate_structured_p1_with_jacobian(fine, first_vertices)
+            basis = torch.sin(64 * math.pi * vertices[:, 0]) * torch.sin(64 * math.pi * vertices[:, 1])
+            denominator = basis.square().sum()
+            predicted_amplitude = ((composed_vertices - vertices[None]) * basis[None, :, None]).sum(dim=1) / denominator
+            target_amplitude = ((target_vertices - vertices[None]) * basis[None, :, None]).sum(dim=1) / denominator
+            fine_projection = {
+                "predicted_xy": predicted_amplitude[0].tolist(),
+                "target_xy": target_amplitude[0].tolist(),
+            }
     map_squared = mu_squared = floor_squared = 0.0
     maximum_mu = 0.0
     minimum_det = float("inf")
@@ -78,6 +91,7 @@ def evaluate(checkpoint: str, batch_faces: int) -> dict:
         "sampled_target_P1_centroid_beltrami_floor": math.sqrt(floor_squared / count),
         "maximum_predicted_beltrami_modulus_at_centroids": maximum_mu,
         "minimum_chain_jacobian_determinant_at_centroids": minimum_det,
+        "fine_projection_on_original_vertices": fine_projection,
     }
 
 
