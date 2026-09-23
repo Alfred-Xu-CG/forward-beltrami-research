@@ -29,11 +29,15 @@ def main() -> None:
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--dtype", choices=("float32", "float64"), default="float32")
     parser.add_argument("--checkpoint", action="store_true")
+    parser.add_argument("--minimum-jacobian", type=float, default=0.05)
+    parser.add_argument("--seed-std", type=float, default=0.08)
+    parser.add_argument("--level-std", type=float, default=0.03)
+    parser.add_argument("--random-seed", type=int, default=20260924)
     args = parser.parse_args()
     if args.repeats < 1 or args.batch < 1 or args.image_side < 2:
         raise ValueError("repeats, batch and image side must be positive")
     device, dtype = torch.device(args.device), getattr(torch, args.dtype)
-    torch.manual_seed(20260924)
+    torch.manual_seed(args.random_seed)
     if device.type == "cpu":
         torch.set_num_threads(min(8, torch.get_num_threads()))
 
@@ -44,15 +48,16 @@ def main() -> None:
     began = time.perf_counter()
     decoder = ForwardP1Pyramid(
         args.seed_side, args.side, seed_passes=args.seed_passes,
+        minimum_jacobian=args.minimum_jacobian if args.minimum_jacobian > 0 else None,
         checkpoint_passes=args.checkpoint,
     ).to(device)
     seed = [
-        (0.08 * torch.randn(args.batch, args.seed_side - 2, args.seed_side - 2, 2,
+        (args.seed_std * torch.randn(args.batch, args.seed_side - 2, args.seed_side - 2, 2,
                             dtype=dtype, device=device)).requires_grad_()
         for _ in range(args.seed_passes)
     ]
     levels = [
-        (0.03 * torch.randn(args.batch, n - 2, n - 2, 2,
+        (args.level_std * torch.randn(args.batch, n - 2, n - 2, 2,
                             dtype=dtype, device=device)).requires_grad_()
         for n in decoder.level_sides
     ]
@@ -108,11 +113,26 @@ def main() -> None:
         vjp_times.append(end - forward_end)
         for latent in seed + levels:
             latent.grad = None
+    allocated = torch.cuda.max_memory_allocated(device) if device.type == "cuda" else None
+    reserved = torch.cuda.max_memory_reserved(device) if device.type == "cuda" else None
     with torch.no_grad():
-        minimum = certify_convex_quad_output(control)
+        mapped = control.to(torch.float64)
+        a, b = mapped[:, :-1, :-1], mapped[:, :-1, 1:]
+        c, d = mapped[:, 1:, 1:], mapped[:, 1:, :-1]
+        def cross(first: torch.Tensor, second: torch.Tensor) -> torch.Tensor:
+            return first[..., 0] * second[..., 1] - first[..., 1] * second[..., 0]
+        areas = torch.cat((cross(b - a, c - a).flatten(), cross(c - a, d - a).flatten()))
+        minimum = float(areas.min() * (args.side - 1) ** 2)
+        nonpositive = int((areas <= 0).sum())
+        try:
+            certify_convex_quad_output(control)
+            certificate_error = None
+        except ValueError as exc:
+            certificate_error = str(exc)
     print(json.dumps({
         "method": "phase7_forward_p1_pyramid",
-        "output": "single_fixed_original_grid_P1_homeomorphism",
+        "output_representation": "single_fixed_original_grid_P1",
+        "numerically_certified_homeomorphism": certificate_error is None,
         "side": args.side,
         "control_vertices": args.side ** 2,
         "control_faces": 2 * (args.side - 1) ** 2,
@@ -128,17 +148,23 @@ def main() -> None:
         "device_name": torch.cuda.get_device_name(device) if device.type == "cuda" else platform.processor(),
         "torch_version": torch.__version__,
         "checkpoint_passes": args.checkpoint,
+        "configured_minimum_jacobian": args.minimum_jacobian,
+        "seed_std": args.seed_std,
+        "level_std": args.level_std,
+        "random_seed": args.random_seed,
         "setup_seconds": setup_seconds,
         "median_full_forward_seconds": statistics.median(forward_times),
         "median_full_vjp_seconds": statistics.median(vjp_times),
         "forward_seconds": forward_times,
         "vjp_seconds": vjp_times,
         "minimum_signed_area_ratio": minimum,
+        "nonpositive_faces": nonpositive,
+        "certificate_error": certificate_error,
         "gradients_finite": gradients_finite,
         "nonzero_gradient_latents": nonzero_gradient_latents,
-        "last_image_loss": float(loss),
-        "peak_cuda_allocated_bytes": torch.cuda.max_memory_allocated(device) if device.type == "cuda" else None,
-        "peak_cuda_reserved_bytes": torch.cuda.max_memory_reserved(device) if device.type == "cuda" else None,
+        "last_image_loss": float(loss.detach()),
+        "peak_cuda_allocated_bytes": allocated,
+        "peak_cuda_reserved_bytes": reserved,
     }, sort_keys=True))
 
 

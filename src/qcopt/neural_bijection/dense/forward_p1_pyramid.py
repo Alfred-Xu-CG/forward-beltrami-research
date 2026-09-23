@@ -54,6 +54,7 @@ class ForwardP1Pyramid(nn.Module):
         seed_passes: int = 2,
         safety_fraction: float = 0.85,
         raw_span: float = 2.0,
+        minimum_jacobian: float | None = 0.05,
         checkpoint_passes: bool = False,
     ) -> None:
         super().__init__()
@@ -66,11 +67,14 @@ class ForwardP1Pyramid(nn.Module):
             sides.append(side)
         if side != final_side:
             raise ValueError("final_side must be reachable by dyadic refinement")
+        if minimum_jacobian is not None and not 0.0 < minimum_jacobian < 1.0:
+            raise ValueError("minimum_jacobian must be in (0,1) or None")
         self.seed_side = seed_side
         self.final_side = final_side
         self.seed_passes = seed_passes
         self.level_sides = tuple(sides)
         self.checkpoint_passes = checkpoint_passes
+        self.minimum_jacobian = minimum_jacobian
         self.seed_update = SafeColoredVertexRelaxation(
             seed_side, safety_fraction=safety_fraction,
             motion_mode="radial", raw_span=raw_span,
@@ -88,9 +92,16 @@ class ForwardP1Pyramid(nn.Module):
             self.register_buffer(f"_new_mask_{n}", is_new, persistent=False)
 
     def _update(self, layer: nn.Module, mapped: torch.Tensor, latent: torch.Tensor) -> torch.Tensor:
+        area_floor = None
+        if self.minimum_jacobian is not None:
+            area_floor = mapped.new_full(
+                (mapped.shape[0],), self.minimum_jacobian / (mapped.shape[1] - 1) ** 2,
+            )
+        def apply(current: torch.Tensor, raw: torch.Tensor) -> torch.Tensor:
+            return layer(current, raw, area_floor=area_floor)
         if self.checkpoint_passes and torch.is_grad_enabled():
-            return checkpoint(layer, mapped, latent, use_reentrant=False)
-        return layer(mapped, latent)
+            return checkpoint(apply, mapped, latent, use_reentrant=False)
+        return apply(mapped, latent)
 
     def forward(
         self,

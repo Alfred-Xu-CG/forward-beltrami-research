@@ -4,7 +4,7 @@ import math
 
 import torch
 
-from qcopt.neural_bijection.dense import ForwardP1Pyramid, exact_dyadic_p1_refine
+from qcopt.neural_bijection.dense import ForwardP1ImageEncoder, ForwardP1Pyramid, exact_dyadic_p1_refine
 from qcopt.neural_bijection.dense.colored_vertex_relaxation import SafeColoredVertexRelaxation
 from qcopt.neural_bijection.dense.convex_quad import certify_convex_quad_output
 from qcopt.neural_bijection.dense import evaluate_structured_p1_with_jacobian
@@ -63,7 +63,7 @@ def test_pyramid_all_finite_latents_preserve_faces_and_boundary() -> None:
     levels[-1].requires_grad_()
     output = decoder(seed, levels)
     assert output.shape == (2, 33, 33, 2)
-    assert certify_convex_quad_output(output) > 0
+    assert certify_convex_quad_output(output) >= 0.05 - 1e-12
     output.square().mean().backward()
     assert torch.isfinite(levels[-1].grad).all()
     assert levels[-1].grad.abs().sum() > 0
@@ -77,6 +77,26 @@ def test_pyramid_mask_ignores_old_vertex_logits() -> None:
     original = decoder([], [base])
     output = decoder([], [changed])
     assert torch.equal(original, output)
+
+
+def test_teacher_latents_generate_full_smooth_target_across_levels() -> None:
+    decoder = ForwardP1Pyramid(5, 33, seed_passes=1, minimum_jacobian=0.05)
+    alpha = 2.0
+    seed_base = _identity(5)
+    seed_target = _smooth_target(seed_base)
+    seed_delta = seed_target - seed_base
+    seed_logits = [torch.atanh(seed_delta[:, 1:-1, 1:-1] / (alpha / 4))]
+    coarse_target = seed_target
+    level_logits = []
+    for n in decoder.level_sides:
+        target = _smooth_target(_identity(n))
+        base = exact_dyadic_p1_refine(coarse_target)
+        delta = target - base
+        level_logits.append(torch.atanh(delta[:, 1:-1, 1:-1] / (alpha / (n - 1))))
+        coarse_target = target
+    output = decoder(seed_logits, level_logits)
+    assert (output - coarse_target).abs().max() < 1e-14
+    assert certify_convex_quad_output(output) > 0.05
 
 
 def test_small_pyramid_vjp_matches_finite_difference() -> None:
@@ -95,3 +115,17 @@ def test_small_pyramid_vjp_matches_finite_difference() -> None:
     numerical = (objective(level + step * direction) - objective(level - step * direction)) / (2 * step)
     analytic = (gradient * direction).sum()
     assert torch.allclose(numerical, analytic, atol=1e-6, rtol=1e-5)
+
+
+def test_image_encoder_to_pyramid_is_differentiable_and_initially_identity() -> None:
+    decoder = ForwardP1Pyramid(5, 17, seed_passes=2)
+    encoder = ForwardP1ImageEncoder(5, decoder.level_sides, seed_passes=2, feature_side=17, width=4)
+    fixed = torch.randn(2, 1, 32, 32)
+    moving = torch.randn_like(fixed)
+    seed, levels = encoder(fixed, moving)
+    output = decoder(seed, levels)
+    assert torch.equal(output, _identity(17, dtype=torch.float32).expand_as(output))
+    assert certify_convex_quad_output(output) > 0
+    (output.square().mean()).backward()
+    assert all(torch.isfinite(head.weight.grad).all() for head in encoder.level_heads)
+    assert encoder.level_heads[-1].weight.grad.abs().sum() > 0
