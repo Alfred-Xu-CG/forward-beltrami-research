@@ -12,7 +12,7 @@
 
 面上仿射 Jacobian 写为 $J=\begin{psmallmatrix}u_x&u_y\\v_x&v_y\end{psmallmatrix}$。复导数 $f_z=\tfrac12[(u_x+v_y)+i(v_x-u_y)]$，$f_{\bar z}=\tfrac12[(u_x-v_y)+i(v_x+u_y)]$，Beltrami 系数 $\mu=f_{\bar z}/f_z$。$|\mu|<1$ 对单个非退化仿射面等价于正定向，却不能单凭它证明边界覆盖或全局单射；本报告的全局结论各自还需要边界与拼接条件。
 
-这里反复使用的一个平面 PL 判据是：在单位方形的**完整一致三角剖分**上，若连续P1映射把整个边界逐点固定，每个原三角形的有向面积都严格正，则它是方形到自身的同胚；这是[Lipman 的边界双射加一致定向充分条件](https://arxiv.org/abs/1310.0955)在平面方形上的特例。理由并非“正Jacobian单独推出全局单射”：边界恒等先使内部任一避开边像的正则点的拓扑度为1；每个落在三角形内部的原像都以正号贡献1，故这样的点恰有一个原像。再看边/顶点周围的有限个仿射扇区，若发生重叠或局部分支，对足够近的正则点会出现至少两个正号原像，与度1矛盾；故内部与边界均单射、覆盖方形，紧致域上的连续双射具有连续逆。该判据要求**全原面**与完整边界，不能由抽查一些点的正行列式替代。实际float32/float64输出另做全原面、边界、有限值扫描；这些是每次运行的数值证书，不等于对浮点误差的无条件符号证明。
+这里反复使用的一个平面 PL 判据是：在单位方形的**完整一致三角剖分**上，若连续P1映射把整个边界逐点固定，每个原三角形的有向面积都严格正，则它是方形到自身的同胚；这是[Lipman 的边界双射加一致定向充分条件](https://arxiv.org/abs/1310.0955)在平面方形上的特例。理由并非“正Jacobian单独推出全局单射”：边界恒等先使内部任一避开边像的正则点的拓扑度为1；每个落在三角形内部的原像都以正号贡献1，故这样的点恰有一个原像。再看边/顶点周围的有限个仿射扇区，若发生重叠或局部分支，对足够近的正则点会出现至少两个正号原像，与度1矛盾；故内部与边界均单射、覆盖方形，紧致域上的连续双射具有连续逆。该判据要求**全原面**与完整边界，不能由抽查一些点的正行列式替代。实现按路线在返回图上扫描全部原面；边界或者显式扫描，或者由零边界位移加恒等网格构造，并需在引用结论时注明。这样的有限精度检查不等于对浮点误差的无条件符号证明。
 
 ## 2. 共用实验口径与证据强弱
 
@@ -40,6 +40,8 @@
 
 因此又设计[64周期决定性目标](30_route_a_high64_fine_control_decisive_test.md)：512²图像每周期8像素，257²控制每周期仅4顶点，1025²控制每周期16顶点；连续真map有解析正Jacobian下界0.119。真map在257²/1025²节点P1插值的8例图像误差分别约$2.885\times10^{-6}$/$1.618\times10^{-8}$，目标确有细表示需求。冻结high32网络的A细反馈在8例使事后粗P1投影→完整F的image MSE$1.207\times10^{-5}\to8.982\times10^{-6}$、面$\mu$ RMSE0.1264→0.1094；新128例的image/map逐例改善127/128，面$\mu$改善96/128。故**细空间能贡献真实收益**，不是纯多余顶点；同时完整F的绝对误差仍远高于真map的1025节点P1插值参考，说明图像条件恢复远未解决。300步high64 image-only更新高学习率使保留指标恶化，低学习率仅微降image误差、map/面$\mu$变差；可微训练成立，但训练收益不稳。
 
+[38节细反馈频谱容量测试](38_route_a_fine_spectral_capacity_tradeoff.md)进一步固定A8权重和1025²安全P1层，只把局部位移提议保留的离散正弦模态数16→64→256。新seed128例的image MSE依次为$2.787/2.604/2.517\times10^{-5}$，全面$\mu$ RMSE却为0.15035/0.16235/0.18229；K256的位置RMSE也从0.00045809升至0.00047667。K64相对K16在128/128例降低图像误差，却仅13/128例改善面$\mu$ MSE；K256相对K16是127/128与6/128。所有返回细原面仍正向、最大$|\mu|<0.8$，但裕度较薄。该冻结实验说明单纯扩大图像条件提议频谱可以继续拟合像素而恶化导数，不能据此说较大的最优表示空间必然差；top-K筛选非线性、没有同K重新训练，也未解决细latent推断。
+
 [32节显存—速度消融](32_route_a_activation_memory_tradeoff.md)在同一A输出上比较三种反传激活策略：默认仅重算安全更新的forward/VJP约79/205ms、peak allocated/reserved 2.150/2.418GB；整次反馈重算约79/209ms、1.960/2.196GB；不重算约78/161ms、3.050/3.402GB。9→33测试的输出及输入VJP逐元素一致，1025²输出和编码器梯度范数一致。当前保留居中的默认策略，部署时可按显存/吞吐选其他模式；没有以单个显存数字宣称已解决大batch问题。
 
 [33节真实批量扩展](33_route_a_million_control_batch_scaling.md)进一步在同一空闲GPU的1025²控制层上测batch 1/2/4/8、完整image-to-loss forward/VJP。默认激活策略的活动显存为2.127/3.853/7.310/14.140GB，完整批次时间为0.286/0.480/0.850/1.632秒；batch8每秒处理4.90张，比batch1的3.49张约快40%，但显存经验增量约每张1.72GB。batch8若重算整个细反馈，活动显存降至12.616GB而VJP变慢；不重算则升至21.307GB、VJP缩短。每批所有细面证书通过，反传至编码器的梯度非零有限。这是可训练可扩展的实际证据，也明确显示其显存仍不低。
@@ -62,7 +64,9 @@
 
 $$A(c)Y_I=b(c,Y_{\partial}),\qquad A(c)=B_I^{\mathsf T}\operatorname{diag}(c)B_I.$$
 
-在连通网格上 $A$ 对称正定，因为 $u^TAu=\sum_ec_e(u_i-u_j)^2>0$ 对非零零边界 $u$ 成立。内部平衡顶点为邻点的严格正凸组合。不过本方形边界含共线顶点，不能直接套仅要求“严格凸多边形各顶点”的简述版本。[Floater 2003 的适用条件与本网格 dividing-edge 检查](19_square_boundary_tutte_theorem.md)说明：固定方形边界的连续 PL 映射，在精确平衡解下无内部 dividing edge（端点都在源边界但自身不属于源边界的内部边）映到目标边界，因而是同胚。浮点预条件共轭梯度（preconditioned conjugate gradient，PCG）输出并非精确平衡解；实现报告真实残差并另逐面/边界扫描，不能用残差代替几何检查。
+在连通网格上 $A$ 对称正定，因为 $u^TAu=\sum_ec_e(u_i-u_j)^2>0$ 对非零零边界 $u$ 成立。内部平衡顶点为邻点的严格正凸组合。不过本方形边界含共线顶点，不能直接套仅要求“严格凸多边形各顶点”的简述版本。[Floater 2003 的适用条件与本网格 dividing-edge 检查](19_square_boundary_tutte_theorem.md)说明：固定方形边界的连续 PL 映射，在精确平衡解下无内部 dividing edge（端点都在源边界但自身不属于源边界的内部边）映到目标边界，因而是同胚。浮点预条件共轭梯度（preconditioned conjugate gradient，PCG）输出并非精确平衡解；求解器报告**内部float64映射**的真实线性残差与全面积，photometric层转成float32后，评价又扫描**返回图**的全部原面；固定边界由构造给出，并非该评价脚本另行扫描。所报$10^{-10}$级残差不适用于转换后的float32顶点，不可用残差代替几何检查。
+
+[T+16.5小时独立复核](39_independent_final_review.md)另对一个1025²/high64样本重算：内部float64相对线性残差约$4.34\times10^{-12}$，返回float32图重新代入方程的相对残差约$1.04\times10^{-3}$，尽管两图最大顶点坐标差仅$2.98\times10^{-8}$、返回图全部原面仍正向。由此不能以内部残差夸大返回精度，也不能把离散方程残差直接当作坐标或拓扑误差。此为单例精度诊断；上述128例并未逐个重算后转换残差。
 
 实际 image-to-latent C 层用18个预设边中点空间模态 $\phi_{ke}$ 与18维图像条件系数 $a$，令 $c_e=1+15\sigma(-0.8+\sum_ka_k\phi_{ke})\in(1,16)$。模态频率包含目标族已知的32周期，所以这是任务特化而非任意 Beltrami 求解。先在均匀导纳处解析求18个映射响应 $V_k=\partial Y/\partial a_k$；输入图像的残差/梯度在128²**光度拟合点**形成18×18带岭正规方程，获得 $a$ 的初估并作有界非线性变换；最终在全257²或1025²控制网格求真正非线性的正导纳平衡解。对 $A(c)Y=b(c)$ 的隐式 VJP，先解伴随 $A(c)^T\lambda=\bar Y$，再用 $\lambda^T(db-dA\,Y)$ 回传到18系数、可训练 gain 与输入图像，无需保存 Krylov 全轨迹。细公式和差分检查见[18模态层](17_photometric_conductance_layer.md)。
 
@@ -108,4 +112,4 @@ A8 image/map最优、C面 $\mu$ 与内存最好、B完整 forward最快但 image
 
 ## 7. 代码和可复现入口
 
-Route A 的可复用层：`src/qcopt/neural_bijection/dense/nested_p1_feedback.py`，主脚本 `tools/phase6_exact_coarse_fine_feedback.py`；细空间消融见[29节](29_route_a_fine_space_audit.md)和[30节](30_route_a_high64_fine_control_decisive_test.md)，反传显存取舍见[32节](32_route_a_activation_memory_tradeoff.md)、批量扩展见[33节](33_route_a_million_control_batch_scaling.md)、组件计时见[36节](36_route_a_full_step_profile.md)。Route B 组合与 point-query 实现及脚本索引见[02节](02_alternating_factorization.md)、[27节](27_route_b_million_control_composition.md)、[35节](35_route_b_high64_generalization_and_oracle.md)。Route C 的可复用层：`src/qcopt/neural_bijection/dense/photometric_conductance.py`；相关计时、预计算和逆诊断脚本索引在[17节](17_photometric_conductance_layer.md)、[22节](22_streamed_response_precompute.md)、[26节](26_positive_conductance_inverse_diagnostic.md)、[28节](28_route_c_photo_resolution_ablation.md)、[34节](34_route_c_high64_mode_and_training.md)。共同high64压力测试见[31节](31_high64_crossroute_stress_test.md)。本阶段原始数值在 `raw_results/`，模型检查点在 `checkpoints/`，整合索引在 `results.csv`。完整测试为 `tests/test_phase6_*.py`；请通过上述文档的具体原始 JSON 与脚本复核所关注的一条结论，不把总报告的四舍五入数字当作独立证据。
+Route A 的可复用层：`src/qcopt/neural_bijection/dense/nested_p1_feedback.py`，主脚本 `tools/phase6_exact_coarse_fine_feedback.py`；细空间消融见[29节](29_route_a_fine_space_audit.md)和[30节](30_route_a_high64_fine_control_decisive_test.md)，频谱容量取舍见[38节](38_route_a_fine_spectral_capacity_tradeoff.md)，反传显存取舍见[32节](32_route_a_activation_memory_tradeoff.md)、批量扩展见[33节](33_route_a_million_control_batch_scaling.md)、组件计时见[36节](36_route_a_full_step_profile.md)。Route B 组合与 point-query 实现及脚本索引见[02节](02_alternating_factorization.md)、[27节](27_route_b_million_control_composition.md)、[35节](35_route_b_high64_generalization_and_oracle.md)。Route C 的可复用层：`src/qcopt/neural_bijection/dense/photometric_conductance.py`；相关计时、预计算和逆诊断脚本索引在[17节](17_photometric_conductance_layer.md)、[22节](22_streamed_response_precompute.md)、[26节](26_positive_conductance_inverse_diagnostic.md)、[28节](28_route_c_photo_resolution_ablation.md)、[34节](34_route_c_high64_mode_and_training.md)、[37节](37_route_c_photographic_domain_transfer.md)。共同high64压力测试见[31节](31_high64_crossroute_stress_test.md)。本阶段原始数值在 `raw_results/`，模型检查点在 `checkpoints/`，整合索引在 `results.csv`。完整测试为 `tests/test_phase6_*.py`；请通过上述文档的具体原始 JSON 与脚本复核所关注的一条结论，不把总报告的四舍五入数字当作独立证据。

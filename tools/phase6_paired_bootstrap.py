@@ -27,10 +27,14 @@ def main() -> None:
 
     before = json.loads(args.before.read_text(encoding="utf-8"))
     after = json.loads(args.after.read_text(encoding="utf-8"))
-    for key in ("seed", "count", "target_family", "image_side"):
+    for key in ("seed", "count", "target_family", "image_side",
+                "test_seed", "fine_cycles", "fine_side"):
         if key in before and key in after and before[key] != after[key]:
             raise ValueError(f"unpaired metadata {key}: {before[key]} != {after[key]}")
-    first, second = before["samples"], after["samples"]
+    first = before.get("samples", before.get("final_heldout", {}).get("samples"))
+    second = after.get("samples", after.get("final_heldout", {}).get("samples"))
+    if first is None or second is None:
+        raise ValueError("both records must contain per-case samples")
     if len(first) != len(second) or not first:
         raise ValueError("per-case lists must have equal nonzero length")
     if args.cluster_size < 1 or len(first) % args.cluster_size:

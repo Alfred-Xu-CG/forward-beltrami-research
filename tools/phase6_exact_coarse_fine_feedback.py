@@ -34,6 +34,8 @@ def main() -> None:
     parser.add_argument("--fine-side",type=int,default=1025)
     parser.add_argument("--passes",type=int,default=0)
     parser.add_argument("--gain",type=float,default=1.0)
+    parser.add_argument("--fine-spectral-modes",type=int,default=16,
+                        help="number of retained fine-feedback sine modes")
     parser.add_argument("--coarse-initial-cap",type=float,default=None)
     parser.add_argument("--fine-qc-cap",type=float,default=0.8)
     parser.add_argument("--use-module",action="store_true")
@@ -58,7 +60,8 @@ def main() -> None:
     args=parser.parse_args()
     if (args.fine_side < 257 or (args.fine_side-1)%256
             or args.passes < 0 or args.learning_rate <= 0
-            or args.benchmark_repeats < 3 or not 1 <= args.batch <= 32):
+            or args.benchmark_repeats < 3 or not 1 <= args.batch <= 32
+            or args.fine_spectral_modes < 1):
         raise ValueError("fine side must be nested over 257; passes nonnegative")
     if args.checkpoint_mode!="refiner" and not args.use_module:
         raise ValueError("checkpoint mode requires --use-module")
@@ -87,7 +90,7 @@ def main() -> None:
     fine_layer=(NestedP1PhotometricFeedbackLayer(
         coarse_side,fine_side,fine_passes=args.passes,gain=args.gain,
         qc_cap=args.fine_qc_cap,window=3,ridge=1,
-        spectral_modes=16,floor_fraction=0.8,
+        spectral_modes=args.fine_spectral_modes,floor_fraction=0.8,
         checkpoint_refiner=args.checkpoint_mode=="refiner",
         checkpoint_full_pass=args.checkpoint_mode=="full").to(device)
         if args.use_module else None)
@@ -163,7 +166,8 @@ def main() -> None:
                     fixed,moving,mapped,window=3,ridge=1,
                     raw_span=refiner.raw_span)
                 hint=spectralize_bounded_logits(
-                    hint,side=fine_side,raw_span=refiner.raw_span,count=16)
+                    hint,side=fine_side,raw_span=refiner.raw_span,
+                    count=args.fine_spectral_modes)
                 proposal=args.gain*hint
                 mapped=(checkpoint(refine,mapped,proposal,floor,use_reentrant=False)
                         if torch.is_grad_enabled() else
@@ -404,6 +408,7 @@ def main() -> None:
         "evaluation_kind":("photo_content" if args.photo_variants else
                            f"high{args.fine_cycles}_synthetic"),
         "fine_cycles":args.fine_cycles,
+        "fine_spectral_modes":args.fine_spectral_modes,
         "test_seed":args.test_seed,
         "photo_names":photo_names,"photo_source_indices":photo_indices,
         "initial_heldout":initial,"final_heldout":final,
