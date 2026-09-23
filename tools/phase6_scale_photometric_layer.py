@@ -12,6 +12,7 @@ import torch
 import torch.nn.functional as F
 
 from phase6_evaluate_heldout_beltrami import _mu,_target_on_faces
+from phase6_eval_photographic_content import _dataset as photographic_dataset
 from phase6_train_multisample_image import make_dataset
 from qcopt.mesh import structured_rectangle
 from qcopt.neural_bijection.dense import (
@@ -27,6 +28,8 @@ def main():
     parser.add_argument("--count",type=int,default=8)
     parser.add_argument("--repeats",type=int,default=3)
     parser.add_argument("--response-chunk-size",type=int,default=1)
+    parser.add_argument("--photo-variants",type=int,default=0,
+                        help="use six photographic images with this many high32 variants each")
     parser.add_argument("--device",default="cpu")
     args=parser.parse_args()
     side,image_side= args.side,512
@@ -36,9 +39,20 @@ def main():
         side,fit_side=128,response_chunk_size=args.response_chunk_size).to(device)
     with torch.no_grad():
         layer.raw_mode_gains.copy_(state["raw_gains"].to(device))
-    dataset=tuple(value.to(device) for value in make_dataset(
-        args.count,image_side,99317,target_family="high32",
-        return_coefficients=True))
+    if args.photo_variants < 0:
+        raise ValueError("photo variants must be nonnegative")
+    if args.photo_variants:
+        photo_names, _, dataset=photographic_dataset(
+            args.photo_variants,image_side,973031,device)
+        count=6*args.photo_variants
+        dataset_kind="photographic_content_synthetic_high32"
+    else:
+        photo_names=[]
+        dataset=tuple(value.to(device) for value in make_dataset(
+            args.count,image_side,99317,target_family="high32",
+            return_coefficients=True))
+        count=args.count
+        dataset_kind="synthetic_high32_heldout"
     mesh=structured_rectangle(side-1,side-1)
     table=StructuredDenseQueryTable.from_mesh(
         mesh,height=image_side,width=image_side)
@@ -79,7 +93,7 @@ def main():
     fine=torch.sin(64*math.pi*source[...,0])*torch.sin(64*math.pi*source[...,1])
     sample_rows=[]
     with torch.no_grad():
-        for index in range(args.count):
+        for index in range(count):
             fixed,moving,target,coeff=(part[index:index+1] for part in dataset)
             mapped=layer(fixed,moving)
             query=table.interpolate(mapped.reshape(1,-1,2))
@@ -108,7 +122,9 @@ def main():
         "fit_side":128,"batch":1,"device":str(device),
         "response_chunk_size":args.response_chunk_size,
         "checkpoint":args.checkpoint,
-        "count":args.count,
+        "count":count,
+        "dataset_kind":dataset_kind,
+        "photo_names":photo_names,
         "prepare_seconds":prepare_seconds,
         "prepare_peak_cuda_allocated_bytes":prepare_peak,
         "response_validation":preparation,
