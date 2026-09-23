@@ -20,7 +20,8 @@ def _evaluations(neutral_path: Path, trained_path: Path, count: int) -> tuple[li
     trained = json.loads(trained_path.read_text(encoding="utf-8"))
     if len(neutral["samples"]) != count or len(trained["samples"]) != count:
         raise ValueError("sample count mismatch")
-    for key in ("control_vertices", "fit_side", "image_side", "target_family"):
+    for key in ("control_vertices", "fit_side", "image_side", "target_family",
+                "count", "seed", "photo_names", "dataset_kind"):
         if neutral[key] != trained[key]:
             raise ValueError(f"mismatched evaluation: {key}")
     if neutral["control_vertices"] != 1025**2 or neutral["fit_side"] != 256:
