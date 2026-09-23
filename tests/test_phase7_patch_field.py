@@ -68,6 +68,19 @@ def test_patch_field_vjp_matches_directional_difference() -> None:
     assert gradient.abs().sum() > 0
 
 
+def test_compact_patch_latents_match_full_field_and_receive_gradients() -> None:
+    torch.manual_seed(716)
+    base = _identity(17)
+    layer = SafePatchFieldPass(17, 8, offset_row=4, offset_column=4)
+    full = 0.05 * torch.randn(1, 15, 15, 2, dtype=torch.float64)
+    compact = full.reshape(1, -1, 2)[:, layer.latent_ids.reshape(-1)].clone().requires_grad_()
+    full_output = layer(base, full)
+    compact_output = layer(base, compact)
+    assert torch.allclose(full_output, compact_output, atol=0, rtol=0)
+    compact_output.square().mean().backward()
+    assert compact.grad is not None and compact.grad.abs().sum() > 0
+
+
 def test_near_floor_patch_corner_has_bounded_vjp() -> None:
     side = 17
     base = _identity(side, torch.float32).clone()
@@ -101,3 +114,22 @@ def test_patch_pyramid_stays_one_fixed_grid_p1_and_backpropagates() -> None:
     assert certify_convex_quad_output(output) >= 0.05 - 1e-12
     output.square().mean().backward()
     assert all(t.grad is not None and torch.isfinite(t.grad).all() for t in level)
+
+
+def test_patch_pyramid_accepts_compact_active_latents() -> None:
+    torch.manual_seed(7601)
+    decoder = ForwardPatchP1Pyramid(17, 33, patch_cells=8)
+    seed = tuple(
+        0.02 * torch.randn(1, patch_pass.interior_ids.numel(), 2, dtype=torch.float64)
+        for patch_pass in decoder.seed_layer.passes
+    )
+    level = tuple(
+        (0.02 * torch.randn(1, patch_pass.interior_ids.numel(), 2,
+                            dtype=torch.float64)).requires_grad_()
+        for patch_pass in decoder.level_layers[0].passes
+    )
+    output = decoder(seed, (level,))
+    assert output.shape == (1, 33, 33, 2)
+    assert certify_convex_quad_output(output) > 0.05 - 1e-12
+    output.square().mean().backward()
+    assert all(field.grad is not None and torch.isfinite(field.grad).all() for field in level)

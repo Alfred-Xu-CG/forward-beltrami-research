@@ -17,7 +17,11 @@ import torch.nn.functional as F
 
 from phase6_train_multisample_image import make_dataset
 from qcopt.mesh import structured_rectangle
-from qcopt.neural_bijection.dense import ForwardP1ImageEncoder, ForwardP1Pyramid
+from qcopt.neural_bijection.dense import (
+    ForwardP1ImageEncoder, ForwardP1Pyramid, ForwardPatchP1Pyramid,
+    PatchPyramidImageEncoder, SafeColoredVertexRelaxation,
+    local_photometric_logits, spectralize_bounded_logits,
+)
 from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 
 
@@ -33,6 +37,8 @@ def minimum_jacobian(mapped: torch.Tensor) -> float:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--side", type=int, default=257)
+    parser.add_argument("--decoder-kind", choices=("colored", "patch"), default="colored")
+    parser.add_argument("--patch-cells", type=int, default=8)
     parser.add_argument("--image-side", type=int, default=512)
     parser.add_argument("--target-family", choices=("base", "high32", "high64"), default="high32")
     parser.add_argument("--train-count", type=int, default=32)
@@ -43,6 +49,11 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=500)
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--training-objective", choices=("image", "map"), default="image")
+    parser.add_argument("--feedback-passes", type=int, default=0)
+    parser.add_argument("--hint-window", type=int, default=3)
+    parser.add_argument("--hint-ridge", type=float, default=1.0)
+    parser.add_argument("--hint-gain", type=float, default=1.0)
+    parser.add_argument("--hint-sine-modes", type=int, default=0)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--save-state", default=None)
     parser.add_argument("--load-state", default=None)
@@ -60,12 +71,25 @@ def main() -> None:
     test = tuple(t.to(device) for t in make_dataset(
         args.test_count, args.image_side, 99317, target_family=args.target_family,
     ))
-    decoder = ForwardP1Pyramid(5, args.side, seed_passes=args.seed_passes,
-                               minimum_jacobian=0.05).to(device)
-    encoder = ForwardP1ImageEncoder(
-        5, decoder.level_sides, seed_passes=args.seed_passes,
-        feature_side=min(args.side, 257), width=args.width,
-    ).to(device)
+    if args.decoder_kind == "colored":
+        decoder = ForwardP1Pyramid(5, args.side, seed_passes=args.seed_passes,
+                                   minimum_jacobian=0.05).to(device)
+        encoder = ForwardP1ImageEncoder(
+            5, decoder.level_sides, seed_passes=args.seed_passes,
+            feature_side=min(args.side, 257), width=args.width,
+        ).to(device)
+    else:
+        decoder = ForwardPatchP1Pyramid(
+            17, args.side, patch_cells=args.patch_cells,
+            minimum_jacobian=0.05,
+        ).to(device)
+        encoder = PatchPyramidImageEncoder(
+            17, decoder.level_sides,
+            feature_side=min(args.side, 257), width=args.width,
+        ).to(device)
+    feedback = SafeColoredVertexRelaxation(
+        args.side, motion_mode="radial", raw_span=2.0,
+    ).to(device) if args.feedback_passes else None
     if args.load_state is not None:
         saved = torch.load(args.load_state, map_location=device, weights_only=True)
         encoder.load_state_dict(saved["encoder"])
@@ -84,6 +108,17 @@ def main() -> None:
     def forward(fixed: torch.Tensor, moving: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         seed, levels = encoder(fixed, moving)
         control = decoder(seed, levels)
+        for _ in range(args.feedback_passes):
+            hint = local_photometric_logits(
+                fixed, moving, control,
+                window=args.hint_window, ridge=args.hint_ridge, raw_span=2.0,
+            )
+            if args.hint_sine_modes:
+                hint = spectralize_bounded_logits(
+                    hint, side=args.side, raw_span=2.0, count=args.hint_sine_modes,
+                )
+            floor = control.new_full((control.shape[0],), 0.05 / (args.side - 1) ** 2)
+            control = feedback(control, args.hint_gain * hint, area_floor=floor)
         query = table.interpolate(control.reshape(control.shape[0], -1, 2))
         warped = F.grid_sample(moving, 2 * query - 1,
                                mode="bilinear", padding_mode="border", align_corners=True)
@@ -151,6 +186,8 @@ def main() -> None:
         torch.save({"encoder": encoder.state_dict(), "config": vars(args)}, args.save_state)
     print(json.dumps({
         "method": "phase7_forward_p1_image_encoder",
+        "decoder_kind": args.decoder_kind,
+        "patch_cells": args.patch_cells if args.decoder_kind == "patch" else None,
         "training_objective": "image_only_pixel_MSE" if args.training_objective == "image" else "target_query_map_vector_MSE",
         "target_map_use": "evaluation_only" if args.training_objective == "image" else "training_supervision_and_evaluation",
         "target_family": args.target_family,
@@ -166,8 +203,14 @@ def main() -> None:
         "test_seed": 99317,
         "steps": args.steps,
         "learning_rate": args.learning_rate,
-        "seed_passes": args.seed_passes,
+        "seed_passes": args.seed_passes if args.decoder_kind == "colored" else None,
+        "patch_passes_per_level": 4 if args.decoder_kind == "patch" else None,
         "width": args.width,
+        "feedback_passes": args.feedback_passes,
+        "hint_window": args.hint_window,
+        "hint_ridge": args.hint_ridge,
+        "hint_gain": args.hint_gain,
+        "hint_sine_modes": args.hint_sine_modes,
         "encoder_parameters": sum(p.numel() for p in encoder.parameters()),
         "device": str(device),
         "torch_version": torch.__version__,

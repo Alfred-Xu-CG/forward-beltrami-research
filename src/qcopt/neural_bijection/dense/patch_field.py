@@ -81,17 +81,22 @@ class SafePatchFieldPass(nn.Module):
         side, cells = self.side, self.patch_cells
         if base.ndim != 4 or base.shape[1:] != (side, side, 2):
             raise ValueError("base must have shape (batch,side,side,2)")
-        if logits.shape != (base.shape[0], side - 2, side - 2, 2):
-            raise ValueError("logits must have one two-vector per strict interior vertex")
+        full_shape = (base.shape[0], side - 2, side - 2, 2)
+        compact_shape = (base.shape[0], self.interior_ids.numel(), 2)
+        if logits.shape not in (full_shape, compact_shape):
+            raise ValueError("logits need a full interior field or one vector per active patch interior")
         if logits.dtype != base.dtype or logits.device != base.device:
             raise ValueError("base and logits must match dtype/device")
         batch = base.shape[0]
         patch_count = self.patch_ids.shape[0]
         current = base.reshape(batch, side * side, 2)
         patch = current[:, self.patch_ids]
-        raw = (
-            self.raw_span * cells / (side - 1)
-            * torch.tanh(logits.reshape(batch, -1, 2)[:, self.latent_ids])
+        selected = (
+            logits.reshape(batch, -1, 2)[:, self.latent_ids]
+            if logits.shape == full_shape else logits
+        )
+        raw = self.raw_span * cells / (side - 1) * torch.tanh(selected).reshape(
+            batch, patch_count, cells - 1, cells - 1, 2,
         )
         displacement = torch.zeros_like(patch)
         displacement[:, :, 1:-1, 1:-1] = raw
@@ -211,16 +216,21 @@ class ForwardPatchP1Pyramid(nn.Module):
         if len(seed_logits) != 4 * self.seed_cycles or len(level_logits) != len(self.level_sides):
             raise ValueError("wrong number of seed or refinement latent fields")
         first = seed_logits[0]
-        if first.ndim != 4 or first.shape[0] < 1 or first.shape[-1] != 2:
-            raise ValueError("latents need shape (batch,side-2,side-2,2)")
+        if first.ndim not in (3, 4) or first.shape[0] < 1 or first.shape[-1] != 2:
+            raise ValueError("latents need full fields or compact active-vertex arrays")
         axis = torch.arange(self.seed_side, device=first.device, dtype=first.dtype) / (self.seed_side - 1)
         yy, xx = torch.meshgrid(axis, axis, indexing="ij")
         current = torch.stack((xx, yy), dim=-1)[None].expand(first.shape[0], -1, -1, -1)
         for cycle in range(self.seed_cycles):
             current = self.seed_layer(current, seed_logits[4 * cycle:4 * (cycle + 1)])
         for n, layer, fields in zip(self.level_sides, self.level_layers, level_logits):
+            valid_shapes = tuple(
+                ((first.shape[0], n - 2, n - 2, 2),
+                 (first.shape[0], patch_pass.interior_ids.numel(), 2))
+                for _ in range(self.level_cycles) for patch_pass in layer.passes
+            )
             if len(fields) != 4 * self.level_cycles or any(
-                field.shape != (first.shape[0], n - 2, n - 2, 2) for field in fields
+                field.shape not in shapes for field, shapes in zip(fields, valid_shapes)
             ):
                 raise ValueError("refinement latent fields have wrong count or shape")
             current = exact_dyadic_p1_refine(current)

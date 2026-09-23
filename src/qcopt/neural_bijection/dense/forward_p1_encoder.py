@@ -46,9 +46,7 @@ class ForwardP1ImageEncoder(nn.Module):
             nn.init.zeros_(head.weight)
             nn.init.zeros_(head.bias)
 
-    def forward(
-        self, fixed: torch.Tensor, moving: torch.Tensor,
-    ) -> tuple[tuple[torch.Tensor, ...], tuple[torch.Tensor, ...]]:
+    def features(self, fixed: torch.Tensor, moving: torch.Tensor) -> torch.Tensor:
         if fixed.shape != moving.shape or fixed.ndim != 4 or fixed.shape[1] != 1:
             raise ValueError("fixed and moving must be matching grayscale image batches")
         batch = fixed.shape[0]
@@ -63,7 +61,12 @@ class ForwardP1ImageEncoder(nn.Module):
         for block in self.context:
             current = block(F.avg_pool2d(current, 2))
             fused = fused + F.interpolate(current, size=fine.shape[-2:], mode="bilinear", align_corners=True)
-        features = self.fuse(fused)
+        return self.fuse(fused)
+
+    def forward(
+        self, fixed: torch.Tensor, moving: torch.Tensor,
+    ) -> tuple[tuple[torch.Tensor, ...], tuple[torch.Tensor, ...]]:
+        features = self.features(fixed, moving)
         seed_feature = F.interpolate(features, size=(self.seed_side, self.seed_side),
                                      mode="bilinear", align_corners=True)
         seed = tuple(
@@ -74,5 +77,49 @@ class ForwardP1ImageEncoder(nn.Module):
             head(F.interpolate(features, size=(side, side), mode="bilinear", align_corners=True))
             [:, :, 1:-1, 1:-1].permute(0, 2, 3, 1)
             for side, head in zip(self.level_sides, self.level_heads)
+        )
+        return seed, levels
+
+
+class PatchPyramidImageEncoder(ForwardP1ImageEncoder):
+    """Predict four staggered patch fields at the seed and every fine level."""
+
+    def __init__(
+        self, seed_side: int, level_sides: tuple[int, ...], *,
+        feature_side: int | None = None, width: int = 16,
+    ) -> None:
+        super().__init__(seed_side, level_sides, seed_passes=4,
+                         feature_side=feature_side, width=width)
+        self.level_heads = nn.ModuleList(
+            nn.ModuleList(nn.Conv2d(width, 2, 1) for _ in range(4))
+            for _ in level_sides
+        )
+        for level in self.level_heads:
+            for head in level:
+                nn.init.zeros_(head.weight)
+                nn.init.zeros_(head.bias)
+
+    def forward(
+        self, fixed: torch.Tensor, moving: torch.Tensor,
+    ) -> tuple[tuple[torch.Tensor, ...], tuple[tuple[torch.Tensor, ...], ...]]:
+        features = self.features(fixed, moving)
+        seed_feature = F.interpolate(
+            features, size=(self.seed_side, self.seed_side),
+            mode="bilinear", align_corners=True,
+        )
+        seed = tuple(
+            head(seed_feature)[:, :, 1:-1, 1:-1].permute(0, 2, 3, 1)
+            for head in self.seed_heads
+        )
+        levels = tuple(
+            tuple(
+                head(feature)[:, :, 1:-1, 1:-1].permute(0, 2, 3, 1)
+                for head in heads
+            )
+            for feature, heads in (
+                (F.interpolate(features, size=(side, side), mode="bilinear",
+                               align_corners=True), heads)
+                for side, heads in zip(self.level_sides, self.level_heads)
+            )
         )
         return seed, levels

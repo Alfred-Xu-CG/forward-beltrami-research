@@ -22,6 +22,7 @@ def main() -> None:
     parser.add_argument("--side", type=int, default=257)
     parser.add_argument("--patch-cells", type=int, default=8)
     parser.add_argument("--pyramid", action="store_true")
+    parser.add_argument("--compact", action="store_true")
     parser.add_argument("--seed-side", type=int, default=17)
     parser.add_argument("--image-side", type=int, default=512)
     parser.add_argument("--batch", type=int, default=1)
@@ -46,15 +47,23 @@ def main() -> None:
     axis = torch.arange(args.side, device=device, dtype=torch.float32) / (args.side - 1)
     yy, xx = torch.meshgrid(axis, axis, indexing="ij")
     base = torch.stack((xx, yy), dim=-1)[None].expand(args.batch, -1, -1, -1)
-    def make_fields(n: int) -> tuple[torch.Tensor, ...]:
+    def make_fields(module: StaggeredPatchP1Layer, n: int) -> tuple[torch.Tensor, ...]:
         return tuple(
-            (args.latent_std * torch.randn(args.batch, n - 2, n - 2, 2,
-                                             device=device)).requires_grad_()
-            for _ in range(4)
+            (args.latent_std * torch.randn(
+                (args.batch, patch_pass.interior_ids.numel(), 2)
+                if args.compact else (args.batch, n - 2, n - 2, 2),
+                device=device,
+            )).requires_grad_()
+            for patch_pass in module.passes
         )
-    seed_fields = make_fields(args.seed_side) if args.pyramid else ()
-    level_fields = tuple(make_fields(n) for n in layer.level_sides) if args.pyramid else ()
-    latents = seed_fields + tuple(field for level in level_fields for field in level) if args.pyramid else make_fields(args.side)
+    seed_fields = make_fields(layer.seed_layer, args.seed_side) if args.pyramid else ()
+    level_fields = tuple(
+        make_fields(module, n) for n, module in zip(layer.level_sides, layer.level_layers)
+    ) if args.pyramid else ()
+    latents = (
+        seed_fields + tuple(field for level in level_fields for field in level)
+        if args.pyramid else make_fields(layer, args.side)
+    )
     table = StructuredDenseQueryTable.from_mesh(
         structured_rectangle(args.side - 1, args.side - 1),
         height=args.image_side, width=args.image_side,
@@ -115,6 +124,7 @@ def main() -> None:
         "passes": 4 * (1 + len(layer.level_sides)) if args.pyramid else 4,
         "level_sides": layer.level_sides if args.pyramid else (),
         "latent_scalars": sum(x.numel() for x in latents),
+        "latent_layout": "compact_active_patch_interiors" if args.compact else "full_interior_field",
         "latent_std": args.latent_std,
         "batch": args.batch,
         "image_side": args.image_side,
