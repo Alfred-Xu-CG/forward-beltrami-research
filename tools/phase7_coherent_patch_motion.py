@@ -23,6 +23,7 @@ def main() -> None:
     parser.add_argument("--side", type=int, default=1025)
     parser.add_argument("--patch-cells", type=int, default=64)
     parser.add_argument("--amplitude", type=float, default=0.006)
+    parser.add_argument("--offset-fraction", type=float, default=0.0)
     parser.add_argument("--f1-passes", nargs="+", type=int,
                         default=[1, 2, 4, 8, 16])
     parser.add_argument("--device", default="cuda:0")
@@ -31,14 +32,16 @@ def main() -> None:
     args = parser.parse_args()
     if (args.side - 1) % args.patch_cells:
         raise ValueError("patch size must divide side-1")
+    if not 0 <= args.offset_fraction < 1:
+        raise ValueError("offset_fraction must lie in [0,1)")
     device = torch.device(args.device)
     side = args.side
     axis = torch.arange(side, device=device, dtype=torch.float32) / (side - 1)
     yy, xx = torch.meshgrid(axis, axis, indexing="ij")
     identity = torch.stack((xx, yy), dim=-1)[None]
     patch_width = args.patch_cells / (side - 1)
-    x0 = math.floor(0.25 / patch_width) * patch_width
-    y0 = math.floor(0.25 / patch_width) * patch_width
+    x0 = math.floor(0.25 / patch_width) * patch_width + args.offset_fraction * patch_width
+    y0 = math.floor(0.25 / patch_width) * patch_width + args.offset_fraction * patch_width
     tx, ty = (xx - x0) / patch_width, (yy - y0) / patch_width
     wx = torch.where((tx >= 0) & (tx <= 1),
                      torch.sin(math.pi * tx).square(), 0)
@@ -177,6 +180,7 @@ def main() -> None:
         "faces": 2 * (side - 1) ** 2,
         "patch_cells": args.patch_cells,
         "patch_origin": [x0, y0],
+        "offset_fraction": args.offset_fraction,
         "amplitude": args.amplitude,
         "target_minimum_jacobian": minimum_jacobian(target),
         "device": str(device),
