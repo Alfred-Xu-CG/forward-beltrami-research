@@ -47,3 +47,33 @@ def test_two_stage_spectral_feedback_preserves_original_grid_faces_and_vjp() -> 
     measured = (value(local.detach() + epsilon * direction) - value(local.detach() - epsilon * direction)) / (2 * epsilon)
     assert torch.isfinite(analytic)
     assert torch.allclose(analytic, measured, rtol=2e-2, atol=2e-4)
+
+
+def test_checkpointed_qc_feedback_matches_output_and_first_order_vjp() -> None:
+    torch.manual_seed(71130)
+    side = 9
+    images = torch.randn(1, 2, 33, 33)
+    fixed, moving = images[:, :1], images[:, 1:]
+    encoder = ConvexQuadLocalImageEncoder(side, width=4, head_mode="multilevel", body_mode="local")
+    initial_latent = encoder(images)
+    ordinary = SpectralSafeFeedbackLayer(
+        side, initial_modes=4, extra_modes=4, extra_passes=2,
+        extra_gain=1, extra_qc_cap=0.8, floor_fraction=0.8)
+    recomputed = SpectralSafeFeedbackLayer(
+        side, initial_modes=4, extra_modes=4, extra_passes=2,
+        extra_gain=1, extra_qc_cap=0.8, floor_fraction=0.8,
+        extra_checkpoint=True)
+    local1 = initial_latent[2].detach().requires_grad_()
+    local2 = initial_latent[2].detach().requires_grad_()
+    latent1 = (initial_latent[0].detach(),
+               tuple(tuple(value.detach() for value in group) for group in initial_latent[1]),
+               local1)
+    latent2 = (latent1[0], latent1[1], local2)
+    output1 = ordinary(fixed, moving, latent1)
+    output2 = recomputed(fixed, moving, latent2)
+    assert torch.allclose(output1, output2, rtol=0, atol=0)
+    cotangent = torch.randn_like(output1)
+    gradient1 = torch.autograd.grad((output1 * cotangent).sum(), local1)[0]
+    gradient2 = torch.autograd.grad((output2 * cotangent).sum(), local2)[0]
+    assert torch.isfinite(gradient1).all()
+    assert torch.allclose(gradient1, gradient2, rtol=1e-5, atol=1e-6)

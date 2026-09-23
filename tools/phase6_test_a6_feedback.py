@@ -17,6 +17,7 @@ from phase6_train_multisample_image import ConvexQuadLocalImageEncoder, make_dat
 from qcopt.mesh import structured_rectangle
 from qcopt.neural_bijection.dense import (
     HierarchicalConvexQuadLocalLayer, SafeColoredVertexRelaxation,
+    SafeColoredQCRadialRelaxation,
     evaluate_structured_p1_with_jacobian, local_photometric_logits,
     spectralize_bounded_logits,
 )
@@ -34,6 +35,7 @@ def main() -> None:
     parser.add_argument("--extra-gains", default="0.25,0.5,1")
     parser.add_argument("--extra-sine-modes", type=int, default=16)
     parser.add_argument("--floor-fraction", type=float, default=0.2)
+    parser.add_argument("--qc-cap", type=float, default=None)
     parser.add_argument("--min-train-area", type=float, default=0.05)
     parser.add_argument("--max-train-mu", type=float, default=0.8)
     parser.add_argument("--device", default="cpu")
@@ -54,8 +56,12 @@ def main() -> None:
     ).to(device)
     encoder.load_state_dict(state["encoder"])
     decoder = HierarchicalConvexQuadLocalLayer(side, motion_mode="radial").to(device)
-    refiner = SafeColoredVertexRelaxation(side, motion_mode="radial",
-                                           floor_fraction=args.floor_fraction).to(device)
+    refiner = (
+        SafeColoredVertexRelaxation(side, motion_mode="radial",
+                                    floor_fraction=args.floor_fraction)
+        if args.qc_cap is None else SafeColoredQCRadialRelaxation(
+            side, qc_cap=args.qc_cap, floor_fraction=args.floor_fraction)
+    ).to(device)
     mesh = structured_rectangle(side - 1, side - 1)
     vertices = torch.tensor(mesh.vertices.copy(), dtype=torch.float32, device=device)
     faces = torch.tensor(mesh.faces.copy(), dtype=torch.int64, device=device)
@@ -84,7 +90,7 @@ def main() -> None:
         )
         mapped = decoder.local(base, latent[2] + settings["hint_gain"] * hint)
         stages = [mapped]
-        floor = refiner.compute_area_floor(mapped) if extra_count else None
+        floor = refiner.compute_area_floor(mapped) if extra_count and refiner.floor_fraction else None
         for _ in range(extra_count):
             next_hint = local_photometric_logits(
                 fixed, moving, mapped, window=settings["hint_window"],
@@ -178,7 +184,8 @@ def main() -> None:
             "peak_cuda_allocated_bytes": torch.cuda.max_memory_allocated(device) if device.type == "cuda" else None,
         }
     print(json.dumps({
-        "method": "frozen_A6_with_spectral_safe_residual_feedback",
+        "method": "frozen_A6_with_spectral_qc_safe_feedback" if args.qc_cap is not None else
+                  "frozen_A6_with_spectral_safe_residual_feedback",
         "checkpoint": args.checkpoint,
         "control_side": side,
         "control_vertices": side**2,
@@ -194,6 +201,7 @@ def main() -> None:
         "dtype": "float32",
         "extra_sine_modes": args.extra_sine_modes,
         "floor_fraction": args.floor_fraction,
+        "qc_cap": args.qc_cap,
         "minimum_train_area_constraint": args.min_train_area,
         "maximum_train_beltrami_modulus_constraint": args.max_train_mu,
         "selection": "minimum_train_image_mse_among_area_and_mu_eligible_candidates",

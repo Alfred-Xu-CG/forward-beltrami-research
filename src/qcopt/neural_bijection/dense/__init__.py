@@ -16,6 +16,7 @@ from .face_qc import structured_p1_face_beltrami_modulus, structured_p1_qc_tail_
 from .sine_pcg_tutte import SinePreconditionedTutteLayer
 from .conductance_synthesis import synthesize_bounded_conductances
 from .spectral_feedback import SpectralSafeFeedbackLayer
+from .qc_radial_relaxation import SafeColoredQCRadialRelaxation
 
 __all__ = [
     "DenseMonotoneGridLayer",
@@ -48,4 +49,5 @@ __all__ = [
     "SinePreconditionedTutteLayer",
     "synthesize_bounded_conductances",
     "SpectralSafeFeedbackLayer",
+    "SafeColoredQCRadialRelaxation",
 ]
