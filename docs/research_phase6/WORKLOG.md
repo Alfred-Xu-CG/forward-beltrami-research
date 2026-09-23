@@ -376,3 +376,12 @@ Image-versus-Beltrami trade-off follow-up: with internal cap0.795, two fine pass
 - What would falsify it：GPU函数不支持动态query、VJP非有限/显存爆炸、同检查点保留image/map偏离CPU基线显著、或任一因子面非正。
 - Smallest decisive test：先一轮冻结step和8例指标，若正确再5轮中位，不另造B模型。
 - Prior work：02和16节B同数据精确组合/摄影内容结果，当前A8/C同GPU测时。
+
+# Route C bounded positive-conductance representation at 257² card（2026-09-23）
+
+- Question：既有HiGHS在257² high32目标、196094边变量与130050平衡约束上300秒超时，状态未知；而97²已找到[1,16]可行正权。能否用更廉价的有界最小二乘先找到257²细网格的近零平衡残差和可独立重解的近目标图，从而判断C目前的图像误差主要是表示还是权重推断瓶颈？
+- Exact formulation：固定解析目标P1顶点Y*,构造稀疏M(Y*)，每条边e={i,j}的列在内部端点行放Y*_i-Y*_j及其负。对c∈[1,16]^E最小化0.5||h^{-2}M(Y*)c||²，h=1/(N-1)，使用SciPy稀疏L-BFGS-B与解析梯度h^{-4}MᵀM c；初值常数4。验证小97²上与先前LP可行结果一致，再试257²最多约5分钟。只要残差小也不能立即称严格LP可行；须用独立装配的正SPD Dirichlet系统重解，报告坐标误差、真实平衡残差、边权范围和全原面。
+- Assumptions：L-BFGS-B局部最优对凸二次盒约束是全局的，但有限停止容差不提供精确可行证书；浮点缩放/线性系统条件数影响解释。目标系数固定为phase6 high32 deterministic one-pair oracle，不是32/8图像训练。
+- What would falsify it：97²已知可行例不能收敛、257²受时间限制无有用残差、重解误差显著、或数值卡在盒边界且不能判断可行性。此时保持“未知”，不从优化失败推导C表示不可能。
+- Smallest decisive test：17²及97²先验已知可行；之后257²只跑一次预定初值/盒约束，不进行大量参数调节。
+- Prior work：03节M(Y)c=0的精确定义、97²高频正权可行、257²HiGHS超时；这项诊断直接服务于全边C的表达上界，不替代前向layer。
