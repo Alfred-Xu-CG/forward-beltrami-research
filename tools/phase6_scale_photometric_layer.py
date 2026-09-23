@@ -1,0 +1,131 @@
+"""Real control-grid scaling of the reusable 18-mode Route C neural layer."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import statistics
+import time
+
+import torch
+import torch.nn.functional as F
+
+from phase6_evaluate_heldout_beltrami import _mu,_target_on_faces
+from phase6_train_multisample_image import make_dataset
+from qcopt.mesh import structured_rectangle
+from qcopt.neural_bijection.dense import (
+    PhotometricSpectralTutteLayer,evaluate_structured_p1_with_jacobian,
+)
+from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
+
+
+def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument("--side",type=int,required=True)
+    parser.add_argument("--checkpoint",required=True)
+    parser.add_argument("--count",type=int,default=8)
+    parser.add_argument("--repeats",type=int,default=3)
+    parser.add_argument("--device",default="cpu")
+    args=parser.parse_args()
+    side,image_side= args.side,512
+    device=torch.device(args.device)
+    state=torch.load(args.checkpoint,map_location=device,weights_only=False)
+    layer=PhotometricSpectralTutteLayer(side,fit_side=128).to(device)
+    with torch.no_grad():
+        layer.raw_mode_gains.copy_(state["raw_gains"].to(device))
+    dataset=tuple(value.to(device) for value in make_dataset(
+        args.count,image_side,99317,target_family="high32",
+        return_coefficients=True))
+    mesh=structured_rectangle(side-1,side-1)
+    table=StructuredDenseQueryTable.from_mesh(
+        mesh,height=image_side,width=image_side)
+    table.prepare(device=device,dtype=torch.float32)
+    def synchronize():
+        if device.type=="cuda": torch.cuda.synchronize(device)
+    if device.type=="cuda": torch.cuda.reset_peak_memory_stats(device)
+    synchronize();started=time.perf_counter()
+    preparation=layer.prepare(device=device)
+    synchronize();prepare_seconds=time.perf_counter()-started
+    prepare_peak=(torch.cuda.max_memory_allocated(device)
+                  if device.type=="cuda" else None)
+    if device.type=="cuda": torch.cuda.reset_peak_memory_stats(device)
+    forward_times,backward_times=[],[]
+    for repeat in range(args.repeats+1):
+        fixed=dataset[0][:1].detach().clone().requires_grad_()
+        moving=dataset[1][:1].detach().clone().requires_grad_()
+        synchronize();started=time.perf_counter()
+        mapped=layer(fixed,moving)
+        query=table.interpolate(mapped.reshape(1,-1,2))
+        warped=F.grid_sample(moving,2*query-1,mode="bilinear",
+                             padding_mode="border",align_corners=True)
+        loss=(warped-fixed).square().mean()
+        synchronize();middle=time.perf_counter()
+        gradients=torch.autograd.grad(loss,(fixed,moving,layer.raw_mode_gains))
+        synchronize();finished=time.perf_counter()
+        if not all(torch.isfinite(value).all() for value in gradients):
+            raise RuntimeError("nonfinite dense-control VJP")
+        if repeat:
+            forward_times.append(middle-started)
+            backward_times.append(finished-middle)
+    train_peak=(torch.cuda.max_memory_allocated(device)
+                if device.type=="cuda" else None)
+    vertices=torch.tensor(mesh.vertices.copy(),device=device,dtype=torch.float32)
+    faces=torch.tensor(mesh.faces.copy(),device=device,dtype=torch.int64)
+    centroids=vertices[faces].mean(dim=1)
+    source=vertices.reshape(side,side,2)
+    fine=torch.sin(64*math.pi*source[...,0])*torch.sin(64*math.pi*source[...,1])
+    sample_rows=[]
+    with torch.no_grad():
+        for index in range(args.count):
+            fixed,moving,target,coeff=(part[index:index+1] for part in dataset)
+            mapped=layer(fixed,moving)
+            query=table.interpolate(mapped.reshape(1,-1,2))
+            warped=F.grid_sample(moving,2*query-1,mode="bilinear",
+                                 padding_mode="border",align_corners=True)
+            face_query=centroids[None]
+            _,jacobian=evaluate_structured_p1_with_jacobian(mapped,face_query)
+            _,target_jacobian=_target_on_faces(face_query,coeff,32)
+            mu=_mu(jacobian)
+            projection=((mapped-source)*fine[None,:,:,None]).sum(dim=(1,2))/fine.square().sum()
+            sample_rows.append({
+                "image_mse":float((warped-fixed).square().mean()),
+                "query_map_mse":float((query-target).square().mean()),
+                "face_beltrami_mse":float((mu-_mu(target_jacobian)).abs().square().mean()),
+                "maximum_predicted_beltrami_modulus":float(mu.abs().amax()),
+                "minimum_face_determinant":float(torch.linalg.det(jacobian).amin()),
+                "projected_fine_amplitudes":projection[0].tolist(),
+                "true_fine_amplitude":float(coeff[0,2]),
+                "true_relative_forward_residual":layer.solver.last_forward_stats["true_relative_residual"],
+            })
+    print(json.dumps({
+        "method":"photometric_spectral_tutte_control_scaling",
+        "side":side,"control_vertices":side**2,
+        "control_faces":2*(side-1)**2,
+        "image_side":image_side,"image_queries":image_side**2,
+        "fit_side":128,"batch":1,"device":str(device),
+        "checkpoint":args.checkpoint,
+        "count":args.count,
+        "prepare_seconds":prepare_seconds,
+        "prepare_peak_cuda_allocated_bytes":prepare_peak,
+        "response_validation":preparation,
+        "median_full_forward_seconds":statistics.median(forward_times),
+        "median_full_vjp_seconds":statistics.median(backward_times),
+        "full_step_peak_cuda_allocated_bytes":train_peak,
+        "true_relative_adjoint_residual":layer.solver.last_backward_stats["true_relative_residual"],
+        "gradient_norms":[float(value.norm()) for value in gradients],
+        "image_mse":statistics.mean(row["image_mse"] for row in sample_rows),
+        "query_map_rmse":math.sqrt(statistics.mean(row["query_map_mse"] for row in sample_rows)),
+        "face_beltrami_rmse":math.sqrt(statistics.mean(row["face_beltrami_mse"] for row in sample_rows)),
+        "maximum_predicted_beltrami_modulus":max(row["maximum_predicted_beltrami_modulus"] for row in sample_rows),
+        "minimum_face_determinant":min(row["minimum_face_determinant"] for row in sample_rows),
+        "maximum_true_relative_forward_residual":max(row["true_relative_forward_residual"] for row in sample_rows),
+        "fine_amplitude_slope":sum(row["true_fine_amplitude"]
+            *sum(row["projected_fine_amplitudes"])/2 for row in sample_rows)
+            /max(sum(row["true_fine_amplitude"]**2 for row in sample_rows),1e-20),
+        "samples":sample_rows,
+    },sort_keys=True,separators=(",",":")))
+
+
+if __name__=="__main__":
+    main()

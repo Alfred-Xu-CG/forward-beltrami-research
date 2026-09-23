@@ -78,13 +78,24 @@ def _image_gradients(moving: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
 
 
 def _estimate(fixed, moving, response_query, *, ridge: float,
-              ridge_mode: str, coefficient_bound: float):
+              ridge_mode: str, coefficient_bound: float,
+              sample_at: torch.Tensor | None = None):
     grad_x, grad_y = _image_gradients(moving)
+    if sample_at is not None:
+        sample_grid = 2*sample_at-1
+        grad_x = F.grid_sample(grad_x,sample_grid,mode="bilinear",
+                               padding_mode="border",align_corners=True)
+        grad_y = F.grid_sample(grad_y,sample_grid,mode="bilinear",
+                               padding_mode="border",align_corners=True)
+        warped = F.grid_sample(moving,sample_grid,mode="bilinear",
+                               padding_mode="border",align_corners=True)
+    else:
+        warped = moving
     # B,K,H,W; analytic response is fixed, so only the small coefficient
     # system carries per-image state through the inverse calculation.
     design = (response_query[None,:, :, :, 0]*grad_x[:,None,0]
               + response_query[None,:, :, :, 1]*grad_y[:,None,0]).flatten(2)
-    residual = (fixed-moving).flatten(2).double()
+    residual = (fixed-warped).flatten(2).double()
     design = design.double()
     normal = design @ design.transpose(1,2) / design.shape[-1]
     rhs = (design * residual).mean(dim=-1)
@@ -109,11 +120,15 @@ def _estimate(fixed, moving, response_query, *, ridge: float,
 
 def _evaluate(dataset, photo_ids, names, *, solver, bases, response_query,
               mesh, image_side, fit_side, ridge, ridge_mode, gain,
-              coefficient_bound, batch, mode_gains=None):
+              coefficient_bound, batch, mode_gains=None,
+              refine_passes=0, refine_step=0.5):
     device = dataset[0].device
     side = solver.side
     table = StructuredDenseQueryTable.from_mesh(mesh, height=image_side, width=image_side)
     table.prepare(device=device, dtype=torch.float32)
+    fit_table = StructuredDenseQueryTable.from_mesh(
+        mesh,height=fit_side,width=fit_side)
+    fit_table.prepare(device=device,dtype=torch.float32)
     vertices = torch.tensor(mesh.vertices.copy(), device=device, dtype=torch.float32)
     faces = torch.tensor(mesh.faces.copy(), device=device, dtype=torch.int64)
     centroids = vertices[faces].mean(dim=1)
@@ -140,6 +155,16 @@ def _evaluate(dataset, photo_ids, names, *, solver, bases, response_query,
             logits = tuple(-0.8 + torch.einsum("bk,k...->b...", estimate, part)
                            for part in bases)
             mapped = solver(*logits).float()
+            for _ in range(refine_passes):
+                fit_query = fit_table.interpolate(mapped.reshape(end-begin,-1,2))
+                correction,_ = _estimate(
+                    fixed_fit,moving_fit,response_query,ridge=ridge,
+                    ridge_mode=ridge_mode,coefficient_bound=coefficient_bound,
+                    sample_at=fit_query)
+                estimate = estimate + refine_step*correction
+                logits = tuple(-0.8 + torch.einsum("bk,k...->b...", estimate, part)
+                               for part in bases)
+                mapped = solver(*logits).float()
             solver_residual = solver.last_forward_stats["true_relative_residual"]
             query = table.interpolate(mapped.reshape(end-begin, -1, 2))
             warped = F.grid_sample(moving, 2*query-1, mode="bilinear",
@@ -259,11 +284,15 @@ def main() -> None:
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--benchmark-vjp", action="store_true")
     parser.add_argument("--calibration-checkpoint", default=None)
+    parser.add_argument("--refine-passes", type=int, default=0)
+    parser.add_argument("--refine-step", type=float, default=0.5)
     args = parser.parse_args()
     if args.fit_side is None:
         args.fit_side = args.image_side
     if args.fit_side < 2 or args.fit_side > args.image_side:
         raise ValueError("fit-side must lie in [2,image-side]")
+    if args.refine_passes < 0 or not 0 < args.refine_step <= 1:
+        raise ValueError("invalid refinement configuration")
     device = torch.device(args.device)
     mesh = structured_rectangle(args.side-1,args.side-1)
     midpoints = _edges_and_midpoints(args.side, mesh.vertices)
@@ -298,7 +327,8 @@ def main() -> None:
                        image_side=args.image_side,fit_side=args.fit_side,ridge=args.ridge,
                        ridge_mode=args.ridge_mode,gain=args.gain,
                        coefficient_bound=args.coefficient_bound,batch=args.batch,
-                       mode_gains=mode_gains)
+                       mode_gains=mode_gains,refine_passes=args.refine_passes,
+                       refine_step=args.refine_step)
     vjp = (_benchmark_vjp(
         dataset,solver=solver,bases=bases,response_query=response_query,
         mesh=mesh,image_side=args.image_side,fit_side=args.fit_side,
@@ -324,6 +354,8 @@ def main() -> None:
         "coefficient_bound":args.coefficient_bound,
         "calibration_checkpoint":args.calibration_checkpoint,
         "mode_gains":mode_gains.tolist() if mode_gains is not None else None,
+        "refine_passes":args.refine_passes,
+        "refine_step":args.refine_step,
         "precompute_seconds":precompute_seconds,
         "response_validation":validation,
         "result":result,

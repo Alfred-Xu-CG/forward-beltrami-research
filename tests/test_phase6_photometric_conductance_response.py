@@ -7,7 +7,9 @@ from phase6_eval_crossroute_photographic import _edges_and_midpoints
 from phase6_test_c_photometric_response import _analytic_responses, _edge_bases, _estimate
 from phase6_train_multisample_image import make_dataset
 from qcopt.mesh import structured_rectangle
-from qcopt.neural_bijection.dense import SinePreconditionedTutteLayer
+from qcopt.neural_bijection.dense import (
+    PhotometricSpectralTutteLayer, SinePreconditionedTutteLayer,
+)
 from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 
 
@@ -52,3 +54,18 @@ def test_photometric_conductance_response_and_gain_vjp():
     assert torch.allclose(analytical.float(),numerical,rtol=0.03,atol=1e-5)
     assert solver.last_forward_stats["minimum_signed_area_ratio"] > 0
     assert torch.isfinite(mapped).all()
+
+    layer = PhotometricSpectralTutteLayer(side,fit_side=image_side)
+    preparation = layer.prepare(device="cpu")
+    assert preparation["response_true_relative_residual"] < 1e-10
+    delivered,latent = layer.forward_with_latent(fixed,moving)
+    assert latent.shape == (1,18)
+    assert (delivered-mapped).abs().amax() < 1e-5
+    assert layer.solver.last_forward_stats["minimum_signed_area_ratio"] > 0
+    objective = (delivered-torch.stack((
+        torch.linspace(0,1,side)[None,:].expand(side,-1),
+        torch.linspace(0,1,side)[:,None].expand(-1,side),
+    ),dim=-1)[None]).square().mean()
+    gradient = torch.autograd.grad(objective,layer.raw_mode_gains)[0]
+    assert torch.isfinite(gradient).all()
+    assert gradient.abs().max() > 0

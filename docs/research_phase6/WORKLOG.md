@@ -276,3 +276,32 @@ Route C PARDISO baseline card. Question: Is the observed 0.44–0.57 s all-edge 
 - What would falsify it：梯度为零/不稳定、1000步图像损失未降、保留/fresh map与μ明显恶化、正PCG不收敛、峰值显存/时间无优势，或者训练仅把18增益推至边界却无法拟合目标。
 - Smallest decisive test：129²/128²五步 smoke 检查有限VJP和面；257²先100步趋势，再1000步完整训练，独立8保留和新种子1170031比较。
 - Prior work：本阶段C 18基的几何oracle与光度闭式诊断，以及结构化Tutte隐式VJP；18增益仅是低维校准，不宣称已经学习任意μ。
+
+# Route C nonlinear photometric refinement card（2026-09-23）
+
+- Question：18响应的一步线性化在合成图上可用，但摄影内容96例表现很差，fit分辨率从128增到256还更差。是否是恒等处一次光度线性化的位移/图像非线性导致？在当前映射处重新计算图像残差和采样图像梯度，复用固定几何响应，再做一到两步18维修正，能否改善图像/位置，尤其是摄影域外？
+- Exact formulation：初值a0由128²正规方程得到。第t步求细网格正导纳平衡图Y(a_t)，在fit128查询p计算残差r_t=I_f(p)-I_m(Y(a_t,p))，图像梯度∇I_m(Y(a_t,p))，以原点预计算V_k(p)近似当前∂Y/∂a_k，解带同一ridge的18维正规方程得δa_t；设a_{t+1}=a_t+ηδa_t，η=0.5，再用真实非线性边权/PCG求图。每步的正导纳与全面数值面检查保持拓扑，但复用V_k是近似Gauss–Newton，不可称精确Newton或保证下降。
+- Assumptions：输入图像与映射不超出单位正方形的规范坐标；梯度通过采样moving的中心差分近似，边界处用border；所有相同fit128、高32目标和既有train32/heldout8/photo96数据；先评估无学习增益版本，不因photo结果调十几个参数。
+- What would falsify it：训练与摄影图像误差未降、map/μ明显恶化、PCG不收敛、每步额外时间过大，或第2步发散。若一阶固定V不够，可进一步考虑当前导纳处精确灵敏度，但要先量化成本。
+- Smallest decisive test：side129双样本smoke；257² train32一次η0.5与两次η0.5；仅有改善的版本到heldout8和photo96，同一共用指标。训练参数仍为0时只是图像条件解析估计，不把它冒称训练好的CNN。
+- Prior work：Gauss–Newton/Lucas–Kanade重线性化和本阶段的18模式解析响应；固定响应复用是一阶近似工程尝试。
+
+Follow-up after train/photo evidence: two untrained refinement passes improved photographic image MSE from 0.0342 to 0.0177 but cost roughly three PCG solves; on heldout high32 two passes reached about the same image/map error as the 18-gain trained single-solve layer. One decisive hybrid check will start from the fixed 300-step learned mode gains and add exactly one raw-coefficient correction (not another learned gain multiplication), then test train32/heldout8/photo96. A large image gain at modest added cost would justify a hybrid; otherwise the single-solve calibrated layer remains the practical C candidate.
+
+# Route C reusable module card（2026-09-23）
+
+- Question：18模态校准训练目前通过研究脚本拼接函数完成；能否把它整理为一个可直接嵌入PyTorch网络的层，并保持与已发表JSON训练路径相同的输出、正面积和一阶VJP？
+- Exact claim：PhotometricSpectralTutteLayer 接受同device float32固定/移动图像(B,1,H,H)，在prepare阶段预计算18个边模态及全细网格响应，forward返回(B,257,257,2)原网格P1顶点图，forward_with_latent另返回(B,18)系数。唯一训练参数为18个raw gains；同一图像/检查点下与脚本公式逐元素一致到float32预计算误差，完整image warp损失可反传到该参数和输入图像。层保持正conductance+固定边界，数值面证书由solver执行。
+- Assumptions：prepare显式在目标device执行，边模态频率集合固定且低于Nyquist；fit128只是系数估计网格不是控制网格；响应buffer不持久存到检查点，加载权重后须prepare。检查点只有18参数，因此不能把预计算成本藏在训练计时中。
+- What would falsify it：side67旧公式/新模块差异超过1e-5、257²旧/新差异大、反向梯度为零/非有限、正面积不成立、显存/计时明显增加或API未准备就静默输出。
+- Smallest decisive test：side67所有基/响应及输出和VJP测试；257²加载300步参数，8保留中同一batch的旧脚本与新模块map逐元素比较，再完整forward/VJP、真实残差和面证书。
+- Prior work：本阶段既有工具脚本的解析响应与正弦-PCG模块；这一步是可用API封装与回归核查，不称新算法。
+
+# Route C million-control scaling card（2026-09-23）
+
+- Question：18参数C光度响应层在257²上快而省显存，但其precompute要解18个全细网格响应、训练VJP要解前后伴随。是否能在513²/1025²真正**控制顶点**网格上完成batch1完整forward/VJP而不显存爆炸？257²学得的模式增益能否直接迁移分辨率而保持同一high32测试图像的几何质量？
+- Exact test：固定已训练300步18增益检查点、同一8个保留high32图像和512²query、fit128、GPU2，分别新建257/513/1025控制层，逐层prepare各自边基与响应；只在257用训练过的几何规模，其余是零额外训练的分辨率转移。每规模检查batch1一个保留样本的完整图像loss forward/VJP、真实前向与伴随残差、全部原面最小面积、峰值allocated、prepare时间；在8例上统计image/map/面μ及细频振幅，明确query与控制规模。
+- Assumptions：1025²有1,050,625控制顶点、2,097,152三角形，图像仍512²；18基系数、ridge、增益固定；每个规模均以自身均匀正边权解计算响应，故预计算成本按规模重付但可以跨样本复用。不要把已训练257²输出复制插值作为1025²精度。
+- What would falsify it：1025² prepare/forward/VJP OOM、PCG达不到真实残差、面翻转、时间/显存不可接受、或同一增益跨尺度map/μ大幅退化。即使1025有正面结果也只是8例无再训练迁移，不是百万点训练泛化。
+- Smallest decisive test：side513一个样本和VJP，再side1025一个；资源充足且均正确才扩到8例几何与速度统计。准备前检查GPU空闲及可用显存；不碰其他任务。
+- Prior work：A8在1025²未训练扩展性已测，C正弦-PCG纯解码器1025²已测；本层新增18响应预计算和128²光度估计，不能沿用其时间/显存结论。

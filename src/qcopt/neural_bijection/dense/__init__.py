@@ -17,6 +17,7 @@ from .sine_pcg_tutte import SinePreconditionedTutteLayer
 from .conductance_synthesis import synthesize_bounded_conductances
 from .spectral_feedback import SpectralSafeFeedbackLayer
 from .qc_radial_relaxation import SafeColoredQCRadialRelaxation
+from .photometric_conductance import PhotometricSpectralTutteLayer
 
 __all__ = [
     "DenseMonotoneGridLayer",
@@ -50,4 +51,5 @@ __all__ = [
     "synthesize_bounded_conductances",
     "SpectralSafeFeedbackLayer",
     "SafeColoredQCRadialRelaxation",
+    "PhotometricSpectralTutteLayer",
 ]

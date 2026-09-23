@@ -58,4 +58,10 @@ A(c_0)V_{k,I}=b'_k-A'_k I=-(L(c'_k)I)_I,
 
 该层确实在257²控制侧完成 forward、隐式 VJP 和多步训练，且具有严格正导纳构造、明确计算/显存收益与可独立检查的拓扑。但它是**预先给出18个已知频率模态的任务特化层**，不是通用由任意 $\mu$ 求解 Beltrami 方程，也没有证明真实医学图像能泛化。改进方向应针对光度估计的域偏移和二次线性化，而非继续把求解残差当作主要误差来源。
 
-复现入口：tools/phase6_test_c_photometric_response.py 与 tools/phase6_train_c_photometric_calibration.py；原始逐例 JSON 以 raw_results/c_photometric_response257_* 和 c_photometric_calibration_* 命名，检查点为 checkpoints/c_photometric_calibration_mean0005_{300,1000}.pt。
+## 5. 可复用的 PyTorch layer API
+
+`src/qcopt/neural_bijection/dense/photometric_conductance.py` 提供 `PhotometricSpectralTutteLayer(side=257,fit_side=128)`。先将其移到目标 device，并调用一次 `prepare(device=...)` 以构造18个边基和响应；`forward(fixed,moving)` 接受同 device float32 `(B,1,512,512)` 图像，返回 `(B,257,257,2)` 原网格 P1 顶点 map；`forward_with_latent` 另返回 `(B,18)` 的图像条件系数。18个 `raw_mode_gains` 是普通可训练参数，图像 loss 可经最终图像查询/采样、正边权方程的隐式伴随回传到该参数及输入图像。响应只是由固定网格、频率、初始权重决定的可重算 buffer；加载权重后须再次 `prepare`，不能把预计算0.90 s 偷算成每步 forward 或反过来完全忽略初始化成本。
+
+257²、batch2 的模块级独立核验：装载300步检查点后，新模块与研究脚本在同两张保留图像上的最大逐顶点坐标差 $5.96\times10^{-8}$、18维 latent 最大差 $6.51\times10^{-8}$；真实前向/伴随相对残差 $5.34\times10^{-11}$ / $1.25\times10^{-11}$，全部原面最小面积比0.559，输入固定图、移动图与18增益梯度范数分别 $5.71\times10^{-5}$、$6.95\times10^{-5}$、$5.83\times10^{-4}$，均有限。热身后五次完整 image-to-loss forward/VJP 中位36.24/51.07 ms、峰值已分配显存约215 MB；只常驻两幅图，因此低于训练32例常驻时的340 MB。这个 API 不是仅在工具脚本里能运行的伪层。
+
+复现入口：tools/phase6_test_c_photometric_response.py、tools/phase6_train_c_photometric_calibration.py、tools/phase6_verify_photometric_layer257.py；原始逐例 JSON 以 raw_results/c_photometric_response257_* 和 c_photometric_calibration_* 命名，模块回归在 raw_results/c_photometric_reusable_module257_gpu2.json，检查点为 checkpoints/c_photometric_calibration_mean0005_{300,1000}.pt。
