@@ -15,6 +15,7 @@ from .sine_spectral import dst1, dst2, idst2, keep_vector_sine_modes, spectraliz
 from .face_qc import structured_p1_face_beltrami_modulus, structured_p1_qc_tail_penalty
 from .sine_pcg_tutte import SinePreconditionedTutteLayer
 from .conductance_synthesis import synthesize_bounded_conductances
+from .spectral_feedback import SpectralSafeFeedbackLayer
 
 __all__ = [
     "DenseMonotoneGridLayer",
@@ -46,4 +47,5 @@ __all__ = [
     "structured_p1_qc_tail_penalty",
     "SinePreconditionedTutteLayer",
     "synthesize_bounded_conductances",
+    "SpectralSafeFeedbackLayer",
 ]
