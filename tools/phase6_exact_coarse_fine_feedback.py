@@ -40,11 +40,17 @@ def main() -> None:
     parser.add_argument("--test-count",type=int,default=8)
     parser.add_argument("--test-seed",type=int,default=99317)
     parser.add_argument("--photo-variants",type=int,default=0)
+    parser.add_argument("--fine-cycles",type=int,choices=(32,64),default=32,
+                        help="target sinusoid cycles; 64 halves its amplitude")
+    parser.add_argument("--coarse-restriction-audit",action="store_true",
+                        help="measure the final fine map component outside coarse P1 space")
     parser.add_argument("--steps",type=int,default=0)
+    parser.add_argument("--learning-rate",type=float,default=0.001)
     parser.add_argument("--save-state",default=None)
     parser.add_argument("--device",default="cpu")
     args=parser.parse_args()
-    if args.fine_side < 257 or (args.fine_side-1)%256 or args.passes < 0:
+    if (args.fine_side < 257 or (args.fine_side-1)%256
+            or args.passes < 0 or args.learning_rate <= 0):
         raise ValueError("fine side must be nested over 257; passes nonnegative")
     device=torch.device(args.device)
     torch.manual_seed(20260923)
@@ -105,6 +111,23 @@ def main() -> None:
         heldout=tuple(value.to(device) for value in make_dataset(
             args.test_count,image_side,args.test_seed,target_family="high32",
             return_coefficients=True))
+    if args.fine_cycles==64:
+        def high64(dataset):
+            _,moving,_,coeff=dataset
+            line=torch.linspace(0,1,image_side,device=device)
+            yy,xx=torch.meshgrid(line,line,indexing="ij")
+            ax,ay,af=(coeff[:,index,None,None] for index in range(3))
+            low=torch.sin(2*math.pi*xx)*torch.sin(2*math.pi*yy)
+            fine=torch.sin(128*math.pi*xx)*torch.sin(128*math.pi*yy)
+            updated_coeff=coeff.clone()
+            updated_coeff[:,2]*=0.5
+            target=torch.stack((xx+ax*low+0.5*af*fine,
+                                yy+ay*low+0.5*af*fine),dim=-1)
+            fixed=F.grid_sample(moving,2*target-1,mode="bilinear",
+                                padding_mode="border",align_corners=True).detach()
+            return fixed,moving,target,updated_coeff
+        train=high64(train)
+        heldout=high64(heldout)
     evaluation_count=len(heldout[0])
 
     def synchronize():
@@ -140,6 +163,7 @@ def main() -> None:
     @torch.no_grad()
     def evaluate(dataset,count):
         rows=[]
+        projection_rows=[]
         for index in range(count):
             fixed,moving,target,coeff=(part[index:index+1] for part in dataset)
             loss,coarse,base,mapped,dense=forward(fixed,moving)
@@ -147,7 +171,8 @@ def main() -> None:
             base_dense=fine_query.interpolate(base.reshape(1,-1,2))
             _,jacobian=evaluate_structured_p1_with_jacobian(
                 mapped,centroids[None])
-            _,target_jacobian=_target_on_faces(centroids[None],coeff,32)
+            _,target_jacobian=_target_on_faces(
+                centroids[None],coeff,args.fine_cycles)
             mu=_mu(jacobian)
             rows.append({
                 "image_mse":float(loss),
@@ -161,7 +186,69 @@ def main() -> None:
                     (coarse_dense-base_dense).abs().amax()),
                 "fine_update_max_abs":float((mapped-base).abs().amax()),
             })
-        return {
+            if args.coarse_restriction_audit:
+                stride=(fine_side-1)//(coarse_side-1)
+                restricted=mapped[:,::stride,::stride].contiguous()
+                projected=refine_table.interpolate(
+                    restricted.reshape(1,-1,2)).reshape(
+                        1,fine_side,fine_side,2)
+                projected_dense=fine_query.interpolate(
+                    projected.reshape(1,-1,2))
+                projected_warp=F.grid_sample(
+                    moving,2*projected_dense-1,mode="bilinear",
+                    padding_mode="border",align_corners=True)
+                base_warp=F.grid_sample(
+                    moving,2*base_dense-1,mode="bilinear",
+                    padding_mode="border",align_corners=True)
+                _,projected_jacobian=evaluate_structured_p1_with_jacobian(
+                    projected,centroids[None])
+                projected_mu=_mu(projected_jacobian)
+                projection_rows.append({
+                    "base_image_mse":float((base_warp-fixed).square().mean()),
+                    "base_query_map_mse":float((base_dense-target).square().mean()),
+                    "projected_image_mse":float(
+                        (projected_warp-fixed).square().mean()),
+                    "projected_query_map_mse":float(
+                        (projected_dense-target).square().mean()),
+                    "projected_minimum_signed_area_ratio":
+                        _minimum_area_ratio(projected),
+                    "projected_face_beltrami_mse":float(
+                        (projected_mu-_mu(target_jacobian)).abs().square().mean()),
+                    "projected_maximum_beltrami_modulus":float(
+                        projected_mu.abs().amax()),
+                    "fine_only_vertex_rmse":float(
+                        (mapped-projected).square().mean().sqrt()),
+                    "fine_only_vertex_max_abs":float(
+                        (mapped-projected).abs().amax()),
+                    "fine_only_query_rmse":float(
+                        (dense-projected_dense).square().mean().sqrt()),
+                })
+                coarse_vertices=torch.tensor(
+                    coarse_mesh.vertices.copy(),device=device,
+                    dtype=torch.float32).reshape(1,coarse_side,coarse_side,2)
+                target_coarse,_=_target_on_faces(
+                    coarse_vertices,coeff,args.fine_cycles)
+                target_fine,_=_target_on_faces(
+                    fine_vertices.reshape(1,fine_side,fine_side,2),
+                    coeff,args.fine_cycles)
+                oracle_coarse_dense=coarse_query.interpolate(
+                    target_coarse.reshape(1,-1,2))
+                oracle_fine_dense=fine_query.interpolate(
+                    target_fine.reshape(1,-1,2))
+                for label,oracle_dense,oracle_control in (
+                    ("coarse",oracle_coarse_dense,target_coarse),
+                    ("fine",oracle_fine_dense,target_fine),
+                ):
+                    oracle_warp=F.grid_sample(
+                        moving,2*oracle_dense-1,mode="bilinear",
+                        padding_mode="border",align_corners=True)
+                    projection_rows[-1][f"target_{label}_p1_image_mse"]=float(
+                        (oracle_warp-fixed).square().mean())
+                    projection_rows[-1][f"target_{label}_p1_query_map_mse"]=float(
+                        (oracle_dense-target).square().mean())
+                    projection_rows[-1][f"target_{label}_p1_minimum_area_ratio"]=\
+                        _minimum_area_ratio(oracle_control)
+        summary={
             "count":count,
             "image_mse":statistics.mean(row["image_mse"] for row in rows),
             "query_map_rmse":math.sqrt(statistics.mean(
@@ -181,9 +268,51 @@ def main() -> None:
                 row["fine_update_max_abs"] for row in rows),
             "samples":rows,
         }
+        if args.coarse_restriction_audit:
+            summary["coarse_restriction_audit"]={
+                "base_image_mse":statistics.mean(
+                    row["base_image_mse"] for row in projection_rows),
+                "base_query_map_rmse":math.sqrt(statistics.mean(
+                    row["base_query_map_mse"] for row in projection_rows)),
+                "projected_image_mse":statistics.mean(
+                    row["projected_image_mse"] for row in projection_rows),
+                "projected_query_map_rmse":math.sqrt(statistics.mean(
+                    row["projected_query_map_mse"] for row in projection_rows)),
+                "projected_minimum_signed_area_ratio":min(
+                    row["projected_minimum_signed_area_ratio"]
+                    for row in projection_rows),
+                "projected_face_beltrami_rmse":math.sqrt(statistics.mean(
+                    row["projected_face_beltrami_mse"]
+                    for row in projection_rows)),
+                "projected_maximum_beltrami_modulus":max(
+                    row["projected_maximum_beltrami_modulus"]
+                    for row in projection_rows),
+                "fine_only_vertex_rmse":math.sqrt(statistics.mean(
+                    row["fine_only_vertex_rmse"]**2 for row in projection_rows)),
+                "fine_only_vertex_max_abs":max(
+                    row["fine_only_vertex_max_abs"] for row in projection_rows),
+                "fine_only_query_rmse":math.sqrt(statistics.mean(
+                    row["fine_only_query_rmse"]**2 for row in projection_rows)),
+                "samples":projection_rows,
+            }
+            for label in ("coarse","fine"):
+                summary["coarse_restriction_audit"][
+                    f"target_{label}_p1_image_mse"]=statistics.mean(
+                        row[f"target_{label}_p1_image_mse"]
+                        for row in projection_rows)
+                summary["coarse_restriction_audit"][
+                    f"target_{label}_p1_query_map_rmse"]=math.sqrt(
+                        statistics.mean(
+                            row[f"target_{label}_p1_query_map_mse"]
+                            for row in projection_rows))
+                summary["coarse_restriction_audit"][
+                    f"target_{label}_p1_minimum_area_ratio"]=min(
+                        row[f"target_{label}_p1_minimum_area_ratio"]
+                        for row in projection_rows)
+        return summary
 
     initial=evaluate(heldout,evaluation_count)
-    optimizer=torch.optim.Adam(encoder.parameters(),lr=0.001)
+    optimizer=torch.optim.Adam(encoder.parameters(),lr=args.learning_rate)
     generator=torch.Generator(device="cpu").manual_seed(38819)
     if device.type=="cuda": torch.cuda.reset_peak_memory_stats(device)
     forward_times,backward_times,records=[],[],[]
@@ -230,7 +359,10 @@ def main() -> None:
         "fine_qc_cap":args.fine_qc_cap,
         "use_module":args.use_module,
         "steps":args.steps,"batch":1,"device":str(device),
-        "evaluation_kind":"photo_content" if args.photo_variants else "high32_synthetic",
+        "learning_rate":args.learning_rate,
+        "evaluation_kind":("photo_content" if args.photo_variants else
+                           f"high{args.fine_cycles}_synthetic"),
+        "fine_cycles":args.fine_cycles,
         "test_seed":args.test_seed,
         "photo_names":photo_names,"photo_source_indices":photo_indices,
         "initial_heldout":initial,"final_heldout":final,

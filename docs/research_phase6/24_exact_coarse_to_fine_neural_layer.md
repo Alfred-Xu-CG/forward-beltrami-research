@@ -82,4 +82,4 @@ t_p(ka+b)<k\alpha-\beta.
 
 主要复现入口为 tools/phase6_exact_coarse_fine_feedback.py；原始逐例数据在 raw_results/a8_exact_refine1025_pass{0,1,2}_heldout8_gpu2.json、a8_exact_refine1025_pass{0,2}_fresh128_gpu2.json，以及同前缀photo96_cap0795和a8_nested_module1025相关JSON。多步训练数据是 raw_results/a8_exact_refine1025_pass2_train300_gpu2.json；训练后的权重为 checkpoints/a8_exact_refine1025_pass2_train300.pt。相关验证代码为 tests/test_phase6_exact_p1_refinement.py 和 tests/test_phase6_nested_p1_feedback.py。
 
-仍未做到任意$\mu$输入的精确Beltrami forward解、任意图像/形变家族泛化、百万个独立可学控制自由度，或者摄影内容下同时改进图像、位置和面$\mu$的方案。该层提供一个真实1025²固定细网格、硬拓扑可检查、可微且有多尺度latent路径的候选，而不是完整研究终点。
+仍未做到任意$\mu$输入的精确Beltrami forward解、任意图像/形变家族泛化、百万个独立可学控制自由度，或者摄影内容下同时改进图像、位置和面$\mu$的方案。后续[29节细空间消融](29_route_a_fine_space_audit.md)进一步发现：在当前高频合成8例，最终1025²映射经257²节点限制及粗P1重建后仍保留约98.4%的image MSE收益；照片96例该粗P1投影甚至有更低image/map误差。因此本节的1025²输出、训练与拓扑证据是真实的，但**当前任务并未证明精度收益主要来自超出257² P1空间的细自由度**。该层是一个有多尺度latent路径的候选，而不是完整研究终点。
