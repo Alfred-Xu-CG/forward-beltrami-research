@@ -52,6 +52,25 @@ AI 主机空闲 RTX A6000，PyTorch 2.5.1，float32，batch 2，257² 冻结粗�
 
 F2 的一例完整图像损失反传到冻结前编码器参数的测试梯度有限且非零，前向加 VJP 用 0.474 秒、峰值 allocated 1.486 GB（batch 1）；batch 2 推理峰值 allocated 0.584 GB。F1 对应 VJP 为 0.421 秒、峰值 1.000 GB，推理 0.638 GB。小网格三模式测试还独立检查了 F1/F2 的精确解码误差 \(<10^{-12}\)、所有面正向和对三个系数的非零有限梯度；见 [测试](../../tests/test_phase7_spectral_p1_refinement.py)。这些不同 batch 和是否保留 autograd 图的计时**不能**相互当作严格的同条件速度排名。
 
+### 字典规模与反传显存
+
+安全更新本身不应因基函数数 \(K\) 增大而保存 \(K\) 张百万像素模式图。[谱层](../../src/qcopt/neural_bijection/dense/spectral_p1_refinement.py)在 forward 逐模式累加位移；自定义一阶 VJP 在 backward **重算**每个固定正弦模式并与输出 cotangent 收缩，所以不保存 \(K\times1025^2\) 基函数堆。另可选对每次安全更新做 activation checkpoint，在 backward 重算面积余量。对三个系数的中央差分梯度检查与 checkpoint 开/关均一致（17²→33²/65² 小网格）。
+
+下表是**仅谱 P1 refiner、没有图像编码器/图像查询**的同设备微基准；固定输入为 batch 1 的 257² 恒等粗图，最终 1025²，字典为 \(H_k=\sin(256\pi x)\sin(2\pi k y)\) 中前 \(K\) 项，零振幅处测有限非零 VJP。AI RTX A6000、PyTorch 2.5.1、float32、各配置预热一次完整 backward 后，forward 与 forward+VJP 各重复三次取中位。allocated 峰值含 decoder 的常驻索引缓冲；没有计 image-to-latent。
+
+| 原语 / checkpoint | \(K\) | forward 秒 | forward+VJP 秒 | forward+VJP 峰值 allocated |
+|---|---:|---:|---:|---:|
+| F1 / 关 | 1 | 0.0073 | 0.0359 | 0.747 GB |
+| F1 / 关 | 64 | 0.0325 | 0.0802 | 0.750 GB |
+| F1 / 开 | 1 | 0.0074 | 0.0465 | 0.650 GB |
+| F1 / 开 | 64 | 0.0305 | 0.0893 | 0.650 GB |
+| F2 / 关 | 1 | 0.0142 | 0.0725 | 1.188 GB |
+| F2 / 关 | 64 | 0.0388 | 0.1443 | 1.190 GB |
+| F2 / 开 | 1 | 0.0143 | 0.0976 | 0.539 GB |
+| F2 / 开 | 64 | 0.0374 | 0.1501 | 0.537 GB |
+
+基函数字典扩大 64 倍时，此范围的峰值没有按 \(K\times V\) 增长；代价仍近似随 \(K\) 增长，checkpoint 明显省 F2 反传显存但增加时间。这只是稀疏模式合成的工程性质，不解决如何**学出/选择**有用的 64 个基，也不能将零振幅 VJP 基准误认为复杂目标的质量测量。[基准脚本](../../tools/phase7_profile_spectral_dictionary_scaling.py)。
+
 ## 尚未解决
 
 目前 3 模式由研究者手写，光度读出假定方向均为 \((1,1)\)，且目标数据恰来自相同字典；这不是“覆盖绝大部分同胚”的证据。固定更多 Fourier/小波/局部基可增加覆盖，但读出条件数、位移方向与局部遮挡、映射安全缩放和显存可能恶化。下一步应检验：未知模式的训练式字典选择；局部支撑模式与多方向位移；真实或更复杂图像及非线性损失下的端到端训练；等质量条件下与自由细网格 latent、正 conductance 解码器比较。固定网格全部 \(\mathcal H_h\) 的目标依赖深度可达命题另见 [07](07_fixed_mesh_reachability.md)，不能用它声称当前三维字典稠密。

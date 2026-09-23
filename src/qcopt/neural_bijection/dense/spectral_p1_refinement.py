@@ -7,10 +7,74 @@ from collections.abc import Sequence
 
 import torch
 from torch import nn
+from torch.utils.checkpoint import checkpoint
 
 from .colored_vertex_relaxation import SafeColoredVertexRelaxation
 from .forward_p1_pyramid import exact_dyadic_p1_refine
 from .patch_field import StaggeredPatchP1Layer
+
+
+def _wave(side: int, kx: int, ky: int, *, device: torch.device,
+          dtype: torch.dtype, axis: torch.Tensor,
+          window: tuple[float, float, float, float] | None = None) -> torch.Tensor:
+    wx = torch.sin(2 * math.pi * kx * axis)
+    wy = torch.sin(2 * math.pi * ky * axis)
+    wx = torch.where(wx.abs() < 1e-12, torch.zeros_like(wx), wx)
+    wy = torch.where(wy.abs() < 1e-12, torch.zeros_like(wy), wy)
+    if window is not None:
+        xlo, xhi, ylo, yhi = window
+        tx = (axis - xlo) / (xhi - xlo)
+        ty = (axis - ylo) / (yhi - ylo)
+        wx = wx * torch.where((tx >= 0) & (tx <= 1),
+                              torch.sin(math.pi * tx).square(), 0.0)
+        wy = wy * torch.where((ty >= 0) & (ty <= 1),
+                              torch.sin(math.pi * ty).square(), 0.0)
+    return (wy[:, None] * wx[None, :]).to(device=device, dtype=dtype)
+
+
+class _StreamedSineDisplacement(torch.autograd.Function):
+    """Linear spectral synthesis with recomputed modes in the amplitude VJP.
+
+    Avoids retaining a K x side x side basis stack when the dictionary grows.
+    The fixed cycles and directions are architecture constants, not trainable.
+    """
+
+    @staticmethod
+    def forward(ctx, amplitude: torch.Tensor, directions: torch.Tensor,
+                cycles: tuple[tuple[int, int], ...],
+                windows: tuple[tuple[float, float, float, float] | None, ...],
+                side: int) -> torch.Tensor:
+        batch = amplitude.shape[0]
+        output = amplitude.new_zeros((batch, side, side, 2))
+        axis = torch.arange(side, device=amplitude.device, dtype=torch.float64) / (side - 1)
+        for k, (kx, ky) in enumerate(cycles):
+            wave = _wave(side, kx, ky, device=amplitude.device,
+                         dtype=amplitude.dtype, axis=axis, window=windows[k])
+            output += (amplitude[:, k, None, None, None]
+                       * wave[None, :, :, None]
+                       * directions[k, None, None, :])
+        ctx.save_for_backward(directions)
+        ctx.cycles = cycles
+        ctx.windows = windows
+        ctx.side = side
+        return output
+
+    @staticmethod
+    def backward(ctx, grad_output: torch.Tensor):
+        if not ctx.needs_input_grad[0]:
+            return None, None, None, None, None
+        (directions,) = ctx.saved_tensors
+        side = ctx.side
+        axis = torch.arange(side, device=grad_output.device, dtype=torch.float64) / (side - 1)
+        components = []
+        for k, (kx, ky) in enumerate(ctx.cycles):
+            wave = _wave(side, kx, ky, device=grad_output.device,
+                         dtype=grad_output.dtype, axis=axis,
+                         window=ctx.windows[k])
+            components.append(torch.einsum(
+                "bhwd,hw,d->b", grad_output, wave, directions[k],
+            ))
+        return torch.stack(components, dim=1), None, None, None, None
 
 
 class SineModeP1Refiner(nn.Module):
@@ -30,11 +94,13 @@ class SineModeP1Refiner(nn.Module):
         *,
         cycles: int | Sequence[tuple[int, int]] = 128,
         directions: Sequence[tuple[float, float]] | None = None,
+        windows: Sequence[tuple[float, float, float, float]] | None = None,
         mechanism: str = "colored",
         patch_cells: int = 8,
         minimum_jacobian: float = 0.05,
         sweeps: int = 1,
         amplitude_limit: float = 0.1,
+        checkpoint_updates: bool = False,
     ) -> None:
         super().__init__()
         if mechanism not in ("colored", "patch"):
@@ -53,8 +119,23 @@ class SineModeP1Refiner(nn.Module):
             for direction in directions
         ):
             raise ValueError("directions must be bounded and match the mode count")
+        if windows is None:
+            mode_windows: tuple[tuple[float, float, float, float] | None, ...] = (
+                (None,) * len(modes)
+            )
+        else:
+            mode_windows = tuple(windows)
+            if len(mode_windows) != len(modes) or any(
+                len(window) != 4 or not all(math.isfinite(v) for v in window)
+                or not (0 <= window[0] < window[1] <= 1)
+                or not (0 <= window[2] < window[3] <= 1)
+                for window in mode_windows
+            ):
+                raise ValueError("windows must be valid normalized rectangles per mode")
         if sweeps < 1 or not math.isfinite(amplitude_limit) or amplitude_limit <= 0:
             raise ValueError("sweeps and amplitude_limit must be positive")
+        if not math.isfinite(minimum_jacobian) or not 0 < minimum_jacobian < 1:
+            raise ValueError("minimum_jacobian must be finite and in (0,1)")
         sides = []
         side = coarse_side
         while side < final_side:
@@ -66,6 +147,7 @@ class SineModeP1Refiner(nn.Module):
         self.final_side = final_side
         self.level_sides = tuple(sides)
         self.cycles = modes
+        self.windows = mode_windows
         self.register_buffer(
             "directions",
             torch.tensor(directions, dtype=torch.float64),
@@ -75,6 +157,7 @@ class SineModeP1Refiner(nn.Module):
         self.minimum_jacobian = minimum_jacobian
         self.sweeps = sweeps
         self.amplitude_limit = amplitude_limit
+        self.checkpoint_updates = checkpoint_updates
         if mechanism == "colored":
             self.levels = nn.ModuleList(
                 SafeColoredVertexRelaxation(
@@ -88,20 +171,11 @@ class SineModeP1Refiner(nn.Module):
                 ) for n in sides
             )
 
-    def _mode(self, side: int, reference: torch.Tensor) -> torch.Tensor:
-        axis = torch.arange(side, device=reference.device, dtype=torch.float64) / (side - 1)
-        waves = []
-        for kx, ky in self.cycles:
-            wx = torch.sin(2 * math.pi * kx * axis)
-            wy = torch.sin(2 * math.pi * ky * axis)
-            wx = torch.where(wx.abs() < 1e-12, torch.zeros_like(wx), wx)
-            wy = torch.where(wy.abs() < 1e-12, torch.zeros_like(wy), wy)
-            waves.append(wy[:, None] * wx[None, :])
-        return torch.stack(waves).to(dtype=reference.dtype)
-
     def forward(self, coarse: torch.Tensor, amplitude: torch.Tensor) -> torch.Tensor:
         if coarse.ndim != 4 or coarse.shape[1:] != (self.coarse_side, self.coarse_side, 2):
             raise ValueError("coarse must have shape (B,coarse_side,coarse_side,2)")
+        if coarse.dtype not in (torch.float32, torch.float64):
+            raise ValueError("this topology-preserving implementation requires float32/float64")
         if amplitude.ndim == 1 and len(self.cycles) == 1:
             amplitude = amplitude[:, None]
         if amplitude.shape != (coarse.shape[0], len(self.cycles)) or not torch.isfinite(amplitude).all():
@@ -114,10 +188,9 @@ class SineModeP1Refiner(nn.Module):
         for side, layer in zip(self.level_sides, self.levels):
             mapped = exact_dyadic_p1_refine(mapped)
             baseline = exact_dyadic_p1_refine(baseline)
-            mode = self._mode(side, mapped)
-            desired = baseline + torch.einsum(
-                "bk,khw,kd->bhwd", amplitude, mode,
-                self.directions.to(dtype=mapped.dtype),
+            desired = baseline + _StreamedSineDisplacement.apply(
+                amplitude, self.directions.to(dtype=mapped.dtype),
+                self.cycles, self.windows, side,
             )
             for _ in range(self.sweeps):
                 if self.mechanism == "colored":
@@ -126,7 +199,14 @@ class SineModeP1Refiner(nn.Module):
                     logits = torch.atanh((delta[:, 1:-1, 1:-1] / span).clamp(-0.95, 0.95))
                     floor = mapped.new_full((mapped.shape[0],),
                                             self.minimum_jacobian / (side - 1) ** 2)
-                    mapped = layer(mapped, logits, area_floor=floor)
+                    def apply_color(current: torch.Tensor, raw: torch.Tensor,
+                                    active_layer=layer, active_floor=floor) -> torch.Tensor:
+                        return active_layer(current, raw, area_floor=active_floor)
+                    mapped = (
+                        checkpoint(apply_color, mapped, logits, use_reentrant=False)
+                        if self.checkpoint_updates and torch.is_grad_enabled() else
+                        apply_color(mapped, logits)
+                    )
                 else:
                     assigned = torch.zeros(side * side, device=mapped.device, dtype=torch.bool)
                     for patch_pass in layer.passes:
@@ -136,6 +216,13 @@ class SineModeP1Refiner(nn.Module):
                         raw = torch.where(new[None, :, None], delta, torch.zeros_like(delta))
                         span = patch_pass.raw_span * patch_pass.patch_cells / (side - 1)
                         logits = torch.atanh((raw / span).clamp(-0.95, 0.95))
-                        mapped = patch_pass(mapped, logits)
+                        def apply_patch(current: torch.Tensor, raw: torch.Tensor,
+                                        active_pass=patch_pass) -> torch.Tensor:
+                            return active_pass(current, raw)
+                        mapped = (
+                            checkpoint(apply_patch, mapped, logits, use_reentrant=False)
+                            if self.checkpoint_updates and torch.is_grad_enabled() else
+                            apply_patch(mapped, logits)
+                        )
                         assigned[ids] = True
         return mapped

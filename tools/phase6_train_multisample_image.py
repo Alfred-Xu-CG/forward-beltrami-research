@@ -38,7 +38,8 @@ def make_dataset(
     count: int, image_side: int, seed: int, *, return_coefficients: bool = False, target_family: str = "base"
 ) -> tuple[torch.Tensor, ...]:
     """Make independent textures with uniformly bounded, boundary-fixed maps."""
-    if target_family not in ("base", "high32", "high64", "high128", "high128_tri"):
+    if target_family not in ("base", "high32", "high64", "high128",
+                             "high128_tri", "high128_tiles"):
         raise ValueError("unsupported target_family")
     generator = torch.Generator(device="cpu").manual_seed(seed)
     line = torch.linspace(0.0, 1.0, image_side)
@@ -66,22 +67,38 @@ def make_dataset(
         ay = 0.010 + 0.015 * torch.rand(count, 1, 1, generator=generator)
         af = -0.002 + 0.0045 * torch.rand(count, 1, 1, generator=generator)
         fine_cycles = {"high32": 32, "high64": 64, "high128": 128,
-                       "high128_tri": 128}[target_family]
+                       "high128_tri": 128, "high128_tiles": 128}[target_family]
         if target_family == "high64":
             af = 0.5 * af
-        elif target_family in ("high128", "high128_tri"):
+        elif target_family in ("high128", "high128_tri", "high128_tiles"):
             af = 0.15 * af
     bump = torch.sin(2 * math.pi * xx) * torch.sin(2 * math.pi * yy)
-    if target_family == "high128_tri":
-        fine_coefficients = 0.0001 * (
-            2 * torch.rand(count, 3, 1, 1, generator=generator) - 1
+    if target_family in ("high128_tri", "high128_tiles"):
+        mode_count = 3 if target_family == "high128_tri" else 16
+        coefficient_limit = 0.0001 if target_family == "high128_tri" else 0.0002
+        fine_coefficients = coefficient_limit * (
+            2 * torch.rand(count, mode_count, 1, 1, generator=generator) - 1
         )
-        fine_modes = torch.stack((
-            torch.sin(256 * math.pi * xx) * torch.sin(256 * math.pi * yy),
-            torch.sin(256 * math.pi * xx) * torch.sin(128 * math.pi * yy),
-            torch.sin(128 * math.pi * xx) * torch.sin(256 * math.pi * yy),
-        ), dim=1)
-        fine_disp = (fine_coefficients * fine_modes).sum(dim=1)
+        if target_family == "high128_tri":
+            fine_modes = torch.stack((
+                torch.sin(256 * math.pi * xx) * torch.sin(256 * math.pi * yy),
+                torch.sin(256 * math.pi * xx) * torch.sin(128 * math.pi * yy),
+                torch.sin(128 * math.pi * xx) * torch.sin(256 * math.pi * yy),
+            ), dim=1)
+            fine_disp = (fine_coefficients * fine_modes).sum(dim=1)
+        else:
+            high = torch.sin(256 * math.pi * xx) * torch.sin(256 * math.pi * yy)
+            fine_disp = torch.zeros((count, image_side, image_side), dtype=xx.dtype)
+            for row in range(4):
+                for column in range(4):
+                    xlo, ylo = column / 4, row / 4
+                    tx, ty = 4 * (xx - xlo), 4 * (yy - ylo)
+                    wx = torch.where((tx >= 0) & (tx <= 1),
+                                     torch.sin(math.pi * tx).square(), 0)
+                    wy = torch.where((ty >= 0) & (ty <= 1),
+                                     torch.sin(math.pi * ty).square(), 0)
+                    k = 4 * row + column
+                    fine_disp += fine_coefficients[:, k] * high * wx * wy
     else:
         fine = torch.sin(2 * math.pi * fine_cycles * xx) * torch.sin(2 * math.pi * fine_cycles * yy)
         fine_disp = af * fine
@@ -93,7 +110,7 @@ def make_dataset(
     if return_coefficients:
         coefficients = (
             torch.cat((ax, ay, fine_coefficients.squeeze(-1)), dim=1)
-            if target_family == "high128_tri" else
+            if target_family in ("high128_tri", "high128_tiles") else
             torch.cat((ax, ay, af), dim=-1).reshape(count, 3)
         )
         coefficients = coefficients.reshape(count, -1)

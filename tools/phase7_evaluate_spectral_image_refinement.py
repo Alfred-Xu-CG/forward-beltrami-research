@@ -39,7 +39,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--decoder-kind", choices=("colored", "patch"), required=True)
-    parser.add_argument("--target-family", choices=("high128", "high128_tri"),
+    parser.add_argument("--target-family", choices=("high128", "high128_tri", "high128_tiles"),
                         default="high128")
     parser.add_argument("--amplitude-source", choices=("estimated", "true", "zero"),
                         default="estimated")
@@ -49,8 +49,12 @@ def main() -> None:
     parser.add_argument("--batch", type=int, default=2)
     parser.add_argument("--check-vjp", action="store_true")
     parser.add_argument("--sweeps", type=int, default=1)
+    parser.add_argument("--checkpoint-updates", action="store_true")
+    parser.add_argument("--readout-iterations", type=int, default=1)
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
+    if args.readout_iterations < 1:
+        raise ValueError("readout-iterations must be positive")
     device = torch.device(args.device)
     if device.type == "cpu":
         torch.set_num_threads(min(8, torch.get_num_threads()))
@@ -58,10 +62,18 @@ def main() -> None:
         args.count, args.image_side, args.seed,
         target_family=args.target_family, return_coefficients=True,
     )
-    mode_cycles = (
-        ((128, 128),) if args.target_family == "high128" else
-        ((128, 128), (128, 64), (64, 128))
-    )
+    if args.target_family == "high128":
+        mode_cycles = ((128, 128),)
+        mode_windows = None
+    elif args.target_family == "high128_tri":
+        mode_cycles = ((128, 128), (128, 64), (64, 128))
+        mode_windows = None
+    else:
+        mode_cycles = ((128, 128),) * 16
+        mode_windows = tuple(
+            (column / 4, (column + 1) / 4, row / 4, (row + 1) / 4)
+            for row in range(4) for column in range(4)
+        )
     if args.decoder_kind == "colored":
         decoder = ForwardP1Pyramid(5, 257, seed_passes=2).to(device)
         encoder = ForwardP1ImageEncoder(
@@ -77,8 +89,9 @@ def main() -> None:
     encoder.eval()
     safe = SafeColoredVertexRelaxation(257, motion_mode="radial", raw_span=2).to(device)
     spectral = SineModeP1Refiner(
-        257, 1025, cycles=mode_cycles, mechanism=args.decoder_kind,
-        sweeps=args.sweeps,
+        257, 1025, cycles=mode_cycles, windows=mode_windows,
+        mechanism=args.decoder_kind,
+        sweeps=args.sweeps, checkpoint_updates=args.checkpoint_updates,
     ).to(device)
     table_coarse = StructuredDenseQueryTable.from_mesh(
         structured_rectangle(256, 256), height=args.image_side, width=args.image_side,
@@ -91,9 +104,24 @@ def main() -> None:
     axis = torch.linspace(0, 1, args.image_side, device=device)
     yy, xx = torch.meshgrid(axis, axis, indexing="ij")
     identity = torch.stack((xx, yy), dim=-1)
+    def mode_values(x: torch.Tensor, y: torch.Tensor,
+                    kx: int, ky: int,
+                    window: tuple[float, float, float, float] | None) -> torch.Tensor:
+        value = torch.sin(2 * math.pi * kx * x) * torch.sin(2 * math.pi * ky * y)
+        if window is not None:
+            xlo, xhi, ylo, yhi = window
+            tx = (x - xlo) / (xhi - xlo)
+            ty = (y - ylo) / (yhi - ylo)
+            value = value * torch.where((tx >= 0) & (tx <= 1),
+                                        torch.sin(math.pi * tx).square(), 0.0)
+            value = value * torch.where((ty >= 0) & (ty <= 1),
+                                        torch.sin(math.pi * ty).square(), 0.0)
+        return value
+
     image_modes = torch.stack(tuple(
-        torch.sin(2 * math.pi * kx * xx) * torch.sin(2 * math.pi * ky * yy)
-        for kx, ky in mode_cycles
+        mode_values(xx, yy, kx, ky,
+                    None if mode_windows is None else mode_windows[k])
+        for k, (kx, ky) in enumerate(mode_cycles)
     ))
     image_mode_norm = image_modes.square().mean(dim=(1, 2))
     fine_axis = torch.arange(1025, device=device, dtype=torch.float64) / 1024
@@ -103,9 +131,9 @@ def main() -> None:
         torch.sin(2 * math.pi * fine_x) * torch.sin(2 * math.pi * fine_y)
     ).to(torch.float32)
     fine_modes = torch.stack(tuple(
-        torch.sin(2 * math.pi * kx * fine_x)
-        * torch.sin(2 * math.pi * ky * fine_y)
-        for kx, ky in mode_cycles
+        mode_values(fine_x, fine_y, kx, ky,
+                    None if mode_windows is None else mode_windows[k])
+        for k, (kx, ky) in enumerate(mode_cycles)
     )).to(torch.float32)
 
     def sync() -> None:
@@ -127,24 +155,39 @@ def main() -> None:
             control = safe(control, hint, area_floor=floor)
         coarse_query = table_coarse.interpolate(control.reshape(control.shape[0], -1, 2))
         coarse_query = coarse_query.reshape(-1, args.image_side, args.image_side, 2)
-        grid = 2 * coarse_query - 1
-        warped = F.grid_sample(moving, grid, mode="bilinear",
-                               padding_mode="border", align_corners=True)
-        gradient = F.grid_sample(
-            physical_image_gradient(moving), grid,
-            mode="bilinear", padding_mode="border", align_corners=True,
-        )
-        design = image_modes[None] * (gradient[:, None, 0] + gradient[:, None, 1])
-        residual = (fixed - warped)[:, 0]
-        pixels = args.image_side ** 2
-        gram = torch.einsum("bkhw,blhw->bkl", design, design) / pixels
-        gram = gram + 1e-12 * torch.eye(
-            len(mode_cycles), device=device, dtype=gram.dtype,
-        )[None]
-        rhs = torch.einsum("bkhw,bhw->bk", design, residual) / pixels
-        estimated = torch.linalg.solve(gram, rhs[..., None])[..., 0]
+        moving_gradient = physical_image_gradient(moving)
+
+        def estimate_at(query_points: torch.Tensor) -> torch.Tensor:
+            grid = 2 * query_points - 1
+            warped = F.grid_sample(moving, grid, mode="bilinear",
+                                   padding_mode="border", align_corners=True)
+            gradient = F.grid_sample(
+                moving_gradient, grid,
+                mode="bilinear", padding_mode="border", align_corners=True,
+            )
+            design = image_modes[None] * (gradient[:, None, 0] + gradient[:, None, 1])
+            residual = (fixed - warped)[:, 0]
+            pixels = args.image_side ** 2
+            rhs = torch.einsum("bkhw,bhw->bk", design, residual) / pixels
+            if args.target_family == "high128_tiles":
+                # Compact interiors have disjoint support: diagonal Gram.
+                return rhs / (design.square().mean(dim=(2, 3)) + 1e-12)
+            gram = torch.einsum("bkhw,blhw->bkl", design, design) / pixels
+            gram = gram + 1e-12 * torch.eye(
+                len(mode_cycles), device=device, dtype=gram.dtype,
+            )[None]
+            return torch.linalg.solve(gram, rhs[..., None])[..., 0]
+
+        estimated = estimate_at(coarse_query)
         if args.amplitude_source == "estimated":
             amplitude = estimated
+            for _ in range(args.readout_iterations - 1):
+                interim = spectral(control, amplitude)
+                interim_query = table_fine.interpolate(
+                    interim.reshape(interim.shape[0], -1, 2)
+                ).reshape(-1, args.image_side, args.image_side, 2)
+                amplitude = amplitude + estimate_at(interim_query)
+            estimated = amplitude
         elif args.amplitude_source == "true":
             amplitude = coefficients[:, 2:]
         else:
@@ -252,9 +295,12 @@ def main() -> None:
         "decoder_kind": args.decoder_kind,
         "target_family": args.target_family,
         "mode_cycles": mode_cycles,
+        "compact_support_windows": mode_windows,
         "mode_count": len(mode_cycles),
         "amplitude_source": args.amplitude_source,
         "sweeps": args.sweeps,
+        "checkpoint_updates": args.checkpoint_updates,
+        "readout_iterations": args.readout_iterations,
         "checkpoint": args.checkpoint,
         "count": args.count,
         "seed": args.seed,

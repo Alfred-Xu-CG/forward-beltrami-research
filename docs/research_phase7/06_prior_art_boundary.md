@@ -11,6 +11,7 @@
 | [Luo, *Spaces of Geodesic Triangulations of Surfaces*](https://link.springer.com/article/10.1007/s00454-021-00359-4) | 固定凸多边形边界与三角连接关系的平面嵌入空间不仅路径连通，而且可缩；可用正有向重心权重插值构造连续合法路径。 | 是 [固定网格目标依赖深度可达性](07_fixed_mesh_reachability.md) 的关键既有前提，而不是本轮首创的空间连通性定理。文献证明路径时求解大系统；我们的局部 decoder 在给定 latent 后不求该系统。路径长度/潜变量可训练性仍未由此解决。 |
 | [Bellido–Mora-Corral, Hölder homeomorphism 的 PL 逼近](https://arxiv.org/abs/0806.3366)；[平面 bi-Sobolev homeomorphism 的 PL 逼近](https://arxiv.org/abs/1509.01045) | 对各自正则类存在 P1 homeomorphism 逼近；假设和收敛范数各不相同。 | 这类存在定理通常允许随目标构造剖分，不能直接推成**固定规则细网格**上的具体 F1/F2 latent 可达性，也不说明训练成本。我们的条件 \(C^{1,1}\) 正则同伦构造是更窄、实现相关的命题，不能包装成解决一般平面 homeomorphism 逼近。 |
 | [CorticalFlow](https://arxiv.org/html/2206.02374) | 对 \(h\operatorname{Lip}(v)<1\)，连续 Euler 映射 \(x\mapsto x+hv(x)\) 是 Lipschitz homeomorphism；论文明确指出仅把受流推动的**顶点**以原边/面重新连线，仍可能自交。 | 是 coarse-to-fine 正向形变与网络的直接相近方向，但它自身已经清楚区分连续流保证和离散采样网格保证。F1/F2 的目标是直接约束原面，消除这层保证缺口。不能因 CorticalFlow 报告高顶点数就把它误列为同一 fixed-grid P1 契约，也不能忽视其前向思想已有先例。 |
+| [SITReg, *Multi-resolution architecture for symmetric, inverse consistent, and topology preserving image registration*](https://www.melba-journal.org/papers/2024:026.html) | 用受硬幅度界约束的多层 cubic B-spline 控制点，证明各小位移的 Lipschitz 收缩/可逆性，跨尺度作复合；图像注册与反传实际实现。原文还明确指出：若把复合映射重采样到图像分辨率，其严格可逆性可能丢失；须保存因子并以**真正复合**评估才保留保证。 | 这是“正向、多分辨率、神经网络、严格拓扑”极直接的前例，不能声称本轮首创这些要素。本轮 F1/F2 特定差异是**最终一张预定三角剖分上的 P1 同胚**，每次更新在这张嵌套细图上直接保面取向，而非保存多层 B-spline 因子后动态复合。单个受收缩界的 B-spline 位移采样到顶点并取 P1 插值也很可能仍满足收缩界；故“单步固定 P1 保证”不能作为独有新意，论文须核对其离散界对三角 P1 的直接适用性。 |
 
 ## 本轮暂可防守的差异与仍需验证的主张
 

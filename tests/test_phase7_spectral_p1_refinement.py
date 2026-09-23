@@ -76,3 +76,66 @@ def test_many_extreme_finite_amplitudes_cannot_overflow_mode_sum() -> None:
                                    mechanism=mechanism)(coarse, amplitudes)
         assert torch.isfinite(output).all()
         assert certify_convex_quad_output(output) > 0
+
+
+def test_three_mode_latent_vjp_matches_central_difference() -> None:
+    axis = torch.arange(9, dtype=torch.float64) / 8
+    yy, xx = torch.meshgrid(axis, axis, indexing="ij")
+    coarse = torch.stack((xx, yy), dim=-1)[None]
+    amplitudes = torch.tensor([[0.0002, -0.0001, 0.00015]], dtype=torch.float64,
+                              requires_grad=True)
+    modes = ((4, 4), (4, 2), (2, 4))
+    weight = torch.Generator().manual_seed(143)
+    cotangent = torch.randn((1, 33, 33, 2), generator=weight, dtype=torch.float64)
+    for mechanism in ("colored", "patch"):
+        for checkpoint_updates in (False, True):
+            refiner = SineModeP1Refiner(
+                9, 33, cycles=modes, mechanism=mechanism,
+                checkpoint_updates=checkpoint_updates,
+            )
+            objective = (refiner(coarse, amplitudes) * cotangent).sum()
+            exact = torch.autograd.grad(objective, amplitudes, retain_graph=True)[0]
+            numerical = torch.zeros_like(exact)
+            step = 1e-7
+            with torch.no_grad():
+                for k in range(3):
+                    plus, minus = amplitudes.clone(), amplitudes.clone()
+                    plus[0, k] += step
+                    minus[0, k] -= step
+                    lp = (refiner(coarse, plus) * cotangent).sum()
+                    lm = (refiner(coarse, minus) * cotangent).sum()
+                    numerical[0, k] = (lp - lm) / (2 * step)
+            assert torch.allclose(exact, numerical, rtol=1e-6, atol=1e-7)
+
+
+def test_four_compact_support_modes_are_independent_and_safe() -> None:
+    axis = torch.arange(17, dtype=torch.float64) / 16
+    yy, xx = torch.meshgrid(axis, axis, indexing="ij")
+    coarse = torch.stack((xx, yy), dim=-1)[None]
+    windows = tuple((i / 2, (i + 1) / 2, j / 2, (j + 1) / 2)
+                    for j in range(2) for i in range(2))
+    amplitude = torch.tensor([[0.0003, -0.0002, 0.00025, -0.0001]],
+                             dtype=torch.float64, requires_grad=True)
+    axis_fine = torch.arange(65, dtype=torch.float64) / 64
+    fy, fx = torch.meshgrid(axis_fine, axis_fine, indexing="ij")
+    wave = torch.sin(16 * math.pi * fx) * torch.sin(16 * math.pi * fy)
+    target = exact_dyadic_p1_refine(exact_dyadic_p1_refine(coarse))
+    for k, (xlo, xhi, ylo, yhi) in enumerate(windows):
+        window_x = torch.where((fx >= xlo) & (fx <= xhi),
+                               torch.sin(math.pi * (fx - xlo) / (xhi - xlo)).square(), 0)
+        window_y = torch.where((fy >= ylo) & (fy <= yhi),
+                               torch.sin(math.pi * (fy - ylo) / (yhi - ylo)).square(), 0)
+        target = target + amplitude[:, k, None, None, None] * (
+            wave * window_x * window_y
+        )[None, :, :, None]
+    for mechanism in ("colored", "patch"):
+        refiner = SineModeP1Refiner(
+            17, 65, cycles=((8, 8),) * 4, windows=windows,
+            mechanism=mechanism, checkpoint_updates=True,
+        )
+        output = refiner(coarse, amplitude)
+        assert (output - target).abs().max() < 1e-12
+        assert certify_convex_quad_output(output) > 0
+        derivative = torch.autograd.grad(output.square().sum(), amplitude,
+                                         retain_graph=True)[0]
+        assert torch.isfinite(derivative).all() and derivative.abs().amin() > 0
