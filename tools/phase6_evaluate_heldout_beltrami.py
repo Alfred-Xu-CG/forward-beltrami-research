@@ -17,6 +17,7 @@ from qcopt.neural_bijection.dense import (
     HierarchicalConvexQuadLocalLayer,
     certify_convex_quad_output,
     evaluate_structured_p1_with_jacobian,
+    local_photometric_logits,
 )
 from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 
@@ -64,8 +65,8 @@ def main() -> None:
     device = torch.device(args.device)
     state = torch.load(args.checkpoint, map_location=device, weights_only=False)
     method = state["args"]["method"]
-    if method not in ("A2", "A3", "A4") or state["args"]["side"] != args.side:
-        raise ValueError("checkpoint does not match A2/A3/A4 and requested side")
+    if method not in ("A2", "A3", "A4", "A5") or state["args"]["side"] != args.side:
+        raise ValueError("checkpoint does not match A2/A3/A4/A5 and requested side")
     target_family = state["args"].get("target_family", "base")
     fine_cycles = 8 if target_family == "base" else 32
     encoder_type = ConvexQuadImageEncoder if method == "A2" else ConvexQuadLocalImageEncoder
@@ -79,8 +80,8 @@ def main() -> None:
     encoder.eval()
     decoder = (
         HierarchicalConvexQuadFreeCenterLayer(args.side) if method == "A2"
-        else HierarchicalConvexQuadLocalLayer(args.side, motion_mode="radial" if method == "A4" else "disk")
-    )
+        else HierarchicalConvexQuadLocalLayer(args.side, motion_mode="radial" if method in ("A4", "A5") else "disk")
+    ).to(device)
     fixed, moving, true_map, coefficients = (
         value.to(device)
         for value in make_dataset(args.test_count, args.image_side, 99317, return_coefficients=True, target_family=target_family)
@@ -110,7 +111,18 @@ def main() -> None:
             end = min(start + args.batch, args.test_count)
             current = end - start
             pair = torch.cat((fixed[start:end], moving[start:end]), dim=1)
-            control = decoder(*encoder(pair))
+            latent = encoder(pair)
+            if method == "A5":
+                base = decoder.base(latent[0], latent[1])
+                hint = local_photometric_logits(
+                    fixed[start:end], moving[start:end], base,
+                    window=state["args"]["hint_window"],
+                    ridge=state["args"]["hint_ridge"],
+                    raw_span=decoder.local.raw_span,
+                )
+                control = decoder.local(base, latent[2] + state["args"]["hint_gain"] * hint)
+            else:
+                control = decoder(*latent)
             if target_family == "high32":
                 source_grid = vertices.reshape(args.side, args.side, 2)
                 high_basis = torch.sin(64 * math.pi * source_grid[..., 0]) * torch.sin(64 * math.pi * source_grid[..., 1])

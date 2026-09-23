@@ -111,3 +111,19 @@ def test_image_encoder_to_local_latent_has_gradient_and_valid_output() -> None:
     assert encoder.local_head.weight.grad is not None
     assert torch.isfinite(encoder.local_head.weight.grad).all()
     assert encoder.local_head.weight.grad.abs().sum() > 0
+
+
+def test_radial_area_floor_survives_repeated_passes() -> None:
+    torch.manual_seed(8197)
+    side = 17
+    base = _random_base(side, torch.float64).detach().requires_grad_(True)
+    layer = SafeColoredVertexRelaxation(side, safety_fraction=0.85, motion_mode="radial", floor_fraction=0.2)
+    floor = layer.compute_area_floor(base)
+    assert floor.item() > 0
+    current = base
+    for _ in range(4):
+        logits = 4 * torch.randn(1, side - 2, side - 2, 2, dtype=torch.float64)
+        current = layer(current, logits, area_floor=floor)
+        assert torch.all(_face_areas(current) >= floor[:, None] - 2e-14)
+    current.square().mean().backward()
+    assert base.grad is not None and torch.isfinite(base.grad).all()

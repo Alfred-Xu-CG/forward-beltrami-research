@@ -27,6 +27,7 @@ from qcopt.neural_bijection.dense import (
     HierarchicalConvexQuadFreeCenterLayer,
     HierarchicalConvexQuadLocalLayer,
     MultiscaleMonotoneGridLayer,
+    local_photometric_logits,
 )
 from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 
@@ -209,7 +210,7 @@ class CoarseFineConvexQuadImageEncoder(torch.nn.Module):
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--method", choices=("A", "AB2", "A2", "A3", "A4", "CF2"), required=True)
+    parser.add_argument("--method", choices=("A", "AB2", "A2", "A3", "A4", "A5", "CF2"), required=True)
     parser.add_argument("--side", type=int, default=257)
     parser.add_argument("--coarse-side", type=int, default=17)
     parser.add_argument("--image-side", type=int, default=512)
@@ -223,6 +224,9 @@ def main() -> None:
     parser.add_argument("--a2-head-mode", choices=("multilevel", "shared"), default="multilevel")
     parser.add_argument("--a2-body-mode", choices=("local", "context"), default="local")
     parser.add_argument("--a2-width", type=int, default=8)
+    parser.add_argument("--hint-window", type=int, default=5, help="A5 local photometric window")
+    parser.add_argument("--hint-ridge", type=float, default=10.0, help="A5 local normal-equation ridge")
+    parser.add_argument("--hint-gain", type=float, default=1.0, help="A5 photometric-logit gain")
     parser.add_argument("--oracle-map-loss", action="store_true", help="diagnostic target-map supervision; not image-only training")
     parser.add_argument("--target-family", choices=("base", "high32"), default="base")
     parser.add_argument("--device", default="cpu")
@@ -235,14 +239,16 @@ def main() -> None:
         raise ValueError("image-gradient loss is for image-only training")
     if args.strain_weight and args.method != "A2":
         raise ValueError("the current strain ablation is defined only for A2")
-    if args.a2_head_mode != "multilevel" and args.method not in ("A2", "A3", "A4", "CF2"):
+    if args.a2_head_mode != "multilevel" and args.method not in ("A2", "A3", "A4", "A5", "CF2"):
         raise ValueError("a2-head-mode applies only to A2 or CF2")
-    if args.a2_body_mode != "local" and args.method not in ("A2", "A3", "A4", "CF2"):
+    if args.a2_body_mode != "local" and args.method not in ("A2", "A3", "A4", "A5", "CF2"):
         raise ValueError("a2-body-mode applies only to A2 or CF2")
-    if args.a2_width != 8 and args.method not in ("A2", "A3", "A4", "CF2"):
+    if args.a2_width != 8 and args.method not in ("A2", "A3", "A4", "A5", "CF2"):
         raise ValueError("a2-width applies only to A2 or CF2")
     if args.oracle_map_loss and args.method not in ("A2", "A4"):
         raise ValueError("the oracle-map-loss diagnostic is defined only for A2 or A4")
+    if args.method == "A5" and (args.hint_window < 1 or args.hint_window % 2 != 1 or args.hint_ridge <= 0):
+        raise ValueError("A5 requires an odd positive hint window and positive ridge")
     torch.manual_seed(20260923)
     device = torch.device(args.device)
     train = tuple(t.to(device) for t in make_dataset(args.train_count, args.image_side, 55101, target_family=args.target_family))
@@ -259,9 +265,11 @@ def main() -> None:
     elif args.method == "A2":
         encoder = ConvexQuadImageEncoder(args.side, width=args.a2_width, head_mode=args.a2_head_mode, body_mode=args.a2_body_mode).to(device)
         decoder = HierarchicalConvexQuadFreeCenterLayer(args.side)
-    elif args.method in ("A3", "A4"):
+    elif args.method in ("A3", "A4", "A5"):
         encoder = ConvexQuadLocalImageEncoder(args.side, width=args.a2_width, head_mode=args.a2_head_mode, body_mode=args.a2_body_mode).to(device)
-        decoder = HierarchicalConvexQuadLocalLayer(args.side, motion_mode="radial" if args.method == "A4" else "disk")
+        decoder = HierarchicalConvexQuadLocalLayer(
+            args.side, motion_mode="radial" if args.method in ("A4", "A5") else "disk"
+        ).to(device)
     elif args.method == "CF2":
         encoder = CoarseFineConvexQuadImageEncoder(
             args.coarse_side, args.side, width=args.a2_width, head_mode=args.a2_head_mode, body_mode=args.a2_body_mode
@@ -277,6 +285,8 @@ def main() -> None:
         previous_args = previous["args"]
         defaults = {"target_family": "base", "coarse_side": 17, "a2_head_mode": "multilevel", "a2_body_mode": "local", "a2_width": 8}
         for key in ("method", "side", "coarse_side", "image_side", "target_family", "a2_head_mode", "a2_body_mode", "a2_width"):
+            if key == "method" and args.method == "A5" and previous_args.get(key) == "A4":
+                continue
             if previous_args.get(key, defaults.get(key)) != getattr(args, key):
                 raise ValueError(f"loaded checkpoint does not match {key}")
         encoder.load_state_dict(previous["encoder"])
@@ -299,6 +309,15 @@ def main() -> None:
             controls = (control,)
         elif args.method in ("A3", "A4"):
             control = decoder(*latent)
+            predicted = table.interpolate(control.reshape(len(indices), -1, 2))
+            controls = (control,)
+        elif args.method == "A5":
+            base = decoder.base(latent[0], latent[1])
+            hint = local_photometric_logits(
+                fixed, moving, base,
+                window=args.hint_window, ridge=args.hint_ridge, raw_span=decoder.local.raw_span,
+            )
+            control = decoder.local(base, latent[2] + args.hint_gain * hint)
             predicted = table.interpolate(control.reshape(len(indices), -1, 2))
             controls = (control,)
         elif args.method == "CF2":
@@ -417,9 +436,12 @@ def main() -> None:
         "learning_rate": args.learning_rate,
         "strain_weight": args.strain_weight,
         "image_gradient_weight": args.image_gradient_weight,
-        "a2_head_mode": args.a2_head_mode if args.method in ("A2", "A3", "A4", "CF2") else None,
-        "a2_body_mode": args.a2_body_mode if args.method in ("A2", "A3", "A4", "CF2") else None,
-        "a2_width": args.a2_width if args.method in ("A2", "A3", "A4", "CF2") else None,
+        "a2_head_mode": args.a2_head_mode if args.method in ("A2", "A3", "A4", "A5", "CF2") else None,
+        "a2_body_mode": args.a2_body_mode if args.method in ("A2", "A3", "A4", "A5", "CF2") else None,
+        "a2_width": args.a2_width if args.method in ("A2", "A3", "A4", "A5", "CF2") else None,
+        "hint_window": args.hint_window if args.method == "A5" else None,
+        "hint_ridge": args.hint_ridge if args.method == "A5" else None,
+        "hint_gain": args.hint_gain if args.method == "A5" else None,
         "oracle_map_loss": args.oracle_map_loss,
         "target_family": args.target_family,
         "loaded_state": args.load_state,
