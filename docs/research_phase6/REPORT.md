@@ -64,6 +64,8 @@ $$A(c)Y_I=b(c,Y_{\partial}),\qquad A(c)=B_I^{\mathsf T}\operatorname{diag}(c)B_I
 
 Woodbury 对少量正边更新有精确代数意义，但粗参数若改变大量细边，更新秩随边数增长，不会自动省掉大系统。分块 Schur 与正弦预条件 PCG 均已在细网格测到完整 forward/VJP；没有把有限步近似解未经检查地称为拓扑保证。具体成本、适用范围和受限表达详见[结构化求解比较](03_conductance_structure.md)。最新[正导纳逆诊断](26_positive_conductance_inverse_diagnostic.md)发现一个确定高频目标在257²、$c_e\in[1,16]$ 下可由全边导纳近似重建到最大坐标误差约$1.09\times10^{-8}$，但需3,000次逆优化迭代、129秒且未达到求解器收敛标志；这不是快速 image-to-latent 层，也非一般可表示性定理。
 
+[新增64周期模态的消融和训练](34_route_c_high64_mode_and_training.md)把“几何网格加密”和“潜在频谱扩容”分开：在1025²控制、同8例high64上，仅将光度拟合128²→256²且仍保持18模态，全面$\mu$ RMSE约0.1375不变；在256²拟合加入每方向64周期的三模态后，冻结层$\mu$ RMSE降为0.1107。继续在32张high64训练图做300步真实image-only反传，只更新21个全局模态增益，8例$\mu$ RMSE降至0.05915，image MSE为$9.489\times10^{-5}$、map RMSE0.0008644；新seed的128例全面$\mu$ RMSE从冻结0.10570降至0.05667，在127/128例逐例改善，但image/map只在84/128、79/128例改善。全部细面正向，新128例最小面det0.4734，热启动完整forward/VJP约165/197ms。因64频率已被明确提供，此结果证明任务特化字典的重要性，不等于自动从图像发现频率或通用Beltrami solver。
+
 ## 6. 当前三路共同结论与未达项
 
 同一物理 GPU2、同一8例合成保留图、257²控制网格、512²图像的冻结热启动完整层比较见[表25](25_same_gpu_257_crossroute.md)：
@@ -78,8 +80,10 @@ A8 image/map最优、C面 $\mu$ 与内存最好、B完整 forward最快但 image
 
 额外的[high64同目标三路压力测试](31_high64_crossroute_stress_test.md)把控制分辨率问题放大：同8例、512²图像、1025²细控制下，A/B/C image MSE分别$8.982\times10^{-6}$、0.0005493、0.0001064；map RMSE分别0.0002850、0.0019242、0.0009027。A细P1空间在此目标确有收益，C仅加密257→1025几乎不改变image/map，B虽有廉价1025²精确组合但现有编码器恢复差。这张表均为各自high32权重向未见high64的冻结迁移，不是三路同预算重训的普适优劣判决。
 
+其后的[Route C high64专门扩容及重训](34_route_c_high64_mode_and_training.md)改善了该特定任务的面导数误差，但不改变上一段“冻结18模态”表的含义：在新128例上C21训练后的image MSE约$1.325\times10^{-4}$、map RMSE0.0010295、全面$\mu$ RMSE0.05667；A的细P1高频冻结层在同seed128例仍有更低的image/map误差，而C21的面$\mu$更低。比较涉及不同的专门重训与表示，不能将任一指标单独当作所有任务的最优性。
+
 **尚未达到完整愿景**：没有一个由任意给定 Beltrami 场出发、在任意高细节真实图像上快速准确地输出固定细网格 P1 同胚并同时保持小 $\mu$ 误差的通用层。A 的输入有效性/QC cap是条件性的，照片内容的 $\mu$ 拟合恶化；B 的紧凑组合不能无条件转成单张原网格P1，图像 encoder 对高频 latent 恢复差；C 的18模态有任务先验且照片域外图像误差大，128²光度估计是瓶颈之一。下一步路线不应只降线性残差或只展示另一张拓扑有效图，而应在同任务上提高图像条件 latent 推断与面导数控制，并严格保留 A/B/C 的输出契约区别。
 
 ## 7. 代码和可复现入口
 
-Route A 的可复用层：`src/qcopt/neural_bijection/dense/nested_p1_feedback.py`，主脚本 `tools/phase6_exact_coarse_fine_feedback.py`；细空间消融见[29节](29_route_a_fine_space_audit.md)和[30节](30_route_a_high64_fine_control_decisive_test.md)，反传显存取舍见[32节](32_route_a_activation_memory_tradeoff.md)、批量扩展见[33节](33_route_a_million_control_batch_scaling.md)。Route B 组合与 point-query 实现及脚本索引见[02节](02_alternating_factorization.md)、[27节](27_route_b_million_control_composition.md)。Route C 的可复用层：`src/qcopt/neural_bijection/dense/photometric_conductance.py`；相关计时、预计算和逆诊断脚本索引在[17节](17_photometric_conductance_layer.md)、[22节](22_streamed_response_precompute.md)、[26节](26_positive_conductance_inverse_diagnostic.md)、[28节](28_route_c_photo_resolution_ablation.md)。共同high64压力测试见[31节](31_high64_crossroute_stress_test.md)。本阶段原始数值在 `raw_results/`，模型检查点在 `checkpoints/`，整合索引在 `results.csv`。完整测试为 `tests/test_phase6_*.py`；请通过上述文档的具体原始 JSON 与脚本复核所关注的一条结论，不把总报告的四舍五入数字当作独立证据。
+Route A 的可复用层：`src/qcopt/neural_bijection/dense/nested_p1_feedback.py`，主脚本 `tools/phase6_exact_coarse_fine_feedback.py`；细空间消融见[29节](29_route_a_fine_space_audit.md)和[30节](30_route_a_high64_fine_control_decisive_test.md)，反传显存取舍见[32节](32_route_a_activation_memory_tradeoff.md)、批量扩展见[33节](33_route_a_million_control_batch_scaling.md)。Route B 组合与 point-query 实现及脚本索引见[02节](02_alternating_factorization.md)、[27节](27_route_b_million_control_composition.md)。Route C 的可复用层：`src/qcopt/neural_bijection/dense/photometric_conductance.py`；相关计时、预计算和逆诊断脚本索引在[17节](17_photometric_conductance_layer.md)、[22节](22_streamed_response_precompute.md)、[26节](26_positive_conductance_inverse_diagnostic.md)、[28节](28_route_c_photo_resolution_ablation.md)、[34节](34_route_c_high64_mode_and_training.md)。共同high64压力测试见[31节](31_high64_crossroute_stress_test.md)。本阶段原始数值在 `raw_results/`，模型检查点在 `checkpoints/`，整合索引在 `results.csv`。完整测试为 `tests/test_phase6_*.py`；请通过上述文档的具体原始 JSON 与脚本复核所关注的一条结论，不把总报告的四舍五入数字当作独立证据。

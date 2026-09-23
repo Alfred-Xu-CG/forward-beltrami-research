@@ -22,23 +22,38 @@ def main() -> None:
     parser.add_argument("--side", type=int, default=1025)
     parser.add_argument("--steps", type=int, default=300)
     parser.add_argument("--batch", type=int, default=1)
+    parser.add_argument("--fit-side",type=int,default=128)
+    parser.add_argument("--frequencies",default="1,2,4,8,16,32")
+    parser.add_argument("--target-family",choices=("high32","high64"),default="high32")
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--save-state", default=None)
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
+    frequencies=tuple(int(value) for value in args.frequencies.split(","))
+    if len(frequencies)!=len(set(frequencies)):
+        raise ValueError("frequencies must be unique")
     torch.manual_seed(20260923)
     device = torch.device(args.device)
     image_side = 512
     train = tuple(value.to(device) for value in make_dataset(
-        32, image_side, 55101, target_family="high32",
+        32, image_side, 55101, target_family=args.target_family,
         return_coefficients=True))
     heldout = tuple(value.to(device) for value in make_dataset(
-        8, image_side, 99317, target_family="high32",
+        8, image_side, 99317, target_family=args.target_family,
         return_coefficients=True))
-    layer = PhotometricSpectralTutteLayer(args.side, fit_side=128).to(device)
+    layer = PhotometricSpectralTutteLayer(
+        args.side,fit_side=args.fit_side,frequencies=frequencies).to(device)
     state = torch.load(args.checkpoint, map_location=device, weights_only=False)
     with torch.no_grad():
-        layer.raw_mode_gains.copy_(state["raw_gains"].to(device))
+        original=(1,2,4,8,16,32)
+        original_gains=state["raw_gains"].to(device)
+        if original_gains.numel()!=3*len(original):
+            raise ValueError("expected a six-frequency trained checkpoint")
+        for axis in range(3):
+            for new_index,frequency in enumerate(frequencies):
+                if frequency in original:
+                    layer.raw_mode_gains[axis*len(frequencies)+new_index]=\
+                        original_gains[axis*len(original)+original.index(frequency)]
     mesh = structured_rectangle(args.side - 1, args.side - 1)
     query_table = StructuredDenseQueryTable.from_mesh(
         mesh, height=image_side, width=image_side)
@@ -142,13 +157,15 @@ def main() -> None:
             "args": vars(args),
         }, args.save_state)
     print(json.dumps({
-        "method": "million_control_photometric18_actual_training",
+        "method": f"million_control_photometric{3*len(frequencies)}_actual_training",
         "side": args.side,
         "control_vertices": args.side ** 2,
         "control_faces": 2 * (args.side - 1) ** 2,
         "image_side": image_side,
         "image_queries": image_side ** 2,
-        "fit_side": 128,
+        "fit_side": args.fit_side,
+        "frequencies":frequencies,
+        "target_family":args.target_family,
         "train_count": 32,
         "heldout_count": 8,
         "batch": args.batch,

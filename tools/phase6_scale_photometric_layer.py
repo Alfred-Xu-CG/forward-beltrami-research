@@ -26,7 +26,11 @@ def main():
     parser.add_argument("--side",type=int,required=True)
     parser.add_argument("--checkpoint",required=True)
     parser.add_argument("--count",type=int,default=8)
+    parser.add_argument("--seed",type=int,default=99317)
     parser.add_argument("--repeats",type=int,default=3)
+    parser.add_argument("--fit-side",type=int,default=128)
+    parser.add_argument("--frequencies",default="1,2,4,8,16,32",
+                        help="comma-separated edge-basis frequencies; may append 64")
     parser.add_argument("--response-chunk-size",type=int,default=1)
     parser.add_argument("--photo-variants",type=int,default=0,
                         help="use six photographic images with this many high32 variants each")
@@ -35,12 +39,25 @@ def main():
     parser.add_argument("--device",default="cpu")
     args=parser.parse_args()
     side,image_side= args.side,512
+    frequencies=tuple(int(value) for value in args.frequencies.split(","))
+    if len(frequencies)!=len(set(frequencies)):
+        raise ValueError("frequencies must be unique")
     device=torch.device(args.device)
     state=torch.load(args.checkpoint,map_location=device,weights_only=False)
     layer=PhotometricSpectralTutteLayer(
-        side,fit_side=128,response_chunk_size=args.response_chunk_size).to(device)
+        side,fit_side=args.fit_side,frequencies=frequencies,
+        response_chunk_size=args.response_chunk_size).to(device)
     with torch.no_grad():
-        layer.raw_mode_gains.copy_(state["raw_gains"].to(device))
+        original=tuple(int(value) for value in state.get("args",{}).get(
+            "frequencies","1,2,4,8,16,32").split(","))
+        original_gains=state["raw_gains"].to(device)
+        if original_gains.numel()!=3*len(original):
+            raise ValueError("checkpoint gains/frequencies mismatch")
+        for axis in range(3):
+            for new_index,frequency in enumerate(frequencies):
+                if frequency in original:
+                    layer.raw_mode_gains[axis*len(frequencies)+new_index]=\
+                        original_gains[axis*len(original)+original.index(frequency)]
     if args.photo_variants < 0:
         raise ValueError("photo variants must be nonnegative")
     if args.photo_variants:
@@ -53,7 +70,7 @@ def main():
     else:
         photo_names=[]
         dataset=tuple(value.to(device) for value in make_dataset(
-            args.count,image_side,99317,target_family=args.target_family,
+            args.count,image_side,args.seed,target_family=args.target_family,
             return_coefficients=True))
         count=args.count
         dataset_kind=f"synthetic_{args.target_family}_heldout"
@@ -125,10 +142,12 @@ def main():
         "side":side,"control_vertices":side**2,
         "control_faces":2*(side-1)**2,
         "image_side":image_side,"image_queries":image_side**2,
-        "fit_side":128,"batch":1,"device":str(device),
+        "fit_side":args.fit_side,"frequencies":frequencies,
+        "batch":1,"device":str(device),
         "response_chunk_size":args.response_chunk_size,
         "checkpoint":args.checkpoint,
         "count":count,
+        "seed":args.seed,
         "dataset_kind":dataset_kind,
         "target_family":args.target_family,
         "photo_names":photo_names,
