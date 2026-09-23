@@ -367,3 +367,12 @@ Image-versus-Beltrami trade-off follow-up: with internal cap0.795, two fine pass
 - What would falsify it：模块与脚本同数据输出差大、梯度到coarse_map消失/非有限、先验不满足却未拒绝、photo内部cap0.795仍有数值越界、面证书失效或速度显著降低。
 - Smallest decisive test：side9→33的随机安全map、fake64图像，一步模块输出正面且VJP到coarse/map；违反cap/boundary应抛错。再1025²一个预训练A8保留样本与研究脚本逐点对照、完整forward/VJP显存/速度。
 - Prior work：现有SpectralSafeFeedbackLayer、SafeColoredQCRadialRelaxation、24节脚本与精确网格细分单元测试；这是API封装，不宣称新拓扑定理。
+
+# Route B same-GPU frozen forward/VJP card（2026-09-23）
+
+- Question：B双257²精确PL组合的已有image-trained成绩和forward/VJP在Element CPU，而A8/C主要在ai GPU2；至少测一次同GPU同图像尺寸/真实batch的冻结B层，避免最终路线速度表直接混比不同设备。
+- Exact test：加载既有twofine257_high32_image1000检查点，保持32/8 high32 seeds、512²最终query、batch1、两个257²因子、float32。ai空闲GPU2上运行原CF2脚本5个lr=0的forward+VJP计时步，排除首步后取中位，同时评价固定8例image/map与每因子全部131072面的面积；权重绝不更新。与A8/C同GPU速度只在口径相同部分比较，B精确组合不是原网格P1。
+- Assumptions：lr=0的Adam不会改变参数；原脚本仍会组装优化器和训练数据，峰值显存包含数据常驻，需标注。原脚本的query动态穿过两个因子，不做第二次图像重采样；几何μ在既有02节另测。
+- What would falsify it：GPU函数不支持动态query、VJP非有限/显存爆炸、同检查点保留image/map偏离CPU基线显著、或任一因子面非正。
+- Smallest decisive test：先一轮冻结step和8例指标，若正确再5轮中位，不另造B模型。
+- Prior work：02和16节B同数据精确组合/摄影内容结果，当前A8/C同GPU测时。

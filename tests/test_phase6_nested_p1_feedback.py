@@ -38,3 +38,9 @@ def test_nested_p1_feedback_certificate_and_vjp():
     invalid[:,0,1,1]+=0.01
     with pytest.raises(RuntimeError,match="boundary"):
         layer(fixed.detach(),moving.detach(),invalid)
+    strict=NestedP1PhotometricFeedbackLayer(
+        side,33,fine_passes=1,qc_cap=0.01,
+        spectral_modes=16)
+    strict.prepare(device="cpu")
+    with pytest.raises(RuntimeError,match="QC cap"):
+        strict(fixed.detach(),moving.detach(),coarse.detach())
