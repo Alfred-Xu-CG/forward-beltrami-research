@@ -50,6 +50,8 @@ def main() -> None:
     parser.add_argument("--benchmark-repeats",type=int,default=3)
     parser.add_argument("--batch",type=int,default=1,
                         help="number of distinct training images per full forward/VJP")
+    parser.add_argument("--profile-stages",action="store_true",
+                        help="synchronize and time each forward component separately")
     parser.add_argument("--learning-rate",type=float,default=0.001)
     parser.add_argument("--save-state",default=None)
     parser.add_argument("--device",default="cpu")
@@ -129,12 +131,27 @@ def main() -> None:
     def synchronize():
         if device.type=="cuda": torch.cuda.synchronize(device)
 
-    def forward(fixed,moving):
-        coarse=coarse_decoder(fixed,moving,encoder(torch.cat((fixed,moving),dim=1)))
+    last_stage_times={}
+    def forward(fixed,moving,*,profile=False):
+        nonlocal last_stage_times
+        stages={}
+        if profile:
+            synchronize();stage_start=time.perf_counter()
+        def mark(label):
+            nonlocal stage_start
+            if profile:
+                synchronize();now=time.perf_counter()
+                stages[label]=now-stage_start
+                stage_start=now
+        latent=encoder(torch.cat((fixed,moving),dim=1))
+        mark("encoder")
+        coarse=coarse_decoder(fixed,moving,latent)
+        mark("coarse_decoder")
         mapped=refine_table.interpolate(
             coarse.reshape(coarse.shape[0],-1,2)).reshape(
                 coarse.shape[0],fine_side,fine_side,2)
         base=mapped
+        mark("coarse_to_fine_table")
         if fine_layer is not None:
             mapped=fine_layer(fixed,moving,coarse)
         else:
@@ -151,10 +168,17 @@ def main() -> None:
                 mapped=(checkpoint(refine,mapped,proposal,floor,use_reentrant=False)
                         if torch.is_grad_enabled() else
                         refine(mapped,proposal,floor))
+        mark("fine_feedback_and_certificates")
         dense=fine_query.interpolate(mapped.reshape(mapped.shape[0],-1,2))
+        mark("final_query")
         warped=F.grid_sample(moving,2*dense-1,mode="bilinear",
                              padding_mode="border",align_corners=True)
-        return (warped-fixed).square().mean(),coarse,base,mapped,dense
+        mark("image_warp")
+        loss=(warped-fixed).square().mean()
+        mark("loss")
+        if profile:
+            last_stage_times=stages
+        return loss,coarse,base,mapped,dense
 
     @torch.no_grad()
     def evaluate(dataset,count):
@@ -312,6 +336,8 @@ def main() -> None:
     generator=torch.Generator(device="cpu").manual_seed(38819)
     if device.type=="cuda": torch.cuda.reset_peak_memory_stats(device)
     forward_times,backward_times,records=[],[],[]
+    stage_times={}
+    optimizer_times=[]
     minimum_train_area=math.inf
     began_all=time.perf_counter()
     repeats=args.benchmark_repeats if args.steps==0 else args.steps
@@ -320,18 +346,30 @@ def main() -> None:
         fixed,moving=train[0][draw],train[1][draw]
         optimizer.zero_grad(set_to_none=True)
         synchronize();began=time.perf_counter()
-        loss,_,_,mapped,_=forward(fixed,moving)
+        loss,_,_,mapped,_=forward(fixed,moving,profile=args.profile_stages)
+        if args.profile_stages:
+            synchronize();area_start=time.perf_counter()
         minimum_train_area=min(minimum_train_area,_minimum_area_ratio(mapped))
+        if args.profile_stages:
+            synchronize();extra_area_seconds=time.perf_counter()-area_start
         synchronize();middle=time.perf_counter()
         loss.backward()
         synchronize();ended=time.perf_counter()
         if not all(parameter.grad is None or torch.isfinite(
                 parameter.grad).all() for parameter in encoder.parameters()):
             raise RuntimeError("nonfinite coarse-to-fine encoder VJP")
-        if args.steps: optimizer.step()
+        if args.steps:
+            synchronize();optimizer_start=time.perf_counter()
+            optimizer.step()
+            synchronize();optimizer_times.append(time.perf_counter()-optimizer_start)
         if step:
             forward_times.append(middle-began)
             backward_times.append(ended-middle)
+            if args.profile_stages:
+                for label,seconds in last_stage_times.items():
+                    stage_times.setdefault(label,[]).append(seconds)
+                stage_times.setdefault("extra_training_area_scan",[]).append(
+                    extra_area_seconds)
         if args.steps and (step==0 or (step+1)%25==0 or step+1==args.steps):
             records.append({"step":step+1,
                             "sampled_image_mse_before_update":float(loss),
@@ -372,6 +410,11 @@ def main() -> None:
         "minimum_training_signed_area_ratio":minimum_train_area,
         "median_full_forward_seconds_after_first":statistics.median(forward_times),
         "median_full_vjp_seconds_after_first":statistics.median(backward_times),
+        "median_profiled_forward_stages_seconds":{
+            label:statistics.median(values) for label,values in stage_times.items()},
+        "median_optimizer_step_seconds":(
+            statistics.median(optimizer_times[1:] or optimizer_times)
+            if optimizer_times else None),
         "training_seconds":training_seconds,
         "last_encoder_gradient_norm":encoder_grad_norm,
         "peak_cuda_allocated_bytes":peak,
