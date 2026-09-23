@@ -1,4 +1,4 @@
-"""Real control-grid scaling of the reusable 18-mode Route C neural layer."""
+"""Real control-grid scaling of the reusable spectral Route C neural layer."""
 
 from __future__ import annotations
 
@@ -34,6 +34,8 @@ def main():
     parser.add_argument("--response-chunk-size",type=int,default=1)
     parser.add_argument("--photo-variants",type=int,default=0,
                         help="use six photographic images with this many high32 variants each")
+    parser.add_argument("--photo-seed",type=int,default=973031,
+                        help="synthetic deformation seed for photographic content")
     parser.add_argument("--target-family",choices=("high32","high64"),
                         default="high32")
     parser.add_argument("--device",default="cpu")
@@ -64,7 +66,7 @@ def main():
         if args.target_family!="high32":
             raise ValueError("photographic variants use the high32 target only")
         photo_names, _, dataset=photographic_dataset(
-            args.photo_variants,image_side,973031,device)
+            args.photo_variants,image_side,args.photo_seed,device)
         count=6*args.photo_variants
         dataset_kind="photographic_content_synthetic_high32"
     else:
@@ -147,7 +149,7 @@ def main():
         "response_chunk_size":args.response_chunk_size,
         "checkpoint":args.checkpoint,
         "count":count,
-        "seed":args.seed,
+        "seed":args.photo_seed if args.photo_variants else args.seed,
         "dataset_kind":dataset_kind,
         "target_family":args.target_family,
         "photo_names":photo_names,
