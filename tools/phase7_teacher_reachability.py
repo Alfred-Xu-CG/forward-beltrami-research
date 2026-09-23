@@ -28,6 +28,8 @@ def target_map(side: int, device: torch.device, dtype: torch.dtype, kind: str) -
             cycles, ax, ay, af = 32, 0.015, 0.025, 0.0025
         elif kind == "high64":
             cycles, ax, ay, af = 64, 0.015, 0.025, 0.00125
+        elif kind == "high128":
+            cycles, ax, ay, af = 128, 0.015, 0.025, 0.00035
         else:
             raise ValueError("unknown target kind")
         high = torch.sin(2 * math.pi * cycles * xx) * torch.sin(2 * math.pi * cycles * yy)
@@ -51,7 +53,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--side", type=int, default=257)
     parser.add_argument("--seed-side", type=int, default=5)
-    parser.add_argument("--target-kind", choices=("base", "high32", "high64", "local_swirl"), default="high32")
+    parser.add_argument("--target-kind", choices=("base", "high32", "high64", "high128", "local_swirl"), default="high32")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--dtype", choices=("float32", "float64"), default="float64")
     parser.add_argument("--minimum-jacobian", type=float, default=0.05)

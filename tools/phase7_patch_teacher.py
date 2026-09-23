@@ -17,7 +17,7 @@ def main() -> None:
     parser.add_argument("--side", type=int, default=257)
     parser.add_argument("--seed-side", type=int, default=17)
     parser.add_argument("--patch-cells", type=int, default=8)
-    parser.add_argument("--target-kind", choices=("base", "high32", "high64", "local_swirl"),
+    parser.add_argument("--target-kind", choices=("base", "high32", "high64", "high128", "local_swirl"),
                         default="high32")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--dtype", choices=("float32", "float64"), default="float64")

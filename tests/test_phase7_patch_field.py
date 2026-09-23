@@ -1,5 +1,6 @@
 """Quadratic simultaneous-face bound and original-grid P1 checks."""
 
+import math
 import torch
 
 from qcopt.neural_bijection.dense import ForwardPatchP1Pyramid, SafePatchFieldPass, StaggeredPatchP1Layer
@@ -47,6 +48,57 @@ def test_staggered_patch_interiors_cover_every_nonboundary_vertex() -> None:
             for row in range(1, side - 1) for column in range(1, side - 1)
         }
         assert observed == expected
+
+
+def test_floor_free_patch_passes_exactly_reach_small_independent_target() -> None:
+    side = 17
+    base = _identity(side)
+    x, y = base[..., 0], base[..., 1]
+    bump = torch.sin(math.pi * x) * torch.sin(math.pi * y)
+    target = base + torch.stack((0.002 * bump, -0.001 * bump), dim=-1)
+    layer = StaggeredPatchP1Layer(side, 8, minimum_jacobian=None)
+    assigned = torch.zeros(side * side, dtype=torch.bool)
+    fields = []
+    for patch_pass in layer.passes:
+        ids = patch_pass.interior_ids
+        new = ~assigned[ids]
+        raw = torch.zeros(1, ids.numel(), 2, dtype=base.dtype)
+        raw[:, new] = (target - base).reshape(1, -1, 2)[:, ids[new]]
+        span = patch_pass.raw_span * patch_pass.patch_cells / (side - 1)
+        fields.append(torch.atanh(raw / span))
+        assigned[ids] = True
+    output = layer(base, tuple(fields))
+    assert assigned.reshape(side, side)[1:-1, 1:-1].all()
+    assert (output - target).abs().max() < 1e-14
+    assert certify_convex_quad_output(output) > 0
+
+
+def test_split_patch_pyramid_matches_full_output_and_vjp() -> None:
+    torch.manual_seed(930)
+    whole = ForwardPatchP1Pyramid(17, 65, patch_cells=8)
+    coarse = ForwardPatchP1Pyramid(17, 33, patch_cells=8)
+    seed = tuple(
+        0.02 * torch.randn(1, 15, 15, 2, dtype=torch.float64, requires_grad=True)
+        for _ in range(4)
+    )
+    levels = tuple(
+        tuple(
+            0.02 * torch.randn(1, side - 2, side - 2, 2,
+                               dtype=torch.float64, requires_grad=True)
+            for _ in range(4)
+        )
+        for side in whole.level_sides
+    )
+    direct = whole(seed, levels)
+    first = coarse(seed, levels[:1])
+    resumed = whole.forward_from(first, levels[1:], start_index=1)
+    assert torch.equal(direct, resumed)
+    inputs = seed + tuple(z for group in levels for z in group)
+    weights = torch.randn_like(direct)
+    grad_direct = torch.autograd.grad((direct * weights).sum(), inputs, retain_graph=True)
+    grad_resumed = torch.autograd.grad((resumed * weights).sum(), inputs)
+    assert all(torch.allclose(a, b, atol=1e-14, rtol=1e-14)
+               for a, b in zip(grad_direct, grad_resumed))
 
 
 def test_patch_field_vjp_matches_directional_difference() -> None:

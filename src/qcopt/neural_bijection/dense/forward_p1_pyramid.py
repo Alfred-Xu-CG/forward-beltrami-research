@@ -122,7 +122,29 @@ class ForwardP1Pyramid(nn.Module):
         mapped = torch.stack((xx, yy), dim=-1).unsqueeze(0).expand(batch, -1, -1, -1)
         for latent in seed_logits:
             mapped = self._update(self.seed_update, mapped, latent)
-        for n, layer, latent in zip(self.level_sides, self.level_updates, level_logits):
+        return self.forward_from(mapped, level_logits, start_index=0)
+
+    def forward_from(
+        self,
+        mapped: torch.Tensor,
+        level_logits: Sequence[torch.Tensor],
+        *,
+        start_index: int,
+    ) -> torch.Tensor:
+        """Resume exact refinement from an already-safe pyramid level."""
+        if not 0 <= start_index <= len(self.level_sides):
+            raise ValueError("invalid refinement start_index")
+        expected_side = self.seed_side if start_index == 0 else self.level_sides[start_index - 1]
+        if mapped.ndim != 4 or mapped.shape[1:] != (expected_side, expected_side, 2):
+            raise ValueError("mapped has the wrong starting grid side")
+        if len(level_logits) != len(self.level_sides) - start_index:
+            raise ValueError("incorrect number of remaining refinement latents")
+        batch = mapped.shape[0]
+        for n, layer, latent in zip(
+            self.level_sides[start_index:],
+            self.level_updates[start_index:],
+            level_logits,
+        ):
             mapped = exact_dyadic_p1_refine(mapped)
             if latent.shape != (batch, n - 2, n - 2, 2):
                 raise ValueError("refinement latent has wrong shape")

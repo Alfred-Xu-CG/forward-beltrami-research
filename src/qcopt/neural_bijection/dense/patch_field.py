@@ -38,7 +38,7 @@ class SafePatchFieldPass(nn.Module):
         offset_column: int = 0,
         raw_span: float = 0.5,
         safety_fraction: float = 0.85,
-        minimum_jacobian: float = 0.05,
+        minimum_jacobian: float | None = 0.05,
     ) -> None:
         super().__init__()
         if side < 3 or patch_cells < 2 or (side - 1) % patch_cells:
@@ -47,8 +47,10 @@ class SafePatchFieldPass(nn.Module):
             raise ValueError("patch offsets must be in [0,patch_cells)")
         if not math.isfinite(raw_span) or raw_span <= 0:
             raise ValueError("raw_span must be finite and positive")
-        if not 0 < safety_fraction < 1 or not 0 < minimum_jacobian < 1:
-            raise ValueError("safety_fraction and minimum_jacobian must be in (0,1)")
+        if not 0 < safety_fraction < 1 or (
+            minimum_jacobian is not None and not 0 < minimum_jacobian < 1
+        ):
+            raise ValueError("safety_fraction must be in (0,1); minimum_jacobian in (0,1) or None")
         self.side = side
         self.patch_cells = patch_cells
         self.offset_row = offset_row
@@ -124,11 +126,10 @@ class SafePatchFieldPass(nn.Module):
         up_area, up_bound = face_terms(a, c, d, da, dc, dd)
         areas = torch.stack((low_area, up_area), dim=-1).reshape(batch, patch_count, -1)
         bounds = torch.stack((low_bound, up_bound), dim=-1).reshape(batch, patch_count, -1)
-        floor = self.minimum_jacobian / (side - 1) ** 2
-        allowance = torch.minimum(
-            self.safety_fraction * areas,
-            (areas - floor).clamp_min(0),
-        )
+        allowance = self.safety_fraction * areas
+        if self.minimum_jacobian is not None:
+            floor = self.minimum_jacobian / (side - 1) ** 2
+            allowance = torch.minimum(allowance, (areas - floor).clamp_min(0))
         # `tiny` (about 1e-38 in float32) makes d(scale)/d(area) explode on
         # a face exactly at the floor with zero adverse proposal. Such faces
         # occur at fixed patch corners after earlier staggered passes.
@@ -149,7 +150,7 @@ class SafePatchFieldPass(nn.Module):
 class StaggeredPatchP1Layer(nn.Module):
     """Four shifted patch passes so every strict interior vertex can move."""
 
-    def __init__(self, side: int, patch_cells: int = 8, **kwargs: float) -> None:
+    def __init__(self, side: int, patch_cells: int = 8, **kwargs: float | None) -> None:
         super().__init__()
         if patch_cells % 2:
             raise ValueError("patch_cells must be even for the staggered schedule")
@@ -184,7 +185,7 @@ class ForwardPatchP1Pyramid(nn.Module):
         patch_cells: int = 8,
         seed_cycles: int = 1,
         level_cycles: int = 1,
-        minimum_jacobian: float = 0.05,
+        minimum_jacobian: float | None = 0.05,
         raw_span: float = 0.5,
     ) -> None:
         super().__init__()
@@ -223,10 +224,31 @@ class ForwardPatchP1Pyramid(nn.Module):
         current = torch.stack((xx, yy), dim=-1)[None].expand(first.shape[0], -1, -1, -1)
         for cycle in range(self.seed_cycles):
             current = self.seed_layer(current, seed_logits[4 * cycle:4 * (cycle + 1)])
-        for n, layer, fields in zip(self.level_sides, self.level_layers, level_logits):
+        return self.forward_from(current, level_logits, start_index=0)
+
+    def forward_from(
+        self,
+        current: torch.Tensor,
+        level_logits: tuple[tuple[torch.Tensor, ...], ...],
+        *,
+        start_index: int,
+    ) -> torch.Tensor:
+        """Continue the pyramid after an exact P1 modification on one level."""
+        if not 0 <= start_index <= len(self.level_sides):
+            raise ValueError("invalid refinement start_index")
+        expected_side = self.seed_side if start_index == 0 else self.level_sides[start_index - 1]
+        if current.ndim != 4 or current.shape[1:] != (expected_side, expected_side, 2):
+            raise ValueError("current has the wrong starting grid side")
+        if len(level_logits) != len(self.level_sides) - start_index:
+            raise ValueError("incorrect number of remaining refinement latent groups")
+        for n, layer, fields in zip(
+            self.level_sides[start_index:],
+            self.level_layers[start_index:],
+            level_logits,
+        ):
             valid_shapes = tuple(
-                ((first.shape[0], n - 2, n - 2, 2),
-                 (first.shape[0], patch_pass.interior_ids.numel(), 2))
+                ((current.shape[0], n - 2, n - 2, 2),
+                 (current.shape[0], patch_pass.interior_ids.numel(), 2))
                 for _ in range(self.level_cycles) for patch_pass in layer.passes
             )
             if len(fields) != 4 * self.level_cycles or any(

@@ -79,6 +79,27 @@ def test_pyramid_mask_ignores_old_vertex_logits() -> None:
     assert torch.equal(original, output)
 
 
+def test_split_pyramid_decode_matches_full_output_and_vjp() -> None:
+    torch.manual_seed(806)
+    whole = ForwardP1Pyramid(5, 33, seed_passes=1)
+    coarse = ForwardP1Pyramid(5, 17, seed_passes=1)
+    seed = [0.03 * torch.randn(1, 3, 3, 2, dtype=torch.float64, requires_grad=True)]
+    levels = [
+        0.03 * torch.randn(1, n - 2, n - 2, 2, dtype=torch.float64, requires_grad=True)
+        for n in whole.level_sides
+    ]
+    direct = whole(seed, levels)
+    first = coarse(seed, levels[:2])
+    resumed = whole.forward_from(first, levels[2:], start_index=2)
+    assert torch.equal(direct, resumed)
+    weight = torch.randn_like(direct)
+    gradients_direct = torch.autograd.grad((direct * weight).sum(), seed + levels,
+                                           retain_graph=True)
+    gradients_resumed = torch.autograd.grad((resumed * weight).sum(), seed + levels)
+    assert all(torch.allclose(a, b, atol=1e-14, rtol=1e-14)
+               for a, b in zip(gradients_direct, gradients_resumed))
+
+
 def test_teacher_latents_generate_full_smooth_target_across_levels() -> None:
     decoder = ForwardP1Pyramid(5, 33, seed_passes=1, minimum_jacobian=0.05)
     alpha = 2.0
