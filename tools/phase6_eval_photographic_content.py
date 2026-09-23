@@ -22,11 +22,19 @@ from qcopt.neural_bijection.dense import (
 from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 
 
-def _photo_bank(side: int) -> tuple[list[str], torch.Tensor]:
-    names = ["camera", "coins", "moon", "page", "grass", "gravel"]
+def _photo_bank(side: int, names: list[str] | None = None) -> tuple[list[str], torch.Tensor]:
+    if names is None:
+        names = ["camera", "coins", "moon", "page", "grass", "gravel"]
+    if not names:
+        raise ValueError("at least one photographic image is required")
     images = []
     for name in names:
         array = np.asarray(getattr(data, name)(), dtype=np.float32)
+        if array.ndim == 3:
+            array = (array[..., :3] * np.array(
+                [0.2126, 0.7152, 0.0722], dtype=np.float32)).sum(axis=-1)
+        if array.ndim != 2:
+            raise ValueError(f"photograph {name} must be grayscale or RGB")
         image = torch.tensor(array)[None, None] / 255.0
         image = F.interpolate(image, size=(side, side), mode="bilinear", align_corners=True)
         image = 0.3 * (image - image.mean()) / image.std().clamp_min(1e-6)
@@ -34,8 +42,9 @@ def _photo_bank(side: int) -> tuple[list[str], torch.Tensor]:
     return names, torch.stack(images)
 
 
-def _dataset(variants_per_photo: int, image_side: int, seed: int, device: torch.device):
-    names, bank = _photo_bank(image_side)
+def _dataset(variants_per_photo: int, image_side: int, seed: int, device: torch.device,
+             photo_names: list[str] | None = None):
+    names, bank = _photo_bank(image_side, photo_names)
     count = len(names) * variants_per_photo
     generator = torch.Generator(device="cpu").manual_seed(seed)
     ax = 0.005 + 0.010 * torch.rand(count, 1, 1, generator=generator)

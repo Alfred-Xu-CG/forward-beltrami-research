@@ -4,6 +4,18 @@ This repository is the canonical, synchronized home for the forward Beltrami
 solver exploration. It contains source code, experiment drivers, compact JSON
 or CSV receipts, route ledgers, and self-contained theory summaries.
 
+## Current Phase VI
+
+The active 18-hour dense-homeomorphism research plan is
+[`docs/research_phase6/PLAN.md`](docs/research_phase6/PLAN.md). Start with the
+[self-contained Phase VI report](docs/research_phase6/REPORT.md), then use its
+route-specific links and [`results.csv`](docs/research_phase6/results.csv) to
+find exact setups, code, and per-case raw JSON. The current phase rules in
+[`AGENTS.md`](AGENTS.md) and
+[`docs/research_phase6/AGENTS_RESEARCH_MODE.md`](docs/research_phase6/AGENTS_RESEARCH_MODE.md)
+supersede the older review checklist below; no additional audit framework or
+skill workflow is required for Phase VI.
+
 ## Layout
 
 - `src/qcopt/`: reusable numerical implementations.

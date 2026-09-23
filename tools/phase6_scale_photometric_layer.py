@@ -36,6 +36,8 @@ def main():
                         help="use six photographic images with this many high32 variants each")
     parser.add_argument("--photo-seed",type=int,default=973031,
                         help="synthetic deformation seed for photographic content")
+    parser.add_argument("--photo-names",default="camera,coins,moon,page,grass,gravel",
+                        help="comma-separated scikit-image images; RGB is converted to grayscale")
     parser.add_argument("--target-family",choices=("high32","high64"),
                         default="high32")
     parser.add_argument("--device",default="cpu")
@@ -65,9 +67,11 @@ def main():
     if args.photo_variants:
         if args.target_family!="high32":
             raise ValueError("photographic variants use the high32 target only")
+        selected_photos=[name.strip() for name in args.photo_names.split(",")
+                         if name.strip()]
         photo_names, _, dataset=photographic_dataset(
-            args.photo_variants,image_side,args.photo_seed,device)
-        count=6*args.photo_variants
+            args.photo_variants,image_side,args.photo_seed,device,selected_photos)
+        count=len(photo_names)*args.photo_variants
         dataset_kind="photographic_content_synthetic_high32"
     else:
         photo_names=[]
