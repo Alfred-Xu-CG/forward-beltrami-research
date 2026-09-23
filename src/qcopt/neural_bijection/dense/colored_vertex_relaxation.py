@@ -19,12 +19,19 @@ class SafeColoredVertexRelaxation(torch.nn.Module):
     stays P1 on the *same* triangulation, without a linear system or a search.
     """
 
-    def __init__(self, side: int, *, safety_fraction: float = 0.75) -> None:
+    def __init__(
+        self, side: int, *, safety_fraction: float = 0.75,
+        motion_mode: str = "disk", raw_span: float = 2.0,
+    ) -> None:
         super().__init__()
         if side < 3 or not 0.0 < safety_fraction < 1.0:
             raise ValueError("side >= 3 and 0 < safety_fraction < 1 are required")
+        if motion_mode not in ("disk", "radial") or not math.isfinite(raw_span) or raw_span <= 0:
+            raise ValueError("motion_mode must be disk/radial and raw_span must be positive and finite")
         self.side = side
         self.safety_fraction = float(safety_fraction)
+        self.motion_mode = motion_mode
+        self.raw_span = float(raw_span)
         # On the fixed southwest-to-northeast triangulation, these are the
         # cyclic opposite edges of the six incident triangles.  Generating
         # them arithmetically avoids millions of Python tuples at 1025².
@@ -67,9 +74,17 @@ class SafeColoredVertexRelaxation(torch.nn.Module):
             edge = end - start
             relative = point[:, :, None] - start
             signed_double_area = edge[..., 0] * relative[..., 1] - edge[..., 1] * relative[..., 0]
-            altitude = signed_double_area / torch.linalg.vector_norm(edge, dim=-1)
-            radius = altitude.amin(dim=-1)
-            displacement = (self.safety_fraction / math.sqrt(2.0)) * radius[..., None] * torch.tanh(latent[:, local])
+            if self.motion_mode == "disk":
+                altitude = signed_double_area / torch.linalg.vector_norm(edge, dim=-1)
+                radius = altitude.amin(dim=-1)
+                displacement = (self.safety_fraction / math.sqrt(2.0)) * radius[..., None] * torch.tanh(latent[:, local])
+            else:
+                raw = (self.raw_span / (self.side - 1)) * torch.tanh(latent[:, local])
+                adverse = -(edge[..., 0] * raw[:, :, None, 1] - edge[..., 1] * raw[:, :, None, 0])
+                adverse = adverse.clamp_min(0.0)
+                radial_limit = (signed_double_area / adverse.clamp_min(torch.finfo(base.dtype).tiny)).amin(dim=-1)
+                scale = (self.safety_fraction * radial_limit).clamp(max=1.0)
+                displacement = scale[..., None] * raw
             current = current.index_copy(1, vertices, point + displacement)
         return current.reshape(batch, self.side, self.side, 2)
 
@@ -77,10 +92,15 @@ class SafeColoredVertexRelaxation(torch.nn.Module):
 class HierarchicalConvexQuadLocalLayer(torch.nn.Module):
     """One original-grid P1 layer with multiscale and fine local latents."""
 
-    def __init__(self, side: int, *, safety_fraction: float = 0.85) -> None:
+    def __init__(
+        self, side: int, *, safety_fraction: float = 0.85,
+        motion_mode: str = "disk", raw_span: float = 2.0,
+    ) -> None:
         super().__init__()
         self.base = HierarchicalConvexQuadFreeCenterLayer(side)
-        self.local = SafeColoredVertexRelaxation(side, safety_fraction=safety_fraction)
+        self.local = SafeColoredVertexRelaxation(
+            side, safety_fraction=safety_fraction, motion_mode=motion_mode, raw_span=raw_span
+        )
 
     def forward(self, root: torch.Tensor, levels, local_logits: torch.Tensor) -> torch.Tensor:
         return self.local(self.base(root, levels), local_logits)

@@ -23,7 +23,7 @@ def main() -> None:
     parser.add_argument("--target-kind", choices=("base", "high32"), default=None, help="for older checkpoints without target_kind")
     args = parser.parse_args()
     state = torch.load(args.checkpoint, map_location="cpu", weights_only=True)
-    if state["method"] not in ("convex_quad_free", "convex_quad_local") or state["side"] != 257:
+    if state["method"] not in ("convex_quad_free", "convex_quad_local", "convex_quad_radial") or state["side"] != 257:
         raise ValueError("requires a 257-square free-center or local-relaxation direct-map checkpoint")
     target_kind = state.get("target_kind", args.target_kind or "base")
     if target_kind == "base":
@@ -37,7 +37,7 @@ def main() -> None:
     decoder = HierarchicalConvexQuadFreeCenterLayer(257)
     parameters = state["parameters"]
     levels = len(decoder.latent_sides)
-    if len(parameters) != 1 + 3 * levels + (state["method"] == "convex_quad_local"):
+    if len(parameters) != 1 + 3 * levels + (state["method"] in ("convex_quad_local", "convex_quad_radial")):
         raise ValueError("checkpoint latent count mismatch")
     root = parameters[0]
     horizontal = parameters[1:1 + levels]
@@ -45,8 +45,12 @@ def main() -> None:
     centers = parameters[1 + 2 * levels:1 + 3 * levels]
     with torch.no_grad():
         control = decoder(root, tuple(zip(horizontal, vertical, centers)))
-        if state["method"] == "convex_quad_local":
-            control = SafeColoredVertexRelaxation(257, safety_fraction=0.85)(control, parameters[-1])
+        if state["method"] in ("convex_quad_local", "convex_quad_radial"):
+            control = SafeColoredVertexRelaxation(
+                257, safety_fraction=0.85,
+                motion_mode="radial" if state["method"] == "convex_quad_radial" else "disk",
+                raw_span=state.get("raw_span", 2.0) or 2.0,
+            )(control, parameters[-1])
         minimum_area = certify_convex_quad_output(control)
         mesh = structured_rectangle(256, 256)
         vertices = torch.tensor(mesh.vertices.copy(), dtype=torch.float32)

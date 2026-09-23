@@ -209,7 +209,7 @@ class CoarseFineConvexQuadImageEncoder(torch.nn.Module):
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--method", choices=("A", "AB2", "A2", "A3", "CF2"), required=True)
+    parser.add_argument("--method", choices=("A", "AB2", "A2", "A3", "A4", "CF2"), required=True)
     parser.add_argument("--side", type=int, default=257)
     parser.add_argument("--coarse-side", type=int, default=17)
     parser.add_argument("--image-side", type=int, default=512)
@@ -235,14 +235,14 @@ def main() -> None:
         raise ValueError("image-gradient loss is for image-only training")
     if args.strain_weight and args.method != "A2":
         raise ValueError("the current strain ablation is defined only for A2")
-    if args.a2_head_mode != "multilevel" and args.method not in ("A2", "A3", "CF2"):
+    if args.a2_head_mode != "multilevel" and args.method not in ("A2", "A3", "A4", "CF2"):
         raise ValueError("a2-head-mode applies only to A2 or CF2")
-    if args.a2_body_mode != "local" and args.method not in ("A2", "A3", "CF2"):
+    if args.a2_body_mode != "local" and args.method not in ("A2", "A3", "A4", "CF2"):
         raise ValueError("a2-body-mode applies only to A2 or CF2")
-    if args.a2_width != 8 and args.method not in ("A2", "A3", "CF2"):
+    if args.a2_width != 8 and args.method not in ("A2", "A3", "A4", "CF2"):
         raise ValueError("a2-width applies only to A2 or CF2")
-    if args.oracle_map_loss and args.method != "A2":
-        raise ValueError("the oracle-map-loss diagnostic is defined only for A2")
+    if args.oracle_map_loss and args.method not in ("A2", "A4"):
+        raise ValueError("the oracle-map-loss diagnostic is defined only for A2 or A4")
     torch.manual_seed(20260923)
     device = torch.device(args.device)
     train = tuple(t.to(device) for t in make_dataset(args.train_count, args.image_side, 55101, target_family=args.target_family))
@@ -259,9 +259,9 @@ def main() -> None:
     elif args.method == "A2":
         encoder = ConvexQuadImageEncoder(args.side, width=args.a2_width, head_mode=args.a2_head_mode, body_mode=args.a2_body_mode).to(device)
         decoder = HierarchicalConvexQuadFreeCenterLayer(args.side)
-    elif args.method == "A3":
+    elif args.method in ("A3", "A4"):
         encoder = ConvexQuadLocalImageEncoder(args.side, width=args.a2_width, head_mode=args.a2_head_mode, body_mode=args.a2_body_mode).to(device)
-        decoder = HierarchicalConvexQuadLocalLayer(args.side)
+        decoder = HierarchicalConvexQuadLocalLayer(args.side, motion_mode="radial" if args.method == "A4" else "disk")
     elif args.method == "CF2":
         encoder = CoarseFineConvexQuadImageEncoder(
             args.coarse_side, args.side, width=args.a2_width, head_mode=args.a2_head_mode, body_mode=args.a2_body_mode
@@ -297,7 +297,7 @@ def main() -> None:
             control = decoder(*latent)
             predicted = table.interpolate(control.reshape(len(indices), -1, 2))
             controls = (control,)
-        elif args.method == "A3":
+        elif args.method in ("A3", "A4"):
             control = decoder(*latent)
             predicted = table.interpolate(control.reshape(len(indices), -1, 2))
             controls = (control,)
@@ -417,9 +417,9 @@ def main() -> None:
         "learning_rate": args.learning_rate,
         "strain_weight": args.strain_weight,
         "image_gradient_weight": args.image_gradient_weight,
-        "a2_head_mode": args.a2_head_mode if args.method in ("A2", "A3", "CF2") else None,
-        "a2_body_mode": args.a2_body_mode if args.method in ("A2", "A3", "CF2") else None,
-        "a2_width": args.a2_width if args.method in ("A2", "A3", "CF2") else None,
+        "a2_head_mode": args.a2_head_mode if args.method in ("A2", "A3", "A4", "CF2") else None,
+        "a2_body_mode": args.a2_body_mode if args.method in ("A2", "A3", "A4", "CF2") else None,
+        "a2_width": args.a2_width if args.method in ("A2", "A3", "A4", "CF2") else None,
         "oracle_map_loss": args.oracle_map_loss,
         "target_family": args.target_family,
         "loaded_state": args.load_state,

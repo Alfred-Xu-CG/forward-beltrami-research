@@ -54,7 +54,7 @@ def target_map(side: int, device: torch.device, dtype: torch.dtype, target_kind:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--method", choices=("single_vertical", "single_horizontal", "alternating", "patches", "convex_quad", "convex_quad_free", "convex_quad_local", "convex_quad_coarse_fine"), required=True)
+    parser.add_argument("--method", choices=("single_vertical", "single_horizontal", "alternating", "patches", "convex_quad", "convex_quad_free", "convex_quad_local", "convex_quad_radial", "convex_quad_coarse_fine"), required=True)
     parser.add_argument("--side", type=int, default=257)
     parser.add_argument("--coarse-side", type=int, default=17)
     parser.add_argument("--train-factor", choices=("both", "coarse", "fine"), default="both")
@@ -64,6 +64,7 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=0.05)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--target-kind", choices=("base", "high32"), default="base")
+    parser.add_argument("--raw-span", type=float, default=2.0, help="only for convex_quad_radial")
     parser.add_argument("--save-state", default=None)
     parser.add_argument("--load-state", default=None, help="warm-start latent tensors; Adam state restarts")
     args = parser.parse_args()
@@ -147,7 +148,7 @@ def main() -> None:
             )
             return result.dense, result.controls
 
-    elif args.method in ("convex_quad_free", "convex_quad_local"):
+    elif args.method in ("convex_quad_free", "convex_quad_local", "convex_quad_radial"):
         decoder = HierarchicalConvexQuadFreeCenterLayer(side)
         root_center = torch.nn.Parameter(torch.zeros(1, 1, 1, 2, dtype=dtype, device=device))
         horizontal_logits_list = torch.nn.ParameterList(
@@ -163,7 +164,14 @@ def main() -> None:
             for current in decoder.latent_sides
         )
         parameters = [root_center] + list(horizontal_logits_list) + list(vertical_logits_list) + list(center_logits_list)
-        relaxation = SafeColoredVertexRelaxation(side, safety_fraction=0.85) if args.method == "convex_quad_local" else None
+        relaxation = (
+            SafeColoredVertexRelaxation(
+                side, safety_fraction=0.85,
+                motion_mode="radial" if args.method == "convex_quad_radial" else "disk",
+                raw_span=args.raw_span,
+            )
+            if args.method in ("convex_quad_local", "convex_quad_radial") else None
+        )
         local_logits = torch.nn.Parameter(torch.zeros(1, side - 2, side - 2, 2, dtype=dtype, device=device)) if relaxation else None
         if local_logits is not None:
             parameters.append(local_logits)
@@ -191,6 +199,8 @@ def main() -> None:
         previous = torch.load(args.load_state, map_location=device, weights_only=True)
         if previous["method"] != args.method or previous["side"] != side:
             raise ValueError("loaded latent checkpoint method/side mismatch")
+        if args.method == "convex_quad_radial" and previous.get("raw_span", 2.0) != args.raw_span:
+            raise ValueError("loaded latent checkpoint radial raw-span mismatch")
         if args.method == "convex_quad_coarse_fine" and previous.get("coarse_side") != args.coarse_side:
             raise ValueError("loaded latent checkpoint coarse-side mismatch")
         if len(previous["parameters"]) != len(parameters):
@@ -233,9 +243,10 @@ def main() -> None:
     if args.save_state is not None:
         torch.save({
             "method": args.method,
+            "raw_span": args.raw_span if args.method == "convex_quad_radial" else None,
             "target_kind": args.target_kind,
             "side": side,
-            "layers": 1 if args.method.startswith("single_") or args.method in ("convex_quad", "convex_quad_free", "convex_quad_local") else 2 if args.method == "convex_quad_coarse_fine" else args.layers,
+            "layers": 1 if args.method.startswith("single_") or args.method in ("convex_quad", "convex_quad_free", "convex_quad_local", "convex_quad_radial") else 2 if args.method == "convex_quad_coarse_fine" else args.layers,
             "coarse_side": args.coarse_side if args.method == "convex_quad_coarse_fine" else None,
             "train_factor": args.train_factor if args.method == "convex_quad_coarse_fine" else None,
             "patch_cells": args.patch_cells if args.method == "patches" else None,
@@ -245,13 +256,14 @@ def main() -> None:
         "task": "direct_latent_map_oracle_not_image_training",
         "target_kind": args.target_kind,
         "method": args.method,
-        "representation": "original_grid_P1" if args.method.startswith("single_") or args.method in ("convex_quad", "convex_quad_free", "convex_quad_local") else "exact_PL_composition",
+        "raw_span": args.raw_span if args.method == "convex_quad_radial" else None,
+        "representation": "original_grid_P1" if args.method.startswith("single_") or args.method in ("convex_quad", "convex_quad_free", "convex_quad_local", "convex_quad_radial") else "exact_PL_composition",
         "control_side": side,
         "control_vertices": mesh.n_vertices,
         "control_faces_per_layer": mesh.n_faces,
         "query_side": side,
         "query_count": side**2,
-        "layers": 1 if args.method.startswith("single_") or args.method in ("convex_quad", "convex_quad_free", "convex_quad_local") else 2 if args.method == "convex_quad_coarse_fine" else args.layers,
+        "layers": 1 if args.method.startswith("single_") or args.method in ("convex_quad", "convex_quad_free", "convex_quad_local", "convex_quad_radial") else 2 if args.method == "convex_quad_coarse_fine" else args.layers,
         "coarse_side": args.coarse_side if args.method == "convex_quad_coarse_fine" else None,
         "train_factor": args.train_factor if args.method == "convex_quad_coarse_fine" else None,
         "patch_cells": args.patch_cells if args.method == "patches" else None,

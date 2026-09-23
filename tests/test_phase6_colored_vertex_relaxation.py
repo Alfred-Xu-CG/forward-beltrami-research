@@ -33,16 +33,16 @@ def _random_base(side: int, dtype: torch.dtype) -> torch.Tensor:
 def test_colored_relaxation_preserves_all_faces_and_boundary_for_large_latents() -> None:
     torch.manual_seed(3169)
     side = 17
-    layer = SafeColoredVertexRelaxation(side, safety_fraction=0.85)
     base = _random_base(side, torch.float64)
     logits = 8 * torch.randn(1, side - 2, side - 2, 2, dtype=torch.float64)
-    output = layer(base, logits)
     assert torch.all(_face_areas(base) > 0)
-    assert torch.all(_face_areas(output) > 0)
-    assert torch.equal(output[:, 0], base[:, 0])
-    assert torch.equal(output[:, -1], base[:, -1])
-    assert torch.equal(output[:, :, 0], base[:, :, 0])
-    assert torch.equal(output[:, :, -1], base[:, :, -1])
+    for mode in ("disk", "radial"):
+        output = SafeColoredVertexRelaxation(side, safety_fraction=0.85, motion_mode=mode)(base, logits)
+        assert torch.all(_face_areas(output) > 0)
+        assert torch.equal(output[:, 0], base[:, 0])
+        assert torch.equal(output[:, -1], base[:, -1])
+        assert torch.equal(output[:, :, 0], base[:, :, 0])
+        assert torch.equal(output[:, :, -1], base[:, :, -1])
 
 
 def test_arithmetic_opposite_edges_match_independent_mesh_faces() -> None:
@@ -70,42 +70,44 @@ def test_colored_relaxation_can_bend_one_parent_edge_without_composition() -> No
     base = torch.as_tensor(mesh.vertices.copy(), dtype=torch.float64).reshape(1, side, side, 2)
     logits = torch.zeros(1, side - 2, side - 2, 2, dtype=torch.float64)
     logits[0, 3, 2, 1] = 2.0
-    output = SafeColoredVertexRelaxation(side)(base, logits)[0]
-    left, midpoint, right = output[4, 2], output[4, 3], output[4, 4]
-    cross = torch.linalg.det(torch.stack((midpoint - left, right - left)))
-    assert abs(cross.item()) > 1e-4
-    assert torch.all(_face_areas(output[None]) > 0)
+    for mode in ("disk", "radial"):
+        output = SafeColoredVertexRelaxation(side, motion_mode=mode)(base, logits)[0]
+        left, midpoint, right = output[4, 2], output[4, 3], output[4, 4]
+        cross = torch.linalg.det(torch.stack((midpoint - left, right - left)))
+        assert abs(cross.item()) > 1e-4
+        assert torch.all(_face_areas(output[None]) > 0)
 
 
 def test_colored_relaxation_vjp_matches_directional_finite_difference() -> None:
     torch.manual_seed(40177)
     side = 9
     base = _random_base(side, torch.float64).detach()
-    layer = SafeColoredVertexRelaxation(side)
     logits = (0.2 * torch.randn(1, side - 2, side - 2, 2, dtype=torch.float64)).requires_grad_()
     cotangent = torch.randn_like(base)
     direction = torch.randn_like(logits)
 
-    def objective(value: torch.Tensor) -> torch.Tensor:
-        return (layer(base, value) * cotangent).sum()
+    for mode in ("disk", "radial"):
+        layer = SafeColoredVertexRelaxation(side, motion_mode=mode)
 
-    gradient = torch.autograd.grad(objective(logits), logits)[0]
-    predicted = (gradient * direction).sum()
-    step = 1e-6
-    observed = (objective(logits + step * direction) - objective(logits - step * direction)) / (2 * step)
-    assert torch.allclose(predicted, observed, rtol=2e-4, atol=2e-5)
+        def objective(value: torch.Tensor) -> torch.Tensor:
+            return (layer(base, value) * cotangent).sum()
+
+        gradient = torch.autograd.grad(objective(logits), logits)[0]
+        predicted = (gradient * direction).sum()
+        step = 1e-6
+        observed = (objective(logits + step * direction) - objective(logits - step * direction)) / (2 * step)
+        assert torch.allclose(predicted, observed, rtol=2e-4, atol=2e-5)
 
 
 def test_image_encoder_to_local_latent_has_gradient_and_valid_output() -> None:
     torch.manual_seed(5103)
     side = 17
     encoder = ConvexQuadLocalImageEncoder(side, width=8, head_mode="multilevel", body_mode="local")
-    decoder = HierarchicalConvexQuadLocalLayer(side)
     pair = torch.randn(2, 2, 32, 32)
-    output = decoder(*encoder(pair))
-    assert output.shape == (2, side, side, 2)
-    assert torch.all(_face_areas(output) > 0)
-    (output.square().mean()).backward()
+    outputs = [HierarchicalConvexQuadLocalLayer(side, motion_mode=mode)(*encoder(pair)) for mode in ("disk", "radial")]
+    assert all(output.shape == (2, side, side, 2) for output in outputs)
+    assert all(torch.all(_face_areas(output) > 0) for output in outputs)
+    sum(output.square().mean() for output in outputs).backward()
     assert encoder.local_head.weight.grad is not None
     assert torch.isfinite(encoder.local_head.weight.grad).all()
     assert encoder.local_head.weight.grad.abs().sum() > 0

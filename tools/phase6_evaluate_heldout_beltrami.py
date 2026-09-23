@@ -64,8 +64,8 @@ def main() -> None:
     device = torch.device(args.device)
     state = torch.load(args.checkpoint, map_location=device, weights_only=False)
     method = state["args"]["method"]
-    if method not in ("A2", "A3") or state["args"]["side"] != args.side:
-        raise ValueError("checkpoint does not match A2/A3 and requested side")
+    if method not in ("A2", "A3", "A4") or state["args"]["side"] != args.side:
+        raise ValueError("checkpoint does not match A2/A3/A4 and requested side")
     target_family = state["args"].get("target_family", "base")
     fine_cycles = 8 if target_family == "base" else 32
     encoder_type = ConvexQuadImageEncoder if method == "A2" else ConvexQuadLocalImageEncoder
@@ -77,7 +77,10 @@ def main() -> None:
     ).to(device)
     encoder.load_state_dict(state["encoder"])
     encoder.eval()
-    decoder = HierarchicalConvexQuadFreeCenterLayer(args.side) if method == "A2" else HierarchicalConvexQuadLocalLayer(args.side)
+    decoder = (
+        HierarchicalConvexQuadFreeCenterLayer(args.side) if method == "A2"
+        else HierarchicalConvexQuadLocalLayer(args.side, motion_mode="radial" if method == "A4" else "disk")
+    )
     fixed, moving, true_map, coefficients = (
         value.to(device)
         for value in make_dataset(args.test_count, args.image_side, 99317, return_coefficients=True, target_family=target_family)

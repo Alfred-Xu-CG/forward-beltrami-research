@@ -41,25 +41,28 @@ def main() -> None:
     parser.add_argument("--dtype", choices=("float32", "float64"), default="float32")
     parser.add_argument("--local-relaxation", action="store_true", help="add one four-color original-grid P1 latent pass")
     parser.add_argument("--safety-fraction", type=float, default=0.85)
+    parser.add_argument("--motion-mode", choices=("disk", "radial"), default="disk")
+    parser.add_argument("--raw-span", type=float, default=2.0)
+    parser.add_argument("--latent-std", type=float, default=0.08)
     args = parser.parse_args()
-    if args.side < 5 or args.image_side < 2 or args.batch < 1 or args.repeat < 1:
+    if args.side < 5 or args.image_side < 2 or args.batch < 1 or args.repeat < 1 or args.latent_std < 0:
         raise ValueError("invalid grid, batch, or repeat")
     torch.manual_seed(20260923)
     device = torch.device(args.device)
     dtype = getattr(torch, args.dtype)
     setup_start = time.perf_counter()
     decoder = HierarchicalConvexQuadFreeCenterLayer(args.side)
-    relaxation = SafeColoredVertexRelaxation(args.side, safety_fraction=args.safety_fraction).to(device) if args.local_relaxation else None
-    root = torch.nn.Parameter(0.08 * torch.randn(args.batch, 1, 1, 2, device=device, dtype=dtype))
+    relaxation = SafeColoredVertexRelaxation(args.side, safety_fraction=args.safety_fraction, motion_mode=args.motion_mode, raw_span=args.raw_span).to(device) if args.local_relaxation else None
+    root = torch.nn.Parameter(args.latent_std * torch.randn(args.batch, 1, 1, 2, device=device, dtype=dtype))
     latents = tuple(
         (
-            torch.nn.Parameter(0.08 * torch.randn(args.batch, current, current - 1, device=device, dtype=dtype)),
-            torch.nn.Parameter(0.08 * torch.randn(args.batch, current - 1, current, device=device, dtype=dtype)),
-            torch.nn.Parameter(0.08 * torch.randn(args.batch, current - 1, current - 1, 2, device=device, dtype=dtype)),
+            torch.nn.Parameter(args.latent_std * torch.randn(args.batch, current, current - 1, device=device, dtype=dtype)),
+            torch.nn.Parameter(args.latent_std * torch.randn(args.batch, current - 1, current, device=device, dtype=dtype)),
+            torch.nn.Parameter(args.latent_std * torch.randn(args.batch, current - 1, current - 1, 2, device=device, dtype=dtype)),
         )
         for current in decoder.latent_sides
     )
-    local_logits = torch.nn.Parameter(0.08 * torch.randn(args.batch, args.side - 2, args.side - 2, 2, device=device, dtype=dtype)) if args.local_relaxation else None
+    local_logits = torch.nn.Parameter(args.latent_std * torch.randn(args.batch, args.side - 2, args.side - 2, 2, device=device, dtype=dtype)) if args.local_relaxation else None
     parameters = (root, *(parameter for level in latents for parameter in level), *((local_logits,) if local_logits is not None else ()))
     table = StructuredDenseQueryTable.from_mesh(
         structured_rectangle(args.side - 1, args.side - 1),
@@ -117,7 +120,10 @@ def main() -> None:
             parameter.grad = None
     minimum_area = certify_convex_quad_output(control)
     print(json.dumps({
-        "method": "A3_colored_local" if args.local_relaxation else "A2_free_center",
+        "method": f"A3_colored_{args.motion_mode}" if args.local_relaxation else "A2_free_center",
+        "safety_fraction": args.safety_fraction if args.local_relaxation else None,
+        "raw_span": args.raw_span if args.local_relaxation and args.motion_mode == "radial" else None,
+        "latent_std": args.latent_std,
         "representation": "original_grid_P1",
         "side": args.side,
         "control_vertices": args.side**2,
