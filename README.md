@@ -1,5 +1,9 @@
 # qcopt: differentiable computational QC prototype
 
+## Current dense-homeomorphism research
+
+The latest Phase VI work on differentiable, dense-control-grid piecewise-affine homeomorphisms is indexed by the [self-contained research report](docs/research_phase6/REPORT.md), with [experiment plan and output contracts](docs/research_phase6/PLAN.md), route-specific mathematics, runnable code, and raw results under `docs/research_phase6/`. Routes A and C have been measured on fixed 1025×1025 control-vertex triangulations with real forward/VJP and image-to-latent training; Route B has a fast exact composition representation but does not generally reduce to one fixed-grid P1 map. These results do **not** establish a universal fast solver for an arbitrary prescribed Beltrami field. The remainder of this README describes the older sparse QC baseline and its separate reproduction commands.
+
 This repository is a research reference implementation for facewise variable-μ reconstruction, exact implicit gradients, numerical injectivity auditing, large-distortion registration, prescribed-area deformation, and transition-aware multi-chart registration.
 
 It is intentionally positioned as an **exact sparse baseline**, not as the first differentiable LSQC method. The principal use is to measure gradient fidelity and solver cost, test where μ-space optimization helps, and compare it fairly against safeguarded direct-map optimization.

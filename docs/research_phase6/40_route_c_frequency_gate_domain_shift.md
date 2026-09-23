@@ -67,4 +67,6 @@ $$F_*(x,y)=\big(x+a_x L(x,y)+a_f H_k(x,y),\ y+a_y L(x,y)+a_f H_k(x,y)\big),$$
 
 一个尚未实现的**可导候选**是：先计算中性系数 $z^0$，再以 $S^\varepsilon_{64}=(\sqrt{\varepsilon^2+\sum_{r\in\{h,v,d\}}(z^0_{r,64})^2}-\varepsilon)/\sqrt{\varepsilon^2+\lVert z^0\rVert_2^2}$ 和 $\gamma=\operatorname{sigmoid}((S^\varepsilon_{64}-t)/\tau)$ 定义64频带系数 $z_{r,64}=z^0_{r,64}[1+\gamma(g^{\rm trained}_{r,64}-1)]$，旧频带沿用已训练增益。取$\tau>0,\varepsilon>0$使门控及其一阶链式梯度处处有定义，且全零系数时$S^\varepsilon_{64}=0$；随后仍以 $c_e=1+15\operatorname{sigmoid}(-0.8+\sum_jz_jB_j(e))$ 保持所有边导纳严格正，再解同一平衡系统并用隐式伴随回传。这里的结构论证只覆盖**精确解与符合边界假设时**的同胚，不是声称这个具体门控已有准确率、速度或浮点证书。下一实验应训练/验证$t,\tau$或图像条件门控，同时约束目标面导数误差并跨照片内容留出验证，不应拿本节四张/六张测试内容来反复调参。
 
+这一门控只增加21维左右的标量计算与链式梯度；它**不会消除**1025²正导纳平衡系统的前向/伴随求解，所以即使改善精度，也不能据此声称速度或显存突破。下一轮必须同时记录完整求解与查询的耗时和峰值内存。
+
 可复算入口为 [`phase6_frequency_gate_diagnostic.py`](../../tools/phase6_frequency_gate_diagnostic.py)，摄影数据生成器为 [`phase6_eval_photographic_content.py`](../../tools/phase6_eval_photographic_content.py)，阈值迁移复算为 [`phase6_frequency_gate_threshold_transfer.py`](../../tools/phase6_frequency_gate_threshold_transfer.py)。原始逐例 `fraction64`、`energy64`、`energy32` 与设备、seed、响应残差均在 `raw_results/c21_neutral_latent_frequency_gate_*.json`；关键摄影成对文件为 `c21_neutral_latent_frequency_gate_photo_high64_pair_fit256_corrected_cpu.json` 与 `c21_neutral_latent_frequency_gate_oldphoto96_pair_fit256_cpu.json`。这里的统计量不代替原始文件。
