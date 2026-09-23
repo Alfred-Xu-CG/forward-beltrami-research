@@ -33,6 +33,8 @@
 
 重要限制：这相对原18模态的改进依赖**事先知道高频方向与频率64**，也在同目标族上重新训练全局增益；不是未知图像频谱自动发现，更不是任意$\mu$输入的精确解。即使在新128例面 $\mu$ 约0.0567，image/map仍比[Route A在同一high64新128例](30_route_a_high64_fine_control_decisive_test.md)差得多；两者训练起点、latent空间与损失协议不同，不能用此表宣布Route C总体优越。该实验更精确地说明：之前“只加密控制网格不改善”的主因之一是潜在导纳字典缺失高频，而不是正导纳拓扑机制不能表示细节；21模态相对全边仍极受限，照片内容域外结果尚未重测。
 
+另在本地CPU独立跑通 `tests/test_phase6_photometric_conductance_response.py::test_frequency64_gain_vjp_on_257_control_grid`：257²控制、256²拟合、频率1与64共6个边模态、真实PCG及256²图像损失，把频率64首个全局增益的自动微分VJP与中心差分（raw gain步长0.01）比较，断言相对误差至多5%、绝对误差至多 $2\times10^{-5}$，并要求该增益梯度非零、全部原面最小面积比正。测试耗时约13.6秒，通过；这只验证一个参数方向/样本，不等同完整Jacobian的全部方向检查。三台远程主机连接已恢复，但AI主机GPU当时有其他训练进程，本项小规模核对未占用其GPU。
+
 复现：`tools/phase6_scale_photometric_layer.py --side 1025 --fit-side 256 --frequencies 1,2,4,8,16,32,64 --target-family high64`；300步用 `tools/phase6_train_photometric_control1025.py` 加相同频率/拟合参数。模型 `checkpoints/c_photometric21_high64_1025_train300.pt`。8例冻结消融、训练、重评原始JSON为 `raw_results/c_high64_1025_fit256_{18,21}_gpu3.json`、`raw_results/c_photometric21_high64_1025_train300_gpu3.json`、`raw_results/c_high64_1025_fit256_21_trained300_gpu3.json`；新128例两份 `raw_results/c_high64_1025_fit256_21_{frozen,trained}_fresh128_gpu3.json`，另附拟合128/512迁移JSON。精度单位、面公式与拓扑检查口径见[总报告](REPORT.md)。
 
 注：训练运行时脚本保留了旧的JSON `method`字符串 `million_control_photometric18_actual_training`，但同一原始记录的 `frequencies=[1,2,4,8,16,32,64]`、21个增益和模型状态确定它实际为21模态；后续脚本已使 `method` 根据频率数生成。没有改写该次运行的原始JSON。

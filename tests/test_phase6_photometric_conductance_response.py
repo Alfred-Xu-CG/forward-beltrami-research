@@ -94,3 +94,43 @@ def test_response_chunking_preserves_map_and_gain_vjp():
     grad_streamed = torch.autograd.grad(
         mapped_streamed.square().mean(),streamed.raw_mode_gains)[0]
     assert torch.allclose(grad_reference,grad_streamed,rtol=1e-5,atol=1e-8)
+
+
+def test_frequency64_gain_vjp_on_257_control_grid():
+    torch.set_num_threads(4)
+    side,image_side=257,256
+    device=torch.device("cpu")
+    fixed,moving,*_=make_dataset(
+        1,image_side,55101,target_family="high64",return_coefficients=True)
+    fixed,moving=fixed.to(device),moving.to(device)
+    layer=PhotometricSpectralTutteLayer(
+        side,fit_side=image_side,frequencies=(1,64),
+        response_chunk_size=1).to(device)
+    validation=layer.prepare(device=device)
+    assert validation["response_true_relative_residual"]<1e-10
+    table=StructuredDenseQueryTable.from_mesh(
+        structured_rectangle(side-1,side-1),
+        height=image_side,width=image_side)
+    table.prepare(device=device,dtype=torch.float32)
+
+    def objective():
+        mapped=layer(fixed,moving)
+        dense=table.interpolate(mapped.reshape(1,-1,2))
+        warped=F.grid_sample(moving,2*dense-1,mode="bilinear",
+                             padding_mode="border",align_corners=True)
+        return 1000*(warped-fixed).square().mean()
+
+    analytical=torch.autograd.grad(objective(),layer.raw_mode_gains)[0]
+    assert torch.isfinite(analytical).all()
+    step=0.01
+    with torch.no_grad():
+        layer.raw_mode_gains[1]+=step
+        plus=objective()
+        layer.raw_mode_gains[1]-=2*step
+        minus=objective()
+        layer.raw_mode_gains[1]+=step
+    numerical=(plus-minus)/(2*step)
+    assert analytical[1].abs()>1e-6
+    torch.testing.assert_close(analytical[1].float(),numerical,
+                               rtol=0.05,atol=2e-5)
+    assert layer.solver.last_forward_stats["minimum_signed_area_ratio"]>0
