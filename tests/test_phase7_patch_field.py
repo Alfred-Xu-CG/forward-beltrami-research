@@ -256,3 +256,38 @@ def test_residual_staggered_patch_extreme_latents_and_directional_vjp() -> None:
     numerical = (objective(small + step * direction)
                  - objective(small - step * direction)) / (2 * step)
     assert torch.allclose(analytic, numerical, atol=1e-6, rtol=2e-4)
+
+
+def test_coarse_patch_fine_vertex_layer_keeps_absolute_floor_and_mixed_dtype_vjp() -> None:
+    assert hasattr(dense, "CoarsePatchFineVertexP1Layer")
+    torch.manual_seed(1182)
+    layer = dense.CoarsePatchFineVertexP1Layer(
+        17, 65, coarse_patch_cells=4, coarse_cycles=2,
+        minimum_jacobian=0.05, compute_dtype=torch.float64,
+    )
+    coarse_latent = (0.1 * torch.randn(2, 15, 15, 2)).requires_grad_()
+    fine_latent = (0.1 * torch.randn(2, 63, 63, 2)).requires_grad_()
+    output = layer(coarse_latent, fine_latent)
+    identity = _identity(65, torch.float64).expand(2, -1, -1, -1)
+    assert output.dtype == torch.float64 and output.shape == (2, 65, 65, 2)
+    assert torch.equal(output[:, 0], identity[:, 0])
+    assert torch.equal(output[:, -1], identity[:, -1])
+    assert certify_convex_quad_output(output) >= 0.05 - 1e-10
+    grads = torch.autograd.grad((output * torch.randn_like(output)).sum(),
+                                (coarse_latent, fine_latent))
+    assert all(torch.isfinite(g).all() and g.abs().amax() > 0 for g in grads)
+
+
+def test_fixed_p1_output_filter_rejects_folds_and_preserves_valid_gradients() -> None:
+    assert hasattr(dense, "certify_p1_or_identity")
+    identity = _identity(5, torch.float64).expand(2, -1, -1, -1)
+    candidate = identity.clone().detach()
+    candidate[0, 2, 2, 0] += 0.01
+    candidate[1, 2, 2, 0] += 0.8
+    candidate.requires_grad_()
+    filtered, valid = dense.certify_p1_or_identity(candidate, identity)
+    assert valid.tolist() == [True, False]
+    assert torch.equal(filtered[1], identity[1])
+    loss = filtered[:, 2, 2, 0].sum()
+    grad = torch.autograd.grad(loss, candidate)[0]
+    assert grad[0, 2, 2, 0] == 1 and grad[1].abs().amax() == 0
