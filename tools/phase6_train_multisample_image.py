@@ -254,8 +254,8 @@ def main() -> None:
         raise ValueError("a2-body-mode applies only to A2 or CF2")
     if args.a2_width != 8 and args.method not in ("A2", "A3", "A4", "A5", "A6", "CF2"):
         raise ValueError("a2-width applies only to A2 or CF2")
-    if args.oracle_map_loss and args.method not in ("A2", "A4"):
-        raise ValueError("the oracle-map-loss diagnostic is defined only for A2 or A4")
+    if args.oracle_map_loss and args.method not in ("A2", "A4", "CF2"):
+        raise ValueError("the oracle-map-loss diagnostic is defined only for A2, A4 or CF2")
     if args.method in ("A5", "A6") and (args.hint_window < 1 or args.hint_window % 2 != 1 or args.hint_ridge <= 0):
         raise ValueError("A5/A6 require an odd positive hint window and positive ridge")
     if args.method == "A6" and not 1 <= args.hint_sine_modes <= (args.side - 2)**2:

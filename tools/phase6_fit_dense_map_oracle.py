@@ -33,9 +33,9 @@ from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 def target_map(side: int, device: torch.device, dtype: torch.dtype, target_kind: str = "base") -> torch.Tensor:
     """Smooth global motion plus a safe localized high-frequency component.
 
-    Both variants have a globally subunit displacement Lipschitz bound and
+    These variants have a globally subunit displacement Lipschitz bound and
     fix the square boundary. In the base variant, the loose two-term bound is
-    below 0.821; in high32 it is below 0.895. Identity plus either perturbation
+    below 0.821; in high32/high64 it is below 0.895. Identity plus the perturbation
     is therefore injective and maps the square onto itself.
     """
     line = torch.linspace(0.0, 1.0, side, device=device, dtype=dtype)
@@ -47,8 +47,11 @@ def target_map(side: int, device: torch.device, dtype: torch.dtype, target_kind:
     elif target_kind == "high32":
         high = torch.sin(64 * math.pi * xx) * torch.sin(64 * math.pi * yy)
         ax, ay, af = 0.015, 0.025, 0.0025
+    elif target_kind == "high64":
+        high = torch.sin(128 * math.pi * xx) * torch.sin(128 * math.pi * yy)
+        ax, ay, af = 0.015, 0.025, 0.00125
     else:
-        raise ValueError("target_kind must be base or high32")
+        raise ValueError("target_kind must be base, high32 or high64")
     return torch.stack((xx + ax * low + af * high, yy + ay * low + af * high), dim=-1)[None]
 
 
@@ -63,7 +66,7 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=1000)
     parser.add_argument("--learning-rate", type=float, default=0.05)
     parser.add_argument("--device", default="cpu")
-    parser.add_argument("--target-kind", choices=("base", "high32"), default="base")
+    parser.add_argument("--target-kind", choices=("base", "high32", "high64"), default="base")
     parser.add_argument("--raw-span", type=float, default=2.0, help="only for convex_quad_radial")
     parser.add_argument("--save-state", default=None)
     parser.add_argument("--load-state", default=None, help="warm-start latent tensors; Adam state restarts")
@@ -240,6 +243,18 @@ def main() -> None:
         rmse = difference.square().mean().sqrt().item()
         maximum_error = torch.linalg.vector_norm(difference, dim=-1).max().item()
         areas = [_minimum_area_ratio(control) for control in controls]
+        fine_projection = None
+        if args.target_kind in ("high32", "high64"):
+            source=torch.as_tensor(mesh.vertices.copy(),device=device,dtype=dtype).reshape(1,side,side,2)
+            line=torch.linspace(0,1,side,device=device,dtype=dtype)
+            yy,xx=torch.meshgrid(line,line,indexing="ij")
+            cycles=64 if args.target_kind=="high64" else 32
+            basis=torch.sin(2*math.pi*cycles*xx)*torch.sin(2*math.pi*cycles*yy)
+            denominator=basis.square().sum()
+            predicted=((mapped-source)*basis[None,:,:,None]).sum(dim=(1,2))/denominator
+            analytic=((target-source)*basis[None,:,:,None]).sum(dim=(1,2))/denominator
+            fine_projection={"predicted_xy":predicted[0].tolist(),
+                             "target_xy":analytic[0].tolist()}
     if args.save_state is not None:
         torch.save({
             "method": args.method,
@@ -278,6 +293,7 @@ def main() -> None:
         "training_seconds": training_seconds,
         "final_map_rmse": rmse,
         "maximum_pointwise_map_error": maximum_error,
+        "fine_projection":fine_projection,
         "minimum_layer_signed_area_ratios": areas,
         "peak_cuda_allocated_bytes": torch.cuda.max_memory_allocated(device) if device.type == "cuda" else None,
         "trajectory_samples": samples,

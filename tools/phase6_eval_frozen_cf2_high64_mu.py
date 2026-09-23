@@ -26,6 +26,7 @@ def main() -> None:
     parser.add_argument("--target-family", choices=("high32", "high64"),
                         default="high64")
     parser.add_argument("--count", type=int, default=8)
+    parser.add_argument("--seed",type=int,default=99317)
     parser.add_argument("--face-batch", type=int, default=65536)
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
@@ -49,7 +50,7 @@ def main() -> None:
         coarse_side, fine_side, image_side)
     decoder.prepare(device=device, dtype=torch.float32)
     dataset = tuple(value.to(device) for value in make_dataset(
-        args.count, image_side, 99317, return_coefficients=True,
+        args.count, image_side, args.seed, return_coefficients=True,
         target_family=args.target_family))
     mesh = structured_rectangle(fine_side - 1, fine_side - 1)
     vertices = torch.tensor(mesh.vertices.copy(), device=device,
@@ -104,6 +105,7 @@ def main() -> None:
         "checkpoint": args.checkpoint,
         "target_family": args.target_family,
         "count": args.count,
+        "seed":args.seed,
         "coarse_side": coarse_side,
         "fine_side": fine_side,
         "fine_control_vertices": fine_side**2,
