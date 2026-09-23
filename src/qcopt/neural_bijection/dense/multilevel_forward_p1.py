@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import torch
 from torch import nn
+from torch.utils.checkpoint import checkpoint
 
 from .colored_vertex_relaxation import SafeColoredVertexRelaxation
-from .forward_p1_pyramid import exact_dyadic_p1_refine
+from .forward_p1_pyramid import ForwardP1Pyramid, exact_dyadic_p1_refine
 from .patch_field import ResidualStaggeredPatchP1Layer
 
 
@@ -59,6 +62,47 @@ def certify_p1_or_identity(candidate: torch.Tensor,
     return torch.where(valid[:, None, None, None], candidate, reference), valid
 
 
+class CertifiedForwardP1Pyramid(nn.Module):
+    """Pyramid with a conservative check on the actual final P1 coordinates."""
+
+    def __init__(self, seed_side: int, final_side: int, *, seed_passes: int,
+                 safety_fraction: float = 0.85, raw_span: float = 2.0,
+                 minimum_jacobian: float = 0.05,
+                 checkpoint_passes: bool = False,
+                 compute_dtype: torch.dtype = torch.float64) -> None:
+        super().__init__()
+        if compute_dtype not in (torch.float32, torch.float64):
+            raise ValueError("compute_dtype must be float32 or float64")
+        exact_limit = 2 ** (23 if compute_dtype == torch.float32 else 52)
+        if final_side - 1 > exact_limit or (final_side - 1) & (final_side - 2):
+            raise ValueError("final side must be 2^k+1 with exact identity spacing")
+        self.core = ForwardP1Pyramid(
+            seed_side, final_side, seed_passes=seed_passes,
+            safety_fraction=safety_fraction, raw_span=raw_span,
+            minimum_jacobian=minimum_jacobian,
+            checkpoint_passes=checkpoint_passes,
+        )
+        self.level_sides = self.core.level_sides
+        self.compute_dtype = compute_dtype
+        axis = torch.arange(final_side, dtype=compute_dtype) / (final_side - 1)
+        yy, xx = torch.meshgrid(axis, axis, indexing="ij")
+        self.register_buffer("identity", torch.stack((xx, yy), dim=-1)[None],
+                             persistent=False)
+
+    def forward(self, seed_logits: Sequence[torch.Tensor],
+                level_logits: Sequence[torch.Tensor]) -> torch.Tensor:
+        values = tuple(seed_logits) + tuple(level_logits)
+        if not values:
+            raise ValueError("at least one latent tensor is required")
+        if any(z.device != self.identity.device for z in values):
+            raise ValueError("move layer and latents to the same device")
+        result = self.core(
+            [z.to(self.compute_dtype) for z in seed_logits],
+            [z.to(self.compute_dtype) for z in level_logits],
+        )
+        return certify_p1_or_identity(result, self.identity)[0]
+
+
 class CoarsePatchFineVertexP1Layer(nn.Module):
     """Decode two latent fields to one fixed fine-grid P1 map.
 
@@ -78,6 +122,7 @@ class CoarsePatchFineVertexP1Layer(nn.Module):
         minimum_jacobian: float = 0.05,
         compute_dtype: torch.dtype = torch.float64,
         certify_output: bool = True,
+        checkpoint_fine: bool = False,
     ) -> None:
         super().__init__()
         if coarse_side < 3 or (coarse_side - 1) & (coarse_side - 2):
@@ -96,6 +141,7 @@ class CoarsePatchFineVertexP1Layer(nn.Module):
         self.minimum_jacobian = minimum_jacobian
         self.compute_dtype = compute_dtype
         self.certify_output = certify_output
+        self.checkpoint_fine = checkpoint_fine
         self.coarse = ResidualStaggeredPatchP1Layer(
             coarse_side, coarse_patch_cells, cycles=coarse_cycles,
             minimum_jacobian=minimum_jacobian,
@@ -135,8 +181,14 @@ class CoarsePatchFineVertexP1Layer(nn.Module):
         fine_base = exact_dyadic_p1_refine(exact_dyadic_p1_refine(coarse_map))
         floor = fine_base.new_full((batch,),
                                    self.minimum_jacobian / (f - 1) ** 2)
-        result = self.fine(fine_base, fine_latent.to(self.compute_dtype),
-                           area_floor=floor)
+        fine_logit = fine_latent.to(self.compute_dtype)
+        if self.checkpoint_fine and torch.is_grad_enabled():
+            result = checkpoint(
+                lambda base, latent: self.fine(base, latent, area_floor=floor),
+                fine_base, fine_logit, use_reentrant=False,
+            )
+        else:
+            result = self.fine(fine_base, fine_logit, area_floor=floor)
         if self.certify_output:
             result, _ = certify_p1_or_identity(result,
                                                self.fine_identity.expand(batch, -1, -1, -1))

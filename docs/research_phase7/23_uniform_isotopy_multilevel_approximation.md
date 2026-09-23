@@ -66,6 +66,8 @@ z_{v,c}=\operatorname{atanh}\!\left(\frac{Y^{\rm target}_{v,c}-Y^{\rm base}_{v,c
 
 ## 范围、文献边界和待实证事项
 
-这比[patch-supported 类](21_patch_supported_approximation_theorem.md)宽：位移可跨任意预定 patch seam，两个坐标可耦合，且不必是小形变直线同伦；但它需要一个**带统一正向与导数界的光滑同伦**，对薄到任意小 $m$、无限空间频率或无统一 $M$ 的类不能选择共同 $H_0,N_0$。定理是实数算法，不包括浮点可靠性；[输出筛选](22_numeric_certified_joint_layer.md)可在规定 IEEE 模型下保证实际坐标正向，却可能使某些极端 latent 回退为单位图。该定理也不保证粗 seed 或细 latent 能从图像高效推断，真正的 1025² image-to-latent 训练尚缺。
+这比[patch-supported 类](21_patch_supported_approximation_theorem.md)宽：位移可跨任意预定 patch seam，两个坐标可耦合，且不必是小形变直线同伦；但它需要一个**带统一正向与导数界的光滑同伦**，对薄到任意小 $m$、无限空间频率或无统一 $M$ 的类不能选择共同 $H_0,N_0$。定理是实数算法，不包括浮点可靠性；[输出筛选](22_numeric_certified_joint_layer.md)可在规定 IEEE 模型下保证实际坐标正向，却可能使某些极端 latent 回退为单位图。该定理也不保证粗 seed 或细 latent 能从图像高效推断；之后的[已知单基函数 1025² 图像训练](25_1025_image_to_fine_latent.md)只是很窄的可辨识性测试，通用空间 latent 推断仍缺。
+
+相同统一同伦类还有[独立的 F2 patch 周期构造](26_f2_uniform_isotopy_approximation.md)：每级四个交错 patch pass、一次到位的条件使用**二次**面面积上界。它与本节 F1 机制的表示结论相似，但运行时间、显存和强形变所需粗轮数不同，不能用本节证明直接替代 F2 的局部引理。
 
 [通常的 P1/Sobolev 插值逼近](https://doi.org/10.1016/j.jmaa.2014.05.036)、[平面 PL 同胚近似](https://arxiv.org/abs/1509.01045)和 [TutteNet 的多层 P1 因子复合](https://arxiv.org/abs/2406.12121)分别给出相邻而**不同**的结论；它们并未在所核查摘要/定理中直接给出上面的“同一固定 dyadic 网格、一个安全顶点 pass/级、统一 $O(V)$ work”命题。现阶段只能称为由我们的原语导出的**候选新组合定理**，不能在未做系统全文先例检索前宣称全球首创。还需要独立逐行复核常数 (1)–(2) 及大网格 teacher 验证；前者不是后者的替代。

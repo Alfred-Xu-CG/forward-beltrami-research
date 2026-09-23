@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import math
 import statistics
@@ -42,6 +43,8 @@ def main() -> None:
     parser.add_argument("--absolute-fine-floor", action="store_true")
     parser.add_argument("--combined-layer", action="store_true")
     parser.add_argument("--no-certificate", action="store_true")
+    parser.add_argument("--checkpoint-fine", action="store_true")
+    parser.add_argument("--offload-saved-to-cpu", action="store_true")
     parser.add_argument("--latent-dtype", choices=("float32", "float64"))
     args = parser.parse_args()
     dtype = torch.float32 if args.dtype == "float32" else torch.float64
@@ -72,6 +75,7 @@ def main() -> None:
         257, 1025, coarse_patch_cells=16, coarse_cycles=2,
         minimum_jacobian=0.05, compute_dtype=dtype,
         certify_output=not args.no_certificate,
+        checkpoint_fine=args.checkpoint_fine,
     ).to(device) if args.combined_layer else None)
 
     def run(zc: torch.Tensor, zf: torch.Tensor) -> torch.Tensor:
@@ -97,8 +101,11 @@ def main() -> None:
         if device.type == "cuda":
             torch.cuda.synchronize(device)
         tick = time.perf_counter()
-        value = run(zc, zf)
-        gradients = torch.autograd.grad((value * cotangent).mean(), (zc, zf))
+        saved_context = (torch.autograd.graph.save_on_cpu(pin_memory=True)
+                         if args.offload_saved_to_cpu else contextlib.nullcontext())
+        with saved_context:
+            value = run(zc, zf)
+            gradients = torch.autograd.grad((value * cotangent).mean(), (zc, zf))
         if device.type == "cuda":
             torch.cuda.synchronize(device)
         times.append(time.perf_counter() - tick)
@@ -124,6 +131,8 @@ def main() -> None:
         "absolute_fine_floor": args.absolute_fine_floor,
         "combined_layer": args.combined_layer,
         "certificate_enabled": not args.no_certificate if args.combined_layer else False,
+        "checkpoint_fine": args.checkpoint_fine,
+        "offload_saved_to_cpu": args.offload_saved_to_cpu,
         "latent_dtype": str(latent_dtype),
         "device": str(device),
         "torch_version": torch.__version__,

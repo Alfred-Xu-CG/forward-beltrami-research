@@ -341,3 +341,59 @@ class ForwardPatchP1Pyramid(nn.Module):
             for cycle in range(self.level_cycles):
                 current = layer(current, fields[4 * cycle:4 * (cycle + 1)])
         return current
+
+
+class ResidualPatchP1Pyramid(nn.Module):
+    """One target residual field and one staggered patch cycle per level.
+
+    Each field specifies an endpoint proposal, while the four nonoverlapping
+    shifted patch passes approach it without solving a global linear system.
+    The returned function is one P1 map on the final fixed triangulation.
+    """
+
+    def __init__(self, seed_side: int, final_side: int, *, patch_cells: int = 8,
+                 seed_passes: int = 4, minimum_jacobian: float | None = 0.05,
+                 raw_span: float = 0.5) -> None:
+        super().__init__()
+        if seed_passes < 1 or final_side < seed_side:
+            raise ValueError("need positive seed passes and final_side >= seed_side")
+        sides = []
+        side = seed_side
+        while side < final_side:
+            side = 2 * side - 1
+            sides.append(side)
+        if side != final_side:
+            raise ValueError("final_side must be reachable by dyadic refinement")
+        self.seed_side = seed_side
+        self.final_side = final_side
+        self.seed_passes = seed_passes
+        self.level_sides = tuple(sides)
+        options = dict(cycles=1, minimum_jacobian=minimum_jacobian,
+                       raw_span=raw_span)
+        self.seed_layer = ResidualStaggeredPatchP1Layer(
+            seed_side, patch_cells, **options,
+        )
+        self.level_layers = nn.ModuleList(
+            ResidualStaggeredPatchP1Layer(n, patch_cells, **options)
+            for n in sides
+        )
+
+    def forward(self, seed_logits: list[torch.Tensor] | tuple[torch.Tensor, ...],
+                level_logits: list[torch.Tensor] | tuple[torch.Tensor, ...]) -> torch.Tensor:
+        if len(seed_logits) != self.seed_passes or len(level_logits) != len(self.level_sides):
+            raise ValueError("incorrect number of seed or level latent fields")
+        first = seed_logits[0]
+        if first.ndim != 4 or first.shape[1:] != (self.seed_side - 2, self.seed_side - 2, 2):
+            raise ValueError("seed latent must be a full interior field")
+        axis = torch.arange(self.seed_side, dtype=first.dtype,
+                            device=first.device) / (self.seed_side - 1)
+        yy, xx = torch.meshgrid(axis, axis, indexing="ij")
+        current = torch.stack((xx, yy), dim=-1)[None].expand(first.shape[0], -1, -1, -1)
+        for latent in seed_logits:
+            current = self.seed_layer(current, latent)
+        for n, layer, latent in zip(self.level_sides, self.level_layers, level_logits):
+            if latent.shape != (first.shape[0], n - 2, n - 2, 2):
+                raise ValueError("level latent has wrong shape")
+            current = exact_dyadic_p1_refine(current)
+            current = layer(current, latent)
+        return current

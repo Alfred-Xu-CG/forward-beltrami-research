@@ -10,7 +10,10 @@ import time
 
 import torch
 
-from qcopt.neural_bijection.dense import ForwardP1Pyramid, exact_dyadic_p1_refine
+from qcopt.neural_bijection.dense import (
+    CertifiedForwardP1Pyramid, ForwardP1Pyramid, ResidualPatchP1Pyramid,
+    certify_p1_or_identity, exact_dyadic_p1_refine,
+)
 from phase7_multiscale_fiber_reachability import minimum_jacobian, vector_rmse
 
 
@@ -32,13 +35,29 @@ def main() -> None:
     parser.add_argument("--dtype", choices=("float32", "float64"), default="float64")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--repeat", type=int, default=5)
+    parser.add_argument("--checkpoint-passes", action="store_true")
+    parser.add_argument("--certified", action="store_true")
+    parser.add_argument("--mechanism", choices=("vertex", "patch"), default="vertex")
+    parser.add_argument("--patch-cells", type=int, default=4)
     args = parser.parse_args()
     dtype = torch.float32 if args.dtype == "float32" else torch.float64
     device = torch.device(args.device)
-    layer = ForwardP1Pyramid(
-        args.seed_side, args.side, seed_passes=args.seed_passes,
-        safety_fraction=0.85, raw_span=2.0, minimum_jacobian=0.05,
-    ).to(device)
+    if args.mechanism == "vertex":
+        layer_type = CertifiedForwardP1Pyramid if args.certified else ForwardP1Pyramid
+        layer = layer_type(
+            args.seed_side, args.side, seed_passes=args.seed_passes,
+            safety_fraction=0.85, raw_span=2.0, minimum_jacobian=0.05,
+            checkpoint_passes=args.checkpoint_passes,
+        ).to(device)
+        span = lambda n: 2 / (n - 1)
+    else:
+        if args.checkpoint_passes:
+            raise ValueError("patch mechanism does not implement checkpoint passes")
+        layer = ResidualPatchP1Pyramid(
+            args.seed_side, args.side, patch_cells=args.patch_cells,
+            seed_passes=args.seed_passes, minimum_jacobian=0.05,
+        ).to(device)
+        span = lambda n: 0.5 * args.patch_cells / (n - 1)
     seed_target = target(args.seed_side, dtype, device, args.strength)
     identity = target(args.seed_side, dtype, device, 0.0)
     seed_latents = []
@@ -46,21 +65,26 @@ def main() -> None:
         before = identity + (step / args.seed_passes) * (seed_target - identity)
         after = identity + ((step + 1) / args.seed_passes) * (seed_target - identity)
         raw = ((after - before)[:, 1:-1, 1:-1]
-               / (2 / (args.seed_side - 1)))
+               / span(args.seed_side))
         seed_latents.append(torch.atanh(raw))
     level_latents = []
     prior_target = seed_target
     for side in layer.level_sides:
         next_target = target(side, dtype, device, args.strength)
         base = exact_dyadic_p1_refine(prior_target)
-        raw = ((next_target - base)[:, 1:-1, 1:-1] / (2 / (side - 1)))
+        raw = ((next_target - base)[:, 1:-1, 1:-1] / span(side))
         level_latents.append(torch.atanh(raw))
         prior_target = next_target
     cotangent = torch.randn(prior_target.shape, dtype=dtype, device=device,
                              generator=torch.Generator(device=device).manual_seed(713))
     all_latents = [z.detach().requires_grad_() for z in seed_latents + level_latents]
     def run() -> torch.Tensor:
-        return layer(all_latents[:args.seed_passes], all_latents[args.seed_passes:])
+        value = layer(all_latents[:args.seed_passes], all_latents[args.seed_passes:])
+        if args.mechanism == "patch" and args.certified:
+            value, _ = certify_p1_or_identity(
+                value, target(args.side, dtype, device, 0.0),
+            )
+        return value
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(device)
     times = []
@@ -77,6 +101,8 @@ def main() -> None:
         gradient_maxima = [float(g.abs().amax()) for g in gradients]
     print(json.dumps({
         "method": "phase7_isotopy_pyramid_teacher",
+        "mechanism": args.mechanism,
+        "patch_cells": args.patch_cells if args.mechanism == "patch" else None,
         "seed_side": args.seed_side,
         "seed_passes": args.seed_passes,
         "side": args.side,
@@ -84,6 +110,8 @@ def main() -> None:
         "faces": 2 * (args.side - 1) ** 2,
         "level_sides": layer.level_sides,
         "strength": args.strength,
+        "checkpoint_passes": args.checkpoint_passes,
+        "certified": args.certified,
         "dtype": args.dtype,
         "device": str(device),
         "torch_version": torch.__version__,

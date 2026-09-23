@@ -291,3 +291,102 @@ def test_fixed_p1_output_filter_rejects_folds_and_preserves_valid_gradients() ->
     loss = filtered[:, 2, 2, 0].sum()
     grad = torch.autograd.grad(loss, candidate)[0]
     assert grad[0, 2, 2, 0] == 1 and grad[1].abs().amax() == 0
+
+
+def test_joint_coarse_fine_p1_vjp_matches_central_differences() -> None:
+    torch.manual_seed(1183)
+    layer = dense.CoarsePatchFineVertexP1Layer(
+        17, 65, coarse_patch_cells=4, coarse_cycles=2,
+        minimum_jacobian=0.05, compute_dtype=torch.float64,
+    )
+    coarse = (0.02 * torch.randn(1, 15, 15, 2, dtype=torch.float64)).requires_grad_()
+    fine = (0.02 * torch.randn(1, 63, 63, 2, dtype=torch.float64)).requires_grad_()
+    cotangent = torch.randn(1, 65, 65, 2, dtype=torch.float64)
+    def objective(zc: torch.Tensor, zf: torch.Tensor) -> torch.Tensor:
+        return (layer(zc, zf) * cotangent).sum()
+    analytic = torch.autograd.grad(objective(coarse, fine), (coarse, fine))
+    step = 1e-5
+    for tensor, other, gradient, at_coarse in (
+        (coarse, fine, analytic[0], True),
+        (fine, coarse, analytic[1], False),
+    ):
+        direction = torch.zeros_like(tensor)
+        direction[(0, 7, 7, 0) if at_coarse else (0, 31, 31, 1)] = 1.0
+        with torch.no_grad():
+            plus = objective(tensor + step * direction, other) if at_coarse else objective(other, tensor + step * direction)
+            minus = objective(tensor - step * direction, other) if at_coarse else objective(other, tensor - step * direction)
+        numerical = (plus - minus) / (2 * step)
+        directional = (gradient * direction).sum()
+        assert torch.allclose(directional, numerical, atol=1e-6, rtol=1e-4)
+
+
+def test_joint_coarse_fine_checkpoint_preserves_output_and_vjp() -> None:
+    torch.manual_seed(1184)
+    plain = dense.CoarsePatchFineVertexP1Layer(
+        17, 65, coarse_patch_cells=4, compute_dtype=torch.float64,
+    )
+    saved = dense.CoarsePatchFineVertexP1Layer(
+        17, 65, coarse_patch_cells=4, compute_dtype=torch.float64,
+        checkpoint_fine=True,
+    )
+    zc = (0.05 * torch.randn(1, 15, 15, 2)).requires_grad_()
+    zf = (0.05 * torch.randn(1, 63, 63, 2)).requires_grad_()
+    cotangent = torch.randn(1, 65, 65, 2, dtype=torch.float64)
+    a = plain(zc, zf)
+    ga = torch.autograd.grad((a * cotangent).sum(), (zc, zf))
+    b = saved(zc, zf)
+    gb = torch.autograd.grad((b * cotangent).sum(), (zc, zf))
+    assert torch.equal(a, b)
+    assert all(torch.equal(x, y) for x, y in zip(ga, gb))
+
+
+def test_certified_pyramid_preserves_valid_output_and_gradients() -> None:
+    assert hasattr(dense, "CertifiedForwardP1Pyramid")
+    torch.manual_seed(1185)
+    plain = dense.ForwardP1Pyramid(5, 17, seed_passes=2)
+    certified = dense.CertifiedForwardP1Pyramid(5, 17, seed_passes=2)
+    seed = [(0.03 * torch.randn(1, 3, 3, 2, dtype=torch.float64)).requires_grad_()
+            for _ in range(2)]
+    levels = [(0.03 * torch.randn(1, n - 2, n - 2, 2, dtype=torch.float64))
+              .requires_grad_() for n in (9, 17)]
+    a = plain(seed, levels)
+    b = certified(seed, levels)
+    cotangent = torch.randn_like(a)
+    ga = torch.autograd.grad((a * cotangent).sum(), seed + levels)
+    gb = torch.autograd.grad((b * cotangent).sum(), seed + levels)
+    assert torch.equal(a, b)
+    assert all(torch.equal(x, y) for x, y in zip(ga, gb))
+
+
+def test_residual_patch_pyramid_reaches_nonseam_smooth_target() -> None:
+    assert hasattr(dense, "ResidualPatchP1Pyramid")
+    strength = 0.02
+    def target(side: int) -> torch.Tensor:
+        base = _identity(side)
+        x, y = base[0, ..., 0], base[0, ..., 1]
+        u = strength * torch.sin(2 * math.pi * x) * torch.sin(math.pi * y)
+        v = -0.8 * strength * torch.sin(math.pi * x) * torch.sin(2 * math.pi * y)
+        return base + torch.stack((u, v), dim=-1)[None]
+    layer = dense.ResidualPatchP1Pyramid(
+        17, 65, patch_cells=4, seed_passes=4,
+        minimum_jacobian=0.05,
+    )
+    old = _identity(17)
+    goal = target(17)
+    seed = []
+    for step in range(4):
+        raw = ((goal - old) / 4)[:, 1:-1, 1:-1] / (0.5 * 4 / 16)
+        seed.append(torch.atanh(raw).requires_grad_())
+    levels = []
+    prior = goal
+    for side in (33, 65):
+        next_goal = target(side)
+        prolonged = dense.exact_dyadic_p1_refine(prior)
+        raw = (next_goal - prolonged)[:, 1:-1, 1:-1] / (0.5 * 4 / (side - 1))
+        levels.append(torch.atanh(raw).requires_grad_())
+        prior = next_goal
+    output = layer(seed, levels)
+    assert torch.allclose(output, prior, atol=1e-14, rtol=0)
+    assert certify_convex_quad_output(output) > 0.05
+    grads = torch.autograd.grad((output * torch.randn_like(output)).sum(), seed + levels)
+    assert all(torch.isfinite(g).all() and g.abs().amax() > 0 for g in grads)
