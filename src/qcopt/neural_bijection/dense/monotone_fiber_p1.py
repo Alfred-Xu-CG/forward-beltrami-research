@@ -108,3 +108,148 @@ class MultiscaleMonotoneFiberP1Layer(nn.Module):
                 align_corners=True,
             )[:, 0]
         return self.fiber(dense)
+
+
+class SoftplusPotentialFiberP1Layer(nn.Module):
+    """Smooth positive-edge decoder with a near-identity displacement latent.
+
+    The potential is first differenced, turned into positive edge lengths by
+    softplus, normalized, then integrated by a prefix sum. For a target with
+    comfortably positive horizontal (or vertical) edges, this approaches the
+    target vertex potential rather than integrating a learned log-density.
+    Topology is guaranteed for every finite input, regardless of whether the
+    potential itself would have created folded raw edges.
+    """
+
+    def __init__(self, side: int, *, axis: str = "horizontal",
+                 floor_fraction: float = 0.05, potential_span: float = 0.35,
+                 softplus_beta: float = 256.0) -> None:
+        super().__init__()
+        if side < 3 or axis not in ("horizontal", "vertical"):
+            raise ValueError("side >= 3 and a valid axis are required")
+        if (not 0 < floor_fraction < 1 or not math.isfinite(potential_span)
+                or potential_span <= 0 or not math.isfinite(softplus_beta)
+                or softplus_beta <= 0):
+            raise ValueError("invalid floor, potential span, or softplus beta")
+        self.side = side
+        self.axis = axis
+        self.floor_fraction = floor_fraction
+        self.potential_span = potential_span
+        self.softplus_beta = softplus_beta
+
+    def forward(self, logits: torch.Tensor) -> torch.Tensor:
+        if logits.ndim != 3 or logits.shape != (
+            logits.shape[0], self.side - 2, self.side - 2
+        ) or logits.shape[0] < 1:
+            raise ValueError("logits must have shape (batch,side-2,side-2)")
+        if logits.dtype not in (torch.float32, torch.float64):
+            raise ValueError("float32/float64 are required for the face guarantee")
+        rows = logits if self.axis == "horizontal" else logits.transpose(1, 2)
+        potential = F.pad(self.potential_span * torch.tanh(rows), (1, 1))
+        raw_density = 1 + (self.side - 1) * (
+            potential[..., 1:] - potential[..., :-1]
+        ) / (1 - self.floor_fraction)
+        positive = F.softplus(self.softplus_beta * raw_density) / self.softplus_beta
+        weights = positive / positive.sum(dim=-1, keepdim=True)
+        edge_lengths = (self.floor_fraction / (self.side - 1)
+                        + (1 - self.floor_fraction) * weights)
+        starts = torch.cat((
+            edge_lengths.new_zeros((*edge_lengths.shape[:-1], 1)),
+            edge_lengths.cumsum(dim=-1)[..., :-1],
+            edge_lengths.new_ones((*edge_lengths.shape[:-1], 1)),
+        ), dim=-1)
+        axis = torch.arange(self.side, device=logits.device,
+                            dtype=logits.dtype) / (self.side - 1)
+        yy, xx = torch.meshgrid(axis, axis, indexing="ij")
+        horizontal = xx[None].expand(logits.shape[0], -1, -1).clone()
+        vertical = yy[None].expand(logits.shape[0], -1, -1).clone()
+        if self.axis == "horizontal":
+            horizontal[:, 1:-1] = starts
+        else:
+            vertical[:, :, 1:-1] = starts.transpose(1, 2)
+        return torch.stack((horizontal, vertical), dim=-1)
+
+
+class SoftplusPotentialFiberRefiner(nn.Module):
+    """Positive-edge fine potential relative to an already-safe fiber P1 map.
+
+    This is not a composition/resampling operation. It directly changes edge
+    lengths on the same final grid. The base must preserve the chosen fiber
+    coordinate, be boundary-fixed, and have strictly positive fiber edges.
+    The relative floor then keeps every output fiber edge positive.
+    """
+
+    def __init__(self, side: int, *, axis: str = "horizontal",
+                 floor_fraction: float = 0.05, potential_span: float = 0.005,
+                 softplus_beta: float = 256.0) -> None:
+        super().__init__()
+        if side < 3 or axis not in ("horizontal", "vertical"):
+            raise ValueError("side >= 3 and a valid axis are required")
+        if (not 0 < floor_fraction < 1 or not math.isfinite(potential_span)
+                or potential_span <= 0 or not math.isfinite(softplus_beta)
+                or softplus_beta <= 0):
+            raise ValueError("invalid floor, potential span, or softplus beta")
+        self.side = side
+        self.axis = axis
+        self.floor_fraction = floor_fraction
+        self.potential_span = potential_span
+        self.softplus_beta = softplus_beta
+
+    def forward(self, base: torch.Tensor, logits: torch.Tensor) -> torch.Tensor:
+        if base.ndim != 4 or base.shape[1:] != (self.side, self.side, 2):
+            raise ValueError("base must have shape (batch,side,side,2)")
+        if logits.shape != (base.shape[0], self.side - 2, self.side - 2):
+            raise ValueError("logits must have shape (batch,side-2,side-2)")
+        if (base.dtype not in (torch.float32, torch.float64)
+                or base.dtype != logits.dtype or base.device != logits.device):
+            raise ValueError("base and logits must share float32/float64 device/dtype")
+        if self.axis == "horizontal":
+            row_coords = base[:, 1:-1, :, 0]
+            potential_logits = logits
+        else:
+            row_coords = base[:, :, 1:-1, 1].transpose(1, 2)
+            potential_logits = logits.transpose(1, 2)
+        base_edges = row_coords[..., 1:] - row_coords[..., :-1]
+        potential = F.pad(
+            self.potential_span * torch.tanh(potential_logits), (1, 1)
+        )
+        raw_ratio = 1 + (potential[..., 1:] - potential[..., :-1]) / (
+            (1 - self.floor_fraction) * base_edges
+        )
+        positive = (base_edges * F.softplus(self.softplus_beta * raw_ratio)
+                    / F.softplus(base_edges.new_tensor(self.softplus_beta)))
+        normalized = positive / positive.sum(dim=-1, keepdim=True)
+        edge_lengths = self.floor_fraction * base_edges + (
+            1 - self.floor_fraction
+        ) * normalized
+        starts = torch.cat((
+            row_coords[..., :1],
+            row_coords[..., :1] + edge_lengths.cumsum(dim=-1)[..., :-1],
+            row_coords[..., -1:],
+        ), dim=-1)
+        output = base.clone()
+        if self.axis == "horizontal":
+            output[:, 1:-1, :, 0] = starts
+        else:
+            output[:, :, 1:-1, 1] = starts.transpose(1, 2)
+        return output
+
+
+class HybridMonotoneFiberP1Layer(nn.Module):
+    """Multiscale positive-density base plus fine potential, all on one P1 grid."""
+
+    def __init__(self, side: int, *, axis: str = "horizontal",
+                 floor_fraction: float = 0.05, potential_span: float = 0.005,
+                 softplus_beta: float = 256.0) -> None:
+        super().__init__()
+        self.base = MultiscaleMonotoneFiberP1Layer(
+            side, axis=axis, floor_fraction=floor_fraction,
+        )
+        self.fine = SoftplusPotentialFiberRefiner(
+            side, axis=axis, floor_fraction=floor_fraction,
+            potential_span=potential_span, softplus_beta=softplus_beta,
+        )
+
+    def forward(self, base_levels: Sequence[torch.Tensor],
+                fine_logits: torch.Tensor) -> torch.Tensor:
+        return self.fine(self.base(base_levels), fine_logits)

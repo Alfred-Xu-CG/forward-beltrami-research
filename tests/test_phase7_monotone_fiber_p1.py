@@ -6,6 +6,7 @@ import torch
 
 from qcopt.neural_bijection.dense import (
     MonotoneFiberP1Layer, MultiscaleMonotoneFiberP1Layer,
+    SoftplusPotentialFiberP1Layer, HybridMonotoneFiberP1Layer,
 )
 from qcopt.neural_bijection.dense.convex_quad import certify_convex_quad_output
 
@@ -92,3 +93,94 @@ def test_multiscale_log_density_has_safe_nontrivial_fine_residual() -> None:
     loss = output.square().sum()
     derivatives = torch.autograd.grad(loss, (coarse, fine))
     assert all(torch.isfinite(g).all() and g.abs().amax() > 0 for g in derivatives)
+
+
+def test_softplus_potential_is_safe_for_extreme_latents_on_both_axes() -> None:
+    generator = torch.Generator().manual_seed(715)
+    for axis in ("horizontal", "vertical"):
+        latent = 1e6 * torch.randn((2, 31, 31), generator=generator)
+        output = SoftplusPotentialFiberP1Layer(33, axis=axis)(latent)
+        assert torch.isfinite(output).all()
+        assert certify_convex_quad_output(output) > 0.049
+        unit = torch.arange(33, dtype=output.dtype) / 32
+        yy, xx = torch.meshgrid(unit, unit, indexing="ij")
+        identity = torch.stack((xx, yy), dim=-1)
+        assert torch.equal(output[:, 0], identity[None, 0].expand(2, -1, -1))
+        assert torch.equal(output[:, -1], identity[None, -1].expand(2, -1, -1))
+        assert torch.equal(output[:, :, 0], identity[None, :, 0].expand(2, -1, -1))
+        assert torch.equal(output[:, :, -1], identity[None, :, -1].expand(2, -1, -1))
+
+
+def test_softplus_potential_reproduces_strong_shear_without_line_search() -> None:
+    side = 65
+    axis = torch.arange(side, dtype=torch.float64) / (side - 1)
+    yy, xx = torch.meshgrid(axis, axis, indexing="ij")
+    target = torch.stack((
+        xx + 0.28 * torch.sin(math.pi * xx).square() * torch.sin(2 * math.pi * yy),
+        yy,
+    ), dim=-1)[None]
+    displacement = target[:, 1:-1, 1:-1, 0] - xx[None, 1:-1, 1:-1]
+    latent = torch.atanh(displacement / 0.35)
+    output = SoftplusPotentialFiberP1Layer(side)(latent)
+    assert (output - target).abs().amax() < 1e-8
+    assert certify_convex_quad_output(output) > 0.11
+
+
+def test_softplus_potential_vjp_matches_finite_difference() -> None:
+    generator = torch.Generator().manual_seed(757)
+    for axis in ("horizontal", "vertical"):
+        latent = (0.1 * torch.randn((1, 7, 7), generator=generator,
+                                    dtype=torch.float64)).requires_grad_()
+        layer = SoftplusPotentialFiberP1Layer(9, axis=axis)
+        cotangent = torch.randn((1, 9, 9, 2), generator=generator,
+                                 dtype=torch.float64)
+        exact = torch.autograd.grad((layer(latent) * cotangent).sum(), latent)[0]
+        index = (0, 2, 3)
+        step = 1e-6
+        with torch.no_grad():
+            plus, minus = latent.clone(), latent.clone()
+            plus[index] += step
+            minus[index] -= step
+            numerical = ((layer(plus) * cotangent).sum()
+                         - (layer(minus) * cotangent).sum()) / (2 * step)
+        assert torch.allclose(exact[index], numerical, rtol=1e-6, atol=1e-8)
+
+
+def test_hybrid_base_plus_fine_detail_remains_one_original_grid_p1_map() -> None:
+    side = 65
+    axis = torch.arange(side, dtype=torch.float64) / (side - 1)
+    yy, xx = torch.meshgrid(axis, axis, indexing="ij")
+    base_target = torch.stack((
+        xx + 0.28 * torch.sin(math.pi * xx).square() * torch.sin(2 * math.pi * yy),
+        yy,
+    ), dim=-1)[None]
+    edge = base_target[:, 1:-1, 1:, 0] - base_target[:, 1:-1, :-1, 0]
+    weights = (edge - 0.05 / (side - 1)) / 0.95
+    logweight = weights.log()
+    base_logits = torch.atanh((logweight - logweight.mean(dim=-1, keepdim=True)) / 8)
+    detail = 0.001 * torch.sin(8 * math.pi * xx) * torch.sin(8 * math.pi * yy)
+    fine_logits = torch.atanh(detail[None, 1:-1, 1:-1] / 0.005)
+    layer = HybridMonotoneFiberP1Layer(side)
+    output = layer([base_logits], fine_logits)
+    target = base_target.clone()
+    target[..., 0] += detail
+    assert (output - target).abs().amax() < 1e-8
+    assert certify_convex_quad_output(output) > 0.08
+
+
+def test_hybrid_extreme_latents_have_safe_faces_and_both_gradients() -> None:
+    generator = torch.Generator().manual_seed(10117)
+    layer = HybridMonotoneFiberP1Layer(17)
+    base = (0.4 * torch.randn((1, 15, 16), generator=generator,
+                               dtype=torch.float64)).requires_grad_()
+    fine = (0.4 * torch.randn((1, 15, 15), generator=generator,
+                               dtype=torch.float64)).requires_grad_()
+    output = layer([base], fine)
+    assert certify_convex_quad_output(output) > 0
+    cotangent = torch.randn(output.shape, generator=generator,
+                             dtype=torch.float64)
+    grads = torch.autograd.grad((output * cotangent).sum(), (base, fine))
+    assert all(torch.isfinite(g).all() and g.abs().amax() > 0 for g in grads)
+    extreme = layer([base.detach() * 1e6], fine.detach() * 1e6)
+    assert torch.isfinite(extreme).all()
+    assert certify_convex_quad_output(extreme) > 0

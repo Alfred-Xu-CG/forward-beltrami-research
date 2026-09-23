@@ -14,7 +14,7 @@ from .forward_p1_pyramid import ForwardP1Pyramid, exact_dyadic_p1_refine
 from .forward_p1_encoder import ForwardP1ImageEncoder, PatchPyramidImageEncoder
 from .patch_field import SafePatchFieldPass, StaggeredPatchP1Layer, ForwardPatchP1Pyramid
 from .spectral_p1_refinement import SineModeP1Refiner
-from .monotone_fiber_p1 import MonotoneFiberP1Layer, MultiscaleMonotoneFiberP1Layer
+from .monotone_fiber_p1 import MonotoneFiberP1Layer, MultiscaleMonotoneFiberP1Layer, SoftplusPotentialFiberP1Layer, SoftplusPotentialFiberRefiner, HybridMonotoneFiberP1Layer
 from .photometric_hint import local_photometric_logits, physical_image_gradient
 from .sine_spectral import dst1, dst2, idst2, keep_vector_sine_modes, spectralize_bounded_logits
 from .face_qc import structured_p1_face_beltrami_modulus, structured_p1_qc_tail_penalty
@@ -28,6 +28,9 @@ from .nested_p1_feedback import NestedP1PhotometricFeedbackLayer
 __all__ = [
     "MonotoneFiberP1Layer",
     "MultiscaleMonotoneFiberP1Layer",
+    "SoftplusPotentialFiberP1Layer",
+    "SoftplusPotentialFiberRefiner",
+    "HybridMonotoneFiberP1Layer",
     "SineModeP1Refiner",
     "DenseMonotoneGridLayer",
     "MultiscaleMonotoneGridLayer",

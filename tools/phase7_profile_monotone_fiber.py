@@ -10,7 +10,10 @@ import time
 
 import torch
 
-from qcopt.neural_bijection.dense import MonotoneFiberP1Layer
+from qcopt.neural_bijection.dense import (
+    MonotoneFiberP1Layer,
+    SoftplusPotentialFiberP1Layer,
+)
 
 
 def minimum_jacobian(mapped: torch.Tensor) -> float:
@@ -30,14 +33,18 @@ def main() -> None:
                         default="horizontal")
     parser.add_argument("--batch", type=int, default=2)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--parameterization", choices=("density", "potential"),
+                        default="density")
     args = parser.parse_args()
     device = torch.device(args.device)
-    layer = MonotoneFiberP1Layer(args.side, axis=args.axis).to(device)
-    shape = (
-        (args.batch, args.side - 2, args.side - 1)
-        if args.axis == "horizontal" else
-        (args.batch, args.side - 1, args.side - 2)
-    )
+    layer = (MonotoneFiberP1Layer(args.side, axis=args.axis).to(device)
+             if args.parameterization == "density" else
+             SoftplusPotentialFiberP1Layer(args.side, axis=args.axis).to(device))
+    shape = ((args.batch, args.side - 2, args.side - 2)
+             if args.parameterization == "potential" else
+             ((args.batch, args.side - 2, args.side - 1)
+              if args.axis == "horizontal" else
+              (args.batch, args.side - 1, args.side - 2)))
     generator = torch.Generator(device=device).manual_seed(75102)
     latent = (0.05 * torch.randn(shape, generator=generator,
                                   device=device)).requires_grad_()
@@ -90,24 +97,27 @@ def main() -> None:
             xx + 0.28 * torch.sin(math.pi * xx).square() * torch.sin(2 * math.pi * yy),
             yy,
         ), dim=-1)[None].to(torch.float32)
-        edge = target[:, 1:-1, 1:, 0] - target[:, 1:-1, :-1, 0]
-        normalized = (edge - 0.05 / (side - 1)) / 0.95
-        if normalized.amin() > 0:
+        if args.parameterization == "potential":
+            displacement = target[:, 1:-1, 1:-1, 0] - xx[None, 1:-1, 1:-1].float()
+            teacher = torch.atanh(displacement / layer.potential_span)
+        else:
+            edge = target[:, 1:-1, 1:, 0] - target[:, 1:-1, :-1, 0]
+            normalized = (edge - 0.05 / (side - 1)) / 0.95
             logweight = normalized.log()
             centered = logweight - logweight.mean(dim=-1, keepdim=True)
-            if (centered / 8).abs().amax() < 1:
-                teacher = torch.atanh(centered / 8)
-                produced = layer(teacher)
-                oracle = {
-                    "shear": 0.28,
-                    "maximum_coordinate_error": float((produced - target).abs().amax()),
-                    "vertex_vector_rmse": float(
-                        (produced - target).square().sum(dim=-1).mean().sqrt()
-                    ),
-                    "minimum_jacobian": minimum_jacobian(produced),
-                }
+            teacher = torch.atanh(centered / 8)
+        produced = layer(teacher)
+        oracle = {
+            "shear": 0.28,
+            "maximum_coordinate_error": float((produced - target).abs().amax()),
+            "vertex_vector_rmse": float(
+                (produced - target).square().sum(dim=-1).mean().sqrt()
+            ),
+            "minimum_jacobian": minimum_jacobian(produced),
+        }
     print(json.dumps({
         "method": "phase7_monotone_fiber_p1_profile",
+        "parameterization": args.parameterization,
         "side": args.side,
         "vertices": args.side**2,
         "faces": 2 * (args.side - 1)**2,
