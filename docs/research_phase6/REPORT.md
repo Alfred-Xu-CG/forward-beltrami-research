@@ -127,3 +127,13 @@ A8 image/map最优、C面 $\mu$ 与内存最好、B完整 forward最快但 image
 ## 7. 代码和可复现入口
 
 Route A 的可复用层：`src/qcopt/neural_bijection/dense/nested_p1_feedback.py`，主脚本 `tools/phase6_exact_coarse_fine_feedback.py`；细空间消融见[29节](29_route_a_fine_space_audit.md)和[30节](30_route_a_high64_fine_control_decisive_test.md)，频谱容量取舍见[38节](38_route_a_fine_spectral_capacity_tradeoff.md)，反传显存取舍见[32节](32_route_a_activation_memory_tradeoff.md)、批量扩展见[33节](33_route_a_million_control_batch_scaling.md)、组件计时见[36节](36_route_a_full_step_profile.md)。Route B 组合与 point-query 实现及脚本索引见[02节](02_alternating_factorization.md)、[27节](27_route_b_million_control_composition.md)、[35节](35_route_b_high64_generalization_and_oracle.md)。Route C 的可复用层：`src/qcopt/neural_bijection/dense/photometric_conductance.py`；相关计时、预计算和逆诊断脚本索引在[17节](17_photometric_conductance_layer.md)、[22节](22_streamed_response_precompute.md)、[26节](26_positive_conductance_inverse_diagnostic.md)、[28节](28_route_c_photo_resolution_ablation.md)、[34节](34_route_c_high64_mode_and_training.md)、[37节](37_route_c_photographic_domain_transfer.md)、[40节](40_route_c_frequency_gate_domain_shift.md)。共同high64压力测试见[31节](31_high64_crossroute_stress_test.md)。本阶段原始数值在 `raw_results/`，模型检查点在 `checkpoints/`，整合索引在 `results.csv`。完整测试为 `tests/test_phase6_*.py`；请通过上述文档的具体原始 JSON 与脚本复核所关注的一条结论，不把总报告的四舍五入数字当作独立证据。
+
+在本D盘仓库工作树根目录，Windows PowerShell 的本地单元/小规模数值测试复现命令是：
+
+```powershell
+$env:PYTHONPATH = 'src;tools'
+$env:OMP_NUM_THREADS = '4'
+python -c "import glob,numpy as np,pytest; np.linalg.eigvalsh(np.eye(2)); raise SystemExit(pytest.main(['-q', *glob.glob('tests/test_phase6_*.py')]))"
+```
+
+先触发 NumPy 的小特征值调用是这台 Windows 环境中避免不同 OpenMP 动态库载入顺序冲突的启动措施，不改变研究计算。本轮最终本地结果为93通过、2跳过（可选`pypardiso`未安装、本机无CUDA）及1条来自`paramiko`的依赖废弃警告；大型GPU/CPU实验的脚本、设备与原始JSON另见各路线文档，不能由本地单测结果替代。
