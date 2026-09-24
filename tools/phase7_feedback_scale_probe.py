@@ -80,6 +80,7 @@ def main() -> None:
                         help="Diagnostic PyTorch CUDA allocator cap, not a physical small-GPU test.")
     parser.add_argument("--train-extra-steps", type=int, default=0)
     parser.add_argument("--train-extra-count", type=int, default=32)
+    parser.add_argument("--train-extra-batch", type=int, default=1)
     parser.add_argument("--train-extra-lr", type=float, default=.01)
     parser.add_argument("--train-full-encoder", action="store_true",
                         help="Also train the image encoder and pretrained coarse gains at final resolution.")
@@ -97,7 +98,8 @@ def main() -> None:
         raise ValueError("count, extra-passes and timing-repeats must be positive")
     if args.extra_gain_scale <= 0:
         raise ValueError("extra gain scale must be positive")
-    if args.train_extra_steps < 0 or args.train_extra_count < 1 or args.train_extra_lr <= 0:
+    if (args.train_extra_steps < 0 or args.train_extra_count < 1
+            or args.train_extra_batch < 1 or args.train_extra_lr <= 0):
         raise ValueError("invalid extra-level training settings")
     if args.train_encoder_lr <= 0 or not math.isfinite(args.train_encoder_lr):
         raise ValueError("train-encoder-lr must be finite and positive")
@@ -427,14 +429,21 @@ def main() -> None:
         step_peaks = []
         step_reserved_peaks = []
         accepted_steps = 0
+        accepted_samples = 0
         initial_loss = None
         first_gradient_max = None
         torch.manual_seed(20260924)
         for step in range(args.train_extra_steps):
-            index = int(torch.randint(args.train_extra_count, (1,)).item())
-            train_fixed, train_moving, train_true = (
-                value[index:index + 1] for value in train_data
-            )
+            if args.train_extra_batch == 1:
+                index = int(torch.randint(args.train_extra_count, (1,)).item())
+                train_fixed, train_moving, train_true = (
+                    value[index:index + 1] for value in train_data
+                )
+            else:
+                indices = torch.randint(args.train_extra_count, (args.train_extra_batch,))
+                train_fixed, train_moving, train_true = (
+                    value[indices] for value in train_data
+                )
             optimizer.zero_grad(set_to_none=True)
             if device.type == "cuda":
                 torch.cuda.reset_peak_memory_stats(device)
@@ -481,7 +490,8 @@ def main() -> None:
                     ) if args.extra_spatial_correction else None,
                 }
             optimizer.step()
-            accepted_steps += int(train_accepted.item())
+            accepted_steps += int(bool(train_accepted.all()))
+            accepted_samples += int(train_accepted.sum())
             if device.type == "cuda":
                 torch.cuda.synchronize(device)
                 step_peaks.append(torch.cuda.max_memory_allocated(device))
@@ -503,7 +513,8 @@ def main() -> None:
         train_report = {
             "steps": args.train_extra_steps,
             "count": args.train_extra_count,
-            "batch": 1,
+            "batch": args.train_extra_batch,
+            "accepted_samples": accepted_samples,
             "train_seed": 55101,
             "objective": args.train_extra_objective,
             "loss_scale": args.train_loss_scale,
