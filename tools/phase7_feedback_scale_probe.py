@@ -74,6 +74,10 @@ def main() -> None:
     parser.add_argument("--index-mode", choices=("buffered", "generated"),
                         default="buffered",
                         help="Use persistent incident-face indices or generate them per color pass.")
+    parser.add_argument("--checkpoint-colors", action="store_true",
+                        help="Recompute each F1 color pass independently in backward.")
+    parser.add_argument("--allocator-cap-gib", type=float, default=0.0,
+                        help="Diagnostic PyTorch CUDA allocator cap, not a physical small-GPU test.")
     parser.add_argument("--train-extra-steps", type=int, default=0)
     parser.add_argument("--train-extra-count", type=int, default=32)
     parser.add_argument("--train-extra-lr", type=float, default=.01)
@@ -113,6 +117,8 @@ def main() -> None:
         raise ValueError("ridge must be finite and positive")
     if args.offload_min_elements < 0 or (args.offload_saved_tensors and args.offload_min_elements):
         raise ValueError("choose either all saved-tensor offload or a positive selective threshold")
+    if args.allocator_cap_gib < 0 or not math.isfinite(args.allocator_cap_gib):
+        raise ValueError("allocator-cap-gib must be finite and nonnegative")
     if args.hint_final_odd_sublattice and (args.final_side != 4097 or args.hint_control_side != 2049):
         raise ValueError("odd-sublattice hint requires final-side 4097 and hint-control-side 2049")
     if args.image_channels > 1 and args.test_appearance != "standard":
@@ -127,6 +133,14 @@ def main() -> None:
         raise ValueError("extra correction highpass window must be odd and >= 3")
     setup_started = time.perf_counter()
     device = torch.device(args.device)
+    if args.allocator_cap_gib:
+        if device.type != "cuda":
+            raise ValueError("allocator-cap-gib requires CUDA")
+        total_bytes = torch.cuda.get_device_properties(device).total_memory
+        fraction = args.allocator_cap_gib * (1024 ** 3) / total_bytes
+        if not 0 < fraction <= 1:
+            raise ValueError("allocator-cap-gib must not exceed device capacity")
+        torch.cuda.set_per_process_memory_fraction(fraction, device=device)
     geometry_dtype = getattr(torch, args.geometry_dtype)
     coarse = HybridPatchSeedVertexP1Pyramid(
         17, 257, patch_cells=8, seed_cycles=4,
@@ -178,6 +192,7 @@ def main() -> None:
         side: SafeColoredVertexRelaxation(
             side, motion_mode="radial", raw_span=2.0,
             index_mode=args.index_mode,
+            checkpoint_colors=args.checkpoint_colors,
         ).to(device)
         for side in sides
     }
@@ -569,6 +584,8 @@ def main() -> None:
             "torch_version": torch.__version__,
             "geometry_dtype": args.geometry_dtype,
             "index_mode": args.index_mode,
+            "checkpoint_colors": args.checkpoint_colors,
+            "allocator_cap_gib": args.allocator_cap_gib,
             "extra_gains": torch.exp(extra_log_gains.detach()).tolist(),
             "extra_spatial_correction": args.extra_spatial_correction,
             "extra_gain_scale": args.extra_gain_scale,

@@ -6,6 +6,7 @@ import math
 
 import numpy as np
 import torch
+from torch.utils.checkpoint import checkpoint
 
 from .convex_quad import HierarchicalConvexQuadFreeCenterLayer
 
@@ -24,6 +25,7 @@ class SafeColoredVertexRelaxation(torch.nn.Module):
         motion_mode: str = "disk", raw_span: float = 2.0,
         floor_fraction: float = 0.0,
         index_mode: str = "buffered",
+        checkpoint_colors: bool = False,
     ) -> None:
         super().__init__()
         if side < 3 or not 0.0 < safety_fraction < 1.0:
@@ -40,6 +42,7 @@ class SafeColoredVertexRelaxation(torch.nn.Module):
         self.raw_span = float(raw_span)
         self.floor_fraction = float(floor_fraction)
         self.index_mode = index_mode
+        self.checkpoint_colors = bool(checkpoint_colors)
         # On the fixed southwest-to-northeast triangulation, these are the
         # cyclic opposite edges of the six incident triangles.  Generating
         # them arithmetically avoids millions of Python tuples at 1025².
@@ -89,6 +92,50 @@ class SafeColoredVertexRelaxation(torch.nn.Module):
         upper = cross(c - a, d - a).amin(dim=(1, 2))
         return self.floor_fraction * torch.minimum(lower, upper)
 
+    def _update_color(
+        self, current: torch.Tensor, latent: torch.Tensor,
+        area_floor: torch.Tensor | None, color: int,
+    ) -> torch.Tensor:
+        vertices = getattr(self, f"_vertices_{color}")
+        if self.index_mode == "generated":
+            opposite = vertices[:, None, None] + self._opposite_offsets[None]
+            local = ((vertices // self.side - 1) * (self.side - 2)
+                     + vertices % self.side - 1)
+        else:
+            opposite = getattr(self, f"_opposite_{color}")
+            local = getattr(self, f"_local_{color}")
+        point = current[:, vertices]
+        start = current[:, opposite[..., 0]]
+        end = current[:, opposite[..., 1]]
+        edge = end - start
+        relative = point[:, :, None] - start
+        signed_double_area = edge[..., 0] * relative[..., 1] - edge[..., 1] * relative[..., 0]
+        if self.motion_mode == "disk":
+            altitude = signed_double_area / torch.linalg.vector_norm(edge, dim=-1)
+            radius = altitude.amin(dim=-1)
+            displacement = (self.safety_fraction / math.sqrt(2.0)) * radius[..., None] * torch.tanh(latent[:, local])
+        else:
+            raw = (self.raw_span / (self.side - 1)) * torch.tanh(latent[:, local])
+            adverse = -(edge[..., 0] * raw[:, :, None, 1] - edge[..., 1] * raw[:, :, None, 0])
+            adverse = adverse.clamp_min(0.0)
+            allowable_loss = self.safety_fraction * signed_double_area
+            if area_floor is not None:
+                allowable_loss = torch.minimum(
+                    allowable_loss, (signed_double_area - area_floor[:, None, None]).clamp_min(0.0)
+                )
+            # We only need min(1, allowable_loss / adverse).  Computing
+            # the raw quotient with a machine-tiny denominator can make
+            # an inactive branch overflow and poison a later VJP.
+            guard = math.sqrt(torch.finfo(current.dtype).eps) / (self.side - 1) ** 2
+            denominator = torch.maximum(
+                torch.maximum(adverse, allowable_loss),
+                adverse.new_tensor(guard),
+            )
+            face_scale = torch.where(adverse > 0, allowable_loss / denominator, torch.ones_like(adverse))
+            scale = face_scale.amin(dim=-1)
+            displacement = scale[..., None] * raw
+        return current.index_copy(1, vertices, point + displacement)
+
     def forward(
         self, base: torch.Tensor, logits: torch.Tensor, *,
         area_floor: torch.Tensor | None = None,
@@ -109,45 +156,13 @@ class SafeColoredVertexRelaxation(torch.nn.Module):
         current = base.reshape(batch, self.side * self.side, 2)
         latent = logits.reshape(batch, -1, 2)
         for color in range(4):
-            vertices = getattr(self, f"_vertices_{color}")
-            if self.index_mode == "generated":
-                opposite = vertices[:, None, None] + self._opposite_offsets[None]
-                local = ((vertices // self.side - 1) * (self.side - 2)
-                         + vertices % self.side - 1)
-            else:
-                opposite = getattr(self, f"_opposite_{color}")
-                local = getattr(self, f"_local_{color}")
-            point = current[:, vertices]
-            start = current[:, opposite[..., 0]]
-            end = current[:, opposite[..., 1]]
-            edge = end - start
-            relative = point[:, :, None] - start
-            signed_double_area = edge[..., 0] * relative[..., 1] - edge[..., 1] * relative[..., 0]
-            if self.motion_mode == "disk":
-                altitude = signed_double_area / torch.linalg.vector_norm(edge, dim=-1)
-                radius = altitude.amin(dim=-1)
-                displacement = (self.safety_fraction / math.sqrt(2.0)) * radius[..., None] * torch.tanh(latent[:, local])
-            else:
-                raw = (self.raw_span / (self.side - 1)) * torch.tanh(latent[:, local])
-                adverse = -(edge[..., 0] * raw[:, :, None, 1] - edge[..., 1] * raw[:, :, None, 0])
-                adverse = adverse.clamp_min(0.0)
-                allowable_loss = self.safety_fraction * signed_double_area
-                if area_floor is not None:
-                    allowable_loss = torch.minimum(
-                        allowable_loss, (signed_double_area - area_floor[:, None, None]).clamp_min(0.0)
-                    )
-                # We only need min(1, allowable_loss / adverse).  Computing
-                # the raw quotient with a machine-tiny denominator can make
-                # an inactive branch overflow and poison a later VJP.
-                guard = math.sqrt(torch.finfo(base.dtype).eps) / (self.side - 1) ** 2
-                denominator = torch.maximum(
-                    torch.maximum(adverse, allowable_loss),
-                    adverse.new_tensor(guard),
+            if self.checkpoint_colors and torch.is_grad_enabled():
+                current = checkpoint(
+                    self._update_color, current, latent, area_floor, color,
+                    use_reentrant=False,
                 )
-                face_scale = torch.where(adverse > 0, allowable_loss / denominator, torch.ones_like(adverse))
-                scale = face_scale.amin(dim=-1)
-                displacement = scale[..., None] * raw
-            current = current.index_copy(1, vertices, point + displacement)
+            else:
+                current = self._update_color(current, latent, area_floor, color)
         return current.reshape(batch, self.side, self.side, 2)
 
 
