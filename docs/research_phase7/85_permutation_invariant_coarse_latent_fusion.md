@@ -23,6 +23,10 @@
 
 allocated/reserved为PyTorch峰值，**含128例评价数据常驻**，不是物理GPU总占用；表的同配置可直接对照。两种首步编译分别约13.72/13.42秒，已有磁盘编译缓存，不能推广冷启动。训练步时的约1%差异小于一般跨进程性能噪声，故这里只能说**未见明显热态代价**，不能断言融合总是等速；粗CNN远小于4097²细网格反传开销。两种模型都在300步和128例留出中通过实际浮点原面证书，最小留出归一化面积约.0497；未在物理8GB卡验证。
 
+另用同一训练前检查点、同一32例但**batch4、20步、16例评价**复核容量：[trimmed原始日志](phase7_full_encoder_C4_trimmed_compiled_b4_20.json)及[权重](checkpoints/phase7_full_encoder_C4_trimmed_compiled_b4_20.pt)显示20/20训练步的80个输出与16/16新例全部接受，热态训练步1.0906秒、allocated23.861GB、reserved33.387GB；原首通道同协议[日志](phase7_generated_color_checkpoint_compiled_b4_train20.json)为1.0626秒/24.727GB/34.880GB。两次均在48GB GPU而非物理24/32GB卡。trimmed首步14.10秒与旧batch4的77.48秒差异主要受已有编译磁盘缓存/特殊化影响，不能当架构冷启动优势。这里只能确认batch4可运行，不能由一对进程断言普遍的速度/显存排序。
+
+同协议batch1、20步还运行了**选择性CPU saved-tensor暂存＋7GiB PyTorch allocator模拟上限**：[原始日志](phase7_full_encoder_C4_trimmed_compiled_offload_cap7_20.json)及[权重](checkpoints/phase7_full_encoder_C4_trimmed_compiled_offload_cap7_20.pt)显示20/20训练与16/16新例接受，热态1.647秒/步、CUDA allocated4.082GB、reserved6.531GB，进程RSS历史峰值约16.08GiB。相比[原首通道同协议](82_compiled_color_kernel_full_training_pareto.md)的1.602秒/4.022GB/6.965GB，改进并非无成本；即使allocator限额通过，**仍未在物理8GB或12GB设备验证**。这项资源测试只是说明新输入融合没有把已有容量折中破坏到无法运行。
+
 ## 同地图的新外观/新形变评价
 
 下表固定**各自训练后**的权重，不重训；新地图种子20270531，每行128例，RMSE定义为512²查询点二维地图向量的均方根，image MSE为所有通道及像素的配准亮度平方差均值。`first spots + 3 standard`严格保持四个独立图像通道，只有首通道换成稀疏光斑；`4 duplicate standard`把同一标准纹理复制四份，不能增加观测方向。
