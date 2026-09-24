@@ -44,7 +44,7 @@ x,&x\notin S_r\Omega.
 
 ## 3. 第二步：相对边界的光滑化
 
-为 \(r<1\) 选一个光滑圆角闭 disk \(D\)，使 \(S_r\Omega\subset\operatorname{int}D\subset D\subset\operatorname{int}\Omega\)。将 \(G_r\) 限在 \(D\)，它在 \(D\) 的一条边界邻域已经恒等。[Hatcher, *The Kirby torus trick for surfaces*, Theorem B 及其相对边界、小同伦细化](https://ems.press/content/serial-article-files/50953)说明：每个光滑曲面之间的 homeomorphism 都可同伦到 diffeomorphism；若原图在边界邻域已经是 diffeomorphism，同伦可在边界邻域固定，并可任意 \(C^0\)-小。故对每个 \(\eta>0\)，存在光滑 \(Q:D\to D\)，在边界邻域恒等，且 \(\|Q-G_r\|_\infty<\eta\)。在 \(D\) 外令 \(Q=\mathrm{id}\)，得到 \(Q\in\operatorname{Diff}^{\infty}_c(\Omega)\)。
+为 \(r<1\) 选一个光滑圆角闭 disk \(D\)，使 \(S_r\Omega\subset\operatorname{int}D\subset D\subset\operatorname{int}\Omega\)。将 \(G_r\) 限在 \(D\)，它在 \(D\) 的一条边界邻域已经恒等。[Hatcher, *The Kirby torus trick for surfaces*, Theorem B 及其相对边界、小同伦细化](https://ems.press/content/serial-article-files/52184)说明：每个光滑曲面之间的 homeomorphism 都可同伦到 diffeomorphism；若原图在边界邻域已经是 diffeomorphism，同伦可在边界邻域固定，并可任意 \(C^0\)-小。故对每个 \(\eta>0\)，存在光滑 \(Q:D\to D\)，在边界邻域恒等，且 \(\|Q-G_r\|_\infty<\eta\)。在 \(D\) 外令 \(Q=\mathrm{id}\)，得到 \(Q\in\operatorname{Diff}^{\infty}_c(\Omega)\)。
 
 注意这里的正则性结论来自**二维曲面定理**，不应把适用于高维或只给拓扑同伦、无任意小控制的其他陈述替换进去。前一节的缩放把方形的尖角问题转移到内部一张光滑 disk，避免直接把有角的 \(\Omega\) 当作 Hatcher 定理的光滑边界曲面。
 
