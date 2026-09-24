@@ -65,7 +65,7 @@ d_x=G_x^{-1}b_x.
 
 4097²[干净单视图细级增益训练](65_trained_4097_extra_feedback_gains.md)及[空间修正阴性](66_trained_4097_spatial_correction_negative_result.md)还表明：图像MSE可以明显下降，而地图RMSE几乎不变；直接地图监督虽改善几何，却不能被算作image-only成功。[含噪四视图再训练](72_noisy_multiview_training_does_not_restore_geometry.md)也只略改善光度与特定模态，留出整体地图误差略变差。**报告任何“精度”必须指明是哪一种指标。**
 
-4097²四视图完整训练的[细层激活重计算实测](77_4097_multiview_checkpoint_memory_tradeoff.md)把batch1训练allocated峰值从15.934GB降到13.992GB，训练步中位从.761s升至.852s；20步权重轨迹只差浮点末位。[全部saved tensor转存CPU](78_4097_saved_tensor_cpu_offload_extreme_memory_tradeoff.md)进一步把训练CUDA峰值降到5.859GB，但步时升至4.333s，运行中主机RSS约29.9GiB；这是容量转移而不是同时快速、低总体内存的解。
+4097²四视图完整训练的[细层激活重计算实测](77_4097_multiview_checkpoint_memory_tradeoff.md)把batch1训练allocated峰值从15.934GB降到13.992GB，训练步中位从.761s升至.852s；20步权重轨迹只差浮点末位。[全部saved tensor转存CPU](78_4097_saved_tensor_cpu_offload_extreme_memory_tradeoff.md)进一步把训练CUDA **allocated**峰值降到5.859GB，但步时升至4.333s，运行中主机RSS约29.9GiB；单例reserved峰值约8.66GB，不能据此说已适配8GB物理GPU。[动态图索引＋仅暂存大张量](79_generated_indices_and_selective_offload_4097.md)把同协议完整训练allocated峰值降到5.512GB、reserved峰值8.452GB、单进程RSS历史峰值约26.9GiB，却把训练中位步时从.761s增至3.611s；20步训练和16例测试均通过最终原面证书，参数轨迹只差浮点末位。动态索引使初始化显著更轻，却不降低直接反传的峰值；叠加细层重算也没有带来可加的收益。这些是GPU容量向CPU内存/传输转移的工程折中，**未在8GB或12GB物理设备实测**，不是同时快、总体低内存的解。
 
 ## 五、为什么拓扑安全不等于从一幅图像找回真值
 
@@ -75,4 +75,4 @@ d_x=G_x^{-1}b_x.
 
 [原始文献核查](06_prior_art_boundary.md)已列出Tutte正权系统、TutteNet多因子复合、CorticalFlow连续流、SITReg多尺度可逆组合、Generative Escher Meshes等先例。**多尺度、正向、可微或神经同胚各自都不是首次出现。**本研究目前较可防守的区别是固定规则2D原网格的单张P1输出、局部前向安全原语、实现相关的统一光滑同伦类逼近命题，以及百万至一千六百万真实控制顶点的全VJP实测；没有完成覆盖2024–2026所有论文和代码的系统检索，不能声称领域排他性首创。正对称conductance/Tutte或MVC路线在[Phase VI报告](../research_phase6/REPORT.md)中有作为全局求解型比较，Phase VII没有把它误包装为正向新路线，也没有用不收敛近似解冒充拓扑保证。
 
-最值得继续的是：①同时保持干净几何精度、含噪稳健性和高频细节的**多尺度观测/先验模型**，先做公平的真值不可辨识测试，再谈网络优化；②把F1/F2的已证明teacher可达性转为可学习、高带宽、跨纹理的latent编码，同时记录训练样本数与模型自由度；③GPU内存分块/重算与batch扩展，在相同地图精度和同一实际浮点拓扑筛选下比较；④更严格的目标类复杂度上界与先例全文核查。若只降低图像MSE、只加控制点、或只把局部提示稀疏插值，当前证据均不足以解决核心瓶颈。
+最值得继续的是：①同时保持干净几何精度、含噪稳健性和高频细节的**多尺度观测/先验模型**，先做公平的真值不可辨识测试，再谈网络优化；②把F1/F2的已证明teacher可达性转为可学习、高带宽、跨纹理的latent编码，同时记录训练样本数与模型自由度；③真正降低反传激活而非主要转存PCIe的局部VJP/算子融合，并在物理小显卡上检验batch扩展与allocated/reserved/实际可用显存，在相同地图精度和同一浮点拓扑筛选下比较；④更严格的目标类复杂度上界与先例全文核查。若只降低图像MSE、只加控制点、或只把局部提示稀疏插值，当前证据均不足以解决核心瓶颈。

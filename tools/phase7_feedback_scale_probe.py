@@ -10,8 +10,12 @@ import argparse
 import contextlib
 import json
 import math
+import os
 import statistics
 import time
+
+if os.name == "posix":
+    import resource
 
 import torch
 import torch.nn.functional as F
@@ -62,9 +66,14 @@ def main() -> None:
     parser.add_argument("--checkpoint-extra", action="store_true")
     parser.add_argument("--offload-saved-tensors", action="store_true",
                         help="Move autograd saved tensors to pinned CPU memory during forward/VJP.")
+    parser.add_argument("--offload-min-elements", type=int, default=0,
+                        help="If positive, offload only saved CUDA tensors with at least this many elements.")
     parser.add_argument("--timing-repeats", type=int, default=1)
     parser.add_argument("--geometry-dtype", choices=("float64", "float32"),
                         default="float64")
+    parser.add_argument("--index-mode", choices=("buffered", "generated"),
+                        default="buffered",
+                        help="Use persistent incident-face indices or generate them per color pass.")
     parser.add_argument("--train-extra-steps", type=int, default=0)
     parser.add_argument("--train-extra-count", type=int, default=32)
     parser.add_argument("--train-extra-lr", type=float, default=.01)
@@ -102,6 +111,8 @@ def main() -> None:
         raise ValueError("hint blur sigma must be finite and nonnegative")
     if args.ridge <= 0 or not math.isfinite(args.ridge):
         raise ValueError("ridge must be finite and positive")
+    if args.offload_min_elements < 0 or (args.offload_saved_tensors and args.offload_min_elements):
+        raise ValueError("choose either all saved-tensor offload or a positive selective threshold")
     if args.hint_final_odd_sublattice and (args.final_side != 4097 or args.hint_control_side != 2049):
         raise ValueError("odd-sublattice hint requires final-side 4097 and hint-control-side 2049")
     if args.image_channels > 1 and args.test_appearance != "standard":
@@ -166,6 +177,7 @@ def main() -> None:
     relax = {
         side: SafeColoredVertexRelaxation(
             side, motion_mode="radial", raw_span=2.0,
+            index_mode=args.index_mode,
         ).to(device)
         for side in sides
     }
@@ -360,8 +372,27 @@ def main() -> None:
         return mapped, accepted, extra_motion
 
     def saved_tensor_context():
-        return (torch.autograd.graph.save_on_cpu(pin_memory=True)
-                if args.offload_saved_tensors else contextlib.nullcontext())
+        if args.offload_saved_tensors:
+            return torch.autograd.graph.save_on_cpu(pin_memory=True)
+        if args.offload_min_elements:
+            threshold = args.offload_min_elements
+
+            def pack(value: torch.Tensor):
+                if value.device.type == "cuda" and value.numel() >= threshold:
+                    host = torch.empty(
+                        value.size(), dtype=value.dtype, layout=value.layout,
+                        pin_memory=not value.is_sparse,
+                    )
+                    host.copy_(value)
+                    return value.device, host
+                return None, value
+
+            def unpack(packed):
+                device, value = packed
+                return value if device is None else value.to(device, non_blocking=True)
+
+            return torch.autograd.graph.saved_tensors_hooks(pack, unpack)
+        return contextlib.nullcontext()
 
     train_report = None
     if args.train_extra_steps:
@@ -379,6 +410,7 @@ def main() -> None:
         optimizer = torch.optim.Adam(train_groups)
         step_times = []
         step_peaks = []
+        step_reserved_peaks = []
         accepted_steps = 0
         initial_loss = None
         first_gradient_max = None
@@ -438,6 +470,7 @@ def main() -> None:
             if device.type == "cuda":
                 torch.cuda.synchronize(device)
                 step_peaks.append(torch.cuda.max_memory_allocated(device))
+                step_reserved_peaks.append(torch.cuda.max_memory_reserved(device))
             step_times.append(time.perf_counter() - began)
         torch.save({
             "extra_log_gains": extra_log_gains.detach().cpu(),
@@ -469,8 +502,10 @@ def main() -> None:
             "extra_gain_scale": args.extra_gain_scale,
             "spatial_correction": args.extra_spatial_correction,
             "offload_saved_tensors": args.offload_saved_tensors,
+            "offload_min_elements": args.offload_min_elements,
             "median_step_seconds": statistics.median(step_times),
             "peak_cuda_allocated_bytes": max(step_peaks) if step_peaks else None,
+            "peak_cuda_reserved_bytes": max(step_reserved_peaks) if step_reserved_peaks else None,
         }
 
     fixed, moving, true_map = (t[:1] for t in dataset)
@@ -510,6 +545,7 @@ def main() -> None:
             "ridge": args.ridge,
             "checkpoint_extra": args.checkpoint_extra,
             "offload_saved_tensors": args.offload_saved_tensors,
+            "offload_min_elements": args.offload_min_elements,
             "seed": args.seed,
             "target_family": args.target_family,
             "test_appearance": args.test_appearance,
@@ -532,6 +568,7 @@ def main() -> None:
             "device": str(device),
             "torch_version": torch.__version__,
             "geometry_dtype": args.geometry_dtype,
+            "index_mode": args.index_mode,
             "extra_gains": torch.exp(extra_log_gains.detach()).tolist(),
             "extra_spatial_correction": args.extra_spatial_correction,
             "extra_gain_scale": args.extra_gain_scale,
@@ -552,6 +589,7 @@ def main() -> None:
     if args.check_vjp:
         vjp_times = []
         peaks = []
+        reserved_peaks = []
         for _ in range(args.timing_repeats):
             encoder.zero_grad(set_to_none=True)
             log_gains.grad = None
@@ -575,6 +613,10 @@ def main() -> None:
                 torch.cuda.max_memory_allocated(device)
                 if device.type == "cuda" else None
             )
+            reserved_peaks.append(
+                torch.cuda.max_memory_reserved(device)
+                if device.type == "cuda" else None
+            )
         gradients = [p.grad for p in encoder.parameters() if p.grad is not None]
         report["vjp"] = {
             "accepted": bool(accepted.item()),
@@ -582,6 +624,9 @@ def main() -> None:
             "times": vjp_times,
             "peak_cuda_allocated_bytes": max(
                 peak for peak in peaks if peak is not None
+            ) if device.type == "cuda" else None,
+            "peak_cuda_reserved_bytes": max(
+                peak for peak in reserved_peaks if peak is not None
             ) if device.type == "cuda" else None,
             "encoder_gradient_tensors": len(gradients),
             "all_encoder_gradients_finite": all(
@@ -595,6 +640,10 @@ def main() -> None:
             ) if extra_log_gains.grad is not None else None,
             "minimum_jacobian": minimum_jacobian(mapped),
         }
+    if os.name == "posix":
+        report["peak_process_rss_kib"] = resource.getrusage(
+            resource.RUSAGE_SELF,
+        ).ru_maxrss
     if args.count > 1:
         accepted_count = 0
         minimum_double = float("inf")

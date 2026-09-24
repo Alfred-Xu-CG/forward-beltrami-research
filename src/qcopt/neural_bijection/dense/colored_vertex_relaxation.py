@@ -23,6 +23,7 @@ class SafeColoredVertexRelaxation(torch.nn.Module):
         self, side: int, *, safety_fraction: float = 0.75,
         motion_mode: str = "disk", raw_span: float = 2.0,
         floor_fraction: float = 0.0,
+        index_mode: str = "buffered",
     ) -> None:
         super().__init__()
         if side < 3 or not 0.0 < safety_fraction < 1.0:
@@ -31,11 +32,14 @@ class SafeColoredVertexRelaxation(torch.nn.Module):
             raise ValueError("motion_mode must be disk/radial and raw_span must be positive and finite")
         if not 0.0 <= floor_fraction < 1.0 or (floor_fraction and motion_mode != "radial"):
             raise ValueError("floor_fraction must be in [0,1) and requires radial mode")
+        if index_mode not in ("buffered", "generated"):
+            raise ValueError("index_mode must be buffered or generated")
         self.side = side
         self.safety_fraction = float(safety_fraction)
         self.motion_mode = motion_mode
         self.raw_span = float(raw_span)
         self.floor_fraction = float(floor_fraction)
+        self.index_mode = index_mode
         # On the fixed southwest-to-northeast triangulation, these are the
         # cyclic opposite edges of the six incident triangles.  Generating
         # them arithmetically avoids millions of Python tuples at 1025².
@@ -43,20 +47,33 @@ class SafeColoredVertexRelaxation(torch.nn.Module):
             (-side - 1, -side), (-1, -side - 1), (-side, 1),
             (side, -1), (1, side + 1), (side + 1, side),
         ], dtype=np.int64)
+        self.register_buffer(
+            "_opposite_offsets", torch.as_tensor(opposite_offsets, dtype=torch.long),
+            persistent=False,
+        )
         for color in range(4):
             parity_row, parity_column = divmod(color, 2)
-            vertices = [
-                row * side + column
-                for row in range(1, side - 1) for column in range(1, side - 1)
-                if row % 2 == parity_row and column % 2 == parity_column
-            ]
-            edges = np.asarray(vertices, dtype=np.int64)[:, None, None] + opposite_offsets[None]
-            if edges.shape != (len(vertices), 6, 2):
-                raise AssertionError("every strict interior structured vertex must have six incident triangles")
-            local = [(vertex // side - 1) * (side - 2) + (vertex % side - 1) for vertex in vertices]
-            self.register_buffer(f"_vertices_{color}", torch.as_tensor(vertices, dtype=torch.long), persistent=False)
-            self.register_buffer(f"_opposite_{color}", torch.as_tensor(edges, dtype=torch.long), persistent=False)
-            self.register_buffer(f"_local_{color}", torch.as_tensor(local, dtype=torch.long), persistent=False)
+            if index_mode == "generated":
+                rows = np.arange(1 + (parity_row == 0), side - 1, 2, dtype=np.int64)
+                columns = np.arange(1 + (parity_column == 0), side - 1, 2, dtype=np.int64)
+                vertices = (rows[:, None] * side + columns[None, :]).reshape(-1)
+                self.register_buffer(
+                    f"_vertices_{color}", torch.as_tensor(vertices, dtype=torch.long),
+                    persistent=False,
+                )
+            else:
+                vertices = [
+                    row * side + column
+                    for row in range(1, side - 1) for column in range(1, side - 1)
+                    if row % 2 == parity_row and column % 2 == parity_column
+                ]
+                edges = np.asarray(vertices, dtype=np.int64)[:, None, None] + opposite_offsets[None]
+                if edges.shape != (len(vertices), 6, 2):
+                    raise AssertionError("every strict interior structured vertex must have six incident triangles")
+                local = [(vertex // side - 1) * (side - 2) + (vertex % side - 1) for vertex in vertices]
+                self.register_buffer(f"_vertices_{color}", torch.as_tensor(vertices, dtype=torch.long), persistent=False)
+                self.register_buffer(f"_opposite_{color}", torch.as_tensor(edges, dtype=torch.long), persistent=False)
+                self.register_buffer(f"_local_{color}", torch.as_tensor(local, dtype=torch.long), persistent=False)
 
     def compute_area_floor(self, base: torch.Tensor) -> torch.Tensor:
         """A batch-wise absolute double-area floor tied to the initial base."""
@@ -93,8 +110,13 @@ class SafeColoredVertexRelaxation(torch.nn.Module):
         latent = logits.reshape(batch, -1, 2)
         for color in range(4):
             vertices = getattr(self, f"_vertices_{color}")
-            opposite = getattr(self, f"_opposite_{color}")
-            local = getattr(self, f"_local_{color}")
+            if self.index_mode == "generated":
+                opposite = vertices[:, None, None] + self._opposite_offsets[None]
+                local = ((vertices // self.side - 1) * (self.side - 2)
+                         + vertices % self.side - 1)
+            else:
+                opposite = getattr(self, f"_opposite_{color}")
+                local = getattr(self, f"_local_{color}")
             point = current[:, vertices]
             start = current[:, opposite[..., 0]]
             end = current[:, opposite[..., 1]]
