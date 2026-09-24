@@ -43,6 +43,10 @@ def main() -> None:
     parser.add_argument("--train-steps", type=int, default=0,
                         help="Image-only joint training of the coarse encoder and two feedback gains.")
     parser.add_argument("--train-count", type=int, default=32)
+    parser.add_argument("--train-appearance-augmentation",
+                        choices=("none", "crosswaves", "spots", "all"),
+                        default="none",
+                        help="Re-pair the same training maps with additional moving-image textures.")
     parser.add_argument("--train-learning-rate", type=float, default=0.0002)
     parser.add_argument("--train-gain-learning-rate", type=float, default=0.002)
     parser.add_argument("--save-state", default=None)
@@ -170,6 +174,20 @@ def main() -> None:
         train = tuple(value.to(device) for value in make_dataset(
             args.train_count, 512, 55101, target_family="high128",
         ))
+        if args.train_appearance_augmentation != "none":
+            modes = (
+                ("crosswaves", "spots")
+                if args.train_appearance_augmentation == "all"
+                else (args.train_appearance_augmentation,)
+            )
+            variants = (train,) + tuple(
+                replace_test_appearance(train, mode, 55101)
+                for mode in modes
+            )
+            train = tuple(torch.cat(
+                [variant[index] for variant in variants], dim=0,
+            ) for index in range(3))
+        effective_train_pairs = train[0].shape[0]
         for name, parameter in encoder.named_parameters():
             parameter.requires_grad_(not args.freeze_coarse
                                      and not name.startswith("level_heads.4.")
@@ -196,7 +214,7 @@ def main() -> None:
         if device.type == "cuda":
             torch.cuda.reset_peak_memory_stats(device)
         for step in range(1, args.train_steps + 1):
-            selected = torch.randint(args.train_count, (args.batch,), generator=generator).to(device)
+            selected = torch.randint(effective_train_pairs, (args.batch,), generator=generator).to(device)
             fixed, moving = (tensor[selected] for tensor in train[:2])
             optimizer.zero_grad(set_to_none=True)
             if device.type == "cuda":
@@ -223,6 +241,8 @@ def main() -> None:
         train_report = {
             "steps": args.train_steps,
             "train_count": args.train_count,
+            "train_appearance_augmentation": args.train_appearance_augmentation,
+            "effective_train_pairs": effective_train_pairs,
             "train_seed": 55101,
             "training_objective": "image_mse_only",
             "median_train_step_seconds": statistics.median(times),
