@@ -47,6 +47,10 @@ def main() -> None:
                         default="high128")
     parser.add_argument("--test-appearance", choices=("standard", "crosswaves", "spots"),
                         default="standard")
+    parser.add_argument("--allow-multichannel-appearance-shift", action="store_true",
+                        help="Explicit OOD diagnostic: shift channel 1 only, or all channels when duplicated.")
+    parser.add_argument("--rotate-view-channels", action="store_true",
+                        help="OOD diagnostic: move first view to last so the coarse CNN reads a different view.")
     parser.add_argument("--image-channels", type=int, default=1,
                         help="Independent synthetic views of the same map for image feedback/loss.")
     parser.add_argument("--duplicate-image-channels", action="store_true",
@@ -113,6 +117,8 @@ def main() -> None:
         raise ValueError("image channels must be in [1,16]")
     if args.duplicate_image_channels and args.image_channels == 1:
         raise ValueError("duplicate channels require image-channels > 1")
+    if args.rotate_view_channels and args.image_channels == 1:
+        raise ValueError("rotating views requires image-channels > 1")
     if args.image_noise_std < 0:
         raise ValueError("image noise std must be nonnegative")
     if args.hint_blur_sigma < 0 or not math.isfinite(args.hint_blur_sigma):
@@ -125,8 +131,9 @@ def main() -> None:
         raise ValueError("allocator-cap-gib must be finite and nonnegative")
     if args.hint_final_odd_sublattice and (args.final_side != 4097 or args.hint_control_side != 2049):
         raise ValueError("odd-sublattice hint requires final-side 4097 and hint-control-side 2049")
-    if args.image_channels > 1 and args.test_appearance != "standard":
-        raise ValueError("multichannel appearance is defined for standard only")
+    if (args.image_channels > 1 and args.test_appearance != "standard"
+            and not args.allow_multichannel_appearance_shift):
+        raise ValueError("multichannel appearance shift requires explicit opt-in")
     if args.train_extra_steps and args.final_side < 2049:
         raise ValueError("extra-level training needs final-side >= 2049")
     if args.train_extra_steps and not args.save_extra_gains:
@@ -253,6 +260,9 @@ def main() -> None:
             moving = moving + args.image_noise_std * torch.randn(
                 moving.shape, generator=random, dtype=moving.dtype,
             ).to(device)
+        if args.rotate_view_channels:
+            fixed = fixed.roll(shifts=-1, dims=1)
+            moving = moving.roll(shifts=-1, dims=1)
         return fixed, moving, true_map
 
     dataset = multiview(dataset, args.seed)
@@ -587,6 +597,8 @@ def main() -> None:
             "seed": args.seed,
             "target_family": args.target_family,
             "test_appearance": args.test_appearance,
+            "allow_multichannel_appearance_shift": args.allow_multichannel_appearance_shift,
+            "rotate_view_channels": args.rotate_view_channels,
             "accepted": bool(accepted.item()),
             "minimum_jacobian": minimum_jacobian(mapped),
             "minimum_jacobian_recomputed_float64": minimum_jacobian(
