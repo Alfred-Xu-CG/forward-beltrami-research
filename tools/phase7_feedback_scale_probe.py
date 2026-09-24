@@ -65,6 +65,9 @@ def main() -> None:
     parser.add_argument("--train-extra-steps", type=int, default=0)
     parser.add_argument("--train-extra-count", type=int, default=32)
     parser.add_argument("--train-extra-lr", type=float, default=.01)
+    parser.add_argument("--train-full-encoder", action="store_true",
+                        help="Also train the image encoder and pretrained coarse gains at final resolution.")
+    parser.add_argument("--train-encoder-lr", type=float, default=.001)
     parser.add_argument("--train-extra-objective", choices=("image", "map"),
                         default="image")
     parser.add_argument("--train-loss-scale", type=float, default=1.0)
@@ -80,6 +83,10 @@ def main() -> None:
         raise ValueError("extra gain scale must be positive")
     if args.train_extra_steps < 0 or args.train_extra_count < 1 or args.train_extra_lr <= 0:
         raise ValueError("invalid extra-level training settings")
+    if args.train_encoder_lr <= 0 or not math.isfinite(args.train_encoder_lr):
+        raise ValueError("train-encoder-lr must be finite and positive")
+    if args.train_full_encoder and not args.train_extra_steps:
+        raise ValueError("train-full-encoder requires positive train-extra-steps")
     if args.train_loss_scale <= 0:
         raise ValueError("train loss scale must be positive")
     if args.image_channels < 1 or args.image_channels > 16:
@@ -138,6 +145,10 @@ def main() -> None:
         loaded = torch.load(args.load_extra_gains, map_location=device, weights_only=True)
         with torch.no_grad():
             extra_log_gains.copy_(loaded["extra_log_gains"].to(geometry_dtype))
+            if loaded.get("log_gains") is not None:
+                log_gains.copy_(loaded["log_gains"].to(geometry_dtype))
+        if loaded.get("encoder") is not None:
+            encoder.load_state_dict(loaded["encoder"])
         if args.extra_spatial_correction:
             if loaded.get("extra_correction_net") is None:
                 if not args.train_extra_steps:
@@ -145,7 +156,8 @@ def main() -> None:
             else:
                 extra_correction_net.load_state_dict(loaded["extra_correction_net"])
     if args.train_extra_steps:
-        encoder.requires_grad_(False)
+        encoder.requires_grad_(args.train_full_encoder)
+        log_gains.requires_grad_(args.train_full_encoder)
     sides = tuple(side for side in (513, 1025, 2049, 4097)
                   if side <= args.final_side)
     relax = {
@@ -350,10 +362,14 @@ def main() -> None:
             args.train_extra_count, 512, 55101, target_family="high128",
         ))
         train_data = multiview(train_data, 55101)
-        train_parameters = [extra_log_gains]
+        train_groups = [{"params": [extra_log_gains], "lr": args.train_extra_lr}]
+        if args.train_full_encoder:
+            train_groups.append({"params": encoder.parameters(), "lr": args.train_encoder_lr})
+            train_groups.append({"params": [log_gains], "lr": args.train_extra_lr})
         if args.extra_spatial_correction:
-            train_parameters.extend(extra_correction_net.parameters())
-        optimizer = torch.optim.Adam(train_parameters, lr=args.train_extra_lr)
+            train_groups.append({"params": extra_correction_net.parameters(),
+                                 "lr": args.train_extra_lr})
+        optimizer = torch.optim.Adam(train_groups)
         step_times = []
         step_peaks = []
         accepted_steps = 0
@@ -387,9 +403,22 @@ def main() -> None:
             train_loss.backward()
             if not bool(torch.isfinite(extra_log_gains.grad).all()):
                 raise RuntimeError(f"nonfinite extra-level VJP at step {step}")
+            if args.train_full_encoder and (
+                not bool(torch.isfinite(log_gains.grad).all())
+                or any(not bool(torch.isfinite(parameter.grad).all())
+                       for parameter in encoder.parameters()
+                       if parameter.grad is not None)
+            ):
+                raise RuntimeError(f"nonfinite encoder/coarse-gain VJP at step {step}")
             if step == 0:
                 first_gradient_max = {
                     "extra_gain": float(extra_log_gains.grad.abs().amax()),
+                    "coarse_gain": float(log_gains.grad.abs().amax())
+                    if args.train_full_encoder else None,
+                    "encoder": max(float(parameter.grad.abs().amax())
+                                   for parameter in encoder.parameters()
+                                   if parameter.grad is not None)
+                    if args.train_full_encoder else None,
                     "correction": max(
                         float(parameter.grad.abs().amax())
                         for parameter in extra_correction_net.parameters()
@@ -404,6 +433,10 @@ def main() -> None:
             step_times.append(time.perf_counter() - began)
         torch.save({
             "extra_log_gains": extra_log_gains.detach().cpu(),
+            "log_gains": log_gains.detach().cpu() if args.train_full_encoder else None,
+            "encoder": {key: value.detach().cpu()
+                        for key, value in encoder.state_dict().items()}
+            if args.train_full_encoder else None,
             "extra_correction_net": (
                 extra_correction_net.state_dict()
                 if args.extra_spatial_correction else None
@@ -423,6 +456,8 @@ def main() -> None:
             "first_gradient_max": first_gradient_max,
             "accepted_steps": accepted_steps,
             "extra_gains": torch.exp(extra_log_gains.detach()).tolist(),
+            "coarse_gains": torch.exp(log_gains.detach()).tolist(),
+            "full_encoder": args.train_full_encoder,
             "extra_gain_scale": args.extra_gain_scale,
             "spatial_correction": args.extra_spatial_correction,
             "median_step_seconds": statistics.median(step_times),
