@@ -1,6 +1,6 @@
 # Phase VII 结论独立复核记录（窗口末前）
 
-本文不是替代[自包含主报告](REPORT.md)的第二套总结。复核方法是从源码、原始JSON、原始定理假设和重新运行的实验各自出发，检查主报告最重要的断言是否越过证据；没有外部审稿人或第二个代理参与，故“独立”限于**独立计算/重跑及不同证据路径**，不冒称同行评议。目标模式的21小时结束时还须核对时间、Git同步和剩余任务。
+本文不是替代[自包含主报告](REPORT.md)的第二套总结。复核方法是从源码、原始JSON、原始定理假设和重新运行的实验各自出发，检查主报告最重要的断言是否越过证据；没有外部审稿人或第二个代理参与，故“独立”限于**独立计算/重跑及不同证据路径**，不冒称同行评议。研究窗口已于2026-09-24 14:52:56 UTC结束，见[计时记录](END_TIME.json)；技术缺口列于文末。
 
 ## 逐项判断
 
@@ -20,5 +20,6 @@
 ## 可复算检查与未解决事项
 
 - 重新运行[同一4097²解析teacher脚本](../../tools/phase7_verify_isotopy_pyramid.py)后F1/F2误差和中位时长与此前[74号表](74_two_distinct_forward_mechanisms_4097_teacher_vjp.md)一致到运行波动量级，原始重跑JSON已留D盘。
-- 本机将仓库`src`加入`PYTHONPATH`后，重跑全部`tests/test_phase7_*.py`得到`65 passed`（21.51秒），其中新增3×3极薄面单测直接显示float32 guard会截短一个按实数预算本可接受的teacher步；`src/qcopt/neural_bijection/dense`及修改过的探针可`compileall`。扫描本阶段Markdown相对文件链接后目前`MISSING_COUNT=0`，顺手修复两处第53号文档的单复数拼写误链。这些检查不证明所有数值/理论断言，只提供可复现的一致性底线。
+- 本机将仓库`src`加入`PYTHONPATH`后，最终重跑全部`tests/test_phase7_*.py`得到`65 passed`（33.77秒；早一轮为21.51秒），其中新增3×3极薄面单测直接显示float32 guard会截短一个按实数预算本可接受的teacher步；`src/qcopt/neural_bijection/dense`及修改过的探针可`compileall`。扫描本阶段Markdown相对文件链接后此前`MISSING_COUNT=0`，顺手修复两处第53号文档的单复数拼写误链。这些检查不证明所有数值/理论断言，只提供可复现的一致性底线。
 - 剩余最重要的科学缺口：真实图像/不同成像模态上的单图或多图几何真值验证；不同GPU与物理小显卡上的容量和吞吐；对活动面切换的梯度稳定性分析；从大表达性teacher类到可学习低维latent的**有效**逼近复杂度；更完整的先例全文比较。对称粗latent融合在一坏三好的外观偏移中很有效，但[独立加性噪声配对](85_permutation_invariant_coarse_latent_fusion.md)几乎没有收益，不能把某一路线的teacher精确性或合成四视图成功替代这些证据。
+- 2026-09-24约14:49 UTC复查远程资源：`turing-codex-mihomo-codex`、`element-codex-mihomo-codex`、`ai-codex-mihomo-codex`均通过`ssh -o ClearAllForwardings=yes -o BatchMode=yes -o ConnectTimeout=8`连通，未改动已有18082转发。只读`nvidia-smi`显示分别有约46 GB、49 GB和至少两张约49 GB的GPU当时基本空闲；这是瞬时快照，不授权抢占后续作业。因已接近本轮21小时结束点，本轮不再启动来不及验证的新大型实验，下一阶段可先重新检查进程及显存再使用这些主机。

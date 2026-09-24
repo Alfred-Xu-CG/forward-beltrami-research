@@ -1,6 +1,6 @@
 # AGENTS.md — Phase VII Forward P1 Homeomorphism Research Mode
 
-> Current phase: Phase VII began 2026-09-23 at 17:52:45 UTC. Authoritative scope: `docs/research_phase7/PLAN.md`; clock: `docs/research_phase7/START_TIME.json`. The Phase VI material below is archived evidence, not the current objective.
+> Phase VII research window ran from 2026-09-23 17:52:45 UTC to 2026-09-24 14:52:56 UTC. Authoritative scope: `docs/research_phase7/PLAN.md`; clock: `docs/research_phase7/START_TIME.json` and `docs/research_phase7/END_TIME.json`. The technical report is `docs/research_phase7/REPORT.md`. Phase VI material below remains archived evidence.
 
 Phase VII prioritizes a latent-to-fixed-grid-P1-homeomorphism decoder built by coarse-to-fine forward updates. Separate all-latent topology proofs from approximation and image-training evidence. The 21-hour window has no route-specific hour quotas; at its end, stop new large jobs and synthesize honestly rather than declaring technical success by time. Keep all artifacts on D:, preserve unrelated files and shared host resources, and synchronize meaningful Git milestones.
 
