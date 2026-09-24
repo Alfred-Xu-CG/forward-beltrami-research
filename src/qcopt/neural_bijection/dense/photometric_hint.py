@@ -12,8 +12,8 @@ import torch.nn.functional as F
 
 def physical_image_gradient(image: torch.Tensor) -> torch.Tensor:
     """Central differences in unit-square coordinates, endpoint replicated."""
-    if image.ndim != 4 or image.shape[1] != 1 or image.shape[-2] != image.shape[-1]:
-        raise ValueError("image must be a square single-channel BCHW tensor")
+    if image.ndim != 4 or image.shape[1] < 1 or image.shape[-2] != image.shape[-1]:
+        raise ValueError("image must be a square BCHW tensor with channels")
     side = image.shape[-1]
     gx = 0.5 * (side - 1) * (image[..., 2:] - image[..., :-2])
     gy = 0.5 * (side - 1) * (image[..., 2:, :] - image[..., :-2, :])
@@ -82,14 +82,17 @@ def local_photometric_logits(
     theorem. The 2x2 normal matrix receives a positive ridge, so the solve
     is nonsingular for finite image values.
     """
-    if fixed.shape != moving.shape or fixed.ndim != 4 or fixed.shape[1] != 1:
-        raise ValueError("fixed/moving must have matching BCHW single-channel shape")
+    if fixed.shape != moving.shape or fixed.ndim != 4 or fixed.shape[1] < 1:
+        raise ValueError("fixed/moving must have matching BCHW shape with channels")
     if base.ndim != 4 or base.shape[0] != fixed.shape[0] or base.shape[-1] != 2 or base.shape[1] != base.shape[2]:
         raise ValueError("base must have shape (B,N,N,2)")
     if window < 1 or window % 2 != 1 or ridge <= 0 or raw_span <= 0:
         raise ValueError("window must be odd positive; ridge and raw_span positive")
     if gradient_mode not in ("central", "bilinear_exact"):
         raise ValueError("gradient_mode must be central or bilinear_exact")
+    if gradient_mode == "bilinear_exact" and fixed.shape[1] != 1:
+        raise ValueError("bilinear_exact currently supports one image channel")
+    channels = fixed.shape[1]
     side = base.shape[1]
     sample_grid = 2 * base - 1
     fixed_at_control = F.interpolate(fixed, size=(side, side), mode="bilinear", align_corners=True)
@@ -106,18 +109,21 @@ def local_photometric_logits(
         moved_at_control, gradient_at_control = bilinear_image_value_and_gradient(
             moving, base,
         )
-    gx = gradient_at_control[:, 0:1]
-    gy = gradient_at_control[:, 1:2]
+    gx = gradient_at_control[:, :channels]
+    gy = gradient_at_control[:, channels:]
     residual = fixed_at_control - moved_at_control
 
     def local_mean(values: torch.Tensor) -> torch.Tensor:
         return F.avg_pool2d(values, window, stride=1, padding=window // 2, count_include_pad=False)
 
-    gxx = local_mean(gx * gx) + ridge
-    gxy = local_mean(gx * gy)
-    gyy = local_mean(gy * gy) + ridge
-    bx = local_mean(gx * residual)
-    by = local_mean(gy * residual)
+    def channel_mean(values: torch.Tensor) -> torch.Tensor:
+        return values.mean(dim=1, keepdim=True)
+
+    gxx = local_mean(channel_mean(gx * gx)) + ridge
+    gxy = local_mean(channel_mean(gx * gy))
+    gyy = local_mean(channel_mean(gy * gy)) + ridge
+    bx = local_mean(channel_mean(gx * residual))
+    by = local_mean(channel_mean(gy * residual))
     determinant = gxx * gyy - gxy * gxy
     dx = (gyy * bx - gxy * by) / determinant
     dy = (gxx * by - gxy * bx) / determinant

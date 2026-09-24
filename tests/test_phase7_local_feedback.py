@@ -74,3 +74,29 @@ def test_float32_repeated_local_updates_certify_and_backpropagate() -> None:
     gradients = torch.autograd.grad(loss, proposals)
     assert all(bool(torch.isfinite(gradient).all()) for gradient in gradients)
     assert any(float(gradient.abs().amax()) > 0 for gradient in gradients)
+
+
+def test_multichannel_photometric_hint_preserves_duplicate_channel_result() -> None:
+    side = 17
+    axis = torch.linspace(0, 1, side)
+    yy, xx = torch.meshgrid(axis, axis, indexing="ij")
+    identity = torch.stack((xx, yy), dim=-1)[None]
+    moving = (torch.sin(5 * xx + 3 * yy) + .3 * torch.cos(2 * xx - yy))[None, None]
+    fixed = moving + .01 * (xx - yy)[None, None]
+    single = local_photometric_logits(
+        fixed, moving, identity, window=3, ridge=.7, raw_span=2.,
+    )
+    duplicate = local_photometric_logits(
+        fixed.repeat(1, 2, 1, 1), moving.repeat(1, 2, 1, 1),
+        identity, window=3, ridge=.7, raw_span=2.,
+    )
+    torch.testing.assert_close(single, duplicate, atol=1e-6, rtol=1e-6)
+    moving_pair = torch.cat((moving, torch.cos(7 * xx - 2 * yy)[None, None]), dim=1)
+    moving_pair.requires_grad_()
+    fixed_pair = torch.cat((fixed, fixed + .02 * yy[None, None]), dim=1)
+    logits = local_photometric_logits(
+        fixed_pair, moving_pair, identity, window=3, ridge=.7, raw_span=2.,
+    )
+    gradient = torch.autograd.grad(logits.square().mean(), moving_pair)[0]
+    assert bool(torch.isfinite(gradient).all())
+    assert bool((gradient.abs().sum(dim=(0, 2, 3)) > 0).all())

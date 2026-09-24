@@ -40,6 +40,10 @@ def main() -> None:
                         default="high128")
     parser.add_argument("--test-appearance", choices=("standard", "crosswaves", "spots"),
                         default="standard")
+    parser.add_argument("--image-channels", type=int, default=1,
+                        help="Independent synthetic views of the same map for image feedback/loss.")
+    parser.add_argument("--duplicate-image-channels", action="store_true",
+                        help="Repeat one image instead of adding independent texture; information control.")
     parser.add_argument("--window", type=int, default=3)
     parser.add_argument("--check-vjp", action="store_true")
     parser.add_argument("--checkpoint-extra", action="store_true")
@@ -64,6 +68,12 @@ def main() -> None:
         raise ValueError("invalid extra-level training settings")
     if args.train_loss_scale <= 0:
         raise ValueError("train loss scale must be positive")
+    if args.image_channels < 1 or args.image_channels > 4:
+        raise ValueError("image channels must be in [1,4]")
+    if args.duplicate_image_channels and args.image_channels == 1:
+        raise ValueError("duplicate channels require image-channels > 1")
+    if args.image_channels > 1 and args.test_appearance != "standard":
+        raise ValueError("multichannel appearance is defined for standard only")
     if args.train_extra_steps and args.final_side < 2049:
         raise ValueError("extra-level training needs final-side >= 2049")
     if args.train_extra_steps and not args.save_extra_gains:
@@ -136,6 +146,30 @@ def main() -> None:
         args.count, 512, args.seed, target_family=args.target_family,
     ))
     dataset = replace_test_appearance(dataset, args.test_appearance, args.seed)
+
+    def multiview(data: tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+                  seed: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        if args.image_channels == 1:
+            return data
+        fixed, moving, true_map = data
+        if args.duplicate_image_channels:
+            return (fixed.repeat(1, args.image_channels, 1, 1),
+                    moving.repeat(1, args.image_channels, 1, 1), true_map)
+        fixed_views = [fixed]
+        moving_views = [moving]
+        for channel in range(1, args.image_channels):
+            extra = make_dataset(
+                true_map.shape[0], 512, seed + 10000 * channel,
+                target_family="high128",
+            )[1].to(device)
+            fixed_views.append(F.grid_sample(
+                extra, 2 * true_map - 1,
+                mode="bilinear", padding_mode="border", align_corners=True,
+            ).detach())
+            moving_views.append(extra)
+        return torch.cat(fixed_views, dim=1), torch.cat(moving_views, dim=1), true_map
+
+    dataset = multiview(dataset, args.seed)
     image_axis = torch.arange(512, device=device, dtype=torch.float32) / 511
     image_y, image_x = torch.meshgrid(image_axis, image_axis, indexing="ij")
     image_coordinates = torch.stack((image_x, image_y), dim=0)[None]
@@ -164,7 +198,8 @@ def main() -> None:
             mode="bilinear", padding_mode="border", align_corners=True,
         ) / 32
         features = torch.cat((
-            fixed, warped, 100 * (fixed - warped), gradient,
+            fixed[:, :1], warped[:, :1], 100 * (fixed[:, :1] - warped[:, :1]),
+            gradient[:, :1], gradient[:, moving.shape[1]:moving.shape[1] + 1],
             image_coordinates.expand(fixed.shape[0], -1, -1, -1),
         ), dim=1)
         correction = extra_correction_net(features)
@@ -181,7 +216,7 @@ def main() -> None:
 
     def forward(fixed: torch.Tensor, moving: torch.Tensor, *,
                 record_extra: bool = False):
-        seed, levels = encoder(fixed, moving)
+        seed, levels = encoder(fixed[:, :1], moving[:, :1])
         current = coarse(seed[0], levels[:4])
         extra_motion = {}
         for level, side in enumerate(sides):
@@ -234,6 +269,7 @@ def main() -> None:
         train_data = tuple(t.to(device) for t in make_dataset(
             args.train_extra_count, 512, 55101, target_family="high128",
         ))
+        train_data = multiview(train_data, 55101)
         train_parameters = [extra_log_gains]
         if args.extra_spatial_correction:
             train_parameters.extend(extra_correction_net.parameters())
@@ -371,6 +407,8 @@ def main() -> None:
             "geometry_dtype": args.geometry_dtype,
             "extra_gains": torch.exp(extra_log_gains.detach()).tolist(),
             "extra_spatial_correction": args.extra_spatial_correction,
+            "image_channels": args.image_channels,
+            "duplicate_image_channels": args.duplicate_image_channels,
             "extra_training": train_report,
             "extra_level_actual_motion": extra_motion,
             "setup_seconds": setup_seconds,
