@@ -84,11 +84,15 @@ class MixedScaleResidualEncoder(nn.Module):
         origin: torch.Tensor,
         vector: torch.Tensor,
         low_width: torch.Tensor | None = None,
+        proposed_low: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         batch = len(fixed)
-        proposed = low_map_from_params(
+        proposed = (low_map_from_params(
             origin, vector, 257, torch.float64,
             width=1 / 16 if low_width is None else low_width)
+            if proposed_low is None else proposed_low)
+        if proposed.shape != (batch, 257, 257, 2):
+            raise ValueError("proposed_low must have shape (batch,257,257,2)")
         coarse_base_latent = torch.atanh(((
             proposed - self.decoder.identity)[
                 :, 1:-1, 1:-1] /
