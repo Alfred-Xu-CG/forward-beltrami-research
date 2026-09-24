@@ -66,6 +66,7 @@ class ForwardP1ImageEncoder(nn.Module):
         self.level_sides = tuple(level_sides)
         self.seed_passes = seed_passes
         self.flow_hint = flow_hint
+        self.flow_feature_gain = 1.0
         self.feature_side = feature_side or min(self.level_sides[-1] if self.level_sides else seed_side, 257)
         self.stem = nn.Sequential(
             nn.Conv2d(6 if flow_hint else 4, width, 3, padding=1), nn.GELU(),
@@ -95,7 +96,7 @@ class ForwardP1ImageEncoder(nn.Module):
         feature_channels = (pair, coordinates)
         if self.flow_hint:
             feature_channels += (
-                ridge_local_flow_features(pair[:, :1], pair[:, 1:]),
+                self.flow_feature_gain * ridge_local_flow_features(pair[:, :1], pair[:, 1:]),
             )
         fine = self.stem(torch.cat(feature_channels, dim=1))
         current, fused = fine, fine

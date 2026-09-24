@@ -70,6 +70,22 @@ class StructuredDenseQueryTable:
         if not np.array_equal(mesh.faces, np.asarray(expected_faces, dtype=np.int64)):
             raise ValueError("mesh faces do not match structured_rectangle diagonals")
 
+        return cls.from_shape(nx, ny, height=height, width=width)
+
+    @classmethod
+    def from_shape(
+        cls, nx: int, ny: int, *, height: int, width: int,
+    ) -> "StructuredDenseQueryTable":
+        """Build fixed-grid queries without materializing a many-face mesh.
+
+        Use this when the caller already owns the structured_rectangle layout.
+        It avoids creating/validating O(nx*ny) triangles merely to locate
+        O(height*width) regular image queries.
+        """
+        if min(nx, ny) < 1 or min(height, width) < 2:
+            raise ValueError("positive cell counts and at least two queries per axis are required")
+        stride = nx + 1
+
         query_x = np.linspace(0.0, 1.0, width)
         query_y = np.linspace(0.0, 1.0, height)
         dense_x, dense_y = np.meshgrid(query_x, query_y, indexing="xy")
@@ -103,7 +119,7 @@ class StructuredDenseQueryTable:
             barycentric_tensor,
             height,
             width,
-            mesh.n_vertices,
+            (nx + 1) * (ny + 1),
             nx,
             ny,
         )

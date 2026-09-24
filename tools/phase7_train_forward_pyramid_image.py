@@ -16,7 +16,6 @@ import torch
 import torch.nn.functional as F
 
 from phase6_train_multisample_image import make_dataset
-from qcopt.mesh import structured_rectangle
 from qcopt.neural_bijection.dense import (
     ForwardP1ImageEncoder, ForwardP1Pyramid, ForwardPatchP1Pyramid,
     HybridPatchSeedVertexP1Pyramid, PatchPyramidImageEncoder,
@@ -81,6 +80,9 @@ def main() -> None:
     parser.add_argument("--image-side", type=int, default=512)
     parser.add_argument("--target-family", choices=("base", "high32", "high64", "high128"), default="high32")
     parser.add_argument("--train-count", type=int, default=32)
+    parser.add_argument("--train-appearance-augmentation",
+                        choices=("none", "crosswaves", "spots", "all"), default="none",
+                        help="Reuse each training map with additional image appearances.")
     parser.add_argument("--test-count", type=int, default=8)
     parser.add_argument("--test-seed", type=int, default=99317)
     parser.add_argument("--test-appearance", choices=("standard", "spots", "crosswaves"),
@@ -89,6 +91,10 @@ def main() -> None:
     parser.add_argument("--width", type=int, default=16)
     parser.add_argument("--flow-hint", action="store_true",
                         help="Append differentiable local ridge-flow image features to the CNN input.")
+    parser.add_argument("--flow-feature-gain", type=float, default=1.0,
+                        help="Inference ablation of the appended flow feature; zero masks its channels.")
+    parser.add_argument("--flow-feature-dropout", type=float, default=0.0,
+                        help="Training-only whole-batch probability of masking the flow channels.")
     parser.add_argument("--feature-side", type=int, default=None)
     parser.add_argument("--batch", type=int, default=2)
     parser.add_argument("--steps", type=int, default=500)
@@ -120,6 +126,10 @@ def main() -> None:
         raise ValueError("dimensions, counts, batch and steps must be positive")
     if args.decoder_kind == "hybrid" and args.feedback_passes:
         raise ValueError("hybrid decoder has no intermediate feedback path")
+    if not math.isfinite(args.flow_feature_gain):
+        raise ValueError("--flow-feature-gain must be finite")
+    if not 0 <= args.flow_feature_dropout < 1 or (args.flow_feature_dropout and not args.flow_hint):
+        raise ValueError("flow-feature-dropout needs --flow-hint and a probability in [0, 1)")
     if args.train_new_levels_only and not (args.load_state and args.allow_new_levels):
         raise ValueError("--train-new-levels-only requires --load-state and --allow-new-levels")
     torch.manual_seed(20260924)
@@ -129,6 +139,17 @@ def main() -> None:
     train = tuple(t.to(device) for t in make_dataset(
         args.train_count, args.image_side, 55101, target_family=args.target_family,
     ))
+    if args.train_appearance_augmentation != "none":
+        modes = (
+            ("crosswaves", "spots") if args.train_appearance_augmentation == "all"
+            else (args.train_appearance_augmentation,)
+        )
+        variants = (train,) + tuple(
+            replace_test_appearance(train, mode, 55101) for mode in modes
+        )
+        train = tuple(torch.cat([variant[k] for variant in variants], dim=0)
+                      for k in range(3))
+    effective_train_pairs = train[0].shape[0]
     test = tuple(t.to(device) for t in make_dataset(
         args.test_count, args.image_side, args.test_seed,
         target_family=args.target_family,
@@ -165,6 +186,7 @@ def main() -> None:
             width=args.width,
             flow_hint=args.flow_hint,
         ).to(device)
+    encoder.flow_feature_gain = args.flow_feature_gain
     if args.certify_output and args.decoder_kind != "hybrid":
         identity_axis = torch.arange(
             args.side, device=device, dtype=torch.float32,
@@ -218,8 +240,8 @@ def main() -> None:
         new_parameter_names = set(missing)
         for name, parameter in encoder.named_parameters():
             parameter.requires_grad_(name in new_parameter_names)
-    table = StructuredDenseQueryTable.from_mesh(
-        structured_rectangle(args.side - 1, args.side - 1),
+    table = StructuredDenseQueryTable.from_shape(
+        args.side - 1, args.side - 1,
         height=args.image_side, width=args.image_side,
     )
     table.prepare(
@@ -230,6 +252,7 @@ def main() -> None:
     optimizer = torch.optim.Adam((p for p in encoder.parameters() if p.requires_grad), lr=args.learning_rate,
                                  eps=args.adam_eps)
     generator = torch.Generator(device="cpu").manual_seed(6019)
+    dropout_generator = torch.Generator(device="cpu").manual_seed(20260924)
 
     def sync() -> None:
         if device.type == "cuda":
@@ -307,6 +330,7 @@ def main() -> None:
             "batch": args.batch,
             "load_state": args.load_state,
             "flow_hint": args.flow_hint,
+            "flow_feature_gain": args.flow_feature_gain,
             "certify_output": args.certify_output or args.decoder_kind == "hybrid",
             "metrics": initial,
         }, sort_keys=True))
@@ -320,8 +344,13 @@ def main() -> None:
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(device)
     for step in range(1, args.steps + 1):
-        idx = torch.randint(args.train_count, (args.batch,), generator=generator).to(device)
+        idx = torch.randint(effective_train_pairs, (args.batch,), generator=generator).to(device)
         fixed, moving, true_map = (tensor[idx] for tensor in train)
+        if args.flow_feature_dropout:
+            encoder.flow_feature_gain = (
+                0.0 if float(torch.rand((), generator=dropout_generator)) < args.flow_feature_dropout
+                else args.flow_feature_gain
+            )
         optimizer.zero_grad(set_to_none=True)
         sync()
         tick = time.perf_counter()
@@ -357,6 +386,7 @@ def main() -> None:
     train_seconds = time.perf_counter() - began
     allocated = torch.cuda.max_memory_allocated(device) if device.type == "cuda" else None
     reserved = torch.cuda.max_memory_reserved(device) if device.type == "cuda" else None
+    encoder.flow_feature_gain = args.flow_feature_gain
     encoder.eval()
     final_train = evaluate(train)
     final_test = evaluate(test)
@@ -368,6 +398,8 @@ def main() -> None:
         "patch_cells": args.patch_cells if args.decoder_kind in ("patch", "hybrid") else None,
         "training_objective": "image_only_pixel_MSE" if args.training_objective == "image" else "target_query_map_vector_MSE",
         "flow_hint": args.flow_hint,
+        "flow_feature_gain": args.flow_feature_gain,
+        "flow_feature_dropout": args.flow_feature_dropout,
         "certify_output": args.certify_output or args.decoder_kind == "hybrid",
         "target_map_use": "evaluation_only" if args.training_objective == "image" else "training_supervision_and_evaluation",
         "target_family": args.target_family,
@@ -378,6 +410,8 @@ def main() -> None:
         "image_queries": args.image_side ** 2,
         "batch": args.batch,
         "train_count": args.train_count,
+        "train_appearance_augmentation": args.train_appearance_augmentation,
+        "effective_train_pairs": effective_train_pairs,
         "test_count": args.test_count,
         "train_seed": 55101,
         "test_seed": args.test_seed,

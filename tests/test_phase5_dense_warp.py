@@ -27,6 +27,17 @@ def test_precomputed_dense_query_separates_control_and_image_resolution() -> Non
     torch.testing.assert_close(dense, _dense_identity(256, 256), atol=2e-14, rtol=0.0)
 
 
+def test_shape_factory_matches_mesh_factory_without_building_large_mesh() -> None:
+    mesh = structured_rectangle(7, 5)
+    checked = StructuredDenseQueryTable.from_mesh(mesh, height=37, width=29)
+    direct = StructuredDenseQueryTable.from_shape(7, 5, height=37, width=29)
+    torch.testing.assert_close(direct._vertex_indices_cpu, checked._vertex_indices_cpu)
+    torch.testing.assert_close(direct._barycentric_cpu, checked._barycentric_cpu)
+    large = StructuredDenseQueryTable.from_shape(4096, 4096, height=17, width=19)
+    assert large.control_vertices == 4097 * 4097
+    assert large.query_count == 17 * 19
+
+
 def test_precomputed_dense_query_is_batched_differentiable_and_affine_exact() -> None:
     mesh = structured_rectangle(4, 3)
     table = StructuredDenseQueryTable.from_mesh(mesh, height=19, width=23)
