@@ -12,7 +12,7 @@ J_T(Y)=\frac{\det(Y_j-Y_i,Y_k-Y_i)}{\det(x_j-x_i,x_k-x_i)}.
 \]
 本轮要求所有原面 \(J_T>0\)，并保持边界恒等。对这张拓扑圆盘，在所述边界一一对应和连续P1条件下，局部非退化正向与全局拓扑度数给出整体同胚；不能把“没有负面”在任意边界条件下滥用成全局单射。[Lipman 的定理](https://arxiv.org/abs/1310.0955)提供一般 simplicial map 的边界/度数框架。本轮针对有限精度还在最终输出上逐原面做保守符号筛选；失败样本返回单位图，这使实际输出仍为同胚，但筛选分支在接受边界不可微、回退时 latent 梯度为零。
 
-本轮**已经达到**：F1交错单顶点、F2交错局部patch及混合F2粗种子＋F1细级均是不用求全局大线性系统的前向机制，在规定有限latent和精确算术下保持同一原网格P1拓扑；两种独立机制在4097²真实控制网格上完成目标复现与所有latent的VJP，实际float32顶点也通过逐面证书；混合模型在1025²及4097²做过多步图像损失反传和未见种子评价。[逐颜色激活重算](80_per_color_checkpoint_vjp_memory.md)还使4097²四视图batch1完整训练的allocated峰值降至7.885GB、步时仅增加约15%，不借助CPU暂存。**尚未达到**：单幅自然图像的通用、准确、低显存真值形变推断；所有有限latent上的全域光滑梯度；在消费级物理显存上大batch 4097²训练；已训练小网络对一般同胚的统一逼近。4097²多视图合成数据的高精度不能代替这些结论。
+本轮**已经达到**：F1交错单顶点、F2交错局部patch及混合F2粗种子＋F1细级均是不用求全局大线性系统的前向机制，在规定有限latent和精确算术下保持同一原网格P1拓扑；两种独立机制在4097²真实控制网格上完成目标复现与所有latent的VJP，实际float32顶点也通过逐面证书；混合模型在1025²及4097²做过多步图像损失反传和未见种子评价。[逐颜色激活重算与局部编译](82_compiled_color_kernel_full_training_pareto.md)使4097²四视图batch1完整训练的热态步时从传统约.76秒降至约.37秒、allocated峰值从约16.07GB降至约6.78GB，不借助CPU暂存；300步实际image-only训练及128例留出评价保持同任务精度。**尚未达到**：单幅自然图像的通用、准确、低显存真值形变推断；所有有限latent上的全域光滑梯度；在消费级物理显存上大batch 4097²训练；已训练小网络对一般同胚的统一逼近。4097²多视图合成数据的高精度不能代替这些结论。
 
 ## 二、三种前向机制到底怎样生成一张固定P1地图
 
@@ -66,6 +66,8 @@ d_x=G_x^{-1}b_x.
 4097²[干净单视图细级增益训练](65_trained_4097_extra_feedback_gains.md)及[空间修正阴性](66_trained_4097_spatial_correction_negative_result.md)还表明：图像MSE可以明显下降，而地图RMSE几乎不变；直接地图监督虽改善几何，却不能被算作image-only成功。[含噪四视图再训练](72_noisy_multiview_training_does_not_restore_geometry.md)也只略改善光度与特定模态，留出整体地图误差略变差。**报告任何“精度”必须指明是哪一种指标。**
 
 4097²四视图完整训练的[细层激活重计算实测](77_4097_multiview_checkpoint_memory_tradeoff.md)把batch1训练allocated峰值从15.934GB降到13.992GB，训练步中位从.761s升至.852s；20步权重轨迹只差浮点末位。[全部saved tensor转存CPU](78_4097_saved_tensor_cpu_offload_extreme_memory_tradeoff.md)进一步把训练CUDA **allocated**峰值降到5.859GB，但步时升至4.333s，运行中主机RSS约29.9GiB；单例reserved峰值约8.66GB，不能据此说已适配8GB物理GPU。[动态图索引＋仅暂存大张量](79_generated_indices_and_selective_offload_4097.md)把同协议完整训练allocated峰值降到5.512GB、reserved峰值8.452GB、单进程RSS历史峰值约26.9GiB，却把训练中位步时从.761s增至3.611s；20步训练和16例测试均通过最终原面证书，参数轨迹只差浮点末位。动态索引使初始化显著更轻，却不降低直接反传的峰值；叠加**整个**细层重算也没有带来可加的收益。更细的[逐颜色重算](80_per_color_checkpoint_vjp_memory.md)则有显著不同的Pareto：**不**暂存CPU时完整训练.877s/7.885GB allocated/10.815GB reserved，约为直接方案一半allocated、约15%增时；再选择性暂存时为2.107s/4.575GB allocated/8.198GB reserved、主机RSS约15.16GiB。后者在48GB卡的8GiB **allocator模拟上限**下运行20步，但**未在8GB或12GB物理设备实测**，不可等同容量保证。[batch扩展](81_batch_scaling_4097_color_checkpoint.md)表明逐颜色重算还在4097²真实控制网格上完成batch2与batch4的20步全参数训练，batch2相比直接反传allocated峰值28.817→14.488GB，batch4实测27.696GB allocated/40.049GB reserved；各训练输出均通过原面证书，但batch4只在48GB卡测试。
+
+最新[局部颜色算子编译实测](82_compiled_color_kernel_full_training_pareto.md)将同协议batch1的20步热态中位进一步降到.367s、allocated6.778GB、reserved9.030GB；编译但不重算为.345s/8.997GB/10.897GB。300步完整训练全部拓扑接受，独立128例map RMSE \(1.490054\times10^{-5}\)，与未编译同训练检查点接近；编译＋逐颜色重算的batch4也完成20步/80例，热态1.063s/24.727GB allocated/34.880GB reserved。**首步编译约十几到数十秒**，不是无条件加速；选择性CPU暂存可降到4.022GB allocated/6.965GB reserved，但步时1.602s且主机RSS约15GiB。后者在48GB卡的7GiB **allocator模拟上限**通过20步，仍非物理小卡验证。
 
 ## 五、为什么拓扑安全不等于从一幅图像找回真值
 

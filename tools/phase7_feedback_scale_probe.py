@@ -76,6 +76,8 @@ def main() -> None:
                         help="Use persistent incident-face indices or generate them per color pass.")
     parser.add_argument("--checkpoint-colors", action="store_true",
                         help="Recompute each F1 color pass independently in backward.")
+    parser.add_argument("--compile-color-update", action="store_true",
+                        help="Inductor-compile each F1 color update; compilation is cold-start work.")
     parser.add_argument("--allocator-cap-gib", type=float, default=0.0,
                         help="Diagnostic PyTorch CUDA allocator cap, not a physical small-GPU test.")
     parser.add_argument("--train-extra-steps", type=int, default=0)
@@ -198,6 +200,15 @@ def main() -> None:
         ).to(device)
         for side in sides
     }
+    if args.compile_color_update:
+        # Each color/side and grad mode specializes the shared method code.
+        # The default limit of eight silently falls back to eager at 1025².
+        from torch import _dynamo
+        _dynamo.config.cache_size_limit = max(
+            _dynamo.config.cache_size_limit, 64,
+        )
+        for layer in relax.values():
+            layer._update_color = torch.compile(layer._update_color)
     axis = torch.arange(
         args.final_side, device=device, dtype=geometry_dtype,
     ) / (args.final_side - 1)
@@ -530,6 +541,7 @@ def main() -> None:
             "offload_saved_tensors": args.offload_saved_tensors,
             "offload_min_elements": args.offload_min_elements,
             "median_step_seconds": statistics.median(step_times),
+            "first_step_seconds": step_times[0],
             "peak_cuda_allocated_bytes": max(step_peaks) if step_peaks else None,
             "peak_cuda_reserved_bytes": max(step_reserved_peaks) if step_reserved_peaks else None,
         }
@@ -596,6 +608,7 @@ def main() -> None:
             "geometry_dtype": args.geometry_dtype,
             "index_mode": args.index_mode,
             "checkpoint_colors": args.checkpoint_colors,
+            "compile_color_update": args.compile_color_update,
             "allocator_cap_gib": args.allocator_cap_gib,
             "extra_gains": torch.exp(extra_log_gains.detach()).tolist(),
             "extra_spatial_correction": args.extra_spatial_correction,
