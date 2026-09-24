@@ -37,15 +37,18 @@ def main() -> None:
     parser.add_argument("--check-vjp", action="store_true")
     parser.add_argument("--checkpoint-extra", action="store_true")
     parser.add_argument("--timing-repeats", type=int, default=1)
+    parser.add_argument("--geometry-dtype", choices=("float64", "float32"),
+                        default="float64")
     parser.add_argument("--device", default="cuda:0")
     args = parser.parse_args()
     if min(args.count, args.extra_passes, args.timing_repeats) < 1:
         raise ValueError("count, extra-passes and timing-repeats must be positive")
     setup_started = time.perf_counter()
     device = torch.device(args.device)
+    geometry_dtype = getattr(torch, args.geometry_dtype)
     coarse = HybridPatchSeedVertexP1Pyramid(
         17, 257, patch_cells=8, seed_cycles=4,
-        compute_dtype=torch.float64,
+        compute_dtype=geometry_dtype,
     ).to(device)
     encoder = ForwardP1ImageEncoder(
         17, (33, 65, 129, 257, 513, 1025), seed_passes=1,
@@ -57,7 +60,7 @@ def main() -> None:
     encoder.load_state_dict(feedback_state["encoder"])
     encoder.eval()
     log_gains = torch.nn.Parameter(
-        feedback_state["log_gains"].to(device=device, dtype=torch.float64),
+        feedback_state["log_gains"].to(device=device, dtype=geometry_dtype),
     )
     sides = tuple(side for side in (513, 1025, 2049, 4097)
                   if side <= args.final_side)
@@ -68,7 +71,7 @@ def main() -> None:
         for side in sides
     }
     axis = torch.arange(
-        args.final_side, device=device, dtype=torch.float64,
+        args.final_side, device=device, dtype=geometry_dtype,
     ) / (args.final_side - 1)
     yy, xx = torch.meshgrid(axis, axis, indexing="ij")
     final_identity = torch.stack((xx, yy), dim=-1)[None]
@@ -76,7 +79,7 @@ def main() -> None:
         args.final_side - 1, args.final_side - 1,
         height=512, width=512,
     )
-    table.prepare(device=device, dtype=torch.float64)
+    table.prepare(device=device, dtype=geometry_dtype)
     dataset = tuple(t.to(device) for t in make_dataset(
         args.count, 512, args.seed, target_family="high128",
     ))
@@ -103,7 +106,7 @@ def main() -> None:
                     hint = local_photometric_logits(
                         fixed, moving, updated.float(),
                         window=args.window, ridge=1., raw_span=2.,
-                    ).double()
+                    ).to(geometry_dtype)
                     floor = updated.new_full(
                         (updated.shape[0],), .05 / (current_side - 1) ** 2,
                     )
@@ -167,6 +170,9 @@ def main() -> None:
             "seed": args.seed,
             "accepted": bool(accepted.item()),
             "minimum_jacobian": minimum_jacobian(mapped),
+            "minimum_jacobian_recomputed_float64": minimum_jacobian(
+                mapped.double()
+            ),
             "image_mse": float((warped - fixed).square().mean()),
             "map_rmse": float(
                 (query - true_map).square().sum(dim=-1).mean().sqrt()
@@ -175,6 +181,7 @@ def main() -> None:
             "inference_times": inference_times,
             "device": str(device),
             "torch_version": torch.__version__,
+            "geometry_dtype": args.geometry_dtype,
             "extra_level_actual_motion": extra_motion,
             "setup_seconds": setup_seconds,
             "setup_cuda_allocated_bytes": setup_cuda_allocated,
@@ -223,6 +230,35 @@ def main() -> None:
                 torch.isfinite(log_gains.grad).all()
             ),
             "minimum_jacobian": minimum_jacobian(mapped),
+        }
+    if args.count > 1:
+        accepted_count = 0
+        minimum_double = float("inf")
+        squared_map_error = 0.0
+        with torch.no_grad():
+            for index in range(args.count):
+                case_fixed, case_moving, case_true = (
+                    value[index:index + 1] for value in dataset
+                )
+                case_mapped, case_accepted, _ = forward(
+                    case_fixed, case_moving,
+                )
+                accepted_count += int(case_accepted.item())
+                minimum_double = min(
+                    minimum_double,
+                    minimum_jacobian(case_mapped.double()),
+                )
+                case_query = table.interpolate(
+                    case_mapped.flatten(1, 2)
+                ).float()
+                squared_map_error += float(
+                    (case_query - case_true).square().sum(dim=-1).mean()
+                )
+        report["cohort_validation"] = {
+            "count": args.count,
+            "accepted_count": accepted_count,
+            "minimum_jacobian_recomputed_float64": minimum_double,
+            "query_map_rmse": (squared_map_error / args.count) ** .5,
         }
     print(json.dumps(report, sort_keys=True))
 

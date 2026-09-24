@@ -45,6 +45,8 @@ def main() -> None:
     parser.add_argument("--area-floor-jacobian", type=float, default=0.05,
                         help="Nominal normalized double-area floor for each safe fine-grid update.")
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--geometry-dtype", choices=("float64", "float32"),
+                        default="float64")
     parser.add_argument("--check-vjp", action="store_true",
                         help="Backpropagate one image loss through both fine feedback levels and encoder.")
     parser.add_argument("--compare-checkpoint-vjp", action="store_true",
@@ -63,6 +65,10 @@ def main() -> None:
                         help="Load a previously image-only trained encoder and two feedback gains.")
     parser.add_argument("--learned-residual", action="store_true",
                         help="Add a shared image-residual CNN proposal at each safe fine update.")
+    parser.add_argument("--correction-scale", type=float, default=1.0,
+                        help="Inference/training multiplier for the learned residual logits.")
+    parser.add_argument("--correction-highpass-window", type=int, default=0,
+                        help="Subtract an odd-window local mean from learned residual logits; zero disables.")
     parser.add_argument("--correction-only-final", action="store_true",
                         help="Apply learned residual only to 1025-square updates.")
     parser.add_argument("--freeze-coarse", action="store_true",
@@ -83,17 +89,25 @@ def main() -> None:
         raise ValueError("counts, batch and passes must be positive")
     if args.correction_only_final and not args.learned_residual:
         raise ValueError("--correction-only-final requires --learned-residual")
+    if args.correction_scale < 0 or not math.isfinite(args.correction_scale):
+        raise ValueError("--correction-scale must be finite and nonnegative")
+    if args.correction_highpass_window and (
+        not args.learned_residual or args.correction_highpass_window < 3 or
+        args.correction_highpass_window % 2 != 1
+    ):
+        raise ValueError("correction highpass needs learned residual and an odd window >= 3")
     if not 0 <= args.area_floor_jacobian < 1 or not math.isfinite(args.area_floor_jacobian):
         raise ValueError("--area-floor-jacobian must be finite and in [0,1)")
     torch.manual_seed(20260924)
     device = torch.device(args.device)
+    geometry_dtype = getattr(torch, args.geometry_dtype)
     full = HybridPatchSeedVertexP1Pyramid(
         17, 1025, patch_cells=8, seed_cycles=4,
-        compute_dtype=torch.float64,
+        compute_dtype=geometry_dtype,
     ).to(device)
     coarse = HybridPatchSeedVertexP1Pyramid(
         17, 257, patch_cells=8, seed_cycles=4,
-        compute_dtype=torch.float64,
+        compute_dtype=geometry_dtype,
     ).to(device)
     encoder = ForwardP1ImageEncoder(
         17, full.level_sides, seed_passes=1,
@@ -102,7 +116,9 @@ def main() -> None:
     state = torch.load(args.checkpoint, map_location=device, weights_only=True)
     encoder.load_state_dict(state["encoder"])
     encoder.eval()
-    log_gains = torch.nn.Parameter(torch.zeros(2, device=device, dtype=torch.float64))
+    log_gains = torch.nn.Parameter(
+        torch.zeros(2, device=device, dtype=geometry_dtype)
+    )
     correction_net = torch.nn.Sequential(
         torch.nn.Conv2d(7, 16, 3, padding=1), torch.nn.GELU(),
         torch.nn.Conv2d(16, 16, 3, padding=1), torch.nn.GELU(),
@@ -126,7 +142,7 @@ def main() -> None:
         for side in (513, 1025)
     }
     table = StructuredDenseQueryTable.from_shape(1024, 1024, height=512, width=512)
-    table.prepare(device=device, dtype=torch.float64)
+    table.prepare(device=device, dtype=geometry_dtype)
     feedback_tables = {
         side: StructuredDenseQueryTable.from_shape(
             side - 1, side - 1, height=512, width=512,
@@ -134,7 +150,7 @@ def main() -> None:
         for side in (513, 1025)
     } if args.learned_residual else {}
     for feedback_table in feedback_tables.values():
-        feedback_table.prepare(device=device, dtype=torch.float64)
+        feedback_table.prepare(device=device, dtype=geometry_dtype)
     image_axis = torch.arange(512, device=device, dtype=torch.float32) / 511
     coord_y, coord_x = torch.meshgrid(image_axis, image_axis, indexing="ij")
     image_coordinates = torch.stack((coord_x, coord_y), dim=0)[None]
@@ -165,10 +181,16 @@ def main() -> None:
             image_coordinates.expand(fixed.shape[0], -1, -1, -1),
         ), dim=1)
         correction = correction_net(features)
+        if args.correction_highpass_window:
+            window = args.correction_highpass_window
+            correction = correction - F.avg_pool2d(
+                correction, window, stride=1, padding=window // 2,
+                count_include_pad=False,
+            )
         correction = F.interpolate(
             correction, size=(side, side), mode="bilinear", align_corners=True,
         )
-        return correction[:, :, 1:-1, 1:-1].permute(0, 2, 3, 1).double()
+        return correction[:, :, 1:-1, 1:-1].permute(0, 2, 3, 1).to(geometry_dtype)
 
     def feedback_forward(fixed: torch.Tensor, moving: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         seed, levels = encoder(fixed, moving)
@@ -183,7 +205,7 @@ def main() -> None:
                         fixed, moving, updated.float(),
                         window=args.window, ridge=args.ridge, raw_span=2.0,
                         gradient_mode=args.gradient_mode,
-                    ).to(torch.float64)
+                    ).to(geometry_dtype)
                     floor = updated.new_full(
                         (updated.shape[0],),
                         args.area_floor_jacobian / (current_side - 1) ** 2,
@@ -193,7 +215,7 @@ def main() -> None:
                     if args.learned_residual and (
                         not args.correction_only_final or current_side == 1025
                     ):
-                        proposal = proposal + learned_proposal(
+                        proposal = proposal + args.correction_scale * learned_proposal(
                             fixed, moving, updated, current_side,
                         )
                     updated = relax[current_side](
@@ -367,9 +389,12 @@ def main() -> None:
         }
     report = {
         "method": "phase7_high128_local_feedback", "checkpoint": args.checkpoint,
+        "geometry_dtype": args.geometry_dtype,
         "feature_side": args.feature_side, "count": args.count, "seed": args.seed,
         "load_feedback_state": args.load_feedback_state,
         "learned_residual": args.learned_residual,
+        "correction_scale": args.correction_scale,
+        "correction_highpass_window": args.correction_highpass_window,
         "correction_only_final": args.correction_only_final,
         "checkpoint_feedback": args.checkpoint_feedback,
         "test_appearance": args.test_appearance,
