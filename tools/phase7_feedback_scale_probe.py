@@ -50,6 +50,11 @@ def main() -> None:
                         help="Independent additive Gaussian acquisition noise on fixed/moving channels.")
     parser.add_argument("--hint-blur-sigma", type=float, default=0.0,
                         help="Gaussian pixel-domain sigma applied only to local photometric hints.")
+    parser.add_argument("--hint-control-side", type=int, choices=(0, 513, 1025, 2049),
+                        default=0,
+                        help="Evaluate extra-level image hints on this nested control grid, then upsample logits; 0 uses every fine vertex.")
+    parser.add_argument("--hint-final-odd-sublattice", action="store_true",
+                        help="At 4097 use the 2048x2048 odd-odd new-vertex sublattice for hints.")
     parser.add_argument("--window", type=int, default=3)
     parser.add_argument("--ridge", type=float, default=1.0)
     parser.add_argument("--check-vjp", action="store_true")
@@ -87,6 +92,8 @@ def main() -> None:
         raise ValueError("hint blur sigma must be finite and nonnegative")
     if args.ridge <= 0 or not math.isfinite(args.ridge):
         raise ValueError("ridge must be finite and positive")
+    if args.hint_final_odd_sublattice and (args.final_side != 4097 or args.hint_control_side != 2049):
+        raise ValueError("odd-sublattice hint requires final-side 4097 and hint-control-side 2049")
     if args.image_channels > 1 and args.test_appearance != "standard":
         raise ValueError("multichannel appearance is defined for standard only")
     if args.train_extra_steps and args.final_side < 2049:
@@ -277,10 +284,33 @@ def main() -> None:
                        current_passes: int = passes) -> torch.Tensor:
                 updated = base
                 for _ in range(current_passes):
+                    hint_side = (
+                        min(args.hint_control_side, current_side)
+                        if args.hint_control_side else current_side
+                    )
+                    odd_sublattice = args.hint_final_odd_sublattice and current_side == 4097
+                    if odd_sublattice:
+                        hint_base = updated[:, 1::2, 1::2]
+                        hint_side = hint_base.shape[1]
+                        stride_ratio = (current_side - 1) / (hint_side - 1)
+                    else:
+                        stride = (current_side - 1) // (hint_side - 1)
+                        hint_base = updated[:, ::stride, ::stride]
+                        stride_ratio = stride
                     hint = local_photometric_logits(
-                        hint_fixed, hint_moving, updated.float(),
+                        hint_fixed, hint_moving, hint_base.float(),
                         window=args.window, ridge=args.ridge, raw_span=2.,
                     ).to(geometry_dtype)
+                    if hint_side != current_side:
+                        fraction = (stride_ratio * torch.tanh(hint)).permute(0, 3, 1, 2)
+                        if odd_sublattice:
+                            fraction = F.pad(fraction, (1, 1, 1, 1), mode="replicate")
+                        fine_fraction = F.interpolate(
+                            fraction,
+                            size=(current_side - 2, current_side - 2),
+                            mode="bilinear", align_corners=True,
+                        ).permute(0, 2, 3, 1)
+                        hint = torch.atanh(fine_fraction.clamp(-.95, .95))
                     floor = updated.new_full(
                         (updated.shape[0],), .05 / (current_side - 1) ** 2,
                     )
@@ -464,6 +494,8 @@ def main() -> None:
             "duplicate_image_channels": args.duplicate_image_channels,
             "image_noise_std": args.image_noise_std,
             "hint_blur_sigma": args.hint_blur_sigma,
+            "hint_control_side": args.hint_control_side,
+            "hint_final_odd_sublattice": args.hint_final_odd_sublattice,
             "extra_training": train_report,
             "extra_level_actual_motion": extra_motion,
             "setup_seconds": setup_seconds,
