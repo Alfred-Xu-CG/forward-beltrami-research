@@ -18,5 +18,5 @@
 ## 可复算检查与未解决事项
 
 - 重新运行[同一4097²解析teacher脚本](../../tools/phase7_verify_isotopy_pyramid.py)后F1/F2误差和中位时长与此前[74号表](74_two_distinct_forward_mechanisms_4097_teacher_vjp.md)一致到运行波动量级，原始重跑JSON已留D盘。
-- 核心F1/F2/图像提示/非辨识性测试：`24 passed`；修改过的探针可`compileall`；扫描本阶段Markdown相对文件链接后目前`MISSING_COUNT=0`，顺手修复两处第53号文档的单复数拼写误链。这些检查不证明所有数值/理论断言，只提供可复现的一致性底线。
+- 本机将仓库`src`加入`PYTHONPATH`后，重跑全部`tests/test_phase7_*.py`得到`64 passed`（22.21秒）；`src/qcopt/neural_bijection/dense`及修改过的探针可`compileall`。扫描本阶段Markdown相对文件链接后目前`MISSING_COUNT=0`，顺手修复两处第53号文档的单复数拼写误链。这些检查不证明所有数值/理论断言，只提供可复现的一致性底线。
 - 剩余最重要的科学缺口：真实图像/不同成像模态上的单图或多图几何真值验证；不同GPU与物理小显卡上的容量和吞吐；对活动面切换的梯度稳定性分析；从大表达性teacher类到可学习低维latent的**有效**逼近复杂度；更完整的先例全文比较。对称粗latent融合在一坏三好的外观偏移中很有效，但[独立加性噪声配对](85_permutation_invariant_coarse_latent_fusion.md)几乎没有收益，不能把某一路线的teacher精确性或合成四视图成功替代这些证据。
