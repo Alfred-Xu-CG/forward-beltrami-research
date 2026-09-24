@@ -162,6 +162,7 @@ def evaluate(
     fixed, moving, target, _, _, low_support, high_support, truth = data
     origin, vector = low_params[:2]
     low_width = low_params[2] if len(low_params) > 2 else None
+    proposed_low = low_params[3] if len(low_params) > 3 else None
     sums = dict(map=0., low=0., high=0.,
                 low_n=0, high_n=0,
                 image=0., freq=0.,
@@ -174,7 +175,9 @@ def evaluate(
             output, estimated_k = model(
                 fixed[start:stop], moving[start:stop],
                 origin[start:stop], vector[start:stop],
-                None if low_width is None else low_width[start:stop])
+                None if low_width is None else low_width[start:stop],
+                proposed_low=(None if proposed_low is None else
+                              proposed_low[start:stop]))
             square = (output - target[start:stop]).square().sum(dim=-1)
             sums["map"] += float(square.mean(dim=(1, 2)).sum())
             low_mask = low_support[start:stop] > 0
