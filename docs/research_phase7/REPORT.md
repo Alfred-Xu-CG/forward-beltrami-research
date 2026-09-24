@@ -69,6 +69,8 @@ d_x=G_x^{-1}b_x.
 
 最新[局部颜色算子编译实测](82_compiled_color_kernel_full_training_pareto.md)将同协议batch1的20步热态中位进一步降到.367s、allocated6.778GB、reserved9.030GB；编译但不重算为.345s/8.997GB/10.897GB。300步完整训练全部拓扑接受，独立128例map RMSE \(1.490054\times10^{-5}\)，与未编译同训练检查点接近；编译＋逐颜色重算的batch4也完成20步/80例，热态1.063s/24.727GB allocated/34.880GB reserved。**首步编译约十几到数十秒**，不是无条件加速；选择性CPU暂存可降到4.022GB allocated/6.965GB reserved，但步时1.602s且主机RSS约15GiB。后者在48GB卡的7GiB **allocator模拟上限**通过20步，仍非物理小卡验证。
 
+为单独核查编译造成的数值差异，[4097²极端latent压力测试](83_compiled_color_extreme_latent_stress.md)又在幅度5和20下各采样32张独立地图：eager和compiled均有32/32通过全部原面证书，最小实际归一化面积约0.0494；两版顶点坐标不是逐位相同，最大差分别为\(5.36\times10^{-6}\)和\(6.26\times10^{-6}\)。这是有限样本稳健性证据，不是浮点编译版的无条件拓扑定理；正式输出继续依赖逐面数值证书。
+
 ## 五、为什么拓扑安全不等于从一幅图像找回真值
 
 [精确固定P1反例](71_single_image_exact_p1_nonidentifiability.md)取非恒定移动图 \(I_m(x,y)=x\)。在任意奇数 \(N\) 的同一固定网格上，\(F_0=(x,y)\) 与 \(F_1=(x,y+I_h[x(1-x)y(1-y)])\) 都固定边界；\(F_1\) 的所有面 \(J_T\ge3/4\)，中心顶点与恒等图却相差 \(1/16\)。两张图逐点满足 \(I_m\circ F_0=I_m\circ F_1=x\)。因此任意只读这一图像对的算法，在没有额外先验/landmark/其他通道时不可能无条件辨认哪个是真地图。多纹理观测在局部梯度跨方向时改善可辨识性，但[噪声试验](70_multiview_channel_count_noise_tradeoff.md)说明它仍非无代价解决。这个定理**不否定生成层本身**；应把“安全表达给定latent”与“观测足以推断latent”列为不同论文命题。
