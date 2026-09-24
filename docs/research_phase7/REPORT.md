@@ -40,7 +40,7 @@ G_x=\rho I_2+\frac1C\sum_{c=1}^C\langle v_cv_c^\top\rangle_{W_x},\qquad
 b_x=\frac1C\sum_{c=1}^C\langle v_cr_c\rangle_{W_x},\qquad
 d_x=G_x^{-1}b_x.
 \]
-\(\rho>0\) 使每个**独立2×2**矩阵正定。这只是光度位移近似；把 \(d_x\) 变为有界logit后仍必须经过F1安全器。全层没有一个随 \(N^2\) 增长的全局矩阵逆。上式和编码器、图像取样、F1/F2均可用自动微分求VJP；对已接受且不在分支切换点的样本，训练损失能反传到网络参数。[局部提示](../../src/qcopt/neural_bijection/dense/photometric_hint.py)、[1025²训练](57_high128_trainable_feedback_layer.md)、[4097²多视图](68_multiview_observability_4097_p1.md)。
+\(\rho>0\) 使每个**独立2×2**矩阵正定。这只是光度位移近似；把 \(d_x\) 变为有界logit后仍必须经过F1安全器。全层没有一个随 \(N^2\) 增长的全局矩阵逆。上式和编码器、图像取样、F1/F2均可用自动微分求VJP；对已接受且不在分支切换点的样本，训练损失能反传到网络参数。理想独立残差噪声下的偏差/协方差公式，以及它为何不能直接用于本实验的噪声梯度，见[严格局部统计推导](76_multiview_local_estimator_noise_bias_formulation.md)。[局部提示实现](../../src/qcopt/neural_bijection/dense/photometric_hint.py)、[1025²训练](57_high128_trainable_feedback_layer.md)、[4097²多视图](68_multiview_observability_4097_p1.md)。
 
 ## 三、逼近理论：证明了什么，未证明什么
 
@@ -64,6 +64,8 @@ d_x=G_x^{-1}b_x.
 | [降采样光度提示](73_sparse_image_hint_dense_p1_negative_result.md) | 4097² / 33,554,432 | 仅把最细提示采到2049²再插值，原拓扑层仍稠密 | full四通道无噪声map 1.51e-5；2049²提示4.64e-5；VJP .756→.704s | 小速度收益换来明显高频失真；不能拿提示插值替代细级可观测性。 |
 
 4097²[干净单视图细级增益训练](65_trained_4097_extra_feedback_gains.md)及[空间修正阴性](66_trained_4097_spatial_correction_negative_result.md)还表明：图像MSE可以明显下降，而地图RMSE几乎不变；直接地图监督虽改善几何，却不能被算作image-only成功。[含噪四视图再训练](72_noisy_multiview_training_does_not_restore_geometry.md)也只略改善光度与特定模态，留出整体地图误差略变差。**报告任何“精度”必须指明是哪一种指标。**
+
+4097²四视图完整训练的[细层激活重计算实测](77_4097_multiview_checkpoint_memory_tradeoff.md)把batch1训练allocated峰值从15.934GB降到13.992GB，训练步中位从.761s升至.852s；20步权重轨迹只差浮点末位。它是可核查的时间—内存折中，尚未达到8–12GB设备的大网格全反传。
 
 ## 五、为什么拓扑安全不等于从一幅图像找回真值
 
