@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import statistics
 import time
 
 import torch
@@ -15,13 +16,14 @@ import torch.nn.functional as F
 
 from phase6_train_multisample_image import make_dataset
 from phase7_train_forward_pyramid_image import (
-    minimum_jacobian, sinusoidal_mode_coefficients,
+    minimum_jacobian, replace_test_appearance, sinusoidal_mode_coefficients,
 )
 from qcopt.neural_bijection.dense import (
     ForwardP1ImageEncoder, HybridPatchSeedVertexP1Pyramid,
     SafeColoredVertexRelaxation, certify_p1_or_identity,
     exact_dyadic_p1_refine, local_photometric_logits,
 )
+from qcopt.neural_bijection.dense.photometric_hint import physical_image_gradient
 from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 
 
@@ -38,9 +40,35 @@ def main() -> None:
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--check-vjp", action="store_true",
                         help="Backpropagate one image loss through both fine feedback levels and encoder.")
+    parser.add_argument("--train-steps", type=int, default=0,
+                        help="Image-only joint training of the coarse encoder and two feedback gains.")
+    parser.add_argument("--train-count", type=int, default=32)
+    parser.add_argument("--train-learning-rate", type=float, default=0.0002)
+    parser.add_argument("--train-gain-learning-rate", type=float, default=0.002)
+    parser.add_argument("--save-state", default=None)
+    parser.add_argument("--load-feedback-state", default=None,
+                        help="Load a previously image-only trained encoder and two feedback gains.")
+    parser.add_argument("--learned-residual", action="store_true",
+                        help="Add a shared image-residual CNN proposal at each safe fine update.")
+    parser.add_argument("--correction-only-final", action="store_true",
+                        help="Apply learned residual only to 1025-square updates.")
+    parser.add_argument("--freeze-coarse", action="store_true",
+                        help="Train only feedback gains and/or learned correction, not the image encoder.")
+    parser.add_argument("--freeze-gains", action="store_true",
+                        help="Do not optimize two local-feedback gains.")
+    parser.add_argument("--train-correction-learning-rate", type=float, default=0.002)
+    parser.add_argument("--test-appearance", choices=("standard", "spots", "crosswaves"),
+                        default="standard")
     args = parser.parse_args()
-    if min(args.count, args.batch, args.passes_per_level) < 1:
+    if min(args.count, args.batch, args.passes_per_level, args.train_count) < 1 or (
+        args.train_steps < 0 or args.train_learning_rate <= 0 or
+        args.train_gain_learning_rate <= 0 or
+        args.train_correction_learning_rate <= 0
+    ):
         raise ValueError("counts, batch and passes must be positive")
+    if args.correction_only_final and not args.learned_residual:
+        raise ValueError("--correction-only-final requires --learned-residual")
+    torch.manual_seed(20260924)
     device = torch.device(args.device)
     full = HybridPatchSeedVertexP1Pyramid(
         17, 1025, patch_cells=8, seed_cycles=4,
@@ -57,6 +85,23 @@ def main() -> None:
     state = torch.load(args.checkpoint, map_location=device, weights_only=True)
     encoder.load_state_dict(state["encoder"])
     encoder.eval()
+    log_gains = torch.nn.Parameter(torch.zeros(2, device=device, dtype=torch.float64))
+    correction_net = torch.nn.Sequential(
+        torch.nn.Conv2d(7, 16, 3, padding=1), torch.nn.GELU(),
+        torch.nn.Conv2d(16, 16, 3, padding=1), torch.nn.GELU(),
+        torch.nn.Conv2d(16, 2, 1),
+    ).to(device)
+    torch.nn.init.zeros_(correction_net[-1].weight)
+    torch.nn.init.zeros_(correction_net[-1].bias)
+    if args.load_feedback_state:
+        trained_state = torch.load(args.load_feedback_state, map_location=device, weights_only=True)
+        encoder.load_state_dict(trained_state["encoder"])
+        with torch.no_grad():
+            log_gains.copy_(trained_state["log_gains"].to(device))
+        if args.learned_residual and trained_state.get("correction_net") is not None:
+            correction_net.load_state_dict(trained_state["correction_net"])
+        elif args.learned_residual and not args.train_steps:
+            raise ValueError("learned residual evaluation requires correction_net weights")
     relax = {
         side: SafeColoredVertexRelaxation(
             side, motion_mode="radial", raw_span=2.0,
@@ -65,9 +110,144 @@ def main() -> None:
     }
     table = StructuredDenseQueryTable.from_shape(1024, 1024, height=512, width=512)
     table.prepare(device=device, dtype=torch.float64)
+    feedback_tables = {
+        side: StructuredDenseQueryTable.from_shape(
+            side - 1, side - 1, height=512, width=512,
+        )
+        for side in (513, 1025)
+    } if args.learned_residual else {}
+    for feedback_table in feedback_tables.values():
+        feedback_table.prepare(device=device, dtype=torch.float64)
+    image_axis = torch.arange(512, device=device, dtype=torch.float32) / 511
+    coord_y, coord_x = torch.meshgrid(image_axis, image_axis, indexing="ij")
+    image_coordinates = torch.stack((coord_x, coord_y), dim=0)[None]
     data = tuple(value.to(device) for value in make_dataset(
         args.count, 512, args.seed, target_family="high128",
     ))
+    data = replace_test_appearance(data, args.test_appearance, args.seed)
+
+    def learned_proposal(fixed: torch.Tensor, moving: torch.Tensor,
+                         current: torch.Tensor, side: int) -> torch.Tensor:
+        query = feedback_tables[side].interpolate(current.flatten(1, 2)).float()
+        warped = F.grid_sample(
+            moving, 2 * query - 1,
+            mode="bilinear", padding_mode="border", align_corners=True,
+        )
+        warped_gradient = F.grid_sample(
+            physical_image_gradient(moving), 2 * query - 1,
+            mode="bilinear", padding_mode="border", align_corners=True,
+        ) / 32.0
+        features = torch.cat((
+            fixed, warped, 100.0 * (fixed - warped), warped_gradient,
+            image_coordinates.expand(fixed.shape[0], -1, -1, -1),
+        ), dim=1)
+        correction = correction_net(features)
+        correction = F.interpolate(
+            correction, size=(side, side), mode="bilinear", align_corners=True,
+        )
+        return correction[:, :, 1:-1, 1:-1].permute(0, 2, 3, 1).double()
+
+    def feedback_forward(fixed: torch.Tensor, moving: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        seed, levels = encoder(fixed, moving)
+        current = coarse(seed[0], levels[:4])
+        for level, side in enumerate((513, 1025)):
+            current = exact_dyadic_p1_refine(current)
+            for _ in range(args.passes_per_level):
+                hint = local_photometric_logits(
+                    fixed, moving, current.float(),
+                    window=args.window, ridge=args.ridge, raw_span=2.0,
+                ).to(torch.float64)
+                floor = current.new_full((current.shape[0],), .05 / (side - 1) ** 2)
+                gain = torch.exp(log_gains[level].clamp(-4, 4))
+                proposal = gain * hint
+                if args.learned_residual and (not args.correction_only_final or side == 1025):
+                    proposal = proposal + learned_proposal(fixed, moving, current, side)
+                current = relax[side](current, proposal, area_floor=floor)
+        return certify_p1_or_identity(current, full.final_identity)
+
+    train_report = None
+    if args.train_steps:
+        train = tuple(value.to(device) for value in make_dataset(
+            args.train_count, 512, 55101, target_family="high128",
+        ))
+        for name, parameter in encoder.named_parameters():
+            parameter.requires_grad_(not args.freeze_coarse
+                                     and not name.startswith("level_heads.4.")
+                                     and not name.startswith("level_heads.5."))
+        log_gains.requires_grad_(not args.freeze_gains)
+        groups = []
+        encoder_parameters = [p for p in encoder.parameters() if p.requires_grad]
+        if encoder_parameters:
+            groups.append({"params": encoder_parameters, "lr": args.train_learning_rate})
+        if log_gains.requires_grad:
+            groups.append({"params": [log_gains], "lr": args.train_gain_learning_rate})
+        if args.learned_residual:
+            groups.append({
+                "params": list(correction_net.parameters()),
+                "lr": args.train_correction_learning_rate,
+            })
+        if not groups:
+            raise ValueError("no trainable parameter group")
+        optimizer = torch.optim.Adam(groups, eps=1e-12)
+        generator = torch.Generator(device="cpu").manual_seed(6019)
+        encoder.train()
+        correction_net.train()
+        times = []
+        if device.type == "cuda":
+            torch.cuda.reset_peak_memory_stats(device)
+        for step in range(1, args.train_steps + 1):
+            selected = torch.randint(args.train_count, (args.batch,), generator=generator).to(device)
+            fixed, moving = (tensor[selected] for tensor in train[:2])
+            optimizer.zero_grad(set_to_none=True)
+            if device.type == "cuda":
+                torch.cuda.synchronize(device)
+            began = time.perf_counter()
+            control, accepted = feedback_forward(fixed, moving)
+            if not bool(accepted.all()):
+                raise RuntimeError(f"noncertified feedback at step {step}")
+            query = table.interpolate(control.flatten(1, 2)).float()
+            warped = F.grid_sample(
+                moving, 2 * query - 1,
+                mode="bilinear", padding_mode="border", align_corners=True,
+            )
+            loss = (warped - fixed).square().mean()
+            if not bool(torch.isfinite(loss)):
+                raise RuntimeError(f"nonfinite training loss at step {step}")
+            loss.backward()
+            optimizer.step()
+            if device.type == "cuda":
+                torch.cuda.synchronize(device)
+            times.append(time.perf_counter() - began)
+        encoder.eval()
+        correction_net.eval()
+        train_report = {
+            "steps": args.train_steps,
+            "train_count": args.train_count,
+            "train_seed": 55101,
+            "training_objective": "image_mse_only",
+            "median_train_step_seconds": statistics.median(times),
+            "peak_cuda_allocated_bytes": (
+                torch.cuda.max_memory_allocated(device) if device.type == "cuda" else None
+            ),
+            "learned_gains": torch.exp(log_gains.detach()).tolist(),
+            "correction_parameters": (
+                sum(parameter.numel() for parameter in correction_net.parameters())
+                if args.learned_residual else 0
+            ),
+            "freeze_coarse": args.freeze_coarse,
+            "freeze_gains": args.freeze_gains,
+            "correction_only_final": args.correction_only_final,
+            "last_training_image_mse": float(loss.detach()),
+        }
+        if args.save_state:
+            torch.save({
+                "encoder": encoder.state_dict(),
+                "log_gains": log_gains.detach().cpu(),
+                "correction_net": (
+                    correction_net.state_dict() if args.learned_residual else None
+                ),
+                "config": vars(args),
+            }, args.save_state)
 
     def metrics(control: torch.Tensor, fixed: torch.Tensor,
                 moving: torch.Tensor, true_map: torch.Tensor) -> dict[str, float]:
@@ -103,17 +283,7 @@ def main() -> None:
             )
             seed, levels = encoder(fixed, moving)
             baseline = full(seed[0], levels)
-            current = coarse(seed[0], levels[:4])
-            for side in (513, 1025):
-                current = exact_dyadic_p1_refine(current)
-                for _ in range(args.passes_per_level):
-                    hint = local_photometric_logits(
-                        fixed, moving, current.float(),
-                        window=args.window, ridge=args.ridge, raw_span=2.0,
-                    ).to(torch.float64)
-                    floor = current.new_full((current.shape[0],), .05 / (side - 1) ** 2)
-                    current = relax[side](current, hint, area_floor=floor)
-            feedback, _ = certify_p1_or_identity(current, full.final_identity)
+            feedback, _ = feedback_forward(fixed, moving)
             for name, control in (("learned_full", baseline),
                                   ("coarse_plus_feedback", feedback)):
                 row = metrics(control, fixed, moving, true_map)
@@ -139,30 +309,27 @@ def main() -> None:
     report = {
         "method": "phase7_high128_local_feedback", "checkpoint": args.checkpoint,
         "feature_side": args.feature_side, "count": args.count, "seed": args.seed,
+        "load_feedback_state": args.load_feedback_state,
+        "learned_residual": args.learned_residual,
+        "correction_only_final": args.correction_only_final,
+        "test_appearance": args.test_appearance,
         "batch": args.batch, "passes_per_level": args.passes_per_level,
         "window": args.window, "ridge": args.ridge,
         "control_vertices": 1025 ** 2, "control_faces": 2 * 1024 ** 2,
         "image_side": 512, "results": result,
+        "training": train_report,
+        "feedback_gains": torch.exp(log_gains.detach()).tolist(),
     }
     if args.check_vjp:
         fixed, moving, _ = (tensor[:1] for tensor in data)
         encoder.zero_grad(set_to_none=True)
+        correction_net.zero_grad(set_to_none=True)
+        log_gains.grad = None
         if device.type == "cuda":
             torch.cuda.reset_peak_memory_stats(device)
             torch.cuda.synchronize(device)
         began = time.perf_counter()
-        seed, levels = encoder(fixed, moving)
-        current = coarse(seed[0], levels[:4])
-        for side in (513, 1025):
-            current = exact_dyadic_p1_refine(current)
-            for _ in range(args.passes_per_level):
-                hint = local_photometric_logits(
-                    fixed, moving, current.float(),
-                    window=args.window, ridge=args.ridge, raw_span=2.0,
-                ).to(torch.float64)
-                floor = current.new_full((1,), .05 / (side - 1) ** 2)
-                current = relax[side](current, hint, area_floor=floor)
-        current, accepted = certify_p1_or_identity(current, full.final_identity)
+        current, accepted = feedback_forward(fixed, moving)
         query = table.interpolate(current.flatten(1, 2)).float()
         warped = F.grid_sample(
             moving, 2 * query - 1,
@@ -173,12 +340,24 @@ def main() -> None:
         if device.type == "cuda":
             torch.cuda.synchronize(device)
         gradients = [p.grad for p in encoder.parameters() if p.grad is not None]
+        correction_gradients = [
+            p.grad for p in correction_net.parameters() if p.grad is not None
+        ] if args.learned_residual else []
         report["vjp"] = {
             "loss": float(loss.detach()),
             "accepted": bool(accepted.item()),
             "encoder_gradient_tensors": len(gradients),
             "encoder_gradient_max": max(float(g.abs().amax()) for g in gradients),
             "all_encoder_gradients_finite": all(bool(torch.isfinite(g).all()) for g in gradients),
+            "gain_gradient": log_gains.grad.detach().tolist() if log_gains.grad is not None else None,
+            "correction_gradient_tensors": len(correction_gradients),
+            "correction_gradient_max": (
+                max(float(g.abs().amax()) for g in correction_gradients)
+                if correction_gradients else None
+            ),
+            "all_correction_gradients_finite": all(
+                bool(torch.isfinite(g).all()) for g in correction_gradients
+            ),
             "seconds": time.perf_counter() - began,
             "peak_cuda_allocated_bytes": (
                 torch.cuda.max_memory_allocated(device) if device.type == "cuda" else None
