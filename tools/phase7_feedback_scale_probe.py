@@ -51,6 +51,9 @@ def main() -> None:
                         help="Explicit OOD diagnostic: shift channel 1 only, or all channels when duplicated.")
     parser.add_argument("--rotate-view-channels", action="store_true",
                         help="OOD diagnostic: move first view to last so the coarse CNN reads a different view.")
+    parser.add_argument("--coarse-view-fusion", choices=("first", "mean", "trimmed"),
+                        default="first",
+                        help="Fuse shared coarse-encoder logits across image views before safe P1 decoding.")
     parser.add_argument("--image-channels", type=int, default=1,
                         help="Independent synthetic views of the same map for image feedback/loss.")
     parser.add_argument("--duplicate-image-channels", action="store_true",
@@ -119,6 +122,10 @@ def main() -> None:
         raise ValueError("duplicate channels require image-channels > 1")
     if args.rotate_view_channels and args.image_channels == 1:
         raise ValueError("rotating views requires image-channels > 1")
+    if args.coarse_view_fusion != "first" and args.image_channels == 1:
+        raise ValueError("multiview coarse fusion requires image-channels > 1")
+    if args.coarse_view_fusion == "trimmed" and args.image_channels < 3:
+        raise ValueError("trimmed coarse fusion requires at least three views")
     if args.image_noise_std < 0:
         raise ValueError("image noise std must be nonnegative")
     if args.hint_blur_sigma < 0 or not math.isfinite(args.hint_blur_sigma):
@@ -334,7 +341,24 @@ def main() -> None:
 
     def forward(fixed: torch.Tensor, moving: torch.Tensor, *,
                 record_extra: bool = False):
-        seed, levels = encoder(fixed[:, :1], moving[:, :1])
+        if args.coarse_view_fusion == "first":
+            seed, levels = encoder(fixed[:, :1], moving[:, :1])
+        else:
+            batch, channels, height, width = fixed.shape
+            all_seed, all_levels = encoder(
+                fixed.reshape(batch * channels, 1, height, width),
+                moving.reshape(batch * channels, 1, height, width),
+            )
+
+            def fuse(logits: torch.Tensor) -> torch.Tensor:
+                views = logits.reshape(batch, channels, *logits.shape[1:])
+                if args.coarse_view_fusion == "mean":
+                    return views.mean(dim=1)
+                ordered = views.sort(dim=1).values
+                return ordered[:, 1:-1].mean(dim=1)
+
+            seed = [fuse(z) for z in all_seed]
+            levels = [fuse(z) for z in all_levels]
         current = coarse(seed[0], levels[:4])
         hint_fixed = blur_for_hint(fixed)
         hint_moving = blur_for_hint(moving)
@@ -599,6 +623,7 @@ def main() -> None:
             "test_appearance": args.test_appearance,
             "allow_multichannel_appearance_shift": args.allow_multichannel_appearance_shift,
             "rotate_view_channels": args.rotate_view_channels,
+            "coarse_view_fusion": args.coarse_view_fusion,
             "accepted": bool(accepted.item()),
             "minimum_jacobian": minimum_jacobian(mapped),
             "minimum_jacobian_recomputed_float64": minimum_jacobian(
