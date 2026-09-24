@@ -6,6 +6,8 @@
 
 区域为单位正方形 \(\Omega=[0,1]^2\)，固定规则三角网 \(\mathcal T_N\) 有 \(N^2\) 个**控制顶点**和 \(2(N-1)^2\) 个原三角面。网络从图像对或别的输入产生多尺度有限实数 latent \(z\)，正向解码器输出每个控制顶点像 \(Y_i=D_N(z)_i\)。在每个原三角面上，用三个顶点像定义唯一仿射映射 \(f_Y\)；这才叫一张**固定原网格 P1 映射**。512²图像查询分辨率与 \(N\) 独立，不得拿图像查询数冒充控制顶点数。主设置逐点固定整个正方形边界。
 
+下文“同伦路径/同胚同伦”\(F_t\)指从恒等图\(F_0\)连续走到目标\(F_1\)、沿途每张图都保持同胚的路径；\(C^{1,1}\)表示空间一阶导数存在且为Lipschitz连续。**VJP**（vector–Jacobian product）指给定输出权重\(q\)，计算\((D_zY)^\mathsf Tq\)，即标量\(\langle Y,q\rangle\)对输入latent的梯度；“全latent VJP”不是只对少数粗参数求导，而是覆盖实验中提供的每个latent张量。训练还要求同一反传链到达图像编码器参数。
+
 对于取向一致的面 \(T=(i,j,k)\)，定义
 \[
 J_T(Y)=\frac{\det(Y_j-Y_i,Y_k-Y_i)}{\det(x_j-x_i,x_k-x_i)}.
@@ -74,7 +76,7 @@ d_x=G_x^{-1}b_x.
 
 4097²四视图完整训练的[细层激活重计算实测](77_4097_multiview_checkpoint_memory_tradeoff.md)把batch1训练allocated峰值从15.934GB降到13.992GB，训练步中位从.761s升至.852s；20步权重轨迹只差浮点末位。[全部saved tensor转存CPU](78_4097_saved_tensor_cpu_offload_extreme_memory_tradeoff.md)进一步把训练CUDA **allocated**峰值降到5.859GB，但步时升至4.333s，运行中主机RSS约29.9GiB；单例reserved峰值约8.66GB，不能据此说已适配8GB物理GPU。[动态图索引＋仅暂存大张量](79_generated_indices_and_selective_offload_4097.md)把同协议完整训练allocated峰值降到5.512GB、reserved峰值8.452GB、单进程RSS历史峰值约26.9GiB，却把训练中位步时从.761s增至3.611s；20步训练和16例测试均通过最终原面证书，参数轨迹只差浮点末位。动态索引使初始化显著更轻，却不降低直接反传的峰值；叠加**整个**细层重算也没有带来可加的收益。更细的[逐颜色重算](80_per_color_checkpoint_vjp_memory.md)则有显著不同的Pareto：**不**暂存CPU时完整训练.877s/7.885GB allocated/10.815GB reserved，约为直接方案一半allocated、约15%增时；再选择性暂存时为2.107s/4.575GB allocated/8.198GB reserved、主机RSS约15.16GiB。后者在48GB卡的8GiB **allocator模拟上限**下运行20步，但**未在8GB或12GB物理设备实测**，不可等同容量保证。[batch扩展](81_batch_scaling_4097_color_checkpoint.md)表明逐颜色重算还在4097²真实控制网格上完成batch2与batch4的20步全参数训练，batch2相比直接反传allocated峰值28.817→14.488GB，batch4实测27.696GB allocated/40.049GB reserved；各训练输出均通过原面证书，但batch4只在48GB卡测试。
 
-最新[局部颜色算子编译实测](82_compiled_color_kernel_full_training_pareto.md)将同协议batch1的20步热态中位进一步降到.367s、allocated6.778GB、reserved9.030GB；编译但不重算为.345s/8.997GB/10.897GB。300步完整训练全部拓扑接受，独立128例map RMSE \(1.490054\times10^{-5}\)，与未编译同训练检查点接近；编译＋逐颜色重算的batch4也完成20步/80例，热态1.063s/24.727GB allocated/34.880GB reserved。**首步编译约十几到数十秒**，不是无条件加速；选择性CPU暂存可降到4.022GB allocated/6.965GB reserved，但步时1.602s且主机RSS约15GiB。后者在48GB卡的7GiB **allocator模拟上限**通过20步，仍非物理小卡验证。
+最新[局部颜色算子编译实测](82_compiled_color_kernel_full_training_pareto.md)将同协议batch1的20步热态中位进一步降到.367s、allocated6.778GB、reserved9.030GB；编译但不重算为.345s/8.997GB/10.897GB。这里“编译”是用`torch.compile`融合局部颜色更新，不改变网络、目标或安全公式；“热态”排除首次编译/特殊化。300步完整训练全部拓扑接受，独立128例map RMSE \(1.490054\times10^{-5}\)，与未编译同训练检查点接近；编译＋逐颜色重算的batch4也完成20步/80例，热态1.063s/24.727GB allocated/34.880GB reserved。**首步编译约十几到数十秒**，不是无条件加速；选择性CPU暂存可降到4.022GB allocated/6.965GB reserved，但步时1.602s且主机RSS约15GiB。后者在48GB卡的7GiB **allocator模拟上限**通过20步，仍非物理小卡验证。
 
 为单独核查编译造成的数值差异，[4097²极端latent压力测试](83_compiled_color_extreme_latent_stress.md)又在幅度5和20下各采样32张独立地图：eager和compiled均有32/32通过全部原面证书，最小实际归一化面积约0.0494；两版顶点坐标不是逐位相同，最大差分别为\(5.36\times10^{-6}\)和\(6.26\times10^{-6}\)。这是有限样本稳健性证据，不是浮点编译版的无条件拓扑定理；正式输出继续依赖逐面数值证书。
 
