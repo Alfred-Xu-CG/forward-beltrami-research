@@ -17,7 +17,7 @@ from torch.utils.checkpoint import checkpoint
 
 from phase6_train_multisample_image import make_dataset
 from phase7_train_forward_pyramid_image import (
-    minimum_jacobian, replace_test_appearance,
+    minimum_jacobian, replace_test_appearance, sinusoidal_mode_coefficients,
 )
 from qcopt.neural_bijection.dense import (
     ForwardP1ImageEncoder, HybridPatchSeedVertexP1Pyramid,
@@ -49,6 +49,9 @@ def main() -> None:
     parser.add_argument("--train-extra-steps", type=int, default=0)
     parser.add_argument("--train-extra-count", type=int, default=32)
     parser.add_argument("--train-extra-lr", type=float, default=.01)
+    parser.add_argument("--train-extra-objective", choices=("image", "map"),
+                        default="image")
+    parser.add_argument("--train-loss-scale", type=float, default=1.0)
     parser.add_argument("--save-extra-gains")
     parser.add_argument("--load-extra-gains")
     parser.add_argument("--extra-spatial-correction", action="store_true")
@@ -59,6 +62,8 @@ def main() -> None:
         raise ValueError("count, extra-passes and timing-repeats must be positive")
     if args.train_extra_steps < 0 or args.train_extra_count < 1 or args.train_extra_lr <= 0:
         raise ValueError("invalid extra-level training settings")
+    if args.train_loss_scale <= 0:
+        raise ValueError("train loss scale must be positive")
     if args.train_extra_steps and args.final_side < 2049:
         raise ValueError("extra-level training needs final-side >= 2049")
     if args.train_extra_steps and not args.save_extra_gains:
@@ -237,11 +242,12 @@ def main() -> None:
         step_peaks = []
         accepted_steps = 0
         initial_loss = None
+        first_gradient_max = None
         torch.manual_seed(20260924)
         for step in range(args.train_extra_steps):
             index = int(torch.randint(args.train_extra_count, (1,)).item())
-            train_fixed, train_moving = (
-                value[index:index + 1] for value in train_data[:2]
+            train_fixed, train_moving, train_true = (
+                value[index:index + 1] for value in train_data
             )
             optimizer.zero_grad(set_to_none=True)
             if device.type == "cuda":
@@ -254,12 +260,26 @@ def main() -> None:
                 train_moving, 2 * train_query - 1,
                 mode="bilinear", padding_mode="border", align_corners=True,
             )
-            train_loss = (train_warped - train_fixed).square().mean()
+            train_raw_loss = (
+                (train_warped - train_fixed).square().mean()
+                if args.train_extra_objective == "image"
+                else (train_query - train_true).square().sum(dim=-1).mean()
+            )
+            train_loss = args.train_loss_scale * train_raw_loss
             if initial_loss is None:
-                initial_loss = float(train_loss.detach())
+                initial_loss = float(train_raw_loss.detach())
             train_loss.backward()
             if not bool(torch.isfinite(extra_log_gains.grad).all()):
                 raise RuntimeError(f"nonfinite extra-level VJP at step {step}")
+            if step == 0:
+                first_gradient_max = {
+                    "extra_gain": float(extra_log_gains.grad.abs().amax()),
+                    "correction": max(
+                        float(parameter.grad.abs().amax())
+                        for parameter in extra_correction_net.parameters()
+                        if parameter.grad is not None
+                    ) if args.extra_spatial_correction else None,
+                }
             optimizer.step()
             accepted_steps += int(train_accepted.item())
             if device.type == "cuda":
@@ -280,8 +300,11 @@ def main() -> None:
             "count": args.train_extra_count,
             "batch": 1,
             "train_seed": 55101,
-            "initial_sample_image_mse": initial_loss,
-            "last_sample_image_mse": float(train_loss.detach()),
+            "objective": args.train_extra_objective,
+            "loss_scale": args.train_loss_scale,
+            "initial_sample_loss": initial_loss,
+            "last_sample_loss": float(train_raw_loss.detach()),
+            "first_gradient_max": first_gradient_max,
             "accepted_steps": accepted_steps,
             "extra_gains": torch.exp(extra_log_gains.detach()).tolist(),
             "spatial_correction": args.extra_spatial_correction,
@@ -335,6 +358,11 @@ def main() -> None:
             "image_mse": float((warped - fixed).square().mean()),
             "map_rmse": float(
                 (query - true_map).square().sum(dim=-1).mean().sqrt()
+            ),
+            "mode_rmse": float(
+                (sinusoidal_mode_coefficients(query, 128)
+                 - sinusoidal_mode_coefficients(true_map, 128))
+                .square().sum(dim=-1).mean().sqrt()
             ),
             "inference_seconds": statistics.median(inference_times),
             "inference_times": inference_times,
@@ -400,6 +428,7 @@ def main() -> None:
         accepted_count = 0
         minimum_double = float("inf")
         squared_map_error = 0.0
+        squared_mode_error = 0.0
         squared_image_error = 0.0
         with torch.no_grad():
             for index in range(args.count):
@@ -420,6 +449,11 @@ def main() -> None:
                 squared_map_error += float(
                     (case_query - case_true).square().sum(dim=-1).mean()
                 )
+                squared_mode_error += float(
+                    (sinusoidal_mode_coefficients(case_query, 128)
+                     - sinusoidal_mode_coefficients(case_true, 128))
+                    .square().sum(dim=-1).mean()
+                )
                 case_warped = F.grid_sample(
                     case_moving, 2 * case_query - 1,
                     mode="bilinear", padding_mode="border", align_corners=True,
@@ -432,6 +466,7 @@ def main() -> None:
             "accepted_count": accepted_count,
             "minimum_jacobian_recomputed_float64": minimum_double,
             "query_map_rmse": (squared_map_error / args.count) ** .5,
+            "mode_rmse": (squared_mode_error / args.count) ** .5,
             "image_mse": squared_image_error / args.count,
         }
     print(json.dumps(report, sort_keys=True))
