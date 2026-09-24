@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import statistics
 import time
 
@@ -34,6 +35,7 @@ def main() -> None:
     parser.add_argument("--final-side", type=int, choices=(1025, 2049, 4097),
                         default=2049)
     parser.add_argument("--extra-passes", type=int, default=1)
+    parser.add_argument("--extra-gain-scale", type=float, default=1.0)
     parser.add_argument("--count", type=int, default=2)
     parser.add_argument("--seed", type=int, default=20261017)
     parser.add_argument("--target-family", choices=("high128", "high128_tri", "high128_tiles"),
@@ -44,6 +46,10 @@ def main() -> None:
                         help="Independent synthetic views of the same map for image feedback/loss.")
     parser.add_argument("--duplicate-image-channels", action="store_true",
                         help="Repeat one image instead of adding independent texture; information control.")
+    parser.add_argument("--image-noise-std", type=float, default=0.0,
+                        help="Independent additive Gaussian acquisition noise on fixed/moving channels.")
+    parser.add_argument("--hint-blur-sigma", type=float, default=0.0,
+                        help="Gaussian pixel-domain sigma applied only to local photometric hints.")
     parser.add_argument("--window", type=int, default=3)
     parser.add_argument("--check-vjp", action="store_true")
     parser.add_argument("--checkpoint-extra", action="store_true")
@@ -64,6 +70,8 @@ def main() -> None:
     args = parser.parse_args()
     if min(args.count, args.extra_passes, args.timing_repeats) < 1:
         raise ValueError("count, extra-passes and timing-repeats must be positive")
+    if args.extra_gain_scale <= 0:
+        raise ValueError("extra gain scale must be positive")
     if args.train_extra_steps < 0 or args.train_extra_count < 1 or args.train_extra_lr <= 0:
         raise ValueError("invalid extra-level training settings")
     if args.train_loss_scale <= 0:
@@ -72,6 +80,10 @@ def main() -> None:
         raise ValueError("image channels must be in [1,4]")
     if args.duplicate_image_channels and args.image_channels == 1:
         raise ValueError("duplicate channels require image-channels > 1")
+    if args.image_noise_std < 0:
+        raise ValueError("image noise std must be nonnegative")
+    if args.hint_blur_sigma < 0 or not math.isfinite(args.hint_blur_sigma):
+        raise ValueError("hint blur sigma must be finite and nonnegative")
     if args.image_channels > 1 and args.test_appearance != "standard":
         raise ValueError("multichannel appearance is defined for standard only")
     if args.train_extra_steps and args.final_side < 2049:
@@ -149,25 +161,34 @@ def main() -> None:
 
     def multiview(data: tuple[torch.Tensor, torch.Tensor, torch.Tensor],
                   seed: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        if args.image_channels == 1:
-            return data
         fixed, moving, true_map = data
         if args.duplicate_image_channels:
-            return (fixed.repeat(1, args.image_channels, 1, 1),
-                    moving.repeat(1, args.image_channels, 1, 1), true_map)
-        fixed_views = [fixed]
-        moving_views = [moving]
-        for channel in range(1, args.image_channels):
-            extra = make_dataset(
-                true_map.shape[0], 512, seed + 10000 * channel,
-                target_family="high128",
-            )[1].to(device)
-            fixed_views.append(F.grid_sample(
-                extra, 2 * true_map - 1,
-                mode="bilinear", padding_mode="border", align_corners=True,
-            ).detach())
-            moving_views.append(extra)
-        return torch.cat(fixed_views, dim=1), torch.cat(moving_views, dim=1), true_map
+            fixed = fixed.repeat(1, args.image_channels, 1, 1)
+            moving = moving.repeat(1, args.image_channels, 1, 1)
+        elif args.image_channels > 1:
+            fixed_views = [fixed]
+            moving_views = [moving]
+            for channel in range(1, args.image_channels):
+                extra = make_dataset(
+                    true_map.shape[0], 512, seed + 10000 * channel,
+                    target_family="high128",
+                )[1].to(device)
+                fixed_views.append(F.grid_sample(
+                    extra, 2 * true_map - 1,
+                    mode="bilinear", padding_mode="border", align_corners=True,
+                ).detach())
+                moving_views.append(extra)
+            fixed = torch.cat(fixed_views, dim=1)
+            moving = torch.cat(moving_views, dim=1)
+        if args.image_noise_std:
+            random = torch.Generator(device="cpu").manual_seed(seed + 929719)
+            fixed = fixed + args.image_noise_std * torch.randn(
+                fixed.shape, generator=random, dtype=fixed.dtype,
+            ).to(device)
+            moving = moving + args.image_noise_std * torch.randn(
+                moving.shape, generator=random, dtype=moving.dtype,
+            ).to(device)
+        return fixed, moving, true_map
 
     dataset = multiview(dataset, args.seed)
     image_axis = torch.arange(512, device=device, dtype=torch.float32) / 511
@@ -214,10 +235,34 @@ def main() -> None:
         )
         return correction[:, :, 1:-1, 1:-1].permute(0, 2, 3, 1).to(geometry_dtype)
 
+    def blur_for_hint(images: torch.Tensor) -> torch.Tensor:
+        sigma = args.hint_blur_sigma
+        if sigma == 0:
+            return images
+        radius = max(1, math.ceil(3 * sigma))
+        positions = torch.arange(
+            -radius, radius + 1, device=images.device, dtype=images.dtype,
+        )
+        kernel = torch.exp(-0.5 * (positions / sigma).square())
+        kernel = kernel / kernel.sum()
+        channels = images.shape[1]
+        horizontal = kernel[None, None, None, :].expand(channels, -1, -1, -1)
+        vertical = kernel[None, None, :, None].expand(channels, -1, -1, -1)
+        blurred = F.conv2d(
+            F.pad(images, (radius, radius, 0, 0), mode="replicate"),
+            horizontal, groups=channels,
+        )
+        return F.conv2d(
+            F.pad(blurred, (0, 0, radius, radius), mode="replicate"),
+            vertical, groups=channels,
+        )
+
     def forward(fixed: torch.Tensor, moving: torch.Tensor, *,
                 record_extra: bool = False):
         seed, levels = encoder(fixed[:, :1], moving[:, :1])
         current = coarse(seed[0], levels[:4])
+        hint_fixed = blur_for_hint(fixed)
+        hint_moving = blur_for_hint(moving)
         extra_motion = {}
         for level, side in enumerate(sides):
             current = exact_dyadic_p1_refine(current)
@@ -230,7 +275,7 @@ def main() -> None:
                 updated = base
                 for _ in range(current_passes):
                     hint = local_photometric_logits(
-                        fixed, moving, updated.float(),
+                        hint_fixed, hint_moving, updated.float(),
                         window=args.window, ridge=1., raw_span=2.,
                     ).to(geometry_dtype)
                     floor = updated.new_full(
@@ -240,6 +285,8 @@ def main() -> None:
                         log_gains[current_level] if current_level < 2
                         else extra_log_gains[current_level - 2].clamp(-4, 4)
                     )
+                    if current_level >= 2:
+                        gain = args.extra_gain_scale * gain
                     proposal = gain * hint
                     if args.extra_spatial_correction and current_side == args.final_side:
                         proposal = proposal + spatial_correction(
@@ -343,6 +390,7 @@ def main() -> None:
             "first_gradient_max": first_gradient_max,
             "accepted_steps": accepted_steps,
             "extra_gains": torch.exp(extra_log_gains.detach()).tolist(),
+            "extra_gain_scale": args.extra_gain_scale,
             "spatial_correction": args.extra_spatial_correction,
             "median_step_seconds": statistics.median(step_times),
             "peak_cuda_allocated_bytes": max(step_peaks) if step_peaks else None,
@@ -407,8 +455,11 @@ def main() -> None:
             "geometry_dtype": args.geometry_dtype,
             "extra_gains": torch.exp(extra_log_gains.detach()).tolist(),
             "extra_spatial_correction": args.extra_spatial_correction,
+            "extra_gain_scale": args.extra_gain_scale,
             "image_channels": args.image_channels,
             "duplicate_image_channels": args.duplicate_image_channels,
+            "image_noise_std": args.image_noise_std,
+            "hint_blur_sigma": args.hint_blur_sigma,
             "extra_training": train_report,
             "extra_level_actual_motion": extra_motion,
             "setup_seconds": setup_seconds,
