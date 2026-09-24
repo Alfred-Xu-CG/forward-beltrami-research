@@ -7,6 +7,7 @@ gains from images. All extra-level proposals use current image residuals.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import math
 import statistics
@@ -59,6 +60,8 @@ def main() -> None:
     parser.add_argument("--ridge", type=float, default=1.0)
     parser.add_argument("--check-vjp", action="store_true")
     parser.add_argument("--checkpoint-extra", action="store_true")
+    parser.add_argument("--offload-saved-tensors", action="store_true",
+                        help="Move autograd saved tensors to pinned CPU memory during forward/VJP.")
     parser.add_argument("--timing-repeats", type=int, default=1)
     parser.add_argument("--geometry-dtype", choices=("float64", "float32"),
                         default="float64")
@@ -356,6 +359,10 @@ def main() -> None:
         mapped, accepted = certify_p1_or_identity(current, final_identity)
         return mapped, accepted, extra_motion
 
+    def saved_tensor_context():
+        return (torch.autograd.graph.save_on_cpu(pin_memory=True)
+                if args.offload_saved_tensors else contextlib.nullcontext())
+
     train_report = None
     if args.train_extra_steps:
         train_data = tuple(t.to(device) for t in make_dataset(
@@ -386,21 +393,22 @@ def main() -> None:
                 torch.cuda.reset_peak_memory_stats(device)
                 torch.cuda.synchronize(device)
             began = time.perf_counter()
-            train_mapped, train_accepted, _ = forward(train_fixed, train_moving)
-            train_query = table.interpolate(train_mapped.flatten(1, 2)).float()
-            train_warped = F.grid_sample(
-                train_moving, 2 * train_query - 1,
-                mode="bilinear", padding_mode="border", align_corners=True,
-            )
-            train_raw_loss = (
-                (train_warped - train_fixed).square().mean()
-                if args.train_extra_objective == "image"
-                else (train_query - train_true).square().sum(dim=-1).mean()
-            )
-            train_loss = args.train_loss_scale * train_raw_loss
-            if initial_loss is None:
-                initial_loss = float(train_raw_loss.detach())
-            train_loss.backward()
+            with saved_tensor_context():
+                train_mapped, train_accepted, _ = forward(train_fixed, train_moving)
+                train_query = table.interpolate(train_mapped.flatten(1, 2)).float()
+                train_warped = F.grid_sample(
+                    train_moving, 2 * train_query - 1,
+                    mode="bilinear", padding_mode="border", align_corners=True,
+                )
+                train_raw_loss = (
+                    (train_warped - train_fixed).square().mean()
+                    if args.train_extra_objective == "image"
+                    else (train_query - train_true).square().sum(dim=-1).mean()
+                )
+                train_loss = args.train_loss_scale * train_raw_loss
+                if initial_loss is None:
+                    initial_loss = float(train_raw_loss.detach())
+                train_loss.backward()
             if not bool(torch.isfinite(extra_log_gains.grad).all()):
                 raise RuntimeError(f"nonfinite extra-level VJP at step {step}")
             if args.train_full_encoder and (
@@ -460,6 +468,7 @@ def main() -> None:
             "full_encoder": args.train_full_encoder,
             "extra_gain_scale": args.extra_gain_scale,
             "spatial_correction": args.extra_spatial_correction,
+            "offload_saved_tensors": args.offload_saved_tensors,
             "median_step_seconds": statistics.median(step_times),
             "peak_cuda_allocated_bytes": max(step_peaks) if step_peaks else None,
         }
@@ -500,6 +509,7 @@ def main() -> None:
             "extra_passes": args.extra_passes,
             "ridge": args.ridge,
             "checkpoint_extra": args.checkpoint_extra,
+            "offload_saved_tensors": args.offload_saved_tensors,
             "seed": args.seed,
             "target_family": args.target_family,
             "test_appearance": args.test_appearance,
@@ -549,14 +559,15 @@ def main() -> None:
                 torch.cuda.reset_peak_memory_stats(device)
                 torch.cuda.synchronize(device)
             began = time.perf_counter()
-            mapped, accepted, _ = forward(fixed, moving)
-            query = table.interpolate(mapped.flatten(1, 2)).float()
-            warped = F.grid_sample(
-                moving, 2 * query - 1,
-                mode="bilinear", padding_mode="border", align_corners=True,
-            )
-            loss = (warped - fixed).square().mean()
-            loss.backward()
+            with saved_tensor_context():
+                mapped, accepted, _ = forward(fixed, moving)
+                query = table.interpolate(mapped.flatten(1, 2)).float()
+                warped = F.grid_sample(
+                    moving, 2 * query - 1,
+                    mode="bilinear", padding_mode="border", align_corners=True,
+                )
+                loss = (warped - fixed).square().mean()
+                loss.backward()
             if device.type == "cuda":
                 torch.cuda.synchronize(device)
             vjp_times.append(time.perf_counter() - began)

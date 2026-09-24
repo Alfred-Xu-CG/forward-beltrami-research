@@ -65,7 +65,7 @@ d_x=G_x^{-1}b_x.
 
 4097²[干净单视图细级增益训练](65_trained_4097_extra_feedback_gains.md)及[空间修正阴性](66_trained_4097_spatial_correction_negative_result.md)还表明：图像MSE可以明显下降，而地图RMSE几乎不变；直接地图监督虽改善几何，却不能被算作image-only成功。[含噪四视图再训练](72_noisy_multiview_training_does_not_restore_geometry.md)也只略改善光度与特定模态，留出整体地图误差略变差。**报告任何“精度”必须指明是哪一种指标。**
 
-4097²四视图完整训练的[细层激活重计算实测](77_4097_multiview_checkpoint_memory_tradeoff.md)把batch1训练allocated峰值从15.934GB降到13.992GB，训练步中位从.761s升至.852s；20步权重轨迹只差浮点末位。它是可核查的时间—内存折中，尚未达到8–12GB设备的大网格全反传。
+4097²四视图完整训练的[细层激活重计算实测](77_4097_multiview_checkpoint_memory_tradeoff.md)把batch1训练allocated峰值从15.934GB降到13.992GB，训练步中位从.761s升至.852s；20步权重轨迹只差浮点末位。[全部saved tensor转存CPU](78_4097_saved_tensor_cpu_offload_extreme_memory_tradeoff.md)进一步把训练CUDA峰值降到5.859GB，但步时升至4.333s，运行中主机RSS约29.9GiB；这是容量转移而不是同时快速、低总体内存的解。
 
 ## 五、为什么拓扑安全不等于从一幅图像找回真值
 
