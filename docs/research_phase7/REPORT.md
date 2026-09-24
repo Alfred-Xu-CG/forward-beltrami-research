@@ -42,6 +42,8 @@ d_x=G_x^{-1}b_x.
 \]
 \(\rho>0\) 使每个**独立2×2**矩阵正定。这只是光度位移近似；把 \(d_x\) 变为有界logit后仍必须经过F1安全器。全层没有一个随 \(N^2\) 增长的全局矩阵逆。上式和编码器、图像取样、F1/F2均可用自动微分求VJP；对已接受且不在分支切换点的样本，训练损失能反传到网络参数。理想独立残差噪声下的偏差/协方差公式，以及它为何不能直接用于本实验的噪声梯度，见[严格局部统计推导](76_multiview_local_estimator_noise_bias_formulation.md)。[局部提示实现](../../src/qcopt/neural_bijection/dense/photometric_hint.py)、[1025²训练](57_high128_trainable_feedback_layer.md)、[4097²多视图](68_multiview_observability_4097_p1.md)。
 
+当前图像模型的细级latent主要由这个局部2×2提示及少量可学习增益生成，**不是**一个任意指定33.5百万细级标量的通用逆编码器。因而下一节对所有满足界的目标构造出的teacher latent，并不自动属于该小网络在给定图像下的可学输出集合；其有效表达能力必须由独立形变/纹理的训练与留出实验评估。
+
 ## 三、逼近理论：证明了什么，未证明什么
 
 先考虑保持边界恒等的空间 \(C^{1,1}\) 同伦 \(F_t\)，\(F_0=\mathrm{id}, F_1=F\)，且所有 \(t,x\) 有 \(\det DF_t\ge m>0\)、\(\|DF_t\|\le L\)、\(\operatorname{Lip}(DF_t)\le K\)、\(\|\partial_tF_t\|\le M\)。[F1定理](23_uniform_isotopy_multilevel_approximation.md)与[F2定理](26_f2_uniform_isotopy_approximation.md)给出：存在只依赖统一界的足够细但**固定**seed尺度和有限seed周期数，使每次dyadic加密后仅一个F1颜色周期或一个F2交错patch周期，就能用有限teacher latent**精确得到 \(I_hF\) 的顶点表**；误差 \(\|I_hF-F\|_\infty\le Kh^2\)。证明的关键不是“最后目标面正向”这一句，而是每一小时间步/新顶点残差都低于局部一次到位面积预算，故安全器不截断，归纳逐级达到目标。每一级仅线性扫其网格，网格总顶点数形成几何级数，所以这种**已知teacher latent条件下**的前向工作与存储为 \(O(V_h)\)，不需要大系统求解。这里的时间速度、Jacobian余量和二阶界若趋于无穷/零，seed和周期数并不统一。
@@ -65,6 +67,8 @@ d_x=G_x^{-1}b_x.
 | [降采样光度提示](73_sparse_image_hint_dense_p1_negative_result.md) | 4097² / 33,554,432 | 仅把最细提示采到2049²再插值，原拓扑层仍稠密 | full四通道无噪声map 1.51e-5；2049²提示4.64e-5；VJP .756→.704s | 小速度收益换来明显高频失真；不能拿提示插值替代细级可观测性。 |
 
 4097²[干净单视图细级增益训练](65_trained_4097_extra_feedback_gains.md)及[空间修正阴性](66_trained_4097_spatial_correction_negative_result.md)还表明：图像MSE可以明显下降，而地图RMSE几乎不变；直接地图监督虽改善几何，却不能被算作image-only成功。[含噪四视图再训练](72_noisy_multiview_training_does_not_restore_geometry.md)也只略改善光度与特定模态，留出整体地图误差略变差。**报告任何“精度”必须指明是哪一种指标。**
+
+4097²时仅一份float32二维顶点表就有\(4097^2\times2\times4\approx134.3\) MB；最细级若显式存每个内点的二维latent，又有\(2(4095)^2=33{,}538{,}050\)个标量、约134.2 MB，**不是低维全局代码**。反传还需保存多级地图、各颜色相邻面面积、索引/临时张量、光度提示和网络激活，所以训练峰值远大于顶点表大小。渐近工作/存储\(O(V)\)并不意味着小常数或能装进8GB卡。下面的逐颜色checkpoint在VJP时重算局部前向以减少保存张量；编译融合中间kernel；CPU暂存把显存压力转移到主机内存/PCIe。三者改变实现成本，不改变前述实数拓扑与逼近命题。
 
 4097²四视图完整训练的[细层激活重计算实测](77_4097_multiview_checkpoint_memory_tradeoff.md)把batch1训练allocated峰值从15.934GB降到13.992GB，训练步中位从.761s升至.852s；20步权重轨迹只差浮点末位。[全部saved tensor转存CPU](78_4097_saved_tensor_cpu_offload_extreme_memory_tradeoff.md)进一步把训练CUDA **allocated**峰值降到5.859GB，但步时升至4.333s，运行中主机RSS约29.9GiB；单例reserved峰值约8.66GB，不能据此说已适配8GB物理GPU。[动态图索引＋仅暂存大张量](79_generated_indices_and_selective_offload_4097.md)把同协议完整训练allocated峰值降到5.512GB、reserved峰值8.452GB、单进程RSS历史峰值约26.9GiB，却把训练中位步时从.761s增至3.611s；20步训练和16例测试均通过最终原面证书，参数轨迹只差浮点末位。动态索引使初始化显著更轻，却不降低直接反传的峰值；叠加**整个**细层重算也没有带来可加的收益。更细的[逐颜色重算](80_per_color_checkpoint_vjp_memory.md)则有显著不同的Pareto：**不**暂存CPU时完整训练.877s/7.885GB allocated/10.815GB reserved，约为直接方案一半allocated、约15%增时；再选择性暂存时为2.107s/4.575GB allocated/8.198GB reserved、主机RSS约15.16GiB。后者在48GB卡的8GiB **allocator模拟上限**下运行20步，但**未在8GB或12GB物理设备实测**，不可等同容量保证。[batch扩展](81_batch_scaling_4097_color_checkpoint.md)表明逐颜色重算还在4097²真实控制网格上完成batch2与batch4的20步全参数训练，batch2相比直接反传allocated峰值28.817→14.488GB，batch4实测27.696GB allocated/40.049GB reserved；各训练输出均通过原面证书，但batch4只在48GB卡测试。
 
