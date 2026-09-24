@@ -18,4 +18,4 @@ setup 包含建立所有控制层的索引/几何缓冲、移到GPU、生成这�
 
 针对4097²额外层启用[非重入激活重计算](59_feedback_activation_recomputation.md)，同一例输出、地图误差、最小 $J$ 完全相同，热态 forward 中位约.2102秒；forward＋VJP中位变为1.1841秒，allocated峰值降到21.097GB。对比不重计算的1.0444秒/24.174GB，内存约省12.7%，时间约增13.4%。它仍然需要20GB级显存，不能称为低显存神经层。
 
-复现脚本：[4097反馈规模探针](../../tools/phase7_feedback_scale_probe.py)。新层使用每顶点局部2×2系统和固定网格正向安全更新，不求大型全局线性系统；这与[先前4097²全级 image-to-latent 短训练](53_mesh_free_query_and_4097_image_training.md)的模型、目标及内存范围不同，不应把两份时间或显存直接做冠军排名。
+复现脚本：[4097反馈规模探针](../../tools/phase7_feedback_scale_probe.py)。新层使用每顶点局部2×2系统和固定网格正向安全更新，不求大型全局线性系统；这与[先前4097²全级 image-to-latent 短训练](53_mesh_free_queries_and_4097_image_training.md)的模型、目标及内存范围不同，不应把两份时间或显存直接做冠军排名。

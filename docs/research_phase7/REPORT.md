@@ -46,7 +46,7 @@ d_x=G_x^{-1}b_x.
 
 先考虑保持边界恒等的空间 \(C^{1,1}\) 同伦 \(F_t\)，\(F_0=\mathrm{id}, F_1=F\)，且所有 \(t,x\) 有 \(\det DF_t\ge m>0\)、\(\|DF_t\|\le L\)、\(\operatorname{Lip}(DF_t)\le K\)、\(\|\partial_tF_t\|\le M\)。[F1定理](23_uniform_isotopy_multilevel_approximation.md)与[F2定理](26_f2_uniform_isotopy_approximation.md)给出：存在只依赖统一界的足够细但**固定**seed尺度和有限seed周期数，使每次dyadic加密后仅一个F1颜色周期或一个F2交错patch周期，就能用有限teacher latent**精确得到 \(I_hF\) 的顶点表**；误差 \(\|I_hF-F\|_\infty\le Kh^2\)。证明的关键不是“最后目标面正向”这一句，而是每一小时间步/新顶点残差都低于局部一次到位面积预算，故安全器不截断，归纳逐级达到目标。每一级仅线性扫其网格，网格总顶点数形成几何级数，所以这种**已知teacher latent条件下**的前向工作与存储为 \(O(V_h)\)，不需要大系统求解。这里的时间速度、Jacobian余量和二阶界若趋于无穷/零，seed和周期数并不统一。
 
-对任意边界固定平面同胚，先缩放共轭得到内部紧支撑的近似图，再用相对边界、任意 \(C^0\)-小的曲面光滑化定理得到内部紧支撑微分同胚，随后接上上述固定规则网格F1/F2构造，可以证明**跨所有足够大但有限的架构规模之并**在全体边界固定同胚中 \(C^0\) 稠密。精确量词、角点规避及来源见[定性稠密性证明](30_all_boundary_homeomorphisms_c0_density.md)与[Hatcher 曲面定理](https://ems.press/content/serial-article-files/50953)。这不说明一个固定网络、固定小seed、固定轮数或低维latent能覆盖全部同胚，也不给逆编码的算法复杂度，更不保证仅凭图像能识别目标latent。数学定理是**表示存在性**；4097²实际teacher试验是另一层数值证据。
+对任意边界固定平面同胚，先缩放共轭得到内部紧支撑的近似图，再用相对边界、任意 \(C^0\)-小的曲面光滑化定理得到内部紧支撑微分同胚，随后接上上述固定规则网格F1/F2构造，可以证明**跨所有足够大但有限的架构规模之并**在全体边界固定同胚中 \(C^0\) 稠密。这里取**不设统一正面积底线**的合法配置 `minimum_jacobian=None`；实验里的固定0.05底线不能未经证明用于任意小Jacobian目标。精确量词、角点规避及来源见[定性稠密性证明](30_all_boundary_homeomorphisms_c0_density.md)与[Hatcher 曲面定理](https://ems.press/content/serial-article-files/50953)。这不说明一个固定网络、固定小seed、固定轮数或低维latent能覆盖全部同胚，也不给逆编码的算法复杂度，更不保证仅凭图像能识别目标latent。数学定理是**表示存在性**；4097²实际teacher试验是另一层数值证据。
 
 ## 四、实验协议、指标和主要结果
 

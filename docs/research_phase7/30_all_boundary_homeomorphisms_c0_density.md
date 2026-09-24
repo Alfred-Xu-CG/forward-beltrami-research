@@ -5,7 +5,7 @@
 设 \(\Omega=[0,1]^2\)，\(\operatorname{Homeo}_{\partial}(\Omega)\) 是在每个边界点取恒等的自同胚集合，赋予一致距离
 \(d_\infty(F,G)=\sup_{x\in\Omega}\|F(x)-G(x)\|_2\)。边界点逐点固定已限定其取向为正。
 
-记 \(\mathscr D_{F1}\)、\(\mathscr D_{F2}\) 是[交错顶点 F1](23_uniform_isotopy_multilevel_approximation.md)与[交错 patch F2](26_f2_uniform_isotopy_approximation.md)的**所有合法架构规模**之并：允许选择足够细但有限的 seed 网格、有限 seed 更新轮数、最终规则 dyadic 网格分辨率；每个有限 latent 通过已证明的局部安全更新产生一张固定规则三角剖分上的 P1 同胚，边界恒等。令 \(\mathcal R\) 是这些 P1 连续映射的并集。
+记 \(\mathscr D_{F1}\)、\(\mathscr D_{F2}\) 是[交错顶点 F1](23_uniform_isotopy_multilevel_approximation.md)与[交错 patch F2](26_f2_uniform_isotopy_approximation.md)的**所有合法架构规模**之并：允许选择足够细但有限的 seed 网格、有限 seed 更新轮数、最终规则 dyadic 网格分辨率；在本定性全群命题中取**不设统一绝对面积底线** \(\beta=0\)，实现对应 `minimum_jacobian=None`。每个有限 latent 通过已证明的局部安全更新产生一张固定规则三角剖分上的 P1 同胚，边界恒等。令 \(\mathcal R\) 是这些 P1 连续映射的并集。实验中常用的固定 \(\beta=0.05\) 只是数值配置，不能不经额外证明就带入下述对任意小 Jacobian 目标的密度断言。
 
 **定理（定性 \(C^0\) 稠密性）。**
 \[

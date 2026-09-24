@@ -20,4 +20,6 @@ y-0.8a\sin(\pi x)\sin(2\pi y)\bigr),\qquad a=.08.
 
 两者实际复现精度相同，但当前实现的F2在此平滑目标约耗2.03倍时间、1.59倍峰值显存；这是同一GPU/任务上的实现比较，不是F2原语在其他形变/patch尺寸上的不可能性结论。F2在[1025²较强目标](26_f2_uniform_isotopy_approximation.md)中曾用更少粗轮达到F1/4粗轮受截断的目标，故应保留作为有条件的表示/稳定性替代。这里的 \(3.4\times10^{-10}\) 是**相对于同float32解析顶点采样**的误差，不是连续映射的全域逼近误差或图像配准精度。
 
+最终独立重跑将相同CLI、3次同步forward＋全latent VJP的原始JSON存为[F1复核](phase7_teacher4097_F1_independent_recheck.json)和[F2复核](phase7_teacher4097_F2_independent_recheck.json)：本次中位分别.5602秒和1.1391秒，顶点RMSE均\(3.43608\times10^{-10}\)，目标/输出最小\(J\)均.566002607，allocated峰值分别12.543GB和19.941GB。与前表的细小时间/显存差属于重复运行波动；两个原始JSON补全可复算证据，不把teacher潜变量误说成图像网络推断。
+
 此结果补足“只在小网格做teacher拟合”的缺口：两种确实不同的前向机制在4097²真实控制尺度做过完整VJP，而非仅对512²图像查询反传。不过teacher latent由已知解析 \(F_a\) 构造，不能据此声称**网络**在4097²自动恢复任意同胚。当前4097² image-to-latent训练/保留试验属于混合F2 seed＋F1细级模型，见[实际细级训练](65_trained_4097_extra_feedback_gains.md)、[四视图观测](68_multiview_observability_4097_p1.md)与[含噪边界](70_multiview_channel_count_noise_tradeoff.md)；纯F2的4097²图像训练仍未做。
