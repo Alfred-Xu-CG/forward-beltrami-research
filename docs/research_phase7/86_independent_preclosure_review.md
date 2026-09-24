@@ -14,6 +14,7 @@
 | 混合层4097² image-to-latent训练可行 | [原首视图300步](82_compiled_color_kernel_full_training_pareto.md)、[四视图对称融合300步](85_permutation_invariant_coarse_latent_fusion.md)、[新种子确认日志](phase7_confirm_trimmed_C4_firstspots_seed20270823.json) | 300/300完整image-only训练和128/128留出均通过证书；对称融合在“一幅spots＋三幅独立standard”的后续新seed128例地图RMSE\(3.208\times10^{-5}\)，原首视图为.004363。这个改善是**特定合成多视图/输入结构**，并非自然单图注册的普适结果；四幅重复同一图仍无法增加观测信息。 |
 | 编译和内存优化不改变科学结论 | [热态/冷态及显存](82_compiled_color_kernel_full_training_pareto.md)、[大latent全VJP差](83_compiled_color_extreme_latent_stress.md)、[融合batch/受限allocator](85_permutation_invariant_coarse_latent_fusion.md) | `torch.compile`实测可显著加速并降低saved tensors，但首步有十秒到数十秒编译成本；4097²随机latent的编译/未编译VJP相对L2差最高0.71%，不能称梯度位级等价。allocated/reserved为PyTorch度量；7GiB allocator限额**不是物理8GB设备证据**，CPU暂存以速度及主机RSS换GPU容量。 |
 | 新颖性可表述为已证领域首创 | [主文献定位](06_prior_art_boundary.md)：TutteNet、SITReg、Generative Escher Meshes、Neural Jacobian Fields等原始材料 | **不能**这样表述。正向、多尺度、神经、P1和严格拓扑分别已有前例；较可防守的是具体固定原网格P1输出契约、局部多尺度安全原语、特定统一光滑同伦逼近证明和1600万控制顶点全VJP组合。未做覆盖全部2024–2026论文及代码的系统性优先权检索。 |
+| F1/F2已经在4097²公平击败正导纳S基线 | [Phase VI结构化求解](../research_phase6/03_conductance_structure.md)与本轮[两原语teacher试验](74_two_distinct_forward_mechanisms_4097_teacher_vjp.md) | **不能**这样表述：S尚无同一4097²任务、设备、训练预算的本轮数据。本阶段优先解决正向固定P1契约，旧1025²求解基线只供方法范围参照，不能跨设置拼出速度/精度冠军。 |
 
 ## 可复算检查与未解决事项
 
