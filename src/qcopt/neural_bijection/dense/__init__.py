@@ -11,7 +11,7 @@ from .convex_quad import HierarchicalConvexQuadLayer, HierarchicalConvexQuadFree
 from .convex_quad_composition import CoarseFineConvexQuadComposition, CoarseFineConvexQuadResult
 from .colored_vertex_relaxation import SafeColoredVertexRelaxation, HierarchicalConvexQuadLocalLayer
 from .forward_p1_pyramid import ForwardP1Pyramid, exact_dyadic_p1_refine
-from .multilevel_forward_p1 import CoarsePatchFineVertexP1Layer, CertifiedForwardP1Pyramid, certify_p1_or_identity
+from .multilevel_forward_p1 import CoarsePatchFineVertexP1Layer, CertifiedForwardP1Pyramid, HybridPatchSeedVertexP1Pyramid, certify_p1_or_identity
 from .forward_p1_encoder import ForwardP1ImageEncoder, PatchPyramidImageEncoder
 from .patch_field import SafePatchFieldPass, StaggeredPatchP1Layer, TiedStaggeredPatchP1Layer, ResidualStaggeredPatchP1Layer, ForwardPatchP1Pyramid, ResidualPatchP1Pyramid
 from .spectral_p1_refinement import SineModeP1Refiner
@@ -52,6 +52,7 @@ __all__ = [
     "SafeColoredVertexRelaxation",
     "HierarchicalConvexQuadLocalLayer",
     "CoarsePatchFineVertexP1Layer",
+    "HybridPatchSeedVertexP1Pyramid",
     "CertifiedForwardP1Pyramid",
     "ResidualPatchP1Pyramid",
     "certify_p1_or_identity",

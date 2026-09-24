@@ -193,3 +193,99 @@ class CoarsePatchFineVertexP1Layer(nn.Module):
             result, _ = certify_p1_or_identity(result,
                                                self.fine_identity.expand(batch, -1, -1, -1))
         return result
+
+
+class HybridPatchSeedVertexP1Pyramid(nn.Module):
+    """Long-range patch seed plus new-vertex-only dyadic P1 refinements.
+
+    F2 moves a genuinely coarse seed map. Each F1 refinement exactly
+    prolongs the previous P1 map, then moves only vertices new to that level.
+    Therefore the final output is one P1 map on the original fixed grid;
+    it is not a resampled composition. A conservative final-coordinate
+    orientation check handles finite-precision violations by returning the
+    exact identity for the affected sample.
+    """
+
+    def __init__(
+        self, seed_side: int, final_side: int, *,
+        patch_cells: int = 4, seed_cycles: int = 4,
+        seed_steps: int = 1,
+        minimum_jacobian: float = 0.05,
+        checkpoint_levels: bool = False,
+        compute_dtype: torch.dtype = torch.float64,
+        certify_output: bool = True,
+    ) -> None:
+        super().__init__()
+        if compute_dtype not in (torch.float32, torch.float64):
+            raise ValueError("compute_dtype must be float32 or float64")
+        exact_limit = 2 ** (23 if compute_dtype == torch.float32 else 52)
+        if final_side - 1 > exact_limit:
+            raise ValueError("final identity spacing is not representable")
+        if not 0 < minimum_jacobian < 1:
+            raise ValueError("minimum_jacobian must lie in (0,1)")
+        if seed_steps < 1:
+            raise ValueError("seed_steps must be positive")
+        self.seed_side = seed_side
+        self.final_side = final_side
+        self.seed_steps = seed_steps
+        self.compute_dtype = compute_dtype
+        self.certify_output = certify_output
+        self.seed_layer = ResidualStaggeredPatchP1Layer(
+            seed_side, patch_cells, cycles=seed_cycles,
+            minimum_jacobian=minimum_jacobian,
+        )
+        self.refinement = ForwardP1Pyramid(
+            seed_side, final_side, seed_passes=0,
+            minimum_jacobian=minimum_jacobian,
+            checkpoint_passes=checkpoint_levels,
+        )
+        self.level_sides = self.refinement.level_sides
+        seed_axis = torch.arange(seed_side, dtype=compute_dtype) / (seed_side - 1)
+        seed_y, seed_x = torch.meshgrid(seed_axis, seed_axis, indexing="ij")
+        self.register_buffer(
+            "seed_identity", torch.stack((seed_x, seed_y), dim=-1)[None],
+            persistent=False,
+        )
+        fine_axis = torch.arange(final_side, dtype=compute_dtype) / (final_side - 1)
+        fine_y, fine_x = torch.meshgrid(fine_axis, fine_axis, indexing="ij")
+        self.register_buffer(
+            "final_identity", torch.stack((fine_x, fine_y), dim=-1)[None],
+            persistent=False,
+        )
+
+    def forward(
+        self, seed_latent: torch.Tensor | Sequence[torch.Tensor],
+        level_latents: Sequence[torch.Tensor],
+    ) -> torch.Tensor:
+        seed_fields = (
+            (seed_latent,) if isinstance(seed_latent, torch.Tensor)
+            else tuple(seed_latent)
+        )
+        if len(seed_fields) != self.seed_steps:
+            raise ValueError("wrong number of seed endpoint fields")
+        first = seed_fields[0]
+        if first.ndim != 4 or first.shape[1:] != (
+            self.seed_side - 2, self.seed_side - 2, 2
+        ) or first.shape[0] < 1 or any(z.shape != first.shape for z in seed_fields):
+            raise ValueError("seed_latent has wrong shape")
+        if len(level_latents) != len(self.level_sides):
+            raise ValueError("wrong number of refinement latent arrays")
+        values = (*seed_fields, *level_latents)
+        if any(z.device != self.seed_identity.device for z in values):
+            raise ValueError("move layer and all latents to the same device")
+        if any(z.dtype not in (torch.float32, torch.float64) for z in values):
+            raise ValueError("latents must be floating point")
+        batch = first.shape[0]
+        coarse_map = self.seed_identity.expand(batch, -1, -1, -1)
+        for field in seed_fields:
+            coarse_map = self.seed_layer(
+                coarse_map, field.to(self.compute_dtype),
+            )
+        result = self.refinement.forward_from(
+            coarse_map,
+            [z.to(self.compute_dtype) for z in level_latents],
+            start_index=0,
+        )
+        if self.certify_output:
+            result, _ = certify_p1_or_identity(result, self.final_identity)
+        return result

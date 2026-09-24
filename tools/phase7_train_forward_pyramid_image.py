@@ -19,7 +19,8 @@ from phase6_train_multisample_image import make_dataset
 from qcopt.mesh import structured_rectangle
 from qcopt.neural_bijection.dense import (
     ForwardP1ImageEncoder, ForwardP1Pyramid, ForwardPatchP1Pyramid,
-    PatchPyramidImageEncoder, SafeColoredVertexRelaxation,
+    HybridPatchSeedVertexP1Pyramid, PatchPyramidImageEncoder,
+    SafeColoredVertexRelaxation,
     local_photometric_logits, spectralize_bounded_logits,
 )
 from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
@@ -37,12 +38,13 @@ def minimum_jacobian(mapped: torch.Tensor) -> float:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--side", type=int, default=257)
-    parser.add_argument("--decoder-kind", choices=("colored", "patch"), default="colored")
+    parser.add_argument("--decoder-kind", choices=("colored", "patch", "hybrid"), default="colored")
     parser.add_argument("--patch-cells", type=int, default=8)
     parser.add_argument("--image-side", type=int, default=512)
     parser.add_argument("--target-family", choices=("base", "high32", "high64", "high128"), default="high32")
     parser.add_argument("--train-count", type=int, default=32)
     parser.add_argument("--test-count", type=int, default=8)
+    parser.add_argument("--test-seed", type=int, default=99317)
     parser.add_argument("--seed-passes", type=int, default=2)
     parser.add_argument("--width", type=int, default=16)
     parser.add_argument("--feature-side", type=int, default=None)
@@ -63,12 +65,15 @@ def main() -> None:
     parser.add_argument("--load-state", default=None)
     parser.add_argument("--allow-new-levels", action="store_true",
                         help="Load a smaller-side encoder and retain zero-initialized new level heads.")
+    parser.add_argument("--eval-only", action="store_true")
     args = parser.parse_args()
     if min(args.side, args.image_side, args.train_count, args.test_count,
            args.width, args.batch, args.steps) < 1 or (
                args.feature_side is not None and args.feature_side < 17
            ) or args.adam_eps <= 0:
         raise ValueError("dimensions, counts, batch and steps must be positive")
+    if args.decoder_kind == "hybrid" and args.feedback_passes:
+        raise ValueError("hybrid decoder has no intermediate feedback path")
     torch.manual_seed(20260924)
     device = torch.device(args.device)
     if device.type == "cpu":
@@ -77,7 +82,8 @@ def main() -> None:
         args.train_count, args.image_side, 55101, target_family=args.target_family,
     ))
     test = tuple(t.to(device) for t in make_dataset(
-        args.test_count, args.image_side, 99317, target_family=args.target_family,
+        args.test_count, args.image_side, args.test_seed,
+        target_family=args.target_family,
     ))
     if args.decoder_kind == "colored":
         decoder = ForwardP1Pyramid(5, args.side, seed_passes=args.seed_passes,
@@ -86,7 +92,7 @@ def main() -> None:
             5, decoder.level_sides, seed_passes=args.seed_passes,
             feature_side=args.feature_side or min(args.side, 257), width=args.width,
         ).to(device)
-    else:
+    elif args.decoder_kind == "patch":
         decoder = ForwardPatchP1Pyramid(
             17, args.side, patch_cells=args.patch_cells,
             minimum_jacobian=0.05,
@@ -94,6 +100,18 @@ def main() -> None:
         encoder = PatchPyramidImageEncoder(
             17, decoder.level_sides,
             feature_side=args.feature_side or min(args.side, 257), width=args.width,
+        ).to(device)
+    else:
+        decoder = HybridPatchSeedVertexP1Pyramid(
+            17, args.side, patch_cells=args.patch_cells,
+            seed_cycles=args.seed_passes,
+            minimum_jacobian=.05,
+            compute_dtype=torch.float64,
+        ).to(device)
+        encoder = ForwardP1ImageEncoder(
+            17, decoder.level_sides, seed_passes=1,
+            feature_side=args.feature_side or min(args.side, 257),
+            width=args.width,
         ).to(device)
     feedback_side = args.feedback_side or args.side
     valid_feedback_sides = (decoder.seed_side,) + decoder.level_sides
@@ -133,7 +151,11 @@ def main() -> None:
         structured_rectangle(args.side - 1, args.side - 1),
         height=args.image_side, width=args.image_side,
     )
-    table.prepare(device=device, dtype=torch.float32)
+    table.prepare(
+        device=device,
+        dtype=(torch.float64 if args.decoder_kind == "hybrid"
+               else torch.float32),
+    )
     optimizer = torch.optim.Adam(encoder.parameters(), lr=args.learning_rate,
                                  eps=args.adam_eps)
     generator = torch.Generator(device="cpu").manual_seed(6019)
@@ -145,6 +167,7 @@ def main() -> None:
     def forward(fixed: torch.Tensor, moving: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         seed, levels = encoder(fixed, moving)
         control = (
+            decoder(seed[0], levels) if args.decoder_kind == "hybrid" else
             coarse_decoder(seed, levels[:feedback_index])
             if coarse_decoder is not None else decoder(seed, levels)
         )
@@ -163,7 +186,7 @@ def main() -> None:
             control = decoder.forward_from(
                 control, levels[feedback_index:], start_index=feedback_index,
             )
-        query = table.interpolate(control.reshape(control.shape[0], -1, 2))
+        query = table.interpolate(control.reshape(control.shape[0], -1, 2)).float()
         warped = F.grid_sample(moving, 2 * query - 1,
                                mode="bilinear", padding_mode="border", align_corners=True)
         image_loss = (warped - fixed).square().mean()
@@ -172,21 +195,44 @@ def main() -> None:
     @torch.no_grad()
     def evaluate(dataset: tuple[torch.Tensor, ...]) -> dict[str, float]:
         image_errors, map_errors, margins = [], [], []
+        identity_outputs = 0
         for start in range(0, dataset[0].shape[0], args.batch):
             fixed, moving, true_map = (t[start:start + args.batch] for t in dataset)
             loss, control, query = forward(fixed, moving)
             image_errors.append(float(loss) * fixed.shape[0])
             map_errors.append(float((query.reshape_as(true_map) - true_map).square().sum(dim=-1).mean()) * fixed.shape[0])
             margins.append(minimum_jacobian(control))
+            if args.decoder_kind == "hybrid":
+                identity_outputs += int(torch.all(
+                    control == decoder.final_identity,
+                    dim=(1, 2, 3),
+                ).sum())
         count = dataset[0].shape[0]
         return {
             "image_mse": sum(image_errors) / count,
             "query_map_vector_rmse": math.sqrt(sum(map_errors) / count),
             "minimum_jacobian": min(margins),
+            "identity_outputs": identity_outputs if args.decoder_kind == "hybrid" else None,
         }
 
     encoder.eval()
     initial = evaluate(test)
+    if args.eval_only:
+        print(json.dumps({
+            "method": "phase7_forward_p1_image_encoder_eval_only",
+            "decoder_kind": args.decoder_kind,
+            "side": args.side,
+            "control_vertices": args.side ** 2,
+            "control_faces": 2 * (args.side - 1) ** 2,
+            "image_side": args.image_side,
+            "target_family": args.target_family,
+            "test_count": args.test_count,
+            "test_seed": args.test_seed,
+            "batch": args.batch,
+            "load_state": args.load_state,
+            "metrics": initial,
+        }, sort_keys=True))
+        return
     encoder.train()
     history = []
     times = []
@@ -241,7 +287,7 @@ def main() -> None:
     print(json.dumps({
         "method": "phase7_forward_p1_image_encoder",
         "decoder_kind": args.decoder_kind,
-        "patch_cells": args.patch_cells if args.decoder_kind == "patch" else None,
+        "patch_cells": args.patch_cells if args.decoder_kind in ("patch", "hybrid") else None,
         "training_objective": "image_only_pixel_MSE" if args.training_objective == "image" else "target_query_map_vector_MSE",
         "target_map_use": "evaluation_only" if args.training_objective == "image" else "training_supervision_and_evaluation",
         "target_family": args.target_family,
@@ -254,14 +300,16 @@ def main() -> None:
         "train_count": args.train_count,
         "test_count": args.test_count,
         "train_seed": 55101,
-        "test_seed": 99317,
+        "test_seed": args.test_seed,
         "steps": args.steps,
         "learning_rate": args.learning_rate,
         "adam_eps": args.adam_eps,
         "feature_side": encoder.feature_side,
         "first_step_last_two_level_head_gradient_max":
             first_step_fine_head_gradient_max,
-        "seed_passes": args.seed_passes if args.decoder_kind == "colored" else None,
+        "seed_passes": args.seed_passes if args.decoder_kind in ("colored", "hybrid") else None,
+        "seed_mechanism": "patch" if args.decoder_kind == "hybrid" else args.decoder_kind,
+        "refinement_mechanism": "colored_new_vertex" if args.decoder_kind == "hybrid" else args.decoder_kind,
         "patch_passes_per_level": 4 if args.decoder_kind == "patch" else None,
         "width": args.width,
         "feedback_passes": args.feedback_passes,
