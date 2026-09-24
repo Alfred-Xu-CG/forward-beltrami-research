@@ -44,10 +44,12 @@ def main() -> None:
     device = torch.device(args.device)
     if args.mechanism == "vertex":
         layer_type = CertifiedForwardP1Pyramid if args.certified else ForwardP1Pyramid
+        certified_kwargs = {"compute_dtype": dtype} if args.certified else {}
         layer = layer_type(
             args.seed_side, args.side, seed_passes=args.seed_passes,
             safety_fraction=0.85, raw_span=2.0, minimum_jacobian=0.05,
             checkpoint_passes=args.checkpoint_passes,
+            **certified_kwargs,
         ).to(device)
         span = lambda n: 2 / (n - 1)
     else:
