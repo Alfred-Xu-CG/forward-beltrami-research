@@ -6,6 +6,40 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from .photometric_hint import physical_image_gradient
+
+
+def ridge_local_flow_features(
+    fixed: torch.Tensor, moving: torch.Tensor, *,
+    window: int = 5, ridge: float = 1.0, scale: float = .02,
+) -> torch.Tensor:
+    """Differentiable two-channel local first-order displacement proposal.
+
+    At each image pixel solve the positive 2x2 ridge normal matrix formed
+    from a local average of moving-image gradients. This is a feature, not
+    a deformation or a topology guarantee; the P1 decoder remains decisive.
+    """
+    if fixed.shape != moving.shape or fixed.ndim != 4 or fixed.shape[1] != 1:
+        raise ValueError("fixed/moving must be matching BCHW grayscale images")
+    if window < 1 or window % 2 != 1 or ridge <= 0 or scale <= 0:
+        raise ValueError("window must be odd and ridge/scale positive")
+    gradient = physical_image_gradient(moving)
+    gx, gy = gradient[:, :1], gradient[:, 1:]
+    residual = fixed - moving
+    mean = lambda values: F.avg_pool2d(
+        values, window, stride=1, padding=window // 2,
+        count_include_pad=False,
+    )
+    gxx = mean(gx * gx) + ridge
+    gxy = mean(gx * gy)
+    gyy = mean(gy * gy) + ridge
+    bx = mean(gx * residual)
+    by = mean(gy * residual)
+    determinant = gxx * gyy - gxy.square()
+    dx = (gyy * bx - gxy * by) / determinant
+    dy = (gxx * by - gxy * bx) / determinant
+    return torch.tanh(torch.cat((dx, dy), dim=1) / scale)
+
 
 class ForwardP1ImageEncoder(nn.Module):
     """Predict every seed/refinement latent from two images and coordinates.
@@ -23,6 +57,7 @@ class ForwardP1ImageEncoder(nn.Module):
         seed_passes: int = 2,
         feature_side: int | None = None,
         width: int = 16,
+        flow_hint: bool = False,
     ) -> None:
         super().__init__()
         if width < 2 or seed_side < 3 or seed_passes < 0:
@@ -30,9 +65,10 @@ class ForwardP1ImageEncoder(nn.Module):
         self.seed_side = seed_side
         self.level_sides = tuple(level_sides)
         self.seed_passes = seed_passes
+        self.flow_hint = flow_hint
         self.feature_side = feature_side or min(self.level_sides[-1] if self.level_sides else seed_side, 257)
         self.stem = nn.Sequential(
-            nn.Conv2d(4, width, 3, padding=1), nn.GELU(),
+            nn.Conv2d(6 if flow_hint else 4, width, 3, padding=1), nn.GELU(),
             nn.Conv2d(width, width, 3, padding=1), nn.GELU(),
         )
         self.context = nn.ModuleList(
@@ -56,7 +92,12 @@ class ForwardP1ImageEncoder(nn.Module):
         axis = torch.arange(self.feature_side, device=pair.device, dtype=pair.dtype) / (self.feature_side - 1)
         yy, xx = torch.meshgrid(axis, axis, indexing="ij")
         coordinates = torch.stack((xx, yy), dim=0)[None].expand(batch, -1, -1, -1)
-        fine = self.stem(torch.cat((pair, coordinates), dim=1))
+        feature_channels = (pair, coordinates)
+        if self.flow_hint:
+            feature_channels += (
+                ridge_local_flow_features(pair[:, :1], pair[:, 1:]),
+            )
+        fine = self.stem(torch.cat(feature_channels, dim=1))
         current, fused = fine, fine
         for block in self.context:
             current = block(F.avg_pool2d(current, 2))
@@ -87,9 +128,11 @@ class PatchPyramidImageEncoder(ForwardP1ImageEncoder):
     def __init__(
         self, seed_side: int, level_sides: tuple[int, ...], *,
         feature_side: int | None = None, width: int = 16,
+        flow_hint: bool = False,
     ) -> None:
         super().__init__(seed_side, level_sides, seed_passes=4,
-                         feature_side=feature_side, width=width)
+                         feature_side=feature_side, width=width,
+                         flow_hint=flow_hint)
         self.level_heads = nn.ModuleList(
             nn.ModuleList(nn.Conv2d(width, 2, 1) for _ in range(4))
             for _ in level_sides
