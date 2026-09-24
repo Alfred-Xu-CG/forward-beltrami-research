@@ -92,3 +92,26 @@ def test_hybrid_can_chain_two_coarse_endpoint_fields() -> None:
     )
     assert all(bool(torch.isfinite(g).all()) for g in gradients)
     assert all(float(g.abs().amax()) > 0 for g in gradients)
+
+
+def test_hybrid_checkpointed_refinement_matches_plain_output_and_vjp() -> None:
+    generator = torch.Generator().manual_seed(20260924)
+    raw = (
+        .1 * torch.randn((1, 15, 15, 2), generator=generator, dtype=torch.float64),
+        .1 * torch.randn((1, 31, 31, 2), generator=generator, dtype=torch.float64),
+        .1 * torch.randn((1, 63, 63, 2), generator=generator, dtype=torch.float64),
+    )
+    def run(checkpoint_levels: bool) -> tuple[torch.Tensor, tuple[torch.Tensor, ...]]:
+        layer = HybridPatchSeedVertexP1Pyramid(
+            17, 65, patch_cells=4, seed_cycles=4,
+            checkpoint_levels=checkpoint_levels,
+        )
+        fields = tuple(value.detach().clone().requires_grad_() for value in raw)
+        mapped = layer(fields[0], fields[1:])
+        objective = (mapped[..., 0].square() + .3 * mapped[..., 1].square()).mean()
+        return mapped.detach(), torch.autograd.grad(objective, fields)
+    plain_map, plain_grads = run(False)
+    checked_map, checked_grads = run(True)
+    torch.testing.assert_close(checked_map, plain_map, atol=0, rtol=0)
+    for checked, plain in zip(checked_grads, plain_grads):
+        torch.testing.assert_close(checked, plain, atol=1e-14, rtol=1e-12)

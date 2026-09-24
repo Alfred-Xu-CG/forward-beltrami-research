@@ -72,10 +72,27 @@ def replace_test_appearance(
     return shifted_fixed, shifted_moving, true_map
 
 
+def sinusoidal_mode_coefficients(
+    mapped: torch.Tensor, cycles: int,
+) -> torch.Tensor:
+    """Project each two-component query displacement onto a known sine mode."""
+    if mapped.ndim != 4 or mapped.shape[-1] != 2 or cycles < 1:
+        raise ValueError("mapped must be BHWC2 and cycles must be positive")
+    height, width = mapped.shape[1:3]
+    xx = torch.linspace(0, 1, width, device=mapped.device, dtype=mapped.dtype)
+    yy = torch.linspace(0, 1, height, device=mapped.device, dtype=mapped.dtype)
+    gy, gx = torch.meshgrid(yy, xx, indexing="ij")
+    phi = torch.sin(2 * math.pi * cycles * gx) * torch.sin(2 * math.pi * cycles * gy)
+    identity = torch.stack((gx, gy), dim=-1)
+    return ((mapped - identity) * phi[None, ..., None]).sum(dim=(1, 2)) / phi.square().sum()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--side", type=int, default=257)
     parser.add_argument("--decoder-kind", choices=("colored", "patch", "hybrid"), default="colored")
+    parser.add_argument("--checkpoint-levels", action="store_true",
+                        help="Recompute hybrid F1 refinement passes during VJP to reduce saved activations.")
     parser.add_argument("--patch-cells", type=int, default=8)
     parser.add_argument("--image-side", type=int, default=512)
     parser.add_argument("--target-family", choices=("base", "high32", "high64", "high128"), default="high32")
@@ -101,6 +118,8 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--adam-eps", type=float, default=1e-8)
     parser.add_argument("--training-objective", choices=("image", "map"), default="image")
+    parser.add_argument("--high128-mode-weight", type=float, default=0.0,
+                        help="Oracle diagnostic: add supervised high128 projection error to the image loss.")
     parser.add_argument("--feedback-passes", type=int, default=0)
     parser.add_argument("--feedback-side", type=int, default=None,
                         help="Apply safe image feedback on a pyramid level before finer refinement.")
@@ -126,6 +145,14 @@ def main() -> None:
         raise ValueError("dimensions, counts, batch and steps must be positive")
     if args.decoder_kind == "hybrid" and args.feedback_passes:
         raise ValueError("hybrid decoder has no intermediate feedback path")
+    if args.checkpoint_levels and args.decoder_kind != "hybrid":
+        raise ValueError("--checkpoint-levels currently applies only to hybrid")
+    if args.high128_mode_weight < 0 or not math.isfinite(args.high128_mode_weight) or (
+        args.high128_mode_weight and (
+            args.target_family != "high128" or args.training_objective != "image"
+        )
+    ):
+        raise ValueError("high128 mode supervision requires a finite nonnegative weight, high128 data and image training")
     if not math.isfinite(args.flow_feature_gain):
         raise ValueError("--flow-feature-gain must be finite")
     if not 0 <= args.flow_feature_dropout < 1 or (args.flow_feature_dropout and not args.flow_hint):
@@ -178,6 +205,7 @@ def main() -> None:
             17, args.side, patch_cells=args.patch_cells,
             seed_cycles=args.seed_passes,
             minimum_jacobian=.05,
+            checkpoint_levels=args.checkpoint_levels,
             compute_dtype=torch.float64,
         ).to(device)
         encoder = ForwardP1ImageEncoder(
@@ -293,12 +321,19 @@ def main() -> None:
     @torch.no_grad()
     def evaluate(dataset: tuple[torch.Tensor, ...]) -> dict[str, float]:
         image_errors, map_errors, margins = [], [], []
+        mode_errors, mode_predictions, mode_truths = [], [], []
         identity_outputs = 0
         for start in range(0, dataset[0].shape[0], args.batch):
             fixed, moving, true_map = (t[start:start + args.batch] for t in dataset)
             loss, control, query = forward(fixed, moving)
             image_errors.append(float(loss) * fixed.shape[0])
             map_errors.append(float((query.reshape_as(true_map) - true_map).square().sum(dim=-1).mean()) * fixed.shape[0])
+            if args.target_family == "high128":
+                predicted_mode = sinusoidal_mode_coefficients(query, 128)
+                true_mode = sinusoidal_mode_coefficients(true_map, 128)
+                mode_errors.append(float((predicted_mode - true_mode).square().sum(dim=-1).sum()))
+                mode_predictions.append(float(predicted_mode.square().sum(dim=-1).sum()))
+                mode_truths.append(float(true_mode.square().sum(dim=-1).sum()))
             margins.append(minimum_jacobian(control))
             if output_identity is not None:
                 identity_outputs += int(torch.all(
@@ -306,12 +341,19 @@ def main() -> None:
                     dim=(1, 2, 3),
                 ).sum())
         count = dataset[0].shape[0]
-        return {
+        result = {
             "image_mse": sum(image_errors) / count,
             "query_map_vector_rmse": math.sqrt(sum(map_errors) / count),
             "minimum_jacobian": min(margins),
             "identity_outputs": identity_outputs if output_identity is not None else None,
         }
+        if mode_errors:
+            result.update({
+                "high128_mode_vector_rmse": math.sqrt(sum(mode_errors) / count),
+                "high128_predicted_mode_rms": math.sqrt(sum(mode_predictions) / count),
+                "high128_true_mode_rms": math.sqrt(sum(mode_truths) / count),
+            })
+        return result
 
     encoder.eval()
     initial = evaluate(test)
@@ -332,6 +374,7 @@ def main() -> None:
             "flow_hint": args.flow_hint,
             "flow_feature_gain": args.flow_feature_gain,
             "certify_output": args.certify_output or args.decoder_kind == "hybrid",
+            "checkpoint_levels": args.checkpoint_levels,
             "metrics": initial,
         }, sort_keys=True))
         return
@@ -359,6 +402,12 @@ def main() -> None:
             image_loss if args.training_objective == "image"
             else (query.reshape_as(true_map) - true_map).square().sum(dim=-1).mean()
         )
+        if args.high128_mode_weight:
+            predicted_mode = sinusoidal_mode_coefficients(query, 128)
+            true_mode = sinusoidal_mode_coefficients(true_map, 128)
+            loss = loss + args.high128_mode_weight * (
+                predicted_mode - true_mode
+            ).square().sum(dim=-1).mean()
         if not torch.isfinite(loss).item():
             raise RuntimeError(f"nonfinite training loss at step {step}")
         loss.backward()
@@ -396,12 +445,22 @@ def main() -> None:
         "method": "phase7_forward_p1_image_encoder",
         "decoder_kind": args.decoder_kind,
         "patch_cells": args.patch_cells if args.decoder_kind in ("patch", "hybrid") else None,
-        "training_objective": "image_only_pixel_MSE" if args.training_objective == "image" else "target_query_map_vector_MSE",
+        "training_objective": (
+            "image_pixel_MSE_plus_oracle_high128_mode" if args.high128_mode_weight else
+            "image_only_pixel_MSE" if args.training_objective == "image" else
+            "target_query_map_vector_MSE"
+        ),
+        "high128_mode_weight": args.high128_mode_weight,
         "flow_hint": args.flow_hint,
         "flow_feature_gain": args.flow_feature_gain,
         "flow_feature_dropout": args.flow_feature_dropout,
         "certify_output": args.certify_output or args.decoder_kind == "hybrid",
-        "target_map_use": "evaluation_only" if args.training_objective == "image" else "training_supervision_and_evaluation",
+        "checkpoint_levels": args.checkpoint_levels,
+        "target_map_use": (
+            "mode_projection_supervision_and_evaluation" if args.high128_mode_weight else
+            "evaluation_only" if args.training_objective == "image" else
+            "training_supervision_and_evaluation"
+        ),
         "target_family": args.target_family,
         "side": args.side,
         "control_vertices": args.side ** 2,

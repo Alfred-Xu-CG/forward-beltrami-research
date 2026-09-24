@@ -52,3 +52,13 @@ def test_image_encoder_accepts_flow_feature_without_changing_output_contract() -
     assert levels[0].shape == (2, 31, 31, 2)
     assert levels[1].shape == (2, 63, 63, 2)
     assert model.stem[0].in_channels == 6
+
+
+def test_one_by_one_latent_head_commutes_with_bilinear_feature_upsampling() -> None:
+    features = torch.randn(2, 4, 17, 17, dtype=torch.float64)
+    head = torch.nn.Conv2d(4, 2, 1, dtype=torch.float64)
+    fine = head(F.interpolate(features, size=(65, 65), mode="bilinear", align_corners=True))
+    coarse_then_fine = F.interpolate(
+        head(features), size=(65, 65), mode="bilinear", align_corners=True,
+    )
+    torch.testing.assert_close(fine, coarse_then_fine, atol=3e-15, rtol=0)
