@@ -20,9 +20,12 @@ def main() -> None:
     parser.add_argument("--side", type=int, default=4097)
     parser.add_argument("--count", type=int, default=32)
     parser.add_argument("--amplitude", type=float, default=5.0)
+    parser.add_argument("--vjp-count", type=int, default=0)
+    parser.add_argument("--vjp-amplitude", type=float, default=5.0)
     parser.add_argument("--device", default="cuda:0")
     args = parser.parse_args()
-    if args.side < 3 or args.count < 2 or args.amplitude <= 0:
+    if (args.side < 3 or args.count < 2 or args.amplitude <= 0
+            or args.vjp_count < 0 or args.vjp_amplitude <= 0):
         raise ValueError("invalid side/count/amplitude")
     device = torch.device(args.device)
     axis = torch.arange(args.side, dtype=torch.float32, device=device) / (args.side - 1)
@@ -97,6 +100,53 @@ def main() -> None:
             large_gap_vertices += int((
                 gap.abs().amax(dim=-1) > 0.01 / (args.side - 1)
             ).sum())
+    vjp_report = None
+    if args.vjp_count:
+        relative_errors = []
+        maximum_absolute_error = 0.
+        eager_gradient_rms = []
+        compiled_gradient_rms = []
+        all_finite = True
+        vjp_accepted = [0, 0]
+        for _ in range(args.vjp_count):
+            logits = (
+                args.vjp_amplitude * torch.randn(
+                    1, args.side - 2, args.side - 2, 2,
+                    device=device, generator=generator,
+                )
+            ).requires_grad_()
+            cotangent = torch.randn(
+                identity.shape, device=device, generator=generator,
+            )
+            gradients = []
+            for index, layer in enumerate((eager, compiled)):
+                output = layer(identity, logits, area_floor=area_floor)
+                _, accepted = certify_p1_or_identity(output, identity)
+                vjp_accepted[index] += int(accepted.item())
+                gradients.append(torch.autograd.grad(
+                    output, logits, grad_outputs=cotangent,
+                )[0].detach())
+            delta = gradients[0] - gradients[1]
+            maximum_absolute_error = max(
+                maximum_absolute_error, float(delta.abs().amax()),
+            )
+            relative_errors.append(float(
+                (delta.square().sum() / gradients[0].square().sum()).sqrt()
+            ))
+            eager_gradient_rms.append(float(gradients[0].square().mean().sqrt()))
+            compiled_gradient_rms.append(float(gradients[1].square().mean().sqrt()))
+            all_finite &= all(bool(torch.isfinite(g).all()) for g in gradients)
+        vjp_report = {
+            "count": args.vjp_count,
+            "amplitude": args.vjp_amplitude,
+            "all_finite": all_finite,
+            "eager_accepted": vjp_accepted[0],
+            "compiled_accepted": vjp_accepted[1],
+            "maximum_absolute_error": maximum_absolute_error,
+            "relative_l2_errors": relative_errors,
+            "eager_gradient_rms": eager_gradient_rms,
+            "compiled_gradient_rms": compiled_gradient_rms,
+        }
     print(json.dumps({
         "side": args.side,
         "control_vertices": args.side ** 2,
@@ -118,6 +168,7 @@ def main() -> None:
         "compiled_hot_forward_median_seconds": statistics.median(compiled_times[1:]),
         "eager_first_seconds": eager_times[0],
         "compiled_first_seconds": compiled_times[0],
+        "vjp": vjp_report,
     }, sort_keys=True))
 
 
