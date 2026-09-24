@@ -13,6 +13,7 @@ import time
 
 import torch
 import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint
 
 from phase6_train_multisample_image import make_dataset
 from phase7_train_forward_pyramid_image import (
@@ -23,7 +24,9 @@ from qcopt.neural_bijection.dense import (
     SafeColoredVertexRelaxation, certify_p1_or_identity,
     exact_dyadic_p1_refine, local_photometric_logits,
 )
-from qcopt.neural_bijection.dense.photometric_hint import physical_image_gradient
+from qcopt.neural_bijection.dense.photometric_hint import (
+    bilinear_image_value_and_gradient, physical_image_gradient,
+)
 from qcopt.neural_bijection.tutte.dense_warp import StructuredDenseQueryTable
 
 
@@ -37,9 +40,15 @@ def main() -> None:
     parser.add_argument("--passes-per-level", type=int, default=1)
     parser.add_argument("--window", type=int, default=3)
     parser.add_argument("--ridge", type=float, default=1.0)
+    parser.add_argument("--gradient-mode", choices=("central", "bilinear_exact"),
+                        default="central")
+    parser.add_argument("--area-floor-jacobian", type=float, default=0.05,
+                        help="Nominal normalized double-area floor for each safe fine-grid update.")
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--check-vjp", action="store_true",
                         help="Backpropagate one image loss through both fine feedback levels and encoder.")
+    parser.add_argument("--compare-checkpoint-vjp", action="store_true",
+                        help="Compare the same 1025-square output and all used parameter VJPs with/without recomputation.")
     parser.add_argument("--train-steps", type=int, default=0,
                         help="Image-only joint training of the coarse encoder and two feedback gains.")
     parser.add_argument("--train-count", type=int, default=32)
@@ -60,6 +69,8 @@ def main() -> None:
                         help="Train only feedback gains and/or learned correction, not the image encoder.")
     parser.add_argument("--freeze-gains", action="store_true",
                         help="Do not optimize two local-feedback gains.")
+    parser.add_argument("--checkpoint-feedback", action="store_true",
+                        help="Recompute each full fine-level feedback update in VJP.")
     parser.add_argument("--train-correction-learning-rate", type=float, default=0.002)
     parser.add_argument("--test-appearance", choices=("standard", "spots", "crosswaves"),
                         default="standard")
@@ -72,6 +83,8 @@ def main() -> None:
         raise ValueError("counts, batch and passes must be positive")
     if args.correction_only_final and not args.learned_residual:
         raise ValueError("--correction-only-final requires --learned-residual")
+    if not 0 <= args.area_floor_jacobian < 1 or not math.isfinite(args.area_floor_jacobian):
+        raise ValueError("--area-floor-jacobian must be finite and in [0,1)")
     torch.manual_seed(20260924)
     device = torch.device(args.device)
     full = HybridPatchSeedVertexP1Pyramid(
@@ -133,14 +146,20 @@ def main() -> None:
     def learned_proposal(fixed: torch.Tensor, moving: torch.Tensor,
                          current: torch.Tensor, side: int) -> torch.Tensor:
         query = feedback_tables[side].interpolate(current.flatten(1, 2)).float()
-        warped = F.grid_sample(
-            moving, 2 * query - 1,
-            mode="bilinear", padding_mode="border", align_corners=True,
-        )
-        warped_gradient = F.grid_sample(
-            physical_image_gradient(moving), 2 * query - 1,
-            mode="bilinear", padding_mode="border", align_corners=True,
-        ) / 32.0
+        if args.gradient_mode == "bilinear_exact":
+            warped, warped_gradient = bilinear_image_value_and_gradient(
+                moving, query,
+            )
+        else:
+            warped = F.grid_sample(
+                moving, 2 * query - 1,
+                mode="bilinear", padding_mode="border", align_corners=True,
+            )
+            warped_gradient = F.grid_sample(
+                physical_image_gradient(moving), 2 * query - 1,
+                mode="bilinear", padding_mode="border", align_corners=True,
+            )
+        warped_gradient = warped_gradient / 32.0
         features = torch.cat((
             fixed, warped, 100.0 * (fixed - warped), warped_gradient,
             image_coordinates.expand(fixed.shape[0], -1, -1, -1),
@@ -156,17 +175,36 @@ def main() -> None:
         current = coarse(seed[0], levels[:4])
         for level, side in enumerate((513, 1025)):
             current = exact_dyadic_p1_refine(current)
-            for _ in range(args.passes_per_level):
-                hint = local_photometric_logits(
-                    fixed, moving, current.float(),
-                    window=args.window, ridge=args.ridge, raw_span=2.0,
-                ).to(torch.float64)
-                floor = current.new_full((current.shape[0],), .05 / (side - 1) ** 2)
-                gain = torch.exp(log_gains[level].clamp(-4, 4))
-                proposal = gain * hint
-                if args.learned_residual and (not args.correction_only_final or side == 1025):
-                    proposal = proposal + learned_proposal(fixed, moving, current, side)
-                current = relax[side](current, proposal, area_floor=floor)
+            def run_level(base: torch.Tensor, *, current_side: int = side,
+                          current_level: int = level) -> torch.Tensor:
+                updated = base
+                for _ in range(args.passes_per_level):
+                    hint = local_photometric_logits(
+                        fixed, moving, updated.float(),
+                        window=args.window, ridge=args.ridge, raw_span=2.0,
+                        gradient_mode=args.gradient_mode,
+                    ).to(torch.float64)
+                    floor = updated.new_full(
+                        (updated.shape[0],),
+                        args.area_floor_jacobian / (current_side - 1) ** 2,
+                    )
+                    gain = torch.exp(log_gains[current_level].clamp(-4, 4))
+                    proposal = gain * hint
+                    if args.learned_residual and (
+                        not args.correction_only_final or current_side == 1025
+                    ):
+                        proposal = proposal + learned_proposal(
+                            fixed, moving, updated, current_side,
+                        )
+                    updated = relax[current_side](
+                        updated, proposal, area_floor=floor,
+                    )
+                return updated
+            current = (
+                checkpoint(run_level, current, use_reentrant=False)
+                if args.checkpoint_feedback and torch.is_grad_enabled()
+                else run_level(current)
+            )
         return certify_p1_or_identity(current, full.final_identity)
 
     train_report = None
@@ -257,6 +295,7 @@ def main() -> None:
             "freeze_coarse": args.freeze_coarse,
             "freeze_gains": args.freeze_gains,
             "correction_only_final": args.correction_only_final,
+            "checkpoint_feedback": args.checkpoint_feedback,
             "last_training_image_mse": float(loss.detach()),
         }
         if args.save_state:
@@ -332,14 +371,85 @@ def main() -> None:
         "load_feedback_state": args.load_feedback_state,
         "learned_residual": args.learned_residual,
         "correction_only_final": args.correction_only_final,
+        "checkpoint_feedback": args.checkpoint_feedback,
         "test_appearance": args.test_appearance,
         "batch": args.batch, "passes_per_level": args.passes_per_level,
         "window": args.window, "ridge": args.ridge,
+        "gradient_mode": args.gradient_mode,
+        "area_floor_jacobian": args.area_floor_jacobian,
         "control_vertices": 1025 ** 2, "control_faces": 2 * 1024 ** 2,
         "image_side": 512, "results": result,
         "training": train_report,
         "feedback_gains": torch.exp(log_gains.detach()).tolist(),
     }
+    if args.compare_checkpoint_vjp:
+        fixed, moving, _ = (tensor[:1] for tensor in data)
+        parameters = list(encoder.parameters()) + [log_gains]
+        if args.learned_residual:
+            parameters += list(correction_net.parameters())
+
+        def one_vjp(checkpointed: bool):
+            args.checkpoint_feedback = checkpointed
+            if device.type == "cuda":
+                torch.cuda.reset_peak_memory_stats(device)
+                torch.cuda.synchronize(device)
+            began_vjp = time.perf_counter()
+            mapped, accepted = feedback_forward(fixed, moving)
+            query = table.interpolate(mapped.flatten(1, 2)).float()
+            warped = F.grid_sample(
+                moving, 2 * query - 1, mode="bilinear",
+                padding_mode="border", align_corners=True,
+            )
+            loss = (warped - fixed).square().mean()
+            gradients = torch.autograd.grad(
+                loss, parameters, allow_unused=True,
+            )
+            if device.type == "cuda":
+                torch.cuda.synchronize(device)
+            return {
+                "mapped": mapped.detach(),
+                "accepted": bool(accepted.item()),
+                "loss": float(loss.detach()),
+                "gradients": tuple(
+                    gradient.detach() if gradient is not None else None
+                    for gradient in gradients
+                ),
+                "seconds": time.perf_counter() - began_vjp,
+                "peak_cuda_allocated_bytes": (
+                    torch.cuda.max_memory_allocated(device)
+                    if device.type == "cuda" else None
+                ),
+            }
+
+        ordinary = one_vjp(False)
+        recomputed = one_vjp(True)
+        deltas = [
+            float((first - second).abs().amax())
+            for first, second in zip(
+                ordinary["gradients"], recomputed["gradients"],
+            )
+            if first is not None and second is not None
+        ]
+        mismatched_usage = sum(
+            (first is None) != (second is None)
+            for first, second in zip(
+                ordinary["gradients"], recomputed["gradients"],
+            )
+        )
+        report["checkpoint_comparison"] = {
+            "accepted_both": ordinary["accepted"] and recomputed["accepted"],
+            "loss_difference": abs(ordinary["loss"] - recomputed["loss"]),
+            "output_max_coordinate_difference": float(
+                (ordinary["mapped"] - recomputed["mapped"]).abs().amax()
+            ),
+            "parameter_vjp_max_absolute_difference": max(deltas),
+            "parameter_gradient_usage_mismatches": mismatched_usage,
+            "ordinary_seconds": ordinary["seconds"],
+            "checkpoint_seconds": recomputed["seconds"],
+            "ordinary_peak_cuda_allocated_bytes": ordinary["peak_cuda_allocated_bytes"],
+            "checkpoint_peak_cuda_allocated_bytes": recomputed["peak_cuda_allocated_bytes"],
+        }
+        args.checkpoint_feedback = False
     if args.check_vjp:
         fixed, moving, _ = (tensor[:1] for tensor in data)
         encoder.zero_grad(set_to_none=True)
