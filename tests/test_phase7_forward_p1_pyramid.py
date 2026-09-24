@@ -55,6 +55,26 @@ def test_one_refinement_safe_logits_reach_independent_smooth_target() -> None:
     assert gradient.abs().sum() > 0
 
 
+def test_float32_guard_can_clip_an_ideal_safe_teacher_step() -> None:
+    """Topology is preserved, but fixed-dtype reachability needs a guard condition."""
+    base = _identity(3, dtype=torch.float32).clone()
+    base[0, 1, 1, 1] = 1e-5
+    proposal = base.clone()
+    proposal[0, 1, 1, 1] -= 1e-6
+    base_min_jacobian = certify_convex_quad_output(base)
+    assert base_min_jacobian > 0
+    assert certify_convex_quad_output(proposal) > 0.8 * base_min_jacobian
+    logits = torch.zeros((1, 1, 1, 2), dtype=torch.float32)
+    logits[0, 0, 0, 1] = torch.atanh(torch.tensor(-1e-6))
+    output = SafeColoredVertexRelaxation(
+        3, safety_fraction=0.75, motion_mode="radial", raw_span=2.0,
+        index_mode="generated",
+    )(base, logits)
+    actual_step = float(output[0, 1, 1, 1] - base[0, 1, 1, 1])
+    assert -1e-7 < actual_step < 0  # Raw proposal is -1e-6, ten times larger.
+    assert certify_convex_quad_output(output) > 0
+
+
 def test_pyramid_all_finite_latents_preserve_faces_and_boundary() -> None:
     torch.manual_seed(7781)
     decoder = ForwardP1Pyramid(5, 33, seed_passes=2)

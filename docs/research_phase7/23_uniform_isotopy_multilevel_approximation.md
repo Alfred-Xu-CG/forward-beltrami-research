@@ -10,7 +10,7 @@
 2. $F_t$ 关于空间 $C^{1,1}$，关于 $t$ 连续可微，且对所有 $x,t$ 有 $\det DF_t(x)\ge m>0$、$\|DF_t(x)\|_2\le L$、$\|DF_t(x)-DF_t(y)\|_2\le K\|x-y\|_2$、$\|\partial_tF_t(x)\|_2\le M$；
 3. 外边界像与恒等边界一致，故每个局部正向 $F_t$ 是全局同胚。此条的全局结论也可单独假设；下面只用前两条的数值界与边界。
 
-固定 F1 径向局部更新的安全比例 $0<\gamma<1$、每格原始位移跨度 $\alpha h$（代码默认 $\alpha=2$），以及面积 floor $\beta h^2$，其中 $0\le\beta<m/4$。**定理**：存在仅依赖 $m,L,K,M,\gamma,\alpha,\beta$ 的二进制粗网格间距 $H_0=2^{-k_0}$、粗种子轮数 $N_0<\infty$，使得对每个 $h=H_0/2^r$，可以给 [`ForwardP1Pyramid`](../../src/qcopt/neural_bijection/dense/forward_p1_pyramid.py) 的粗种子 $N_0$ 轮与之后**每层一轮**局部四颜色更新提供有限 latent，在精确算术下输出**恰为** $I_hF$ 的固定网格顶点表。所有中间图都有正向面和恒等边界；最终是一张固定 $\mathcal T_h$ 的 P1 同胚。相对连续目标有
+固定 F1 径向局部更新的安全比例 $0<\gamma<1$、每格原始位移跨度 $\alpha h$（代码默认 $\alpha=2$），以及面积 floor $\beta h^2$，其中 $0\le\beta<m/4$。这里的**实数定理**把仅为浮点VJP稳定而设的分母 `guard` 取为0；代码原语另有与dtype相关的正guard，下文给出其不影响一次到位的附加条件。**定理**：存在仅依赖 $m,L,K,M,\gamma,\alpha,\beta$ 的二进制粗网格间距 $H_0=2^{-k_0}$、粗种子轮数 $N_0<\infty$，使得对每个 $h=H_0/2^r$，可以给与 [`ForwardP1Pyramid`](../../src/qcopt/neural_bijection/dense/forward_p1_pyramid.py) 同构的理想实数算子的粗种子 $N_0$ 轮与之后**每层一轮**局部四颜色更新提供有限 latent，输出**恰为** $I_hF$ 的固定网格顶点表。所有中间图都有正向面和恒等边界；最终是一张固定 $\mathcal T_h$ 的 P1 同胚。相对连续目标有
 
 \[
 \|I_hF-F\|_{L^\infty(\Omega)}\le Kh^2.
@@ -35,6 +35,10 @@ z_{v,c}=\operatorname{atanh}\!\left(\frac{Y^{\rm target}_{v,c}-Y^{\rm base}_{v,c
 \]
 
 就让原始提议等于目标位移。一轮后**恰好**达到目标顶点表。上界 $d$ 按欧氏距离写，足以推出每坐标真小于 $\alpha s$；非动点 latent 取零。这个引理给的是一个可检查的充分条件，不是必要条件。
+
+对实际dtype代码，还需单列 `guard=g s^2`，其中 $g=\sqrt{\operatorname{eps}(\mathrm{dtype})}$。上述证明给每个受影响面的允许损失至少 $c s^2$，$c=\min\{\gamma a/2,\ a/2-\beta\}$。若**额外满足** $c>g$，代码分母中的guard也不活跃，因而在忽略运算舍入的形式模型下仍可一步到位。若 $c\le g$，拓扑安全性仍成立，但这份证明**不保证代码达到teacher目标**；尤其不能把理想算子对任意小$m$的定理无条件赋给固定float32实现。提高计算精度或改变稳定化算子须各自重新验证。
+
+[最小可复现实验](../../tests/test_phase7_forward_p1_pyramid.py)把3×3网格中心置于$(0.5,10^{-5})$，提议向下移动$10^{-6}$：起点与完整提议图都正向，但float32实际安全算子只移动约$4.34\times10^{-8}$，因为guard大于该极薄面允许量。这不是拓扑反例，而是“实数一步到位定理不能无条件赋给固定dtype代码”的直接反例。
 
 ## 粗网格的有限轮 seed
 
@@ -66,7 +70,7 @@ z_{v,c}=\operatorname{atanh}\!\left(\frac{Y^{\rm target}_{v,c}-Y^{\rm base}_{v,c
 
 ## 范围、文献边界和待实证事项
 
-这比[patch-supported 类](21_patch_supported_approximation_theorem.md)宽：位移可跨任意预定 patch seam，两个坐标可耦合，且不必是小形变直线同伦；但它需要一个**带统一正向与导数界的光滑同伦**，对薄到任意小 $m$、无限空间频率或无统一 $M$ 的类不能选择共同 $H_0,N_0$。定理是实数算法，不包括浮点可靠性；[输出筛选](22_numeric_certified_joint_layer.md)可在规定 IEEE 模型下保证实际坐标正向，却可能使某些极端 latent 回退为单位图。该定理也不保证粗 seed 或细 latent 能从图像高效推断；之后的[已知单基函数 1025² 图像训练](25_1025_image_to_fine_latent.md)只是很窄的可辨识性测试，通用空间 latent 推断仍缺。
+这比[patch-supported 类](21_patch_supported_approximation_theorem.md)宽：位移可跨任意预定 patch seam，两个坐标可耦合，且不必是小形变直线同伦；但它需要一个**带统一正向与导数界的光滑同伦**，对薄到任意小 $m$、无限空间频率或无统一 $M$ 的类不能选择共同 $H_0,N_0$。定理是guard-free实数算法，不包括固定dtype的全部可达性与浮点可靠性；[输出筛选](22_numeric_certified_joint_layer.md)可在规定 IEEE 模型下保证实际坐标正向，却可能使某些极端 latent 回退为单位图。该定理也不保证粗 seed 或细 latent 能从图像高效推断；之后的[已知单基函数 1025² 图像训练](25_1025_image_to_fine_latent.md)只是很窄的可辨识性测试，通用空间 latent 推断仍缺。
 
 相同统一同伦类还有[独立的 F2 patch 周期构造](26_f2_uniform_isotopy_approximation.md)：每级四个交错 patch pass、一次到位的条件使用**二次**面面积上界。它与本节 F1 机制的表示结论相似，但运行时间、显存和强形变所需粗轮数不同，不能用本节证明直接替代 F2 的局部引理。
 
