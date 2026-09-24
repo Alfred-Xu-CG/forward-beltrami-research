@@ -23,6 +23,8 @@
 
 allocated/reserved为PyTorch峰值，**含128例评价数据常驻**，不是物理GPU总占用；表的同配置可直接对照。两种首步编译分别约13.72/13.42秒，已有磁盘编译缓存，不能推广冷启动。训练步时的约1%差异小于一般跨进程性能噪声，故这里只能说**未见明显热态代价**，不能断言融合总是等速；粗CNN远小于4097²细网格反传开销。两种模型都在300步和128例留出中通过实际浮点原面证书，最小留出归一化面积约.0497；未在物理8GB卡验证。
 
+完整**batch1推理**另以相同16例数据常驻设置、各6次CUDA同步运行测量，范围含四视图编码、全部P1层、证书、512² dense query插值及图像重采样，不含数据生成、模型构造和编译。丢开每进程第1次特殊化/编译后，后5次中位：首通道方案.08541秒，对称trimmed方案.08868秒，约**3.8%额外热态推理时间**；本次allocated峰值3.206/3.250GB。首计时分别7.36/7.44秒，受既有磁盘缓存影响，也不代表真正无缓存冷启动。原始[首通道6次](phase7_full_forward_timing_C4_firstview_4097_6repeats.json)与[trimmed6次](phase7_full_forward_timing_C4_trimmed_4097_6repeats.json)保留每次耗时。此小差异仅是该GPU、PyTorch版本的单batch实测，不能泛化为复杂度常数。
+
 另用同一训练前检查点、同一32例但**batch4、20步、16例评价**复核容量：[trimmed原始日志](phase7_full_encoder_C4_trimmed_compiled_b4_20.json)及[权重](checkpoints/phase7_full_encoder_C4_trimmed_compiled_b4_20.pt)显示20/20训练步的80个输出与16/16新例全部接受，热态训练步1.0906秒、allocated23.861GB、reserved33.387GB；原首通道同协议[日志](phase7_generated_color_checkpoint_compiled_b4_train20.json)为1.0626秒/24.727GB/34.880GB。两次均在48GB GPU而非物理24/32GB卡。trimmed首步14.10秒与旧batch4的77.48秒差异主要受已有编译磁盘缓存/特殊化影响，不能当架构冷启动优势。这里只能确认batch4可运行，不能由一对进程断言普遍的速度/显存排序。
 
 同协议batch1、20步还运行了**选择性CPU saved-tensor暂存＋7GiB PyTorch allocator模拟上限**：[原始日志](phase7_full_encoder_C4_trimmed_compiled_offload_cap7_20.json)及[权重](checkpoints/phase7_full_encoder_C4_trimmed_compiled_offload_cap7_20.pt)显示20/20训练与16/16新例接受，热态1.647秒/步、CUDA allocated4.082GB、reserved6.531GB，进程RSS历史峰值约16.08GiB。相比[原首通道同协议](82_compiled_color_kernel_full_training_pareto.md)的1.602秒/4.022GB/6.965GB，改进并非无成本；即使allocator限额通过，**仍未在物理8GB或12GB设备验证**。这项资源测试只是说明新输入融合没有把已有容量折中破坏到无法运行。
@@ -34,10 +36,14 @@ allocated/reserved为PyTorch峰值，**含128例评价数据常驻**，不是物
 | 评价条件 | 首通道方案 map RMSE | 去极值平均方案 map RMSE | 去极值平均方案 image MSE | 新方案原面证书 |
 |---|---:|---:|---:|---:|
 | 四独立标准纹理 | 1.49553e-5 | **1.43255e-5** | 2.59076e-9 | 128/128 |
+| 未训练过的三载波`high128_tri`，四标准纹理 | 1.38476e-5 | **1.31994e-5** | 1.80246e-9 | 128/128 |
+| 未训练过的局部包`high128_tiles`，四标准纹理 | 1.36077e-5 | **1.29483e-5** | 1.57855e-9 | 128/128 |
 | 首幅spots、余三幅独立标准 | .00455307 | **.00003204** | 2.67878e-9 | 128/128 |
 | 四幅重复同一标准纹理 | 未在本协议重测 | **.00049063** | 2.16403e-8 | 128/128 |
 
 新方案[完整训练日志](phase7_full_encoder_C4_trimmed_compiled300.json)、[新种子标准纹理](phase7_trained_trimmed_C4_standard_new128.json)、[首通道spots](phase7_trained_trimmed_C4_firstspots_new128.json)、[重复标准通道](phase7_trained_trimmed_C4_duplicate_standard_new128.json)可复算。作为未重训结构消融，旧首通道权重直接应用去极值平均时，标准/首通道spots分别为\(1.43496\times10^{-5}\)/\(3.22347\times10^{-5}\)；旧权重直接作简单四通道**均值**时，spots为\(9.27398\times10^{-5}\)。[相应日志](phase7_compiled_trained_C4_firstspots_trimmed_new128.json)、[均值日志](phase7_compiled_trained_C4_firstspots_mean_new128.json)、[标准trimmed日志](phase7_compiled_trained_C4_standard_trimmed_new128.json)说明结果不是只能靠额外300步训练才出现，但这些同一测试集上的消融不构成独立验证。首通道spots的未重训16例烟测[单列](phase7_compiled_trained_C4_firstspots_trimmed16.json)，没有用它调权重。
+
+两种新形变族的训练后评价原始日志：[tri](phase7_trained_trimmed_C4_high128_tri_new128.json)、[tiles](phase7_trained_trimmed_C4_high128_tiles_new128.json)；旧首视图的对应值见[84号配对报告](84_4097_trained_multiview_channel_order_ood.md)。它们改变了高频几何，但仍共享标准合成纹理机制，不能代表自然图像内容或模态外推。
 
 把已训练trimmed方案的**同一四幅图像**轮换通道后，[128例原始日志](phase7_trained_trimmed_C4_firstspots_rotated_new128.json)的地图RMSE为\(3.203944996\times10^{-5}\)，未轮换为\(3.203945205\times10^{-5}\)；实际最小原面\(J\)分别为.0496321/.0496352。宏观误差几乎不受顺序影响，但浮点运算和CNN的batch执行不是逐位排列不变量；不能把数学对称性写成bitwise保证，两次均须各自通过最终原面证书。
 
