@@ -41,6 +41,8 @@ allocated/reserved为PyTorch峰值，**含128例评价数据常驻**，不是物
 | 首幅spots、余三幅独立标准 | .00455307 | **.00003204** | 2.67878e-9 | 128/128 |
 | 四幅重复同一标准纹理 | 未在本协议重测 | **.00049063** | 2.16403e-8 | 128/128 |
 
+固定四幅独立standard纹理的同组新128例，另外对固定图和移动图各通道加入**独立高斯噪声**\(\sigma=.001\)（两模型使用相同随机种子和噪声实现），不重训时[首通道日志](phase7_trained_firstview_C4_noise001_new128.json)与[trimmed日志](phase7_trained_trimmed_C4_noise001_new128.json)分别得到map RMSE **.000171138 / .000171245**、各128/128通过证书。差异很小且本次trimmed略差，故不能把对一幅稀疏分布外纹理的鲁棒收益推广为独立加性噪声鲁棒收益；噪声导致的地图误差仍比无噪声大一个数量级。
+
 新方案[完整训练日志](phase7_full_encoder_C4_trimmed_compiled300.json)、[新种子标准纹理](phase7_trained_trimmed_C4_standard_new128.json)、[首通道spots](phase7_trained_trimmed_C4_firstspots_new128.json)、[重复标准通道](phase7_trained_trimmed_C4_duplicate_standard_new128.json)可复算。作为未重训结构消融，旧首通道权重直接应用去极值平均时，标准/首通道spots分别为\(1.43496\times10^{-5}\)/\(3.22347\times10^{-5}\)；旧权重直接作简单四通道**均值**时，spots为\(9.27398\times10^{-5}\)。[相应日志](phase7_compiled_trained_C4_firstspots_trimmed_new128.json)、[均值日志](phase7_compiled_trained_C4_firstspots_mean_new128.json)、[标准trimmed日志](phase7_compiled_trained_C4_standard_trimmed_new128.json)说明结果不是只能靠额外300步训练才出现，但这些同一测试集上的消融不构成独立验证。首通道spots的未重训16例烟测[单列](phase7_compiled_trained_C4_firstspots_trimmed16.json)，没有用它调权重。
 
 两种新形变族的训练后评价原始日志：[tri](phase7_trained_trimmed_C4_high128_tri_new128.json)、[tiles](phase7_trained_trimmed_C4_high128_tiles_new128.json)；旧首视图的对应值见[84号配对报告](84_4097_trained_multiview_channel_order_ood.md)。它们改变了高频几何，但仍共享标准合成纹理机制，不能代表自然图像内容或模态外推。
