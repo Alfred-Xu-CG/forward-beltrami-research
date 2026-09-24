@@ -51,6 +51,7 @@ def main() -> None:
     parser.add_argument("--hint-blur-sigma", type=float, default=0.0,
                         help="Gaussian pixel-domain sigma applied only to local photometric hints.")
     parser.add_argument("--window", type=int, default=3)
+    parser.add_argument("--ridge", type=float, default=1.0)
     parser.add_argument("--check-vjp", action="store_true")
     parser.add_argument("--checkpoint-extra", action="store_true")
     parser.add_argument("--timing-repeats", type=int, default=1)
@@ -76,14 +77,16 @@ def main() -> None:
         raise ValueError("invalid extra-level training settings")
     if args.train_loss_scale <= 0:
         raise ValueError("train loss scale must be positive")
-    if args.image_channels < 1 or args.image_channels > 4:
-        raise ValueError("image channels must be in [1,4]")
+    if args.image_channels < 1 or args.image_channels > 16:
+        raise ValueError("image channels must be in [1,16]")
     if args.duplicate_image_channels and args.image_channels == 1:
         raise ValueError("duplicate channels require image-channels > 1")
     if args.image_noise_std < 0:
         raise ValueError("image noise std must be nonnegative")
     if args.hint_blur_sigma < 0 or not math.isfinite(args.hint_blur_sigma):
         raise ValueError("hint blur sigma must be finite and nonnegative")
+    if args.ridge <= 0 or not math.isfinite(args.ridge):
+        raise ValueError("ridge must be finite and positive")
     if args.image_channels > 1 and args.test_appearance != "standard":
         raise ValueError("multichannel appearance is defined for standard only")
     if args.train_extra_steps and args.final_side < 2049:
@@ -276,7 +279,7 @@ def main() -> None:
                 for _ in range(current_passes):
                     hint = local_photometric_logits(
                         hint_fixed, hint_moving, updated.float(),
-                        window=args.window, ridge=1., raw_span=2.,
+                        window=args.window, ridge=args.ridge, raw_span=2.,
                     ).to(geometry_dtype)
                     floor = updated.new_full(
                         (updated.shape[0],), .05 / (current_side - 1) ** 2,
@@ -430,6 +433,7 @@ def main() -> None:
             "control_faces": 2 * (args.final_side - 1) ** 2,
             "image_queries": 512 ** 2,
             "extra_passes": args.extra_passes,
+            "ridge": args.ridge,
             "checkpoint_extra": args.checkpoint_extra,
             "seed": args.seed,
             "target_family": args.target_family,
