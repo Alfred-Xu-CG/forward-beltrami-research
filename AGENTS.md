@@ -1,3 +1,65 @@
+# AGENTS.md — F1/F2 Digital-Topology WSI Research
++
+## Mission and source of truth
+
+Current plan: `docs/digital_topology_wsi/PLAN.md`.
+Goal: useful high-resolution 2D pathology registration with a digital-output-consistent homeomorphic map, not merely a zero-fold toy decoder.
+Both F1 and F2 remain primary. Their schedule and the usefulness of learning must be experimentally established.
+
+## Scope and honesty
+
+Separate G1 geometry, G2 benefit of learning, G3 competitive real-data performance, and G4 dataset/protocol-specific SOTA. Passing tests, using the time budget, or returning identity does not establish G2–G4.
+No claim of exhaustive literature coverage or error-free agents. Cite verified sources and distinguish new derivations from established results.
+Do not revert to broad legacy Beltrami/Tutte/BHF route exploration unless a specific current bottleneck justifies one targeted alternative.
+
+## Geometry
+
+Default deployed map is Q1 on a declared rectangular grid. Protect all four corner determinants of every affected cell, not only the original SW–NE triangles.
+Require consistent boundary, shared-edge values, physical coordinates, and saved-output validation.
+F1 uses all incident constraints and independent colors; F2 uses all affected-cell quadratic bounds and nonconflicting patch passes.
+Never blend accepted maps or silently resample them under an old certificate. Features/raw proposals may be blended before a valid update.
+Report almost-everywhere differentiability, active scaling, rejections and fallbacks. Never detach a safety scale while claiming the true gradient.
+
+## Experiments
+
+Start real pathology baseline/data work in parallel with tiny geometry tests.
+Compare no-network optimization, network prediction, and hybrid refinement using the same safe layer.
+Use patient/block/physical-slide grouping; never split patches from one physical slide across training and test.
+Never use test landmarks, true target boundary, or target maps for inference or model selection.
+Use official evaluation conventions. Keep failure cases in the denominator. Do not call an unavailable hidden-test comparison SOTA.
+
+## Models and delegation
+
+GPT-6 only. Default coordinator/coding: `gpt-6-sol` medium; complex implementation/checking: Sol high; extraction: `gpt-6-luna` low/medium; core math and independent math review: `gpt-6-astra` high.
+Use xhigh/max only for a focused unresolved decision-critical conflict after two distinct attempts. Never claim unavailable model routing or fake independent agents.
+At most three concurrent focused agents. Return short evidence summaries, not whole log dumps.
+
+## Independent checks
+
+Independent review at geometry merge, formal evaluation setup, and final scientific claim. Checker uses separate critical formulas/code paths and at least two deliberate failure fixtures.
+The author is not their own only reviewer. Agreement between agents is not proof; mathematical derivation and independent computation are both needed.
+
+## Autonomy and resources
+
+Autonomously edit, test, measure, retry and stop your own over-budget experiments within permissions. Preserve other users' files, jobs, ports and security rules.
+VPN failure: two brief retries, then local/theory/CPU work; recheck at natural transitions, not continuously.
+Use real elapsed time for the default 24h window; do not fabricate progress timestamps, sleep to fill the window, or equate elapsed time with scientific success. If the environment ends, report a resumable partial state.
+
+## Keep the process light
+
+Do not add hashes/manifests, frozen contracts, duplicate auditing platforms, per-run permanent folders, or speculative infrastructure by default. Use Git, ordinary configs/tests, concise results and saved scientific outputs.
+Do not delete necessary existing safety measures. Respect instruction hierarchy.
+Optional `ars/experiment-agent` and premature `academic-paper` workflows are not appropriate; targeted literature and real-bug debugging are. Disable optional workflows only through supported project-local configuration, never pretend or override mandatory controls.
+
+## Final decision
+
+Read actual saved maps and evaluation outputs. Report G1/G2/G3/G4 independently as PASS/FAIL/NOT TESTED, strongest counterexample, best viable architecture, baseline coverage, and at most three next tasks.
+A strong alternative outperforming F1/F2 is a legitimate research finding, not a result to suppress.
+
+## Archived Phase VII and Phase VI instructions
+
+The material below records prior stages only. The current phase above and `docs/digital_topology_wsi/PLAN.md` govern this work; retain prior safety requirements where compatible.
+
 # AGENTS.md — Phase VII Forward P1 Homeomorphism Research Mode
 
 > Phase VII research window ran from 2026-09-23 17:52:45 UTC to 2026-09-24 14:52:56 UTC. Authoritative scope: `docs/research_phase7/PLAN.md`; clock: `docs/research_phase7/START_TIME.json` and `docs/research_phase7/END_TIME.json`. The technical report is `docs/research_phase7/REPORT.md`. Phase VI material below remains archived evidence.

@@ -1,0 +1,56 @@
+# Independent geometry review
+
+2026-09-29. Independent Math Checker context; reviewed `PLAN.md`, `TOPOLOGY.md`, `digital_q1.py`, and the two inherited F1/F2 implementations. This review changes no production code or tests. Verdict: **the exact-arithmetic Q1/F1-D/F2-D derivations are correct under the stated hypotheses; numerical G1 and deployment coverage are not yet established.** No blocking sign or global-topology error was found.
+
+## Independent derivation and code correspondence
+
+For one cell write `F(s,t)=a+s e+t f+st g`, with `e=b-a`, `f=d-a`, `g=a-b+c-d`. Independently expanding gives
+
+`det DF(s,t)=det(e,f)+s det(e,g)+t det(g,f)`.
+
+It is affine, its four corner values are exactly `(q00,q10,q11,q01)`, and its minimum on the closed square is the minimum corner value. In particular **q11 = T(b,c,d) = T(d,b,c)**, where `T(u,v,w)=det(v-u,w-u)`. The implementation's `(d,b,c)` is a cyclic permutation, not an orientation error. The four positive values put both other vertices strictly left of every cyclic edge and hence make the image quadrilateral strictly convex.
+
+For any two source points p,p', direct expansion gives `F(p)-F(p')=DF((p+p')/2)(p-p')`. Positive determinant at the midpoint proves cell injectivity. The boundary maps bijectively onto the quadrilateral perimeter; compactness and the winding-number/Jordan argument give surjectivity onto the closed quadrilateral. This establishes a cell homeomorphism without inferring global injectivity merely from sampled derivatives.
+
+For the whole tensor-product rectangle, split each cell along SW–NE. Its P1 triangle determinants are `q10,q01>0`. A continuous simplicial map with these signs and a bijective orientation-preserving boundary has degree one: cancellation of internal edges gives exactly one preimage for generic interior target points, none outside. Interior edges have opposite-side images; each interior vertex fan has positive local winding. Thus the map is open at interior source points, excluding nongeneric multiple preimages and interior preimages of the target boundary. Compactness completes surjectivity and continuity of the inverse. The resulting P1 cell images tile the target. Each Q1 cell maps onto exactly its corresponding P1 quadrilateral and agrees on shared linear edges, so substituting the Q1 interiors preserves the global homeomorphism.
+
+The boundary requirement concerns the **entire** ordered boundary map, not four corner positions. A fixed initially valid rectangular boundary suffices. Convexity of the outer polygon is sufficient but stronger than required by the planar boundary theorem. The assembled Q1 map is generally C0, not globally C1. This independently derived argument agrees with the appropriate scope of [Lipman, Theorem 1](https://arxiv.org/html/1310.0955v2#S2.Thm1), whose primary statement was checked in this review. The four-difference criterion and the failure of central differences are prior art in [Liu et al., §2.2–2.3](https://arxiv.org/html/2212.06060#S2.SS2); Q1 cell replacement is the additional derivation here.
+
+| Claim / code path | Independent finding | Fix or scope restriction |
+|---|---|---|
+| Four corner helper and q11 triangle | Correct corner order and orientation, including `(d,b,c)` in both update paths | None |
+| F1 affected triangles | Each of four incident cells contributes exactly three triangles containing the moving vertex: 12 total. Cyclic opposite-edge orientation agrees with inherited `det(edge, displacement)` | Independently enumerated every interior vertex for side 3, 4, 5, 8, 9; all sets equal the implementation's offsets |
+| Four-color F1 snapshot | Every cell has at most one active vertex per pass; inherited color sequence uses each updated state for the next pass | Correct for the current square grid and fixed outer boundary |
+| F2 polynomial | `q(t)=q+tL+t²Q`, and `q(t)>=q-t[(-L)+ + (-Q)+]` for 0<=t<=1 | Correct sufficient path bound; does not claim the joint feasible set is convex |
+| Budget and denominator guard | For nonnegative allowance m and adverse bound C>0, `m/max(C,m,guard)<=min(1,m/C)`. C=0 is correctly ignored | Conservative exact-arithmetic bound; guard is not a rigorous floating-point predicate |
+| Initial state below requested floor | Clamped zero loss budget prevents further deterioration of an affected below-floor corner, but does not raise it to the requested floor | Must report below-floor status in caller/diagnostics; no absolute floor claim on these inputs |
+| Patch concurrency and border cells | Fixed perimeter means every changed cell is inside its own complete patch. Regular starts partition affected cells; offset margins stay fixed | Verified nonconflict and full union of active interior vertices for staggered (side,patch)=(5,2),(9,4),(17,8) |
+| Dyadic Q1 refinement | Four-corner center and edge averages are correct. Bilinear restrictions remain bilinear; child local Jacobians have factor 1/4, physical Jacobians stay unchanged | Exact-arithmetic statement only; rounded coordinates require validation |
+
+## Attack fixtures and independently executed checks
+
+These checks used independently written derivative formulas, integer index enumeration, and Python `Fraction` arithmetic; they did not use the production cross-product/area helper as the reference. The two document fixtures keep the boundary of the 3x3 grid with axes `[0,1,2]` fixed. Cell order is SW, SE, NW, NE and corner order is q00,q10,q11,q01.
+
+1. **Old P1 passes; Q1 fails.** Moving the center to `(1/4,1/4)` gives exactly
+   `(1,1/4,-1/2,1/4)`, `(1/4,1,7/4,1)`, `(1/4,1,7/4,1)`, `(5/2,7/4,1,7/4)`.
+   The old P1 minimum is 1/4; cell-center Q1 determinants are `(1/4,1,1,7/4)` and the sole interior central finite-difference determinant is 1. Nevertheless the SW cell determinant `1-3(s+t)/4` is negative on an open region. This is an interpolation-contract attack, not a counterexample to the old P1 theorem.
+2. **Central differences miss a P1 inversion too.** Moving the center to `(5/2,1)` gives exactly
+   `(1,1,5/2,5/2)`, `(1,1,-1/2,-1/2)`, `(5/2,5/2,1,1)`, `(-1/2,-1/2,1,1)`.
+   Cell-center values `(7/4,1/4,7/4,1/4)` and the interior central difference remain positive. Both P1 and Q1 positivity fail. Every number in both document fixtures was independently reproduced exactly.
+3. **Endpoint-only F2 attack.** For triangle edges `e(t)=(1-3t,0)`, `f(t)=(0,1-2t)`, `q(t)=1-5t+6t²`. Both endpoints are positive (1 and 2), but `q(2/5)=-1/25`. A positive endpoint cannot certify the path. The implemented adverse bound C=5 limits the step to at most gamma/5 (before any floor restriction), which stays in the first safe interval.
+4. **Export precision attack.** A unit square translated by `(2^24,2^24)` has four exact/float64 corner determinants equal to 1. Casting its coordinates to float32 collapses all four vertices to one point and all determinants to zero. The theorem cannot be transferred to saved/cast arrays without checking those arrays.
+
+Additional executed observations:
+
+- Independent Q1 evaluations at 12 asymmetric child-interior points after refinement agreed with the original coarse function to `2.220446049250313e-16` in float64. The exact polynomial restriction argument, not this tolerance, proves refinement.
+- On the valid 5x5 affine grid `(x,y)->(0.01x,y)` with zero proposals and requested minimum Jacobian 0.05, both F1-D and F2-D returned the unchanged map; the independently computed normalized minimum was approximately 0.01. This confirms the documented below-floor limitation rather than a positivity failure.
+- Existing focused tests: `PYTHONPATH=src python -m pytest tests/test_digital_q1_geometry.py tests/test_digital_q1_independent_checker.py -q` produced **9 passed**. An initial invocation without `PYTHONPATH=src` failed collection because this interpreter resolved a different package; no source change was needed. Tests are numerical evidence, not an IEEE guarantee or G1–G4 verdict.
+
+## Findings requiring action or explicit restriction
+
+1. **Deployment certification remains open.** The new operators return coordinates directly; they do not certify initial boundary validity, reject every nonfinite input, classify uncertain signs, inspect save/readback values, or count rejected/below-floor outputs. Their conditional exact-arithmetic guarantee is sound, but these paths alone do not deliver PLAN's actual-dtype G1. TOPOLOGY correctly leaves this open. Keep any benchmark/theorem claims conditional until the caller supplies actual-output checks. The export attack above is a concrete failure mechanism.
+2. **Geometry coverage is narrower than the theorem.** Corner evaluation and refinement support rectangular arrays, but F1/F2 updates accept only `(side,side)` arrays and use `1/(side-1)` and `1/(side-1)^2`. Their normalized floor and proposal units therefore assume the unit-square regular source mesh. Physical nonuniform or rectangular-domain source spacing is not supplied to those classes. Reject or explicitly normalize such inputs; do not advertise arbitrary tensor-product-grid update support yet.
+3. **Single-patch staggered construction is unsupported.** `StaggeredPatchQ1Layer(5,4)` raises `ValueError: offset leaves no complete patch` while constructing the first shifted pass; the same issue occurs when `side-1=patch_cells`. The individual unshifted pass is valid. Either document a two-patches-per-axis minimum for the four-pass class, or handle empty shifted passes explicitly before using the class at the coarsest level. This is a usability/coverage defect, not a failure of the topology bound.
+4. **Below-floor status is silent.** F1 documents the conditional floor guarantee, and the mathematics handles below-floor inputs correctly, but neither new path returns a status/count for them. Also make F2's standalone docstring state positive-corner input and initially satisfied floor requirements explicitly, instead of relying on its P1 parent's docstring or this report.
+
+No production fix or test change was made by this checker. The exact-arithmetic claims above are accepted with these restrictions; actual-output certification and G2–G4 remain outside this review's achieved scope.
