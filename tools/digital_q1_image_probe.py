@@ -11,7 +11,9 @@ import json
 import math
 import statistics
 import time
+from pathlib import Path
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 
@@ -25,6 +27,7 @@ from qcopt.neural_bijection.dense.q1_image_sampling import (
     fixed_pixel_centers,
     warp_moving_at_q1_map,
 )
+from qcopt.neural_bijection.dense.q1_filtered_sign import certify_q1_binary_map
 
 
 def _level_sides(final_side: int) -> tuple[int, ...]:
@@ -42,7 +45,7 @@ def _level_sides(final_side: int) -> tuple[int, ...]:
 
 def run_probe(
     *, final_side: int, image_side: int, width: int, steps: int,
-    device: str,
+    device: str, save_map: str | Path | None = None,
 ) -> dict[str, int | float | str | bool | None]:
     """Train all encoder heads against a generated same-modality image pair."""
     levels = _level_sides(final_side)
@@ -110,6 +113,18 @@ def run_probe(
         identity = torch.stack((xx, yy), dim=-1)[None]
         report = validate_q1_map(map_vertices, identity)
         corner_min = float(q1_corner_determinants(map_vertices).amin())
+    saved_map_valid = None
+    saved_exact_fallback_corners = None
+    if save_map is not None:
+        path = Path(save_map)
+        np.savez_compressed(
+            path,
+            vertices=map_vertices.detach().cpu().numpy(),
+            boundary_reference=identity.cpu().numpy(),
+        )
+        saved_report = certify_q1_binary_map(path)
+        saved_map_valid = bool(saved_report["valid"])
+        saved_exact_fallback_corners = int(saved_report["exact_fallback_corners"])
     return {
         "device": str(target_device),
         "final_side": final_side,
@@ -127,6 +142,8 @@ def run_probe(
         "nonpositive_corners": report["nonpositive_corners"],
         "boundary_ordered_rectangle": report["boundary_ordered_rectangle"],
         "boundary_max_error": report["boundary_max_error"],
+        "saved_map_valid": saved_map_valid,
+        "saved_exact_fallback_corners": saved_exact_fallback_corners,
         "cuda_peak_allocated_bytes": (
             torch.cuda.max_memory_allocated(target_device)
             if target_device.type == "cuda" else None
@@ -145,10 +162,12 @@ def main() -> None:
     parser.add_argument("--width", type=int, default=16)
     parser.add_argument("--steps", type=int, default=20)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--save-map", default=None)
     args = parser.parse_args()
     print(json.dumps(run_probe(
         final_side=args.final_side, image_side=args.image_side,
         width=args.width, steps=args.steps, device=args.device,
+        save_map=args.save_map,
     ), indent=2))
 
 
