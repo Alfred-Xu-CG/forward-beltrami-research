@@ -93,3 +93,40 @@ def test_one_seed_repeat_is_exactly_default():
 def test_nonpositive_seed_repeat_is_rejected():
     with pytest.raises(ValueError, match="seed_repeats"):
         ScheduledQ1Pyramid(17, 33, "11", seed_repeats=0)
+
+
+def test_f1_color_checkpoint_preserves_forward_and_latent_vjp():
+    standard = ScheduledQ1Pyramid(17, 33, "11")
+    checked = ScheduledQ1Pyramid(17, 33, "11", checkpoint_colors=True)
+    standard_fields = _fields(standard, seed=139)
+    checked_fields = tuple(tuple(field.detach().clone().requires_grad_()
+                                 for field in stage) for stage in standard_fields)
+    ordinary = standard(standard_fields)
+    recomputed = checked(checked_fields)
+    torch.testing.assert_close(recomputed, ordinary, rtol=0, atol=0)
+    weight = torch.linspace(-1, 1, ordinary.numel()).reshape_as(ordinary)
+    (ordinary * weight).sum().backward()
+    (recomputed * weight).sum().backward()
+    for old_stage, new_stage in zip(standard_fields, checked_fields):
+        for old, new in zip(old_stage, new_stage):
+            torch.testing.assert_close(new.grad, old.grad, rtol=1e-5, atol=1e-7)
+
+
+def test_checkpoint_color_vjp_matches_one_centered_difference():
+    torch.manual_seed(207)
+    model = ScheduledQ1Pyramid(17, 17, "1", checkpoint_colors=True)
+    latent = (.15 * torch.randn(1, 15, 15, 2, dtype=torch.float64)).requires_grad_()
+    weight = torch.randn(1, 17, 17, 2, dtype=torch.float64)
+
+    def objective(field):
+        return (model(((field,),)) * weight).sum()
+
+    objective(latent).backward()
+    autodiff = float(latent.grad[0, 7, 7, 0])
+    step = 1e-5
+    perturbation = torch.zeros_like(latent)
+    perturbation[0, 7, 7, 0] = step
+    with torch.no_grad():
+        finite_difference = float((objective(latent + perturbation) -
+                                   objective(latent - perturbation)) / (2 * step))
+    assert autodiff == pytest.approx(finite_difference, rel=2e-4, abs=2e-6)

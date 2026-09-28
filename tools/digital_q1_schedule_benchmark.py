@@ -20,6 +20,7 @@ def benchmark_schedule(
     *, schedule: str, seed_side: int = 17, final_side: int = 257,
     batch: int = 1, device: str = "cuda:0", repeats: int = 10,
     output_map: Path | None = None, seed_repeats: int = 1,
+    checkpoint_colors: bool = False,
 ) -> dict:
     if batch < 1 or repeats < 1:
         raise ValueError("positive batch and repeats required")
@@ -27,6 +28,7 @@ def benchmark_schedule(
     target_device = torch.device(device)
     model = ScheduledQ1Pyramid(
         seed_side, final_side, schedule, seed_repeats=seed_repeats,
+        checkpoint_colors=checkpoint_colors,
     ).to(target_device)
     stages = tuple(tuple(torch.nn.Parameter(
         .3 * torch.randn(batch, side - 2, side - 2, 2, device=target_device)
@@ -83,6 +85,7 @@ def benchmark_schedule(
     return {
         "schedule": schedule, "sides": list(model.sides),
         "seed_repeats": seed_repeats,
+        "checkpoint_colors": checkpoint_colors,
         "passes_per_stage": list(model.passes_per_stage),
         "latent_scalar_count": sum(field.numel() for field in latents),
         "structurally_active_latent_scalar_count": (
@@ -113,6 +116,7 @@ def main() -> None:
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--repeats", type=int, default=10)
     parser.add_argument("--seed-repeats", type=int, default=1)
+    parser.add_argument("--checkpoint-colors", action="store_true")
     parser.add_argument("--output-map", type=Path)
     parser.add_argument("--output-report", type=Path)
     args = parser.parse_args()
@@ -120,6 +124,7 @@ def main() -> None:
         schedule=args.schedule, seed_side=args.seed_side, final_side=args.final_side,
         batch=args.batch, device=args.device, repeats=args.repeats,
         output_map=args.output_map, seed_repeats=args.seed_repeats,
+        checkpoint_colors=args.checkpoint_colors,
     )
     if args.output_report is not None:
         args.output_report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")

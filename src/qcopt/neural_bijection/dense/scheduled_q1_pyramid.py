@@ -23,6 +23,7 @@ class ScheduledQ1Pyramid(nn.Module):
         patch_cells: int = 4, safety_fraction: float = .75,
         minimum_jacobian: float | None = .05,
         seed_repeats: int = 1,
+        checkpoint_colors: bool = False,
     ) -> None:
         super().__init__()
         if seed_side < 3 or final_side < seed_side or patch_cells < 2 or patch_cells % 2:
@@ -37,6 +38,7 @@ class ScheduledQ1Pyramid(nn.Module):
         self.sides = tuple(sides)
         self.schedule = schedule
         self.seed_repeats = seed_repeats
+        self.checkpoint_colors = checkpoint_colors
         self.passes_per_stage = tuple(
             (1 if mode == "1" else 4) * (seed_repeats if index == 0 else 1)
             for index, mode in enumerate(schedule)
@@ -45,6 +47,7 @@ class ScheduledQ1Pyramid(nn.Module):
             SafeColoredQ1Relaxation(
                 side, safety_fraction=safety_fraction,
                 minimum_jacobian=minimum_jacobian,
+                checkpoint_colors=checkpoint_colors,
             ) if mode == "1" else StaggeredPatchQ1Layer(
                 side, patch_cells=patch_cells, safety_fraction=safety_fraction,
                 minimum_jacobian=minimum_jacobian,

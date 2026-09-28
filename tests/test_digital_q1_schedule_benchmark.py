@@ -27,3 +27,13 @@ def test_schedule_benchmark_counts_repeated_seed_passes(tmp_path):
     assert result["passes_per_stage"] == [8, 1]
     assert result["all_latent_gradients_finite"]
     assert result["saved_binary_valid"]
+
+
+def test_schedule_benchmark_reports_color_checkpoint(tmp_path):
+    result = benchmark_schedule(
+        schedule="11", final_side=33, checkpoint_colors=True,
+        device="cpu", repeats=1, output_map=tmp_path / "checked.npz",
+    )
+    assert result["checkpoint_colors"]
+    assert result["all_latent_gradients_finite"]
+    assert result["saved_binary_valid"]
