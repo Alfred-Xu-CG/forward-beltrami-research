@@ -53,7 +53,8 @@ def dhr_map_at_unit_queries(
     device = query.device
     scale_f = float(params["target_resample_ratio"])
     scale_m = float(params["source_resample_ratio"])
-    if min(scale_f, scale_m) <= 0:
+    initial_ratio = float(params.get("initial_resample_ratio", 1))
+    if min(scale_f, scale_m, initial_ratio) <= 0 or not np.isfinite(initial_ratio):
         raise ValueError("resample ratios must be positive")
     fixed_pad = torch.tensor(
         [params["pad_2"][1][0], params["pad_2"][0][0]],
@@ -66,15 +67,17 @@ def dhr_map_at_unit_queries(
     fixed_extent = torch.tensor(fixed_size, device=device, dtype=torch.float32)
     moving_extent = torch.tensor(moving_size, device=device, dtype=torch.float32)
     fixed_canvas = query * fixed_extent * scale_f - .5 + fixed_pad
+    fixed_field = (fixed_canvas + .5) / initial_ratio - .5
     field_extent = torch.tensor(
         [field.shape[2] - 1, field.shape[1] - 1], device=device, dtype=torch.float32,
     )
     sampled = F.grid_sample(
         torch.as_tensor(field, device=device)[None],
-        2 * fixed_canvas / field_extent - 1,
+        2 * fixed_field / field_extent - 1,
         mode="bilinear", padding_mode="border", align_corners=True,
     ).permute(0, 2, 3, 1)
-    moving_canvas = fixed_canvas + sampled
+    moving_field = fixed_field + sampled
+    moving_canvas = (moving_field + .5) * initial_ratio - .5
     return (moving_canvas - moving_pad + .5) / (moving_extent * scale_m)
 
 
@@ -107,6 +110,23 @@ def _appearance(fixed: torch.Tensor, moving: torch.Tensor,
     return report
 
 
+def _masked_image_correlation_loss(
+    fixed: torch.Tensor, warped: torch.Tensor, valid: torch.Tensor,
+) -> torch.Tensor:
+    """The same global NCC formula restricted to one common query mask."""
+    if fixed.shape != warped.shape or valid.shape != fixed.shape or valid.dtype != torch.bool:
+        raise ValueError("fixed/warped/mask must have identical BCHW shapes")
+    first = fixed[valid]
+    second = warped[valid]
+    if first.numel() < 2:
+        raise ValueError("NCC needs at least two common valid samples")
+    first = first - first.mean()
+    second = second - second.mean()
+    numerator = (first * second).mean()
+    denominator = (first.square().mean() * second.square().mean() + 1e-12).sqrt()
+    return 1 - numerator / denominator
+
+
 def q1_query_from_saved_map(map_path: Path, *, image_side: int) -> torch.Tensor:
     """Query a stored residual Q1 map and then apply any saved affine factor."""
     with np.load(map_path) as archive:
@@ -137,20 +157,32 @@ def compare(
     q1_query = q1_query_from_saved_map(q1_map, image_side=image_side)
     field = sitk.GetArrayFromImage(sitk.ReadImage(str(dhr_field)))
     params = json.loads(dhr_params.read_text())
-    if float(params.get("initial_resample_ratio", 1)) != 1:
-        raise ValueError("unaccounted DHR initial resample ratio")
     dhr_query = dhr_map_at_fixed_pixel_centers(
         field, params, fixed_size=fixed_size, moving_size=moving_size,
         image_side=image_side,
     )
+    shared_valid = (
+        ((q1_query >= 0) & (q1_query <= 1)).all(-1) &
+        ((dhr_query >= 0) & (dhr_query <= 1)).all(-1)
+    )[:, None]
+    q1_warp = F.grid_sample(moving, 2 * q1_query - 1, mode="bilinear",
+                            padding_mode="border", align_corners=False)
+    dhr_warp = F.grid_sample(moving, 2 * dhr_query - 1, mode="bilinear",
+                             padding_mode="border", align_corners=False)
     return {
         "image_side": image_side,
         "moving_original_size_xy": list(moving_size),
         "fixed_original_size_xy": list(fixed_size),
+        "dhr_initial_resample_ratio": float(params.get("initial_resample_ratio", 1)),
         "objective": "one_minus_ncc on independently resampled inverted-grayscale thumbnails",
         "identity_normalized": _appearance(fixed, moving, query),
         "optimized_safe_q1": _appearance(fixed, moving, q1_query),
         "dhr_saved_field": _appearance(fixed, moving, dhr_query),
+        "common_source_valid_pixel_count": int(shared_valid.sum()),
+        "common_source_valid_one_minus_ncc_q1": float(
+            _masked_image_correlation_loss(fixed, q1_warp, shared_valid)),
+        "common_source_valid_one_minus_ncc_dhr": float(
+            _masked_image_correlation_loss(fixed, dhr_warp, shared_valid)),
     }
 
 

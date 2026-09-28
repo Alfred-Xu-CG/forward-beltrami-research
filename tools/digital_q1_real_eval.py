@@ -113,6 +113,7 @@ def load_effective_vertices(map_path: Path) -> tuple[np.ndarray, dict]:
 def evaluate(
     map_path: Path, moving_image: Path, fixed_image: Path,
     moving_landmarks: Path, fixed_landmarks: Path,
+    *, landmark_id_policy: str = "require_equal",
 ) -> dict:
     vertices, certificate = load_effective_vertices(map_path)
     prepared = prepare_vertex_map(vertices)
@@ -122,10 +123,17 @@ def evaluate(
         fixed_size = image.size
     moving = _landmarks(moving_landmarks, moving_size)
     fixed = _landmarks(fixed_landmarks, fixed_size)
-    if moving.keys() != fixed.keys():
+    if landmark_id_policy not in {"require_equal", "intersection"}:
+        raise ValueError("landmark_id_policy must be require_equal or intersection")
+    unmatched_fixed_ids = sorted(fixed.keys() - moving.keys())
+    unmatched_moving_ids = sorted(moving.keys() - fixed.keys())
+    if landmark_id_policy == "require_equal" and (unmatched_fixed_ids or unmatched_moving_ids):
         raise ValueError("moving and fixed landmark IDs disagree")
+    matched_ids = sorted(fixed.keys() & moving.keys())
+    if not matched_ids:
+        raise ValueError("no matched landmarks")
     rows = []
-    for name in sorted(moving):
+    for name in matched_ids:
         moving_unit = pixel_to_unit(moving[name], moving_size)
         roots = invert_vertex_map_at_unit_point(vertices, moving_unit, prepared=prepared)
         row = {"id": name, "inverse_root_count": len(roots), "inverse_roots": roots}
@@ -150,6 +158,11 @@ def evaluate(
         "moving_size_xy": list(moving_size),
         "fixed_size_xy": list(fixed_size),
         "coordinate_convention": "unit=(original JPEG pixel-center coordinate+0.5)/image size",
+        "landmark_id_policy": landmark_id_policy,
+        "fixed_landmark_file_count": len(fixed),
+        "moving_landmark_file_count": len(moving),
+        "unmatched_fixed_ids": unmatched_fixed_ids,
+        "unmatched_moving_ids": unmatched_moving_ids,
         "landmark_count": len(rows),
         "unique_inverse_count": len(unique),
         "zero_inverse_count": sum(row["inverse_root_count"] == 0 for row in rows),
@@ -168,16 +181,78 @@ def evaluate(
     }
 
 
+def evaluate_unit_identity(
+    moving_image: Path, fixed_image: Path,
+    moving_landmarks: Path, fixed_landmarks: Path, *,
+    landmark_id_policy: str = "require_equal",
+) -> dict:
+    """Fair identity for independently normalized whole-JPEG rectangles."""
+    with Image.open(moving_image) as image:
+        moving_size = image.size
+    with Image.open(fixed_image) as image:
+        fixed_size = image.size
+    moving = _landmarks(moving_landmarks, moving_size)
+    fixed = _landmarks(fixed_landmarks, fixed_size)
+    if landmark_id_policy not in {"require_equal", "intersection"}:
+        raise ValueError("landmark_id_policy must be require_equal or intersection")
+    unmatched_fixed_ids = sorted(fixed.keys() - moving.keys())
+    unmatched_moving_ids = sorted(moving.keys() - fixed.keys())
+    if landmark_id_policy == "require_equal" and (unmatched_fixed_ids or unmatched_moving_ids):
+        raise ValueError("moving and fixed landmark IDs disagree")
+    matched_ids = sorted(fixed.keys() & moving.keys())
+    if not matched_ids:
+        raise ValueError("no matched landmarks")
+    distances = []
+    inside = 0
+    for name in matched_ids:
+        prediction = unit_to_pixel(pixel_to_unit(moving[name], moving_size), fixed_size)
+        distances.append(float(np.linalg.norm(prediction - fixed[name])))
+        inside += int(0 <= prediction[0] < fixed_size[0] and
+                      0 <= prediction[1] < fixed_size[1])
+    values = np.asarray(distances)
+    return {
+        "map_representation": "unit-square identity",
+        "moving_size_xy": list(moving_size),
+        "fixed_size_xy": list(fixed_size),
+        "coordinate_convention": "unit=(original JPEG pixel-center coordinate+0.5)/image size",
+        "landmark_id_policy": landmark_id_policy,
+        "fixed_landmark_file_count": len(fixed),
+        "moving_landmark_file_count": len(moving),
+        "unmatched_fixed_ids": unmatched_fixed_ids,
+        "unmatched_moving_ids": unmatched_moving_ids,
+        "landmark_count": len(matched_ids),
+        "inside_fixed_count": inside,
+        "tre_unit": "original supplied fixed JPEG pixels",
+        "mean_tre_px": float(values.mean()),
+        "median_tre_px": float(np.median(values)),
+        "p95_tre_px": float(np.percentile(values, 95)),
+        "max_tre_px": float(values.max()),
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ("map", "moving_image", "fixed_image", "moving_landmarks", "fixed_landmarks"):
+    choice = parser.add_mutually_exclusive_group(required=True)
+    choice.add_argument("--map", type=Path)
+    choice.add_argument("--unit-identity", action="store_true")
+    for name in ("moving_image", "fixed_image", "moving_landmarks", "fixed_landmarks"):
         parser.add_argument("--" + name.replace("_", "-"), required=True, type=Path)
+    parser.add_argument("--landmark-id-policy", choices=("require_equal", "intersection"),
+                        default="require_equal")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    result = evaluate(
-        args.map, args.moving_image, args.fixed_image,
-        args.moving_landmarks, args.fixed_landmarks,
-    )
+    if args.unit_identity:
+        result = evaluate_unit_identity(
+            args.moving_image, args.fixed_image,
+            args.moving_landmarks, args.fixed_landmarks,
+            landmark_id_policy=args.landmark_id_policy,
+        )
+    else:
+        result = evaluate(
+            args.map, args.moving_image, args.fixed_image,
+            args.moving_landmarks, args.fixed_landmarks,
+            landmark_id_policy=args.landmark_id_policy,
+        )
     encoded = json.dumps(result, indent=2)
     if args.output is not None:
         args.output.write_text(encoded + "\n", encoding="utf-8")

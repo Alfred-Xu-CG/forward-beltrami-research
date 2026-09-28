@@ -70,8 +70,9 @@ def prepare_target(
         raise ValueError("control side must be at least 17")
     field = sitk.GetArrayFromImage(sitk.ReadImage(str(field_path)))
     params = json.loads(params_path.read_text())
-    if float(params.get("initial_resample_ratio", 1)) != 1:
-        raise ValueError("unaccounted DHR initial resample ratio")
+    initial_ratio = float(params.get("initial_resample_ratio", 1))
+    if not np.isfinite(initial_ratio) or initial_ratio <= 0:
+        raise ValueError("invalid DHR initial resample ratio")
     with Image.open(moving_image) as image:
         moving_size = image.size
     with Image.open(fixed_image) as image:
@@ -105,6 +106,7 @@ def prepare_target(
         "field_path": str(field_path),
         "moving_size_xy": list(moving_size),
         "fixed_size_xy": list(fixed_size),
+        "initial_resample_ratio": initial_ratio,
         "target_nonpositive_corners": validity["nonpositive_corners"],
         "target_boundary_max_error": validity["boundary_max_error"],
         "target_corner_min": validity["corner_min"],
@@ -243,6 +245,24 @@ def _load_target_archive(path: Path) -> tuple[torch.Tensor, np.ndarray | None, n
     return teacher, affine_matrix, affine_offset
 
 
+def save_affine_only_map(target_path: Path, output_path: Path) -> dict:
+    """Represent an image-only positive affine estimate as A after Q1 identity."""
+    teacher, matrix, offset = _load_target_archive(target_path)
+    if matrix is None or offset is None:
+        raise ValueError("affine-only output needs a factored teacher archive")
+    reference = identity_vertices(teacher.shape[1], device=torch.device("cpu")).numpy()
+    np.savez_compressed(output_path, vertices=reference, boundary_reference=reference,
+                        post_affine_matrix=matrix, post_affine_offset=offset)
+    certificate = certify_q1_binary_map(output_path)
+    if not certificate["valid"]:
+        raise ArithmeticError("saved affine-only residual failed Q1 identity audit")
+    return {
+        "mode": "image_only_DHR_initial_affine_after_Q1_identity",
+        "target": str(target_path), "saved_map": str(output_path),
+        **_saved_output_summary(certificate, matrix),
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -257,12 +277,17 @@ def main() -> None:
     fitting.add_argument("--steps", type=int, default=200)
     fitting.add_argument("--learning-rate", type=float, default=.04)
     fitting.add_argument("--device", default="cuda:0")
+    affine_only = commands.add_parser("affine-only")
+    affine_only.add_argument("--target", type=Path, required=True)
+    affine_only.add_argument("--output-map", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "prepare":
         result = prepare_target(
             args.field, args.params, args.moving_image, args.fixed_image,
             args.output_target, side=args.side, affine_factor=args.affine_factor,
         )
+    elif args.command == "affine-only":
+        result = save_affine_only_map(args.target, args.output_map)
     else:
         teacher, affine_matrix, affine_offset = _load_target_archive(args.target)
         mapped, result = fit_target_vertices(

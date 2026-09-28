@@ -22,6 +22,24 @@ def original_xy(canvas: np.ndarray, scale: float, pad_yx: list[list[int]]) -> np
     return (canvas - np.array([pad_yx[1][0], pad_yx[0][0]]) + 0.5) / scale - 0.5
 
 
+def initial_resample_xy(padded_xy: np.ndarray, ratio: float) -> np.ndarray:
+    """Padded loaded pixel center -> DHR's initial-resolution image center.
+
+    DHR uses torch interpolate with scale_factor=1/ratio and
+    align_corners=False. The final saved field is still on this preprocessed
+    grid; save_final does not call the image-output postprocessor.
+    """
+    if not np.isfinite(ratio) or ratio <= 0:
+        raise ValueError("initial resample ratio must be finite and positive")
+    return (np.asarray(padded_xy, dtype=np.float64) + .5) / ratio - .5
+
+
+def revert_initial_resample_xy(preprocessed_xy: np.ndarray, ratio: float) -> np.ndarray:
+    if not np.isfinite(ratio) or ratio <= 0:
+        raise ValueError("initial resample ratio must be finite and positive")
+    return (np.asarray(preprocessed_xy, dtype=np.float64) + .5) * ratio - .5
+
+
 def q1_corner_determinants(displacement: np.ndarray) -> np.ndarray:
     """Determinants at top-left, top-right, bottom-left, bottom-right."""
     if displacement.ndim != 3 or displacement.shape[0] != 2:
@@ -143,9 +161,24 @@ def _landmarks(path: Path, size_xy: tuple[int, int]) -> dict[str, np.ndarray]:
     return points
 
 
+def select_landmark_ids(moving: dict, fixed: dict, policy: str
+                        ) -> tuple[list[str], list[str], list[str]]:
+    if policy not in {"require_equal", "intersection"}:
+        raise ValueError("landmark policy must be require_equal or intersection")
+    fixed_only = sorted(fixed.keys() - moving.keys())
+    moving_only = sorted(moving.keys() - fixed.keys())
+    if policy == "require_equal" and (fixed_only or moving_only):
+        raise ValueError("landmark ID sets disagree")
+    matched = sorted(moving.keys() & fixed.keys())
+    if not matched:
+        raise ValueError("no matched landmark IDs")
+    return matched, fixed_only, moving_only
+
+
 def evaluate(field_path: Path, params_path: Path, config_path: Path,
              moving_image: Path, fixed_image: Path,
-             moving_landmarks: Path, fixed_landmarks: Path) -> dict:
+             moving_landmarks: Path, fixed_landmarks: Path, *,
+             landmark_id_policy: str = "require_equal") -> dict:
     import SimpleITK as sitk
 
     field = sitk.GetArrayFromImage(sitk.ReadImage(str(field_path))).astype(np.float64)
@@ -155,29 +188,36 @@ def evaluate(field_path: Path, params_path: Path, config_path: Path,
         raise ValueError("source resample ratio disagrees")
     if config["loading_params"]["target_resample_ratio"] != params["target_resample_ratio"]:
         raise ValueError("target resample ratio disagrees")
-    if params["initial_resample_ratio"] != 1:
-        raise ValueError("extra preprocessing resample requires separate coordinate accounting")
+    initial_ratio = float(params["initial_resample_ratio"])
+    if not np.isfinite(initial_ratio) or initial_ratio <= 0:
+        raise ValueError("invalid initial resample ratio")
     with Image.open(moving_image) as image:
         moving_size = image.size
     with Image.open(fixed_image) as image:
         fixed_size = image.size
     moving = _landmarks(moving_landmarks, moving_size)
     fixed = _landmarks(fixed_landmarks, fixed_size)
-    if moving.keys() != fixed.keys():
-        raise ValueError("landmark ID sets disagree")
+    matched_ids, fixed_only, moving_only = select_landmark_ids(
+        moving, fixed, landmark_id_policy,
+    )
     q1 = q1_corner_determinants(field)
     fx, fy = _map_nodes(field)
     geometry = fx, fy, _cell_bounds(fx, fy)
     scale_m = float(params["source_resample_ratio"])
     scale_f = float(params["target_resample_ratio"])
     rows = []
-    for name in sorted(moving):
-        source_canvas = canvas_xy(moving[name], scale_m, params["pad_1"])
+    for name in matched_ids:
+        source_canvas = initial_resample_xy(
+            canvas_xy(moving[name], scale_m, params["pad_1"]), initial_ratio,
+        )
         roots = invert_q1_at_point(field, source_canvas, geometry=geometry)
         row = {"id": name, "inverse_root_count": len(roots),
                "inverse_roots": roots}
         if len(roots) == 1:
-            mapped_original = original_xy(roots[0]["fixed_xy"], scale_f, params["pad_2"])
+            mapped_original = original_xy(
+                revert_initial_resample_xy(roots[0]["fixed_xy"], initial_ratio),
+                scale_f, params["pad_2"],
+            )
             row["mapped_fixed_xy"] = mapped_original.tolist()
             row["tre_px"] = float(np.linalg.norm(mapped_original - fixed[name]))
             row["inside_fixed"] = bool(0 <= mapped_original[0] < fixed_size[0]
@@ -190,11 +230,17 @@ def evaluate(field_path: Path, params_path: Path, config_path: Path,
     result = {
         "field_shape_component_yx": list(field.shape),
         "canvas_size_xy": [int(field.shape[2]), int(field.shape[1])],
+        "initial_resample_ratio": initial_ratio,
         "cell_count": int(q1.shape[1] * q1.shape[2]),
         "q1_corner_order": ["top-left", "top-right", "bottom-left", "bottom-right"],
         "q1_nonpositive_by_corner": [int(np.count_nonzero(x <= 0)) for x in q1],
         "q1_nonpositive_any_cell": int(np.count_nonzero(np.any(q1 <= 0, axis=0))),
         "q1_min_by_corner": [float(np.min(x)) for x in q1],
+        "landmark_id_policy": landmark_id_policy,
+        "fixed_landmark_file_count": len(fixed),
+        "moving_landmark_file_count": len(moving),
+        "unmatched_fixed_ids": fixed_only,
+        "unmatched_moving_ids": moving_only,
         "landmark_count": len(rows),
         "unique_inverse_count": len(unique),
         "zero_inverse_count": sum(row["inverse_root_count"] == 0 for row in rows),
@@ -217,10 +263,13 @@ def main() -> None:
     for name in ("field", "params", "config", "moving_image", "fixed_image",
                  "moving_landmarks", "fixed_landmarks"):
         parser.add_argument("--" + name.replace("_", "-"), required=True, type=Path)
+    parser.add_argument("--landmark-id-policy", choices=("require_equal", "intersection"),
+                        default="require_equal")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     result = evaluate(args.field, args.params, args.config, args.moving_image, args.fixed_image,
-                      args.moving_landmarks, args.fixed_landmarks)
+                      args.moving_landmarks, args.fixed_landmarks,
+                      landmark_id_policy=args.landmark_id_policy)
     encoded = json.dumps(result, indent=2)
     if args.output:
         args.output.write_text(encoded + "\n", encoding="utf-8")

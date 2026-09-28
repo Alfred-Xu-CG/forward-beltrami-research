@@ -18,20 +18,30 @@ def main() -> None:
     parser.add_argument("--fixed", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--threads", type=int, default=4)
+    parser.add_argument("--resample-ratio", type=float, default=0.1,
+                        help="same source/target loading scale; use 1 for small original JPEGs")
+    parser.add_argument("--case-name", default="HistoReg_CD68_to_CD4_development")
+    parser.add_argument("--initial-only", action="store_true",
+                        help="run the same feature-based initial stage but disable nonrigid fitting")
     args = parser.parse_args()
+    if not 0 < args.resample_ratio <= 1:
+        raise ValueError("resample ratio must be in (0,1]")
 
     args.output.mkdir(parents=True, exist_ok=True)
     torch.set_num_threads(args.threads)
     params = deeperhistreg.configs.default_initial_nonrigid_fast()
     params["device"] = "cpu"
-    params["case_name"] = "HistoReg_CD68_to_CD4_development"
+    params["case_name"] = args.case_name
     params["logging_path"] = str(args.output / "deeperhistreg.log")
     params["loading_params"].update(
-        loader="pil", source_resample_ratio=0.1, target_resample_ratio=0.1
+        loader="pil", source_resample_ratio=args.resample_ratio,
+        target_resample_ratio=args.resample_ratio,
     )
     params["saving_params"]["final_saver"] = "pil"
     params["save_final_images"] = False
     params["save_final_displacement_field"] = True
+    if args.initial_only:
+        params["run_nonrigid_registration"] = False
     params["preprocessing_params"].update(initial_resolution=768, save_results=False)
     params["initial_registration_params"].update(
         device="cpu", cuda=False, save_results=False
@@ -59,9 +69,10 @@ def main() -> None:
         "registration_seconds": pipeline.total_registration_time,
         "preprocessing_seconds": pipeline.preprocessing_time,
         "initial_seconds": pipeline.initial_registration_time,
-        "nonrigid_seconds": pipeline.nonrigid_registration_time,
+        "nonrigid_seconds": getattr(pipeline, "nonrigid_registration_time", 0.0),
         "preprocessed_shape": list(pipeline.pre_source.shape),
         "field_shape": list(pipeline.current_displacement_field.shape),
+        "initial_only": args.initial_only,
     }
     (args.output / "runtime.json").write_text(
         json.dumps(runtime, indent=2), encoding="utf-8"

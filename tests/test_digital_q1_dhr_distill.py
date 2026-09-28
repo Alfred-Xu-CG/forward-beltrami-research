@@ -9,6 +9,7 @@ from tools.digital_q1_dhr_distill import (
     _saved_output_summary,
     factor_affine_teacher,
     fit_target_vertices,
+    save_affine_only_map,
 )
 
 
@@ -83,3 +84,19 @@ def test_target_archive_rejects_orientation_reversing_affine(tmp_path) -> None:
                         post_affine_offset=np.zeros(2, dtype=np.float32))
     with pytest.raises(ValueError, match="positive orientation"):
         _load_target_archive(path)
+
+
+def test_affine_only_output_stores_certified_identity_residual(tmp_path) -> None:
+    import numpy as np
+    source = tmp_path / "teacher.npz"
+    output = tmp_path / "affine_q1.npz"
+    np.savez_compressed(source,
+                        teacher_vertices=np.zeros((1, 17, 17, 2), np.float32),
+                        post_affine_matrix=np.array([[.9, .1], [-.1, .9]], np.float32),
+                        post_affine_offset=np.array([.02, -.03], np.float32))
+    report = save_affine_only_map(source, output)
+    assert report["saved_binary_residual_valid"]
+    assert report["saved_binary_nonpositive_corners"] == 0
+    assert report["post_affine_det"] > 0
+    with np.load(output) as archive:
+        np.testing.assert_array_equal(archive["vertices"], archive["boundary_reference"])

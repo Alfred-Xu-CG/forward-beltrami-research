@@ -8,6 +8,7 @@ import torch
 from qcopt.neural_bijection.dense.q1_image_sampling import fixed_pixel_centers
 from tools.digital_compare_appearance import (
     _appearance,
+    _masked_image_correlation_loss,
     dhr_map_at_fixed_pixel_centers,
     dhr_map_at_unit_queries,
     q1_query_from_saved_map,
@@ -39,6 +40,21 @@ def test_constant_saved_field_is_scaled_physical_translation() -> None:
     torch.testing.assert_close(actual[..., 1], expected[..., 1], atol=2e-7, rtol=0)
 
 
+def test_initial_preprocessing_ratio_is_undone_for_saved_field_query() -> None:
+    field = np.zeros((2, 8, 12), dtype=np.float32)
+    field[0] = 1.0
+    params = {"source_resample_ratio": 1., "target_resample_ratio": 1.,
+              "initial_resample_ratio": 1.25,
+              "pad_1": [[0, 0], [0, 0]], "pad_2": [[0, 0], [0, 0]]}
+    query = fixed_pixel_centers(4, 4, dtype=torch.float32, device=torch.device("cpu"))
+    actual = dhr_map_at_unit_queries(
+        field, params, fixed_size=(15, 10), moving_size=(15, 10), query=query,
+    )
+    torch.testing.assert_close(actual[..., 0] - query[..., 0],
+                               torch.full_like(query[..., 0], 1.25 / 15), atol=3e-7, rtol=0)
+    torch.testing.assert_close(actual[..., 1], query[..., 1], atol=3e-7, rtol=0)
+
+
 def test_identical_image_has_zero_multiscale_correlation_loss() -> None:
     torch.manual_seed(3)
     image = torch.rand((1, 1, 32, 32))
@@ -46,6 +62,13 @@ def test_identical_image_has_zero_multiscale_correlation_loss() -> None:
     report = _appearance(image, image, query)
     assert abs(report["one_minus_ncc_area_8"]) < 2e-6
     assert abs(report["one_minus_ncc_area_4"]) < 2e-6
+
+
+def test_masked_ncc_uses_only_shared_valid_queries() -> None:
+    fixed = torch.tensor([[[[1., 2., 3., 100.]]]])
+    warped = torch.tensor([[[[1., 2., 3., -100.]]]])
+    valid = torch.tensor([[[[True, True, True, False]]]])
+    assert abs(float(_masked_image_correlation_loss(fixed, warped, valid))) < 2e-6
 
 
 def test_dhr_field_can_be_queried_at_control_vertices() -> None:

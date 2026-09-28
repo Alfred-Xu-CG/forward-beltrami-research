@@ -1,0 +1,58 @@
+{
+  "mode": "image_encoder_DHR_teacher_distillation_not_G2",
+  "batch": 2,
+  "control_side": 257,
+  "image_size_hw": [
+    512,
+    512
+  ],
+  "steps": 800,
+  "learning_rate": 0.002,
+  "initial_vector_rmse": 0.04260707628851838,
+  "last_vector_rmse": 0.0032200362438049124,
+  "best_vector_rmse": 0.0032200362438049124,
+  "best_per_pair_vector_rmse": [
+    0.003785887034609914,
+    0.002530677244067192
+  ],
+  "median_complete_step_seconds": 0.07538714446127415,
+  "finite_gradient_steps": 800,
+  "nonpositive_residual_corners": 0,
+  "residual_boundary_max_error": 0.0,
+  "affine_determinants": [
+    0.8972426056861877,
+    0.9809826612472534
+  ],
+  "cuda_peak_allocated_bytes": 262985216,
+  "train_pairs": [
+    {
+      "fixed": "data/HistoReg_CD68_CD4/Images_CD4.jpg",
+      "moving": "data/HistoReg_CD68_CD4/Images_CD68.jpg",
+      "teacher": "docs/digital_topology_wsi/dhr_teacher_affine_residual_257_float32.npz",
+      "fixed_size_xy": [
+        7171,
+        9916
+      ],
+      "moving_size_xy": [
+        7470,
+        9890
+      ]
+    },
+    {
+      "fixed": "data/birl_anhir_dev/rat_kidney/Rat-Kidney_HE.jpg",
+      "moving": "data/birl_anhir_dev/rat_kidney/Rat-Kidney_PanCytokeratin.jpg",
+      "teacher": "docs/digital_topology_wsi/dhr_teacher_birl_rat_kidney_affine_257_float32.npz",
+      "fixed_size_xy": [
+        1164,
+        787
+      ],
+      "moving_size_xy": [
+        1123,
+        724
+      ]
+    }
+  ],
+  "output_weights": "docs/digital_topology_wsi/q1_n_histo_kidney_train_lesions_eval_weights.npz",
+  "seed": 290929,
+  "warning": "teacher-conditioned 2-group pilot; no landmarks in training; not formal G2"
+}

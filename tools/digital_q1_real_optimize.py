@@ -34,15 +34,39 @@ def _image_correlation_loss(fixed: torch.Tensor, warped: torch.Tensor) -> torch.
     return (1 - numerator / (variance + 1e-12).sqrt()).mean()
 
 
+def _local_ncc_loss(fixed: torch.Tensor, warped: torch.Tensor, *, window: int = 7) -> torch.Tensor:
+    """DHR-style squared local NCC; zero-padded sums and 1e-5 stabilizer."""
+    if fixed.shape != warped.shape or fixed.ndim != 4 or fixed.shape[1] != 1:
+        raise ValueError("matching B1HW images required")
+    if window < 3 or window % 2 != 1:
+        raise ValueError("window must be odd and at least 3")
+    count = window * window
+
+    def sums(tensor: torch.Tensor) -> torch.Tensor:
+        return F.avg_pool2d(tensor, window, stride=1, padding=window // 2,
+                            count_include_pad=True) * count
+
+    f_sum, w_sum = sums(fixed), sums(warped)
+    f2_sum, w2_sum = sums(fixed.square()), sums(warped.square())
+    fw_sum = sums(fixed * warped)
+    cross = fw_sum - f_sum * w_sum / count
+    f_var = f2_sum - f_sum.square() / count
+    w_var = w2_sum - w_sum.square() / count
+    return 1 - (cross.square() / (f_var * w_var + 1e-5)).mean()
+
+
 def optimize_tensors(
     fixed: torch.Tensor, moving: torch.Tensor, *,
     final_side: int, steps: int, learning_rate: float, device: str,
+    image_loss: str = "global_ncc",
 ) -> tuple[torch.Tensor, dict[str, float | int | bool | str | None]]:
     """Fit only latent fields; no image encoder or landmark supervision."""
     if fixed.shape != moving.shape or fixed.ndim != 4 or fixed.shape[0] != 1 or fixed.shape[1] != 1:
         raise ValueError("fixed and moving must be matching B=1,C=1 image tensors")
     if steps < 1 or learning_rate <= 0:
         raise ValueError("steps and learning_rate must be positive")
+    if image_loss not in {"global_ncc", "local_ncc"}:
+        raise ValueError("image_loss must be global_ncc or local_ncc")
     target_device = torch.device(device)
     fixed = fixed.to(device=target_device, dtype=torch.float32)
     moving = moving.to(device=target_device, dtype=torch.float32)
@@ -75,8 +99,9 @@ def optimize_tensors(
         warped = warp_moving_at_q1_map(
             moving, mapped, height=fixed.shape[-2], width=fixed.shape[-1],
         )
-        image_loss = _image_correlation_loss(fixed, warped)
-        loss = image_loss + .05 * (mapped - identity).square().mean()
+        appearance = (_image_correlation_loss(fixed, warped) if image_loss == "global_ncc"
+                      else _local_ncc_loss(fixed, warped))
+        loss = appearance + .05 * (mapped - identity).square().mean()
         loss.backward()
         gradients = [parameter.grad for parameter in (*seed, *levels)]
         finite = all(gradient is not None and bool(torch.isfinite(gradient).all())
@@ -84,7 +109,7 @@ def optimize_tensors(
         finite_gradient_steps += int(finite)
         if not finite:
             raise FloatingPointError("nonfinite or missing latent gradient")
-        value = float(image_loss.detach())
+        value = float(appearance.detach())
         if value < best_image_loss:
             best_image_loss = value
             best_map = mapped.detach().clone()
@@ -103,6 +128,7 @@ def optimize_tensors(
         "image_width": fixed.shape[-1],
         "steps": steps,
         "learning_rate": learning_rate,
+        "image_loss": image_loss,
         "initial_image_loss": history[0],
         "last_image_loss": history[-1],
         "best_image_loss": best_image_loss,
@@ -134,10 +160,13 @@ def main() -> None:
     parser.add_argument("--moving-image", type=Path, required=True)
     parser.add_argument("--fixed-image", type=Path, required=True)
     parser.add_argument("--output-map", type=Path, required=True)
+    parser.add_argument("--output-report", type=Path)
     parser.add_argument("--final-side", type=int, default=257)
     parser.add_argument("--image-side", type=int, default=512)
     parser.add_argument("--steps", type=int, default=100)
     parser.add_argument("--learning-rate", type=float, default=.04)
+    parser.add_argument("--image-loss", choices=("global_ncc", "local_ncc"),
+                        default="global_ncc")
     parser.add_argument("--device", default="cuda:0")
     args = parser.parse_args()
     fixed, fixed_size = _read_gray_thumbnail(args.fixed_image, args.image_side)
@@ -145,6 +174,7 @@ def main() -> None:
     mapped, result = optimize_tensors(
         fixed, moving, final_side=args.final_side, steps=args.steps,
         learning_rate=args.learning_rate, device=args.device,
+        image_loss=args.image_loss,
     )
     axis = np.arange(args.final_side, dtype=np.float32) / np.float32(args.final_side - 1)
     y, x = np.meshgrid(axis, axis, indexing="ij")
@@ -164,6 +194,8 @@ def main() -> None:
         "saved_binary_positive_corners": certificate["positive_corners"],
         "saved_binary_nonpositive_corners": certificate["nonpositive_corners"],
     })
+    if args.output_report is not None:
+        args.output_report.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result, indent=2))
 
 
