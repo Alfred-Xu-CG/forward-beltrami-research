@@ -52,6 +52,25 @@ def q1_dyadic_refine(vertices: torch.Tensor) -> torch.Tensor:
     return fine
 
 
+def _ordered_rectangle_boundary(reference: torch.Tensor) -> bool:
+    """The reference traces a simple, ordered axis-aligned rectangle."""
+    x0 = reference[:, 0, 0, 0]
+    x1 = reference[:, 0, -1, 0]
+    y0 = reference[:, 0, 0, 1]
+    y1 = reference[:, -1, 0, 1]
+    return bool(
+        torch.all(x0 < x1) and torch.all(y0 < y1)
+        and torch.all(reference[:, 0, :, 1] == y0[:, None])
+        and torch.all(reference[:, -1, :, 1] == y1[:, None])
+        and torch.all(reference[:, :, 0, 0] == x0[:, None])
+        and torch.all(reference[:, :, -1, 0] == x1[:, None])
+        and torch.all(reference[:, 0, 1:, 0] > reference[:, 0, :-1, 0])
+        and torch.all(reference[:, -1, 1:, 0] > reference[:, -1, :-1, 0])
+        and torch.all(reference[:, 1:, 0, 1] > reference[:, :-1, 0, 1])
+        and torch.all(reference[:, 1:, -1, 1] > reference[:, :-1, -1, 1])
+    )
+
+
 @torch.no_grad()
 def validate_q1_map(
     vertices: torch.Tensor, boundary_reference: torch.Tensor, *,
@@ -60,16 +79,16 @@ def validate_q1_map(
     """Audit actual coordinates, all Q1 corners, and an exact boundary.
 
     This is a numerical check of the supplied tensor, not a rounding-proof
-    certificate. The caller must independently know that the reference
-    boundary is a simple orientation-preserving polygon. Read a saved map
-    back before invoking this when making an exported-output claim.
+    certificate. For a global ``valid`` result, its stored reference boundary
+    must be a simple ordered axis-aligned rectangle. Read a saved map back
+    before making an exported-output claim.
     """
     if vertices.shape != boundary_reference.shape or vertices.ndim != 4 or vertices.shape[-1] != 2:
         raise ValueError("vertices and boundary_reference must have matching (B,R,C,2) shape")
     if vertices.dtype != boundary_reference.dtype or vertices.device != boundary_reference.device:
         raise ValueError("vertices and boundary_reference must match dtype/device")
-    if min(vertices.shape[1:3]) < 2 or chunk_rows < 1:
-        raise ValueError("need at least one cell and positive chunk_rows")
+    if vertices.shape[0] < 1 or min(vertices.shape[1:3]) < 2 or chunk_rows < 1:
+        raise ValueError("need a nonempty batch, at least one cell and positive chunk_rows")
 
     rows = vertices.shape[1]
     nonfinite_coordinates = 0
@@ -98,10 +117,12 @@ def validate_q1_map(
         nonpositive += int((finite & (corners <= 0)).sum())
         if bool(finite.any()):
             corner_min = min(corner_min, float(corners[finite].amin()))
+    boundary_ordered_rectangle = _ordered_rectangle_boundary(boundary_reference)
     valid = (
         nonfinite_coordinates == 0 and nonfinite_corners == 0
         and nonpositive == 0 and boundary_max_error == 0.0
         and bool(torch.isfinite(boundary_reference).all())
+        and boundary_ordered_rectangle
     )
     return {
         "valid": valid,
@@ -110,6 +131,7 @@ def validate_q1_map(
         "nonfinite_corners": nonfinite_corners,
         "nonfinite_coordinates": nonfinite_coordinates,
         "boundary_max_error": boundary_max_error,
+        "boundary_ordered_rectangle": boundary_ordered_rectangle,
     }
 
 

@@ -6,19 +6,23 @@ import argparse
 import json
 import statistics
 import time
+from pathlib import Path
 
+import numpy as np
 import torch
 
 from qcopt.neural_bijection.dense.digital_q1 import (
     SafeColoredQ1Relaxation,
     StaggeredPatchQ1Layer,
     q1_corner_determinants,
+    validate_q1_map,
 )
 
 
 def run_benchmark(
     *, side: int, mode: str, device: str, dtype: str = "float32",
     repeats: int = 3, batch: int = 1, seed: int = 290929,
+    save_path: str | Path | None = None,
 ) -> dict[str, object]:
     if side < 9 or mode not in ("f1", "f2") or repeats < 1 or batch < 1:
         raise ValueError("side>=9, mode=f1/f2, repeats>=1 and batch>=1 required")
@@ -31,7 +35,7 @@ def run_benchmark(
     yy, xx = torch.meshgrid(axis, axis, indexing="ij")
     identity = torch.stack((xx, yy), dim=-1)[None].expand(batch, -1, -1, -1)
     if mode == "f1":
-        layer: torch.nn.Module = SafeColoredQ1Relaxation(side)
+        layer: torch.nn.Module = SafeColoredQ1Relaxation(side).to(device_object)
         fields = (0.15 * torch.randn(
             batch, side - 2, side - 2, 2, dtype=precision, device=device_object,
         )).requires_grad_()
@@ -43,7 +47,7 @@ def run_benchmark(
         patch_cells = 4 if side == 9 else 8
         if (side - 1) % patch_cells:
             raise ValueError("F2 patch_cells must divide side-1")
-        layer = StaggeredPatchQ1Layer(side, patch_cells)
+        layer = StaggeredPatchQ1Layer(side, patch_cells).to(device_object)
         fields = tuple(
             (0.15 * torch.randn(
                 batch, side - 2, side - 2, 2,
@@ -128,6 +132,29 @@ def run_benchmark(
             if device_object.type == "cuda" else None
         ),
     }
+    if save_path is not None:
+        output = Path(save_path)
+        if output.suffix != ".npz":
+            raise ValueError("saved map path must end in .npz")
+        np.savez(
+            output,
+            vertices=mapped.detach().cpu().numpy(),
+            boundary_reference=identity.detach().cpu().numpy(),
+        )
+        with np.load(output, allow_pickle=False) as arrays:
+            reloaded = {
+                "vertices": torch.from_numpy(arrays["vertices"].copy()),
+                "boundary_reference": torch.from_numpy(arrays["boundary_reference"].copy()),
+            }
+        saved_report = validate_q1_map(
+            reloaded["vertices"], reloaded["boundary_reference"],
+        )
+        result["saved_map_valid"] = saved_report["valid"]
+        result["saved_map_corner_min"] = saved_report["corner_min"]
+        result["saved_map_nonpositive_corners"] = saved_report["nonpositive_corners"]
+        result["saved_map_nonfinite_corners"] = saved_report["nonfinite_corners"]
+        result["saved_map_boundary_max_error"] = saved_report["boundary_max_error"]
+        result["save_path"] = str(output)
     return result
 
 
@@ -139,6 +166,7 @@ def main() -> None:
     parser.add_argument("--dtype", choices=("float32", "float64"), default="float32")
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--batch", type=int, default=1)
+    parser.add_argument("--save-map", dest="save_path", type=Path)
     arguments = parser.parse_args()
     print(json.dumps(run_benchmark(**vars(arguments)), sort_keys=True))
 

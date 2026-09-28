@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import torch
+import pytest
 
 from qcopt.neural_bijection.dense.digital_q1 import (
     SafeColoredQ1Relaxation,
@@ -125,3 +126,18 @@ def test_q1_final_validator_rejects_fold_boundary_change_and_nan() -> None:
     nonfinite[:, 1, 1, 0] = float("nan")
     report = validate_q1_map(nonfinite, identity)
     assert not report["valid"] and report["nonfinite_coordinates"] > 0
+
+
+def test_tensor_validator_rejects_twice_wrapped_boundary_despite_positive_corners() -> None:
+    theta = -2 * torch.pi * (torch.arange(33, dtype=torch.float64) % 16) / 16
+    ring = torch.stack((theta.cos(), theta.sin()), dim=-1)
+    wrapped = torch.stack((ring, 2 * ring), dim=0)[None]
+    assert torch.all(q1_corner_determinants(wrapped) > 0)
+    report = validate_q1_map(wrapped, wrapped)
+    assert not report["valid"]
+
+
+def test_tensor_validator_rejects_empty_batch() -> None:
+    empty = torch.empty((0, 2, 2, 2), dtype=torch.float32)
+    with pytest.raises(ValueError, match="nonempty batch"):
+        validate_q1_map(empty, empty)

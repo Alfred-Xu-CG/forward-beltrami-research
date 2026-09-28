@@ -25,8 +25,10 @@ from .spectral_feedback import SpectralSafeFeedbackLayer
 from .qc_radial_relaxation import SafeColoredQCRadialRelaxation
 from .photometric_conductance import PhotometricSpectralTutteLayer
 from .nested_p1_feedback import NestedP1PhotometricFeedbackLayer
+from .forward_q1_pyramid import HybridPatchSeedVertexQ1Pyramid
 
 __all__ = [
+    "HybridPatchSeedVertexQ1Pyramid",
     "MonotoneFiberP1Layer",
     "MultiscaleMonotoneFiberP1Layer",
     "SoftplusPotentialFiberP1Layer",
