@@ -23,6 +23,15 @@ def configure_device(params: dict, device: str) -> None:
     params["nonrigid_registration_params"]["device"] = device
 
 
+def configure_registration_sizes(params: dict, sizes: list[int] | None) -> None:
+    """Override only the feature-match scales; None preserves DHR defaults."""
+    if sizes is None:
+        return
+    if not sizes or any(size <= 0 for size in sizes) or len(set(sizes)) != len(sizes):
+        raise ValueError("registration sizes must be distinct positive integers")
+    params["initial_registration_params"]["registration_sizes"] = list(sizes)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--moving", type=Path, required=True)
@@ -34,6 +43,8 @@ def main() -> None:
                         help="isolate SuperPoint/SuperGlue network reuse within this process")
     parser.add_argument("--repeat", type=int, default=1,
                         help="repeat in one process for cold/warmed cache comparison")
+    parser.add_argument("--registration-sizes", type=int, nargs="+",
+                        help="optional fixed subset of DHR's feature-matching image sizes")
     parser.add_argument("--resample-ratio", type=float, default=0.1,
                         help="same source/target loading scale; use 1 for small original JPEGs")
     parser.add_argument("--case-name", default="HistoReg_CD68_to_CD4_development")
@@ -55,6 +66,7 @@ def main() -> None:
         matcher_cache = install_cached_matcher()
     params = deeperhistreg.configs.default_initial_nonrigid_fast()
     configure_device(params, args.device)
+    configure_registration_sizes(params, args.registration_sizes)
     params["case_name"] = args.case_name
     params["logging_path"] = str(args.output / "deeperhistreg.log")
     params["loading_params"].update(

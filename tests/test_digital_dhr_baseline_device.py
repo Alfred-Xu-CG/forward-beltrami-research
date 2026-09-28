@@ -23,3 +23,14 @@ def test_configure_dhr_device_rejects_unknown_target():
     with pytest.raises(ValueError, match="device"):
         digital_dhr_baseline.configure_device({"initial_registration_params": {},
                                                "nonrigid_registration_params": {}}, "maybe")
+
+
+def test_registration_size_override_is_explicit_and_validated():
+    params = {"initial_registration_params": {"registration_sizes": [150, 200, 250]}}
+    digital_dhr_baseline.configure_registration_sizes(params, None)
+    assert params["initial_registration_params"]["registration_sizes"] == [150, 200, 250]
+    digital_dhr_baseline.configure_registration_sizes(params, [150, 250, 400])
+    assert params["initial_registration_params"]["registration_sizes"] == [150, 250, 400]
+    for invalid in ([], [0], [-100], [150, 150]):
+        with pytest.raises(ValueError, match="registration sizes"):
+            digital_dhr_baseline.configure_registration_sizes(params, invalid)
