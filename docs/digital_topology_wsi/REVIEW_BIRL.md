@@ -130,3 +130,21 @@ Independent bilinear sampling of the original fields at all 257² fixed-unit sit
 **Topology:** float64 determinants on the original fields reproduce zero failing cells, with minimum corner determinants `.948312/1.002638/.911870`; this alone is not their global-boundary certificate. For the safe outputs, every stored residual vertex equals `(i/256,j/256)` exactly, so all 262,144 corner determinants equal `1/65536 > 0` exactly and the ordered boundary is identity. Exact rational determinants of the stored affine matrices are respectively `8222057118378987/9007199254740992`, `281163053409409/281474976710656`, and `296154008153803767/288230376151711744`, all positive. Thus the factored outputs are globally homeomorphic onto their affine parallelograms, not necessarily onto the moving image square.
 
 **Cost and conclusion:** `runtime.json` gives total `50.8539/16.3534/16.8935` seconds and library initial-stage `18.4793/16.1745/16.6284` seconds. The HistoReg total-minus-stage difference is not independently profiled and must not be attributed specifically to matching. The current experiment text keeps those distinct and explicitly charges the safe affine representation for DHR initialization; it does not mislabel this as 19-ms independent neural inference. No coordinate, metric or saved-topology discrepancy was found. This supports a useful image-only global initializer on these inspected examples, not broad generalization or a causal isolation of every preprocessing/optimization difference versus zero-start O.
+
+## GPU DHR initial-only comparison
+
+I compared **all three** CPU/GPU config pairs recursively: the only differences are the top-level/stage device settings, the initial-stage CUDA flag, and case/log-path metadata. The saved postprocessing parameters are identical for each pair, including kidney's `787/768` initial resampling factor. The config/runtime copies beside the experiment report match those in the copied D: result folders.
+
+From each actual GPU-produced MHA field I independently formed Q1 coordinate nodes, evaluated all four corner determinants in float64, selected inverse candidate cells by their bounding boxes, and solved their bilinear equations with SciPy. No production evaluator or its topology booleans were used for these calculations.
+
+| Pair | Cells / nonpositive cells | Minimum raw field-corner determinant | Unique / matched | Independent mean TRE, fixed-JPEG px |
+|---|---:|---:|---:|---:|
+| HistoReg | 738,540 / 0 | .9474552991 | 77/77 | 46.3341412337 |
+| Lesions | 653,260 / 0 | 1.0043570702 | 78/78 | 7.6277104672 |
+| Kidney | 869,778 / 0 | .9060802661 | 69/69 | 10.4615716016 |
+
+These reproduce the reported means and join policy; maximum disagreement with saved predicted coordinates was `1.82e-12` pixels and maximum inverse reconstruction residual `2.28e-13` field pixels. They are full saved-field local-sign and finite-label numerical checks, **not** a global boundary audit or an all-input DHR homeomorphism theorem. CPU/GPU mean proximity does not imply bitwise or pointwise equivalence.
+
+Two convention attacks on the actual GPU kidney field reinforce the direction/scale distinction. ID 1 correctly predicts `(51.02504571,313.00159285)` with TRE `12.62585742`; wrongly setting `r=1` predicts `(51.94487322,313.56824213)`, while wrongly adding the backward displacement at the moving point predicts `(111.41742679,328.87103691)` with TRE `52.33646267`. The wrong-ratio fixture happens to lower this one point's error, demonstrating why label improvement cannot validate a coordinate convention.
+
+Runtime records support GPU total/initial-stage times `39.9498/3.2977`, `4.1073/3.4871`, and `4.6376/3.9714` seconds. The comparison correctly distinguishes cold pipeline time from the approximately 19-ms frozen network and discloses different machines/OS/dependency builds and absent peak-memory/warm-throughput measurements. **One attribution needs care:** HistoReg's measured total-minus-initial remainder is `36.6521` seconds, but it was not subdivided; a statement that large-JPEG/full-field processing or output specifically *dominates* is an unverified explanation, not a measured result. Report it as unprofiled non-initial overhead unless a separate profile establishes the cause. No GPU job was rerun, and no production file was modified.
