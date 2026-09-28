@@ -13,6 +13,7 @@ import argparse
 import json
 import statistics
 import time
+from fractions import Fraction
 from pathlib import Path
 
 import numpy as np
@@ -55,10 +56,27 @@ def _local_ncc_loss(fixed: torch.Tensor, warped: torch.Tensor, *, window: int = 
     return 1 - (cross.square() / (f_var * w_var + 1e-5)).mean()
 
 
+def apply_post_affine(
+    residual_vertices: torch.Tensor, matrix: torch.Tensor, offset: torch.Tensor,
+) -> torch.Tensor:
+    """Apply a positive affine to Q1 values, after residual-map evaluation."""
+    if residual_vertices.ndim != 4 or residual_vertices.shape[-1] != 2 or (
+        matrix.shape != (2, 2) or offset.shape != (2,)
+    ):
+        raise ValueError("expected BxRxCx2 residual and 2x2/2 affine factor")
+    if not bool(torch.isfinite(matrix).all() and torch.isfinite(offset).all()) or (
+        float(torch.linalg.det(matrix).detach()) <= 0
+    ):
+        raise ValueError("post-affine factor must be finite and positive orientation")
+    return residual_vertices @ matrix.T + offset
+
+
 def optimize_tensors(
     fixed: torch.Tensor, moving: torch.Tensor, *,
     final_side: int, steps: int, learning_rate: float, device: str,
     image_loss: str = "global_ncc",
+    post_affine_matrix: torch.Tensor | None = None,
+    post_affine_offset: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, dict[str, float | int | bool | str | None]]:
     """Fit only latent fields; no image encoder or landmark supervision."""
     if fixed.shape != moving.shape or fixed.ndim != 4 or fixed.shape[0] != 1 or fixed.shape[1] != 1:
@@ -70,6 +88,13 @@ def optimize_tensors(
     target_device = torch.device(device)
     fixed = fixed.to(device=target_device, dtype=torch.float32)
     moving = moving.to(device=target_device, dtype=torch.float32)
+    if (post_affine_matrix is None) != (post_affine_offset is None):
+        raise ValueError("post-affine matrix and offset must be given together")
+    if post_affine_matrix is not None:
+        post_affine_matrix = post_affine_matrix.to(device=target_device, dtype=torch.float32)
+        post_affine_offset = post_affine_offset.to(device=target_device, dtype=torch.float32)
+        apply_post_affine(fixed.new_zeros((1, 2, 2, 2)),
+                          post_affine_matrix, post_affine_offset)
     decoder = HybridPatchSeedVertexQ1Pyramid(17, final_side, patch_cells=4).to(target_device)
     seed = torch.nn.ParameterList(
         torch.nn.Parameter(torch.zeros((1, 15, 15, 2), device=target_device))
@@ -96,8 +121,10 @@ def optimize_tensors(
         started = time.perf_counter()
         optimizer.zero_grad(set_to_none=True)
         mapped = decoder(tuple(seed), tuple(levels))
+        effective = (mapped if post_affine_matrix is None else
+                     apply_post_affine(mapped, post_affine_matrix, post_affine_offset))
         warped = warp_moving_at_q1_map(
-            moving, mapped, height=fixed.shape[-2], width=fixed.shape[-1],
+            moving, effective, height=fixed.shape[-2], width=fixed.shape[-1],
         )
         appearance = (_image_correlation_loss(fixed, warped) if image_loss == "global_ncc"
                       else _local_ncc_loss(fixed, warped))
@@ -121,7 +148,8 @@ def optimize_tensors(
     assert best_map is not None
     report = validate_q1_map(best_map, identity)
     return best_map, {
-        "mode": "O_per_pair_latent_optimization",
+        "mode": ("O_per_pair_latent_optimization" if post_affine_matrix is None
+                 else "H_affine_initialized_per_pair_image_optimization"),
         "device": str(target_device),
         "final_side": final_side,
         "image_height": fixed.shape[-2],
@@ -137,6 +165,8 @@ def optimize_tensors(
         "nonpositive_corners": report["nonpositive_corners"],
         "boundary_ordered_rectangle": report["boundary_ordered_rectangle"],
         "boundary_max_error": report["boundary_max_error"],
+        "post_affine_det": (None if post_affine_matrix is None else
+                            float(torch.linalg.det(post_affine_matrix))),
         "cuda_peak_allocated_bytes": (
             torch.cuda.max_memory_allocated(target_device)
             if target_device.type == "cuda" else None
@@ -167,22 +197,38 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=.04)
     parser.add_argument("--image-loss", choices=("global_ncc", "local_ncc"),
                         default="global_ncc")
+    parser.add_argument("--initial-affine-map", type=Path,
+                        help="factorized image-only affine Q1 archive; optimize its safe residual")
     parser.add_argument("--device", default="cuda:0")
     args = parser.parse_args()
     fixed, fixed_size = _read_gray_thumbnail(args.fixed_image, args.image_side)
     moving, moving_size = _read_gray_thumbnail(args.moving_image, args.image_side)
+    matrix = offset = None
+    if args.initial_affine_map is not None:
+        with np.load(args.initial_affine_map) as archive:
+            matrix = np.asarray(archive["post_affine_matrix"], dtype=np.float32)
+            offset = np.asarray(archive["post_affine_offset"], dtype=np.float32)
+        if matrix.shape != (2, 2) or offset.shape != (2,):
+            raise ValueError("initial archive needs 2x2 affine matrix and 2-vector offset")
     mapped, result = optimize_tensors(
         fixed, moving, final_side=args.final_side, steps=args.steps,
         learning_rate=args.learning_rate, device=args.device,
         image_loss=args.image_loss,
+        post_affine_matrix=None if matrix is None else torch.from_numpy(matrix),
+        post_affine_offset=None if offset is None else torch.from_numpy(offset),
     )
     axis = np.arange(args.final_side, dtype=np.float32) / np.float32(args.final_side - 1)
     y, x = np.meshgrid(axis, axis, indexing="ij")
     reference = np.stack((x, y), axis=-1)[None]
-    np.savez_compressed(
-        args.output_map, vertices=mapped.cpu().numpy(), boundary_reference=reference,
-    )
+    payload = {"vertices": mapped.cpu().numpy(), "boundary_reference": reference}
+    if matrix is not None:
+        payload.update(post_affine_matrix=matrix, post_affine_offset=offset)
+    np.savez_compressed(args.output_map, **payload)
     certificate = certify_q1_binary_map(args.output_map)
+    exact_affine_positive = None
+    if matrix is not None:
+        a, b, c, d = (Fraction.from_float(float(value)) for value in matrix.flat)
+        exact_affine_positive = bool(a * d - b * c > 0)
     result.update({
         "moving_image": str(args.moving_image),
         "fixed_image": str(args.fixed_image),
@@ -193,6 +239,11 @@ def main() -> None:
         "saved_binary_valid": certificate["valid"],
         "saved_binary_positive_corners": certificate["positive_corners"],
         "saved_binary_nonpositive_corners": certificate["nonpositive_corners"],
+        "stored_affine_det_positive_exact": exact_affine_positive,
+        "saved_factorization_valid": bool(certificate["valid"] and (
+            exact_affine_positive is None or exact_affine_positive)),
+        "initial_affine_map": (None if args.initial_affine_map is None else
+                               str(args.initial_affine_map)),
     })
     if args.output_report is not None:
         args.output_report.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
