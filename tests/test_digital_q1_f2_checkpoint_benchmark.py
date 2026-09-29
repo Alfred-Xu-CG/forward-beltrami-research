@@ -18,3 +18,11 @@ def test_f2_round_checkpoint_preserves_map_and_vjp(tmp_path: Path) -> None:
                 np.testing.assert_array_equal(first["vertices"], second["vertices"])
                 np.testing.assert_allclose(first["latent_vjp"], second["latent_vjp"],
                                            rtol=2e-6, atol=2e-8)
+
+
+def test_single_patch_benchmark_uses_only_one_offset(tmp_path: Path) -> None:
+    report = run(9, 1, 8, "cpu", 1, tmp_path / "single_patch", True)
+    for mode in ("fixed_h", "current_edge"):
+        assert report["arms"][mode]["certificate"]["valid"]
+        with np.load(tmp_path / f"single_patch_{mode}.npz") as archive:
+            assert np.all(archive["latent_vjp"][0, 1:] == 0)

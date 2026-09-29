@@ -62,7 +62,9 @@ def run(side: int, rounds: int, patch_cells: int, device: str,
                                       proposal_mode=mode, raw_span=.5).to(target_device)
 
         def forward_round(state: torch.Tensor, round_latents: torch.Tensor) -> torch.Tensor:
-            return layer(state, tuple(round_latents.unbind(0)))
+            # A single width-eight patch has one pass, whereas larger grids
+            # have four offsets; unused small-grid slots have zero VJP.
+            return layer(state, tuple(round_latents[:len(layer.passes)].unbind(0)))
 
         def forward_all(base: torch.Tensor, latents: torch.Tensor) -> torch.Tensor:
             mapped = base

@@ -35,7 +35,16 @@ def test_fixed_query_p1_values_match_separate_numpy_evaluator_and_vjp() -> None:
     actual = evaluate_factorized_p1(mapped, queries)
     expected_residual = p1_map_at_unit_queries(
         vertices.detach().numpy()[0], queries.numpy()[0])
-    expected = expected_residual @ matrix.detach().numpy()[0].T + offset.detach().numpy()[0]
+    # Scalar expansion keeps this independent two-coordinate check free of
+    # NumPy BLAS, which aborts in some Windows PyTorch/MKL test environments.
+    reference_matrix = matrix.detach().numpy()[0]
+    reference_offset = offset.detach().numpy()[0]
+    expected = np.stack((
+        reference_matrix[0, 0] * expected_residual[:, 0]
+        + reference_matrix[0, 1] * expected_residual[:, 1] + reference_offset[0],
+        reference_matrix[1, 0] * expected_residual[:, 0]
+        + reference_matrix[1, 1] * expected_residual[:, 1] + reference_offset[1],
+    ), axis=-1)
     np.testing.assert_allclose(actual.detach().numpy()[0], expected, atol=1e-14)
     actual.square().sum().backward()
     for gradient in (vertices.grad, matrix.grad, offset.grad):
