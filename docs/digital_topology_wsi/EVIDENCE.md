@@ -1,5 +1,7 @@
 # Dataset and baseline scout (2026-09-29)
 
+The original scout paragraphs below record what was known *before* the later development runs. The dated update at the end supersedes its old "not present/not run" status for ACROBAT and DeeperHistReg; do not read those snapshots as current results.
+
 Scope: official availability, license/access, size and evaluation facts for HyReCo, ACROBAT and ANHIR; local data/code reconnaissance. A public webpage or runnable installation recipe is not evidence that this checkout has run a baseline.
 
 ## Dataset facts
@@ -73,3 +75,11 @@ python -m tools.digital_wsi_pair_eval --transform docs\digital_topology_wsi\hist
 ```
 
 The focused tests returned `9 passed in 0.47s`. Both real CLI evaluations completed with 77/77 mapped points inside the fixed frame. Landmark evaluation was performed after the image-only transforms were saved; no landmark was supplied to either estimator.
+
+## 2026-09-29 update: selected public ACROBAT training pairs
+
+The [official ACROBAT data page](https://acrobat.grand-challenge.org/data/) provides training WSI archives and states explicitly that **no landmarks are generated for training cases**; validation/test target correspondences remain private and require the official challenge evaluation. The [participation rules](https://acrobat.grand-challenge.org/participation-rules/) control use of these images. Thus a local experiment on training images cannot honestly report landmark TRE or an official challenge score. The older "not present" entry in the scout table is now obsolete: `tools/digital_acrobat_extract_subset.py` uses HTTP byte ranges to select ten named H&E/IHC case pairs from official training archive part 1 into `D:\QC_optimization_data\digital_topology_wsi\ACROBAT_train_subset`, not the full archive. Selection and local extraction do not confer extra permission to redistribute images; they remain outside Git.
+
+`tools/digital_acrobat_thumbnail.py` reads a low TIFF pyramid level before making a 512² RGB preview, rather than decompressing the hundreds-of-megapixels base. It records the original/read dimensions and pyramid level beside each PNG. For example, case 638 H&E is 20,608×20,480 pixels at the base and 644×640 at read level 5; PGR is 17,024×17,408 and 532×544 at read level 5. **Each preview is independently squeezed to a square.** Its unit-square coordinates are consequently a *development canvas*, not the scanner's physical coordinate system and not an official ACROBAT submission/evaluation protocol. The same issue is severe for case 315 (H&E 27,776×49,152; HER2 16,128×39,936). Results on these previews cannot be interpreted as physical WSI registration accuracy.
+
+As a format/pipeline diagnostic only, the installed DeeperHistReg 1.0.1 image-only pipeline was run on case 638 PGR→H&E 512² previews with 256/512 registration sizes and resample ratio 1. The saved **initial-only** backward displacement grid has 0 nonpositive Q1 corners among 1,044,484 corner evaluations and minimum determinant 1.149095; the saved **full** nonrigid grid has 1 nonpositive corner and minimum −0.070453, with maximum field magnitude 49.65 preview pixels. The detector computes the full map `identity + displacement`, not the displacement Jacobian. The MHA files were copied to the D: subset directory and re-read locally for these figures. This is one selected development pair, with no landmarks and an altered input canvas; it is neither a claim that DeeperHistReg generally folds nor a candidate-vs-baseline accuracy comparison. It establishes that the actual saved baseline field can fail the project's strict all-corner digital topology condition even in a visually plausible real pair.

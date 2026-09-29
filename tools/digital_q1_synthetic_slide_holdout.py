@@ -101,7 +101,10 @@ def run(*, textures: torch.Tensor, train_texture_indices: list[int],
         train_count: int, test_count: int, device: str,
         output_example: Path | None = None,
         output_weights: Path | None = None,
-        loss_mode: str = "map") -> dict:
+        loss_mode: str = "map", model_seed: int = 291001,
+        minibatch_seed: int = 291004,
+        train_coefficient_scale: float = 1.0,
+        test_coefficient_scale: float = 1.0) -> dict:
     if textures.ndim != 4 or textures.shape[1] != 1 or textures.shape[-1] != textures.shape[-2]:
         raise ValueError("textures must have shape (T,1,S,S)")
     if not train_texture_indices or not test_texture_indices or (
@@ -115,7 +118,10 @@ def run(*, textures: torch.Tensor, train_texture_indices: list[int],
         raise ValueError("positive dimensions and counts required")
     if loss_mode not in {"map", "image", "p1_image"}:
         raise ValueError("loss_mode must be map, image or p1_image")
-    torch.manual_seed(291001)
+    if not (0 < train_coefficient_scale <= 3.0 and
+            0 < test_coefficient_scale <= 3.0):
+        raise ValueError("coefficient scales must be in (0, 3]")
+    torch.manual_seed(model_seed)
     target_device = torch.device(device)
     textures = textures.to(target_device, dtype=torch.float32)
     image_side = int(textures.shape[-1])
@@ -123,13 +129,15 @@ def run(*, textures: torch.Tensor, train_texture_indices: list[int],
     vertex_points = point_grid(side, centers=False, device=target_device)
     train_textures = textures[train_texture_indices]
     test_textures = textures[test_texture_indices]
-    train_coeff = make_coefficients(train_count, 291002).to(target_device)
-    test_coeff = make_coefficients(test_count, 291003).to(target_device)
+    train_coeff = (train_coefficient_scale *
+                   make_coefficients(train_count, 291002)).to(target_device)
+    test_coeff = (test_coefficient_scale *
+                  make_coefficients(test_count, 291003)).to(target_device)
     model = Q1ImageRegistrationNetwork(seed_side=17, final_side=side,
                                        width=16, feature_side=min(side, 257),
                                        flow_hint=True).to(target_device)
     optimizer = torch.optim.Adam(model.encoder.parameters(), lr=.002)
-    rng = torch.Generator(device="cpu").manual_seed(291004)
+    rng = torch.Generator(device="cpu").manual_seed(minibatch_seed)
     times = []
     losses = []
     if target_device.type == "cuda":
@@ -228,6 +236,10 @@ def run(*, textures: torch.Tensor, train_texture_indices: list[int],
         "train_count": train_count,
         "test_count": test_count,
         "training_loss_mode": loss_mode,
+        "model_seed": model_seed,
+        "minibatch_seed": minibatch_seed,
+        "train_coefficient_scale": train_coefficient_scale,
+        "test_coefficient_scale": test_coefficient_scale,
         "image_interpolation_for_training_and_test": (
             "fixed_SW_NE_P1" if loss_mode == "p1_image" else "Q1"
         ),
@@ -262,6 +274,10 @@ def main() -> None:
     parser.add_argument("--output-example", type=Path)
     parser.add_argument("--output-weights", type=Path)
     parser.add_argument("--loss-mode", choices=("map", "image", "p1_image"), default="map")
+    parser.add_argument("--model-seed", type=int, default=291001)
+    parser.add_argument("--minibatch-seed", type=int, default=291004)
+    parser.add_argument("--train-coefficient-scale", type=float, default=1.0)
+    parser.add_argument("--test-coefficient-scale", type=float, default=1.0)
     args = parser.parse_args()
     with np.load(args.textures) as archive:
         textures = torch.from_numpy(archive["images"].copy())
@@ -272,7 +288,10 @@ def main() -> None:
                  side=args.side, steps=args.steps, batch=args.batch,
                  train_count=args.train_count, test_count=args.test_count,
                  device=args.device, output_example=args.output_example,
-                 output_weights=args.output_weights, loss_mode=args.loss_mode)
+                 output_weights=args.output_weights, loss_mode=args.loss_mode,
+                 model_seed=args.model_seed, minibatch_seed=args.minibatch_seed,
+                 train_coefficient_scale=args.train_coefficient_scale,
+                 test_coefficient_scale=args.test_coefficient_scale)
     report["texture_sources"] = sources
     args.output_report.parent.mkdir(parents=True, exist_ok=True)
     args.output_report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")

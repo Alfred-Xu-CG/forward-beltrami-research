@@ -24,13 +24,16 @@ from tools.digital_q1_synthetic_slide_holdout import (
 @torch.no_grad()
 def evaluate(*, textures: torch.Tensor, test_texture_indices: list[int],
              weights: Path, side: int, test_count: int, batch: int,
-             device: str) -> dict:
+             device: str, coefficient_scale: float = 1.0) -> dict:
+    if not (0 < coefficient_scale <= 3.0):
+        raise ValueError("coefficient scale must be in (0, 3]")
     target_device = torch.device(device)
     textures = textures.to(target_device, dtype=torch.float32)
     image_side = int(textures.shape[-1])
     pixel_points = point_grid(image_side, centers=True, device=target_device)
     vertex_points = point_grid(side, centers=False, device=target_device)
-    coefficients = make_coefficients(test_count, 291003).to(target_device)
+    coefficients = (coefficient_scale *
+                    make_coefficients(test_count, 291003)).to(target_device)
     model = load_checkpoint(weights, device=device)
     model.eval()
     if model.decoder.final_side != side:
@@ -74,20 +77,24 @@ def evaluate(*, textures: torch.Tensor, test_texture_indices: list[int],
             cases.append({
                 "sample_index": int(indices[local]),
                 "texture_index": test_texture_indices[int(indices[local]) % len(test_texture_indices)],
+                "identity_query_map_rmse": float((q[local] - truth[local]).square().sum(-1).mean().sqrt()),
                 "p1_query_map_rmse": float((p1[local] - truth[local]).square().sum(-1).mean().sqrt()),
                 "q1_query_map_rmse": float((q1[local] - truth[local]).square().sum(-1).mean().sqrt()),
                 "p1_q1_query_difference_rmse": float((p1[local] - q1[local]).square().sum(-1).mean().sqrt()),
                 "p1_image_mse": float((p1_image[local] - fixed[local]).square().mean()),
                 "q1_image_mse": float((q1_image[local] - fixed[local]).square().mean()),
+                "identity_image_mse": float((moving[local] - fixed[local]).square().mean()),
             })
     means = {
         key + "_mean": statistics.mean(item[key] for item in cases)
-        for key in ("p1_query_map_rmse", "q1_query_map_rmse",
-                    "p1_q1_query_difference_rmse", "p1_image_mse", "q1_image_mse")
+        for key in ("identity_query_map_rmse", "p1_query_map_rmse",
+                    "q1_query_map_rmse", "p1_q1_query_difference_rmse",
+                    "p1_image_mse", "q1_image_mse", "identity_image_mse")
     }
     return {
         "test_texture_indices": test_texture_indices,
         "test_count": test_count,
+        "coefficient_scale": coefficient_scale,
         "image_side": image_side,
         "control_side": side,
         "fixed_sw_ne_p1_triangles_per_map": 2 * (side - 1) ** 2,
@@ -109,13 +116,15 @@ def main() -> None:
     parser.add_argument("--test-count", type=int, default=64)
     parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--coefficient-scale", type=float, default=1.0)
     parser.add_argument("--output-report", type=Path, required=True)
     args = parser.parse_args()
     with np.load(args.textures) as archive:
         textures = torch.from_numpy(archive["images"].copy())
     report = evaluate(textures=textures, test_texture_indices=args.test_texture_index,
                       weights=args.weights, side=args.side, test_count=args.test_count,
-                      batch=args.batch, device=args.device)
+                      batch=args.batch, device=args.device,
+                      coefficient_scale=args.coefficient_scale)
     args.output_report.parent.mkdir(parents=True, exist_ok=True)
     args.output_report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({key: value for key, value in report.items() if key != "cases"}, indent=2))

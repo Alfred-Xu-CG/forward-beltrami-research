@@ -78,6 +78,10 @@ def test_p1_image_loss_trains_encoder_on_small_batch() -> None:
                  train_count=3, test_count=2, device="cpu",
                  loss_mode="p1_image")
     assert report["training_loss_mode"] == "p1_image"
+    assert report["model_seed"] == 291001
+    assert report["minibatch_seed"] == 291004
+    assert report["train_coefficient_scale"] == 1.0
+    assert report["test_coefficient_scale"] == 1.0
     assert report["test_image_mse_mean"] >= 0
     assert report["test_map_rmse_mean"] >= 0
 
@@ -92,3 +96,11 @@ def test_p1_report_names_twice_triangle_area_as_determinant(tmp_path) -> None:
                       side=33, test_count=1, batch=1, device="cpu")
     assert report["minimum_unnormalized_p1_triangle_determinant_float32"] > 0
     assert report["full_p1_inference_seconds_per_image_median"] >= 0
+
+
+def test_p1_ood_scale_requires_positive_bounded_deformation(tmp_path) -> None:
+    with pytest.raises(ValueError, match="coefficient scale"):
+        evaluate(textures=torch.rand((2, 1, 32, 32)),
+                 test_texture_indices=[1], weights=tmp_path / "unused.npz",
+                 side=33, test_count=1, batch=1, device="cpu",
+                 coefficient_scale=0)
