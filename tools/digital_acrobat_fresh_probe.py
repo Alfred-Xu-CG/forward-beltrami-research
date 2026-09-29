@@ -303,7 +303,10 @@ def main() -> None:
     training = commands.add_parser("train")
     training.add_argument("--root", type=Path, required=True)
     training.add_argument("--output", type=Path, required=True)
-    training.add_argument("--train-ids", nargs="+", type=int, required=True)
+    train_source = training.add_mutually_exclusive_group(required=True)
+    train_source.add_argument("--train-ids", nargs="+", type=int)
+    train_source.add_argument("--train-selection", type=Path,
+                              help="JSON selection with combined_train_ids")
     training.add_argument("--steps", type=int, default=800)
     training.add_argument("--batch", type=int, default=4)
     training.add_argument("--device", default="cuda:0")
@@ -328,8 +331,10 @@ def main() -> None:
     scoring.add_argument("--device", default="cpu")
     args = parser.parse_args()
     if args.command == "train":
+        train_ids = (json.loads(args.train_selection.read_text(encoding="utf-8"))
+                     ["combined_train_ids"] if args.train_selection else args.train_ids)
         result = train_only(root=args.root, output=args.output,
-                            train_ids=args.train_ids, steps=args.steps,
+                            train_ids=train_ids, steps=args.steps,
                             batch=args.batch, device=args.device, seed=args.seed,
                             flow_hint=args.flow_hint, dihedral=args.dihedral)
     elif args.command in ("evaluate", "predict"):

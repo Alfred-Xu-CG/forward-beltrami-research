@@ -196,6 +196,148 @@ class SafeColoredQ1Relaxation(SafeColoredVertexRelaxation):
         return super().forward(base, logits, area_floor=area_floor)
 
 
+class AdaptiveEllipsoidQ1Relaxation(SafeColoredQ1Relaxation):
+    """Four-color F1 with a feasible ellipsoid recomputed from current areas.
+
+    For each active vertex, C=sum_k (a_k/m_k)(a_k/m_k)^T over all twelve
+    incident Q1 corner constraints. The proposal is eta*(C+lambda I)^(-1/2)
+    tanh(logits); eta<1/sqrt(2) keeps every area above its budget floor in
+    exact arithmetic without a radial clipping branch. Actual stored maps
+    still need an independent finite-precision sign certificate.
+    """
+
+    def __init__(self, side: int, *, safety_fraction: float = 0.75,
+                 minimum_jacobian: float | None = 0.05,
+                 proposal_fraction: float = 0.6,
+                 ridge_fraction: float = 1e-3,
+                 checkpoint_colors: bool = False) -> None:
+        super().__init__(side, safety_fraction=safety_fraction,
+                         minimum_jacobian=minimum_jacobian,
+                         checkpoint_colors=checkpoint_colors)
+        if (not math.isfinite(proposal_fraction)
+                or not 0 < proposal_fraction < 1 / math.sqrt(2)
+                or not math.isfinite(ridge_fraction)
+                or not 1e-6 <= ridge_fraction <= 1):
+            raise ValueError("proposal_fraction < 1/sqrt(2) and ridge in [1e-6,1] required")
+        self.proposal_fraction = float(proposal_fraction)
+        self.ridge_fraction = float(ridge_fraction)
+
+    def _update_color(
+        self, current: torch.Tensor, latent: torch.Tensor,
+        area_floor: torch.Tensor | None, color: int,
+    ) -> torch.Tensor:
+        vertices = getattr(self, f"_vertices_{color}")
+        opposite = vertices[:, None, None] + self._opposite_offsets[None]
+        local = ((vertices // self.side - 1) * (self.side - 2)
+                 + vertices % self.side - 1)
+        point = current[:, vertices]
+        # Current/output coordinates remain in their declared dtype; use
+        # float64 only for the area budget and the tiny 2x2 proposal metric.
+        point64 = point.to(torch.float64)
+        start = current[:, opposite[..., 0]].to(torch.float64)
+        end = current[:, opposite[..., 1]].to(torch.float64)
+        edge = end - start
+        relative = point64[:, :, None] - start
+        areas = edge[..., 0] * relative[..., 1] - edge[..., 1] * relative[..., 0]
+        budget = self.safety_fraction * areas
+        if area_floor is not None:
+            budget = torch.minimum(
+                budget, (areas - area_floor[:, None, None].to(torch.float64)).clamp_min(0),
+            )
+        valid_margin = (budget > 0).all(dim=-1)
+        safe_budget = torch.where(budget > 0, budget, torch.ones_like(budget))
+        # area(y_i+d)=area(y_i)+cross(edge,d), so a=(-edge_y,edge_x).
+        vx = -edge[..., 1] / safe_budget
+        vy = edge[..., 0] / safe_budget
+        # Normalize before forming the Gram matrix: an almost-active floor
+        # can make v large enough that C*C overflows even on a unit square.
+        vscale = torch.maximum(vx.abs(), vy.abs()).amax(dim=-1)
+        valid_scale = torch.isfinite(vscale) & (vscale > 0)
+        safe_scale = torch.where(valid_scale, vscale, torch.ones_like(vscale))
+        vx = vx / safe_scale[..., None]
+        vy = vy / safe_scale[..., None]
+        cxx = vx.square().sum(dim=-1)
+        cxy = (vx * vy).sum(dim=-1)
+        cyy = vy.square().sum(dim=-1)
+        ridge = self.ridge_fraction * (cxx + cyy) / 2
+        aa, bb, dd = cxx + ridge, cxy, cyy + ridge
+        determinant = aa * dd - bb.square()
+        valid_det = torch.isfinite(determinant) & (determinant > 0)
+        root_det = torch.sqrt(torch.where(valid_det, determinant,
+                                          torch.ones_like(determinant)))
+        root_trace = torch.sqrt((aa + dd + 2 * root_det).clamp_min(
+            torch.finfo(current.dtype).tiny,
+        ))
+        wx, wy = torch.tanh(latent[:, local].to(torch.float64)).unbind(-1)
+        factor = self.proposal_fraction / (safe_scale * root_det * root_trace)
+        dx = factor * ((dd + root_det) * wx - bb * wy)
+        dy = factor * (-bb * wx + (aa + root_det) * wy)
+        displacement = torch.stack((dx, dy), dim=-1)
+        displacement = torch.where((valid_margin & valid_scale & valid_det)[..., None],
+                                   displacement, torch.zeros_like(displacement))
+        displacement = displacement.to(current.dtype)
+        return current.index_copy(1, vertices, point + displacement)
+
+
+class AdaptiveSoftRadialQ1Relaxation(SafeColoredQ1Relaxation):
+    """F1 proposal from current edge vectors with a strict soft radial map.
+
+    The active-constraint maximum M gives d=raw/(1+M). For finite inputs
+    and positive area budgets, every adverse corner loss is strictly below
+    its budget in exact arithmetic. Unlike a hard radial cutoff, the radial
+    derivative stays nonzero at finite proposal length.
+    """
+
+    def __init__(self, side: int, *, safety_fraction: float = 0.75,
+                 minimum_jacobian: float | None = 0.05,
+                 raw_span: float = 8.0,
+                 checkpoint_colors: bool = False) -> None:
+        super().__init__(side, safety_fraction=safety_fraction,
+                         raw_span=raw_span,
+                         minimum_jacobian=minimum_jacobian,
+                         checkpoint_colors=checkpoint_colors)
+
+    def _update_color(
+        self, current: torch.Tensor, latent: torch.Tensor,
+        area_floor: torch.Tensor | None, color: int,
+    ) -> torch.Tensor:
+        vertices = getattr(self, f"_vertices_{color}")
+        opposite = vertices[:, None, None] + self._opposite_offsets[None]
+        local = ((vertices // self.side - 1) * (self.side - 2)
+                 + vertices % self.side - 1)
+        point = current[:, vertices]
+        point64 = point.to(torch.float64)
+        start = current[:, opposite[..., 0]].to(torch.float64)
+        end = current[:, opposite[..., 1]].to(torch.float64)
+        edge = end - start
+        relative = point64[:, :, None] - start
+        areas = edge[..., 0] * relative[..., 1] - edge[..., 1] * relative[..., 0]
+        budget = self.safety_fraction * areas
+        if area_floor is not None:
+            budget = torch.minimum(
+                budget, (areas - area_floor[:, None, None].to(torch.float64)).clamp_min(0),
+            )
+        valid_margin = (budget > 0).all(dim=-1)
+        safe_budget = torch.where(budget > 0, budget, torch.ones_like(budget))
+        horizontal = (current[:, vertices + 1].to(torch.float64)
+                      - current[:, vertices - 1].to(torch.float64)) / 2
+        vertical = (current[:, vertices + self.side].to(torch.float64)
+                    - current[:, vertices - self.side].to(torch.float64)) / 2
+        wx, wy = torch.tanh(latent[:, local].to(torch.float64)).unbind(-1)
+        raw = self.raw_span * (horizontal * wx[..., None]
+                               + vertical * wy[..., None])
+        adverse = -(edge[..., 0] * raw[:, :, None, 1]
+                    - edge[..., 1] * raw[:, :, None, 0]) / safe_budget
+        maximum = adverse.clamp_min(0).amax(dim=-1)
+        valid_maximum = torch.isfinite(maximum)
+        denominator = torch.where(valid_maximum, 1 + maximum,
+                                  torch.ones_like(maximum))
+        displacement = raw / denominator[..., None]
+        displacement = torch.where((valid_margin & valid_maximum)[..., None],
+                                   displacement, torch.zeros_like(displacement))
+        return current.index_copy(1, vertices, point + displacement.to(current.dtype))
+
+
 class SafePatchQ1Pass(SafePatchFieldPass):
     """F2-D: simultaneous patch motion with all four corner constraints.
 

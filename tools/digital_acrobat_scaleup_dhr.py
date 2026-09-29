@@ -19,7 +19,8 @@ from pathlib import Path
 import numpy as np
 
 
-def _run_one(item: dict, root: Path, gpu: int) -> dict:
+def _run_one(item: dict, root: Path, gpu: int,
+             stages: tuple[str, ...]) -> dict:
     case, stain = item["case"], item["stain"]
     fixed = root / f"{case}_HE_physical512.png"
     moving = root / f"{case}_{stain}_physical512.png"
@@ -31,7 +32,7 @@ def _run_one(item: dict, root: Path, gpu: int) -> dict:
     code_root = Path(__file__).resolve().parent.parent
     environment["PYTHONPATH"] = str(code_root) + os.pathsep + str(code_root / "src")
     record = {"case": case, "stain": stain, "gpu": gpu, "stages": {}}
-    for stage in ("initial", "full"):
+    for stage in stages:
         target = root / f"{case}_DHR_physical_{stage}_teacher_affine.npz"
         if target.exists():
             with np.load(target) as archive:
@@ -82,12 +83,13 @@ def _run_one(item: dict, root: Path, gpu: int) -> dict:
 def run_selected(selection: Path, root: Path, report_path: Path, *,
                  section: str, devices: list[int],
                  case_ids: list[int] | None = None,
-                 available_pending_only: bool = False) -> dict:
+                 available_pending_only: bool = False,
+                 stages: tuple[str, ...] = ("initial", "full")) -> dict:
     if report_path.exists():
         raise FileExistsError(report_path)
     if section not in ("new_train", "new_confirmation") or not devices or (
         len(set(devices)) != len(devices) or any(gpu < 0 for gpu in devices)
-    ):
+    ) or not stages or any(stage not in ("initial", "full") for stage in stages):
         raise ValueError("valid section and distinct GPU indices required")
     contents = json.loads(selection.read_text(encoding="utf-8"))
     items = [item for rows in contents[section].values() for item in rows]
@@ -102,7 +104,7 @@ def run_selected(selection: Path, root: Path, report_path: Path, *,
             (root / f'{item["case"]}_HE_physical512.png').is_file()
             and (root / f'{item["case"]}_{item["stain"]}_physical512.png').is_file()
             and not all((root / f'{item["case"]}_DHR_physical_{stage}_teacher_affine.npz').is_file()
-                        for stage in ("initial", "full"))
+                        for stage in stages)
         )]
     queues = [items[index::len(devices)] for index in range(len(devices))]
 
@@ -110,7 +112,7 @@ def run_selected(selection: Path, root: Path, report_path: Path, *,
         records = []
         for item in jobs:
             try:
-                record = _run_one(item, root, gpu)
+                record = _run_one(item, root, gpu, stages)
             except Exception as error:  # Preserve the selected case in denominator.
                 record = {"case": item["case"], "stain": item["stain"],
                           "gpu": gpu, "error": repr(error)}
@@ -127,7 +129,7 @@ def run_selected(selection: Path, root: Path, report_path: Path, *,
     report = {"section": section, "selected_cases": len(items),
               "successful_cases": sum("error" not in record for record in records),
               "failed_cases": [record["case"] for record in records if "error" in record],
-              "devices": devices, "cases": records}
+              "devices": devices, "stages": list(stages), "cases": records}
     report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return report
 
@@ -141,11 +143,14 @@ def main() -> None:
     parser.add_argument("--devices", type=int, nargs="+", required=True)
     parser.add_argument("--case-ids", type=int, nargs="+")
     parser.add_argument("--available-pending-only", action="store_true")
+    parser.add_argument("--stages", nargs="+", choices=("initial", "full"),
+                        default=["initial", "full"])
     args = parser.parse_args()
     result = run_selected(args.selection, args.root, args.report,
                           section=args.section, devices=args.devices,
                           case_ids=args.case_ids,
-                          available_pending_only=args.available_pending_only)
+                          available_pending_only=args.available_pending_only,
+                          stages=tuple(args.stages))
     print(json.dumps({key: result[key] for key in
                       ("selected_cases", "successful_cases", "failed_cases")}))
 
