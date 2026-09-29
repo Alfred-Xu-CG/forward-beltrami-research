@@ -41,9 +41,37 @@ def validate_eval_ids(ids: list[int], train_ids: list[int]) -> list[int]:
     return list(ids)
 
 
+def dihedral_augment(fixed: torch.Tensor, moving: torch.Tensor,
+                     target: torch.Tensor, *, turns: int,
+                     flip: bool) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Apply one square symmetry to aligned images and conjugate a vertex map.
+
+    Both 512² image centers and 257² map nodes are permuted exactly. The target
+    is a coordinate map U, so its values also transform by R in R U R^{-1}.
+    """
+    if turns not in (0, 1, 2, 3) or fixed.shape != moving.shape or (
+        fixed.ndim != 4 or target.ndim != 4 or target.shape[0] != fixed.shape[0]
+        or target.shape[-1] != 2 or fixed.shape[-1] != fixed.shape[-2]
+        or target.shape[1] != target.shape[2]
+    ):
+        raise ValueError("square image/map batches and 0..3 quarter turns required")
+    if flip:
+        fixed = torch.flip(fixed, (-1,))
+        moving = torch.flip(moving, (-1,))
+        target = torch.flip(target, (2,))
+        target = torch.stack((1 - target[..., 0], target[..., 1]), dim=-1)
+    for _ in range(turns):
+        fixed = torch.rot90(fixed, 1, (-2, -1))
+        moving = torch.rot90(moving, 1, (-2, -1))
+        target = torch.rot90(target, 1, (1, 2))
+        target = torch.stack((target[..., 1], 1 - target[..., 0]), dim=-1)
+    return fixed, moving, target
+
+
 def train_only(*, root: Path, output: Path, train_ids: list[int], steps: int,
                batch: int, device: str, seed: int = 20260929,
-               learning_rate: float = .002, flow_hint: bool = False) -> dict:
+               learning_rate: float = .002, flow_hint: bool = False,
+               dihedral: bool = False) -> dict:
     train_ids = validate_train_ids(train_ids)
     if steps < 1 or batch < 1 or learning_rate <= 0:
         raise ValueError("positive steps, batch and learning rate required")
@@ -58,6 +86,7 @@ def train_only(*, root: Path, output: Path, train_ids: list[int], steps: int,
                                        flow_hint=flow_hint).to(target_device)
     optimizer = torch.optim.Adam(model.encoder.parameters(), lr=learning_rate)
     rng = torch.Generator(device="cpu").manual_seed(seed + 1)
+    augment_rng = torch.Generator(device="cpu").manual_seed(seed + 2)
     durations: list[float] = []
     losses: list[float] = []
     if target_device.type == "cuda":
@@ -66,9 +95,19 @@ def train_only(*, root: Path, output: Path, train_ids: list[int], steps: int,
     for step in range(steps):
         selected = torch.randint(len(examples), (batch,), generator=rng).tolist()
         minibatch = [examples[index] for index in selected]
-        fixed = torch.cat([item["fixed"] for item in minibatch])
-        prewarped = torch.cat([item["prewarped"] for item in minibatch])
-        target = torch.cat([item["target"] for item in minibatch])
+        if dihedral:
+            prepared = [dihedral_augment(
+                item["fixed"], item["prewarped"], item["target"],
+                turns=int(torch.randint(4, (1,), generator=augment_rng)),
+                flip=bool(torch.randint(2, (1,), generator=augment_rng)),
+            ) for item in minibatch]
+            fixed, prewarped, target = (
+                torch.cat([item[index] for item in prepared]) for index in range(3)
+            )
+        else:
+            fixed = torch.cat([item["fixed"] for item in minibatch])
+            prewarped = torch.cat([item["prewarped"] for item in minibatch])
+            target = torch.cat([item["target"] for item in minibatch])
         if target_device.type == "cuda":
             torch.cuda.synchronize(target_device)
         start = time.perf_counter()
@@ -93,6 +132,7 @@ def train_only(*, root: Path, output: Path, train_ids: list[int], steps: int,
         "steps": steps, "batch": batch, "seed": seed,
         "learning_rate": learning_rate,
         "flow_hint": flow_hint,
+        "dihedral_augmentation": dihedral,
         "first_minibatch_loss": losses[0], "last_minibatch_loss": losses[-1],
         "median_training_step_seconds": statistics.median(durations),
         "peak_torch_cuda_allocated_bytes": (
@@ -110,11 +150,13 @@ def train_only(*, root: Path, output: Path, train_ids: list[int], steps: int,
 
 
 def evaluate_frozen(*, root: Path, output: Path, test_ids: list[int],
-                    device: str) -> dict:
+                    device: str, prediction_only: bool = False) -> dict:
     with (output / "train_manifest.json").open(encoding="utf-8") as stream:
         training = json.load(stream)
     ids = validate_eval_ids(test_ids, training["train_case_ids"])
-    if (output / "heldout_report.json").exists() or any(
+    if (output / "heldout_report.json").exists() or (
+        output / "prediction_manifest.json"
+    ).exists() or any(
         (output / f"{case}_{arm}_safe_q1.npz").exists()
         for case in ids for arm in ("actual", "blank")
     ):
@@ -158,6 +200,22 @@ def evaluate_frozen(*, root: Path, output: Path, test_ids: list[int],
             sealed_predictions.append((case, matrix, offset, actual_full,
                                        blank_full, affine_full, inference_seconds,
                                        certificates))
+        if prediction_only:
+            report = {
+                "mode": "frozen_prediction_only_no_teacher",
+                "train_case_ids": training["train_case_ids"], "test_case_ids": ids,
+                "external_initial_DHR_affine_required": True,
+                "full_DHR_teacher_used": False,
+                "cases": [{
+                    "case": case,
+                    "network_forward_seconds_excluding_affine_prewarp_io": seconds,
+                    "certificates": certificates,
+                } for (case, _, _, _, _, _, seconds, certificates) in sealed_predictions],
+            }
+            (output / "prediction_manifest.json").write_text(
+                json.dumps(report, indent=2) + "\n", encoding="utf-8"
+            )
+            return report
         for (case, matrix, offset, actual_full, blank_full, affine_full,
              inference_seconds, certificates) in sealed_predictions:
             full = load_case_teacher(root, case, target_device, matrix,
@@ -184,6 +242,61 @@ def evaluate_frozen(*, root: Path, output: Path, test_ids: list[int],
     return report
 
 
+def score_sealed(*, root: Path, output: Path, device: str) -> dict:
+    """Score pre-saved maps with full-DHR labels; never run image inference."""
+    report_path = output / "heldout_report.json"
+    if report_path.exists():
+        raise FileExistsError(f"held-out score already exists: {report_path}")
+    with (output / "train_manifest.json").open(encoding="utf-8") as stream:
+        training = json.load(stream)
+    with (output / "prediction_manifest.json").open(encoding="utf-8") as stream:
+        sealed = json.load(stream)
+    if sealed["train_case_ids"] != training["train_case_ids"]:
+        raise ValueError("prediction manifest was not made with this training split")
+    ids = validate_eval_ids(sealed["test_case_ids"], training["train_case_ids"])
+    target_device = torch.device(device)
+    identity = identity_vertices(257, device=target_device)
+    cases = []
+    with torch.no_grad():
+        for case in ids:
+            archives = []
+            for arm in ("actual", "blank"):
+                path = output / f"{case}_{arm}_safe_q1.npz"
+                certificate = certify_q1_binary_map(path)
+                if not certificate["valid"]:
+                    raise ArithmeticError(f"saved {case} {arm} map no longer valid")
+                with np.load(path) as data:
+                    archives.append({name: np.asarray(data[name], dtype=np.float32).copy()
+                                     for name in ("vertices", "post_affine_matrix",
+                                                  "post_affine_offset")})
+            if any(not np.array_equal(archives[0][key], archives[1][key])
+                   for key in ("post_affine_matrix", "post_affine_offset")):
+                raise ValueError(f"{case} actual and blank affines differ")
+            matrix = torch.from_numpy(archives[0]["post_affine_matrix"])[None].to(target_device)
+            offset = torch.from_numpy(archives[0]["post_affine_offset"])[None].to(target_device)
+            actual = torch.from_numpy(archives[0]["vertices"]).to(target_device)
+            blank = torch.from_numpy(archives[1]["vertices"]).to(target_device)
+            actual_full = Q1ImageRegistrationNetwork.apply_affine(actual, matrix, offset)
+            blank_full = Q1ImageRegistrationNetwork.apply_affine(blank, matrix, offset)
+            affine_full = Q1ImageRegistrationNetwork.apply_affine(identity, matrix, offset)
+            teacher = load_case_teacher(root, case, target_device, matrix,
+                                        offset)["raw_teacher"]
+            cases.append({
+                "case": case,
+                "actual_to_DHR_full_vertex_rmse": _map_rmse(actual_full, teacher),
+                "blank_to_DHR_full_vertex_rmse": _map_rmse(blank_full, teacher),
+                "initial_affine_to_DHR_full_vertex_rmse": _map_rmse(affine_full, teacher),
+            })
+    report = {
+        "mode": "score_presealed_predictions_against_subsequent_full_DHR",
+        "train_case_ids": training["train_case_ids"], "test_case_ids": ids,
+        "no_image_or_model_loaded_during_scoring": True,
+        "cases": cases,
+    }
+    report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    return report
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -197,20 +310,35 @@ def main() -> None:
     training.add_argument("--seed", type=int, default=20260929)
     training.add_argument("--flow-hint", action="store_true",
                           help="override the predeclared no-flow-hint architecture")
+    training.add_argument("--dihedral", action="store_true",
+                          help="eight square symmetries for aligned images and residual targets")
     evaluation = commands.add_parser("evaluate")
     evaluation.add_argument("--root", type=Path, required=True)
     evaluation.add_argument("--output", type=Path, required=True)
     evaluation.add_argument("--test-ids", nargs="+", type=int, required=True)
     evaluation.add_argument("--device", default="cuda:0")
+    prediction = commands.add_parser("predict")
+    prediction.add_argument("--root", type=Path, required=True)
+    prediction.add_argument("--output", type=Path, required=True)
+    prediction.add_argument("--test-ids", nargs="+", type=int, required=True)
+    prediction.add_argument("--device", default="cuda:0")
+    scoring = commands.add_parser("score")
+    scoring.add_argument("--root", type=Path, required=True)
+    scoring.add_argument("--output", type=Path, required=True)
+    scoring.add_argument("--device", default="cpu")
     args = parser.parse_args()
     if args.command == "train":
         result = train_only(root=args.root, output=args.output,
                             train_ids=args.train_ids, steps=args.steps,
                             batch=args.batch, device=args.device, seed=args.seed,
-                            flow_hint=args.flow_hint)
-    else:
+                            flow_hint=args.flow_hint, dihedral=args.dihedral)
+    elif args.command in ("evaluate", "predict"):
         result = evaluate_frozen(root=args.root, output=args.output,
-                                 test_ids=args.test_ids, device=args.device)
+                                 test_ids=args.test_ids, device=args.device,
+                                 prediction_only=args.command == "predict")
+    else:
+        result = score_sealed(root=args.root, output=args.output,
+                              device=args.device)
     print(json.dumps(result, indent=2))
 
 

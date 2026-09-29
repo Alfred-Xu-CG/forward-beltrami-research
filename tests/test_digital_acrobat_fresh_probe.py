@@ -9,7 +9,32 @@ import pytest
 from PIL import Image
 import torch
 
-from tools.digital_acrobat_fresh_probe import train_only, validate_train_ids
+from tools.digital_acrobat_fresh_probe import (
+    dihedral_augment, train_only, validate_train_ids,
+)
+
+
+def test_dihedral_augmentation_conjugates_vertex_map_and_permutates_images():
+    axis = torch.linspace(0, 1, 5)
+    yy, xx = torch.meshgrid(axis, axis, indexing="ij")
+    identity = torch.stack((xx, yy), dim=-1)[None]
+    shear = torch.stack((xx + .1 * yy, yy), dim=-1)[None]
+    image = torch.arange(25, dtype=torch.float32).reshape(1, 1, 5, 5)
+    for flip in (False, True):
+        for turns in range(4):
+            fixed, moving, transformed_identity = dihedral_augment(
+                image, 2 * image, identity, turns=turns, flip=flip,
+            )
+            expected = torch.rot90(
+                torch.flip(image, (-1,)) if flip else image, turns, (-2, -1),
+            )
+            assert torch.equal(fixed, expected)
+            assert torch.equal(moving, 2 * expected)
+            assert torch.allclose(transformed_identity, identity, atol=1e-7)
+    _, _, flipped_shear = dihedral_augment(image, image, shear, turns=0, flip=True)
+    assert torch.allclose(flipped_shear[..., 0], xx[None] - .1 * yy[None], atol=1e-7)
+    _, _, rotated_shear = dihedral_augment(image, image, shear, turns=1, flip=False)
+    assert torch.allclose(rotated_shear[..., 1], yy[None] - .1 * xx[None], atol=1e-7)
 
 
 def test_fresh_probe_predeclares_no_flow_hint_default():
@@ -108,3 +133,68 @@ def test_fresh_evaluation_refuses_to_overwrite_existing_heldout_report(tmp_path:
     with pytest.raises(FileExistsError):
         evaluate_frozen(root=tmp_path, output=tmp_path,
                         test_ids=[73], device="cpu")
+
+
+def test_predict_only_seals_maps_without_reading_any_teacher(monkeypatch, tmp_path: Path):
+    from tools import digital_acrobat_fresh_probe as probe
+    from tools.digital_q1_dhr_distill import identity_vertices
+
+    (tmp_path / "train_manifest.json").write_text(
+        json.dumps({"train_case_ids": [100]}), encoding="utf-8"
+    )
+    identity = identity_vertices(257, device=torch.device("cpu"))
+    image = torch.zeros(1, 1, 2, 2)
+
+    class FakeModel:
+        def eval(self):
+            return self
+
+        def __call__(self, fixed, moving):
+            return identity, None, None
+
+    monkeypatch.setattr(probe, "load_checkpoint", lambda *args, **kwargs: FakeModel())
+    monkeypatch.setattr(probe, "load_case_inputs", lambda *args: {
+        "fixed": image, "prewarped": image,
+        "matrix": torch.eye(2)[None], "offset": torch.zeros(1, 2),
+    })
+    monkeypatch.setattr(probe, "load_case_teacher",
+                        lambda *args: (_ for _ in ()).throw(AssertionError("teacher read")))
+    monkeypatch.setattr(probe, "certify_q1_binary_map", lambda *args: {"valid": True})
+    report = probe.evaluate_frozen(root=tmp_path, output=tmp_path,
+                                   test_ids=[73], device="cpu", prediction_only=True)
+    assert report["mode"] == "frozen_prediction_only_no_teacher"
+    assert (tmp_path / "73_actual_safe_q1.npz").is_file()
+    assert (tmp_path / "73_blank_safe_q1.npz").is_file()
+    assert not (tmp_path / "heldout_report.json").exists()
+    assert (tmp_path / "prediction_manifest.json").is_file()
+
+
+def test_score_sealed_uses_only_saved_maps_and_teacher(monkeypatch, tmp_path: Path):
+    from tools import digital_acrobat_fresh_probe as probe
+    from tools.digital_q1_dhr_distill import identity_vertices
+
+    (tmp_path / "train_manifest.json").write_text(
+        json.dumps({"train_case_ids": [100]}), encoding="utf-8"
+    )
+    (tmp_path / "prediction_manifest.json").write_text(
+        json.dumps({"train_case_ids": [100], "test_case_ids": [73]}), encoding="utf-8"
+    )
+    identity = identity_vertices(257, device=torch.device("cpu"))
+    for arm in ("actual", "blank"):
+        np.savez_compressed(
+            tmp_path / f"73_{arm}_safe_q1.npz",
+            vertices=identity.numpy(),
+            boundary_reference=identity.numpy(),
+            post_affine_matrix=np.eye(2, dtype=np.float32),
+            post_affine_offset=np.zeros(2, dtype=np.float32),
+        )
+    monkeypatch.setattr(probe, "load_checkpoint",
+                        lambda *args: (_ for _ in ()).throw(AssertionError("model read")))
+    monkeypatch.setattr(probe, "load_case_inputs",
+                        lambda *args: (_ for _ in ()).throw(AssertionError("image read")))
+    monkeypatch.setattr(probe, "load_case_teacher",
+                        lambda *args: {"raw_teacher": identity})
+    report = probe.score_sealed(root=tmp_path, output=tmp_path, device="cpu")
+    assert report["cases"][0]["actual_to_DHR_full_vertex_rmse"] == 0
+    assert report["cases"][0]["blank_to_DHR_full_vertex_rmse"] == 0
+    assert report["cases"][0]["initial_affine_to_DHR_full_vertex_rmse"] == 0
