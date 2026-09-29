@@ -56,10 +56,33 @@ def q1_at_queries(vertices: np.ndarray, unit_xy: np.ndarray) -> np.ndarray:
         s * t)[:, None] * c + ((1 - s) * t)[:, None] * d
 
 
+def p1_at_queries(vertices: np.ndarray, unit_xy: np.ndarray) -> np.ndarray:
+    """Evaluate the same table with the fixed top-left to bottom-right diagonal."""
+    vertices = np.asarray(vertices, dtype=np.float64)
+    queries = np.asarray(unit_xy, dtype=np.float64)
+    if (vertices.ndim != 3 or vertices.shape[0] != vertices.shape[1]
+            or vertices.shape[-1] != 2 or vertices.shape[0] < 2
+            or queries.ndim != 2 or queries.shape[-1] != 2
+            or not np.isfinite(vertices).all() or not np.isfinite(queries).all()
+            or np.any((queries < 0) | (queries > 1))):
+        raise ValueError("finite square map and Kx2 unit queries required")
+    cells = vertices.shape[0] - 1
+    scaled = queries * cells
+    ij = np.minimum(np.floor(scaled).astype(np.int64), cells - 1)
+    x, y = ij[:, 0], ij[:, 1]
+    s, t = scaled[:, 0] - x, scaled[:, 1] - y
+    a, b = vertices[y, x], vertices[y, x + 1]
+    c, d = vertices[y + 1, x + 1], vertices[y + 1, x]
+    lower = ((1 - s)[:, None] * a + (s - t)[:, None] * b + t[:, None] * c)
+    upper = ((1 - t)[:, None] * a + s[:, None] * c + (t - s)[:, None] * d)
+    return np.where((t <= s)[:, None], lower, upper)
+
+
 def score_pair(layout_path: Path, fixed_landmarks: Path, moving_landmarks: Path,
                map_paths: dict[str, Path], initial_affine: Path,
                full_field: Path, full_params: Path, output: Path, *,
-               include_full_dhr: bool = True) -> dict:
+               include_full_dhr: bool = True,
+               interpolation: str = "q1") -> dict:
     if output.exists():
         raise FileExistsError("scoring report must not overwrite a prior run")
     layout = json.loads(layout_path.read_text(encoding="utf-8"))
@@ -97,7 +120,10 @@ def score_pair(layout_path: Path, fixed_landmarks: Path, moving_landmarks: Path,
     query = original_pixel_to_canvas_unit(fixed_original, layout["fixed"], side)
     if np.any((query < 0) | (query > 1)):
         raise ValueError("landmark outside fixed canvas")
-    predicted = {name: q1_at_queries(vertices, query) for name, vertices in maps.items()}
+    if interpolation not in ("q1", "p1"):
+        raise ValueError("interpolation must be q1 or p1")
+    evaluator = q1_at_queries if interpolation == "q1" else p1_at_queries
+    predicted = {name: evaluator(vertices, query) for name, vertices in maps.items()}
     predicted["initial_affine"] = np.stack((
         query[:, 0] * matrix[0, 0] + query[:, 1] * matrix[0, 1] + offset[0],
         query[:, 0] * matrix[1, 0] + query[:, 1] * matrix[1, 1] + offset[1],
@@ -128,6 +154,7 @@ def score_pair(layout_path: Path, fixed_landmarks: Path, moving_landmarks: Path,
         }
     report = {
         "mode": "read_only_BIRL_5pc_development_landmark_diagnostic",
+        "interpolation": interpolation,
         "full_DHR_evaluated": include_full_dhr,
         "scale_assumption": layout["scale_assumption"], "side": side,
         "landmark_count": len(names),

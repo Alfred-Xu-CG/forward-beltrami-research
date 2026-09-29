@@ -60,6 +60,8 @@ class RecurrentQ1ImageRegistrationNetwork(nn.Module):
                  proposal_mode: str = "current_edge",
                  proposal_modes_by_side: dict[int, str] | None = None,
                  update_families_by_side: dict[int, str] | None = None,
+                 f2_raw_span: float = 0.5,
+                 f2_accepted_gain: float = 1.0,
                  checkpoint_rounds: bool = False) -> None:
         super().__init__()
         self.base = base
@@ -94,6 +96,8 @@ class RecurrentQ1ImageRegistrationNetwork(nn.Module):
                for side in families):
             raise ValueError("F2 does not implement fixed_h_soft proposal")
         self.update_families_by_side = families
+        self.f2_raw_span = f2_raw_span
+        self.f2_accepted_gain = f2_accepted_gain
         width = base.encoder.stem[0].out_channels
         self.heads = nn.ModuleDict({str(side): CurrentImageProposalHead(width)
                                     for side in self.rounds_by_side})
@@ -109,7 +113,9 @@ class RecurrentQ1ImageRegistrationNetwork(nn.Module):
                     minimum_jacobian=base.decoder.seed_update.passes[0].minimum_jacobian,
                 ) if families[side] == "f1" else
                 StaggeredPatchQ1Layer(
-                    side, patch_cells=8, proposal_mode=modes[side], raw_span=.5,
+                    side, patch_cells=8, proposal_mode=modes[side],
+                    raw_span=f2_raw_span,
+                    accepted_gain=f2_accepted_gain,
                     minimum_jacobian=base.decoder.seed_update.passes[0].minimum_jacobian,
                 )
             ) for side in self.rounds_by_side

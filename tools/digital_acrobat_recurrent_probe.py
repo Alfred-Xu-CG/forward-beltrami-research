@@ -69,6 +69,8 @@ def _load_model(output: Path, device: str) -> RecurrentQ1ImageRegistrationNetwor
         proposal_mode=training.get("proposal_mode", "current_edge"),
         proposal_modes_by_side=modes,
         update_families_by_side=families,
+        f2_raw_span=training.get("f2_raw_span", .5),
+        f2_accepted_gain=training.get("f2_accepted_gain", 1.0),
         checkpoint_rounds=training.get("checkpoint_rounds", False),
     ).to(device)
     with np.load(output / "recurrent_heads.npz") as archive:
@@ -83,16 +85,21 @@ def _load_model(output: Path, device: str) -> RecurrentQ1ImageRegistrationNetwor
 def train(root: Path, output: Path, base_checkpoint: Path,
           selection: Path, *, steps: int, batch: int, device: str,
           seed: int = 20261004,
+          learning_rate: float = .002,
           rounds_by_side: dict[int, int] | None = None,
           refresh_moving_evidence: bool = True,
           proposal_mode: str = "current_edge",
           update_family: str = "f1",
+          f2_raw_span: float = .5,
+          f2_accepted_gain: float = 1.0,
           checkpoint_rounds: bool = False,
           initialize_from: Path | None = None) -> dict:
     if output.exists() and any(output.iterdir()):
         raise FileExistsError("fresh recurrent output required")
     if steps < 1 or batch < 1:
         raise ValueError("positive steps and batch required")
+    if not 0 < learning_rate < 1:
+        raise ValueError("learning rate must be in (0,1)")
     train_ids = json.loads(selection.read_text(encoding="utf-8"))["combined_train_ids"]
     target_device = torch.device(device)
     torch.manual_seed(seed)
@@ -111,6 +118,11 @@ def train(root: Path, output: Path, base_checkpoint: Path,
         raise ValueError("initialized recurrent round counts must stay unchanged")
     if prior is not None and prior.refresh_moving_evidence != refresh_moving_evidence:
         raise ValueError("initialized recurrence must keep prior image-evidence policy")
+    if prior is not None and any(
+        family == "f2" for family in prior.update_families_by_side.values()
+    ) and (prior.f2_raw_span != f2_raw_span
+           or prior.f2_accepted_gain != f2_accepted_gain):
+        raise ValueError("initialized F2 heads require their prior span and gain")
     if prior is not None and not filecmp.cmp(
         base_checkpoint, initialize_from / "base_frozen_weights.npz", shallow=False,
     ):
@@ -126,6 +138,8 @@ def train(root: Path, output: Path, base_checkpoint: Path,
         proposal_mode=proposal_mode,
         proposal_modes_by_side=modes,
         update_families_by_side=families,
+        f2_raw_span=f2_raw_span,
+        f2_accepted_gain=f2_accepted_gain,
         checkpoint_rounds=checkpoint_rounds,
     ).to(target_device).train()
     initialized_sides = []
@@ -141,10 +155,11 @@ def train(root: Path, output: Path, base_checkpoint: Path,
         raise ValueError("initialization leaves no trainable new head")
     trainable = [parameter for side in trainable_sides
                  for parameter in model.heads[str(side)].parameters()]
-    optimizer = torch.optim.Adam(trainable, lr=.002)
+    optimizer = torch.optim.Adam(trainable, lr=learning_rate)
     sample_rng = torch.Generator(device="cpu").manual_seed(seed + 1)
     augment_rng = torch.Generator(device="cpu").manual_seed(seed + 2)
     durations = []
+    loss_trace = []
     first_loss = last_loss = None
     if target_device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(target_device)
@@ -179,6 +194,8 @@ def train(root: Path, output: Path, base_checkpoint: Path,
         durations.append(time.perf_counter() - started)
         last_loss = float(loss.detach())
         first_loss = last_loss if first_loss is None else first_loss
+        if (step + 1) % 100 == 0 or step == 0:
+            loss_trace.append({"step": step + 1, "minibatch_loss": last_loss})
     output.mkdir(parents=True, exist_ok=True)
     shutil.copy2(base_checkpoint, output / "base_frozen_weights.npz")
     _save_heads(output / "recurrent_heads.npz", model)
@@ -187,12 +204,15 @@ def train(root: Path, output: Path, base_checkpoint: Path,
         "train_case_ids": train_ids,
         "test_case_ids_available_to_training": [],
         "steps": steps, "batch": batch, "seed": seed,
-        "learning_rate": .002, "dihedral_augmentation": True,
+        "learning_rate": learning_rate, "dihedral_augmentation": True,
+        "loss_trace": loss_trace,
         "rounds_by_side": schedule,
         "refresh_moving_evidence": refresh_moving_evidence,
         "proposal_mode": proposal_mode,
         "proposal_modes_by_side": modes,
         "update_families_by_side": families,
+        "f2_raw_span": f2_raw_span,
+        "f2_accepted_gain": f2_accepted_gain,
         "checkpoint_rounds": checkpoint_rounds,
         "initialized_head_sides": initialized_sides,
         "trainable_head_sides": trainable_sides,
@@ -271,6 +291,7 @@ def main() -> None:
     training.add_argument("--selection", type=Path, required=True)
     training.add_argument("--steps", type=int, default=2400)
     training.add_argument("--batch", type=int, default=4)
+    training.add_argument("--learning-rate", type=float, default=.002)
     training.add_argument("--device", default="cuda:0")
     training.add_argument("--rounds", type=parse_rounds, default=ROUNDS,
                           help="e.g. 17:1,33:1,65:1; default 17:4,33:2,65:1")
@@ -281,6 +302,10 @@ def main() -> None:
                           default="current_edge")
     training.add_argument("--update-family", choices=("f1", "f2"), default="f1",
                           help="family for newly added sides; initialized sides retain their own")
+    training.add_argument("--f2-raw-span", type=float, default=.5,
+                          help="F2 current-edge span; default .5, does not change F1 span")
+    training.add_argument("--f2-accepted-gain", type=float, default=1.,
+                          help="multiply each already safe F2 patch step by a number in (0,1]")
     training.add_argument("--initialize-from", type=Path,
                           help="copy and freeze existing recurrent heads; train added sides")
     training.add_argument("--checkpoint-rounds", action="store_true",
@@ -295,9 +320,12 @@ def main() -> None:
         result = train(args.root, args.output, args.base_checkpoint,
                        args.selection, steps=args.steps, batch=args.batch,
                        device=args.device, rounds_by_side=args.rounds,
+                       learning_rate=args.learning_rate,
                        refresh_moving_evidence=not args.freeze_moving_evidence,
                        proposal_mode=args.proposal_mode,
                        update_family=args.update_family,
+                       f2_raw_span=args.f2_raw_span,
+                       f2_accepted_gain=args.f2_accepted_gain,
                        checkpoint_rounds=args.checkpoint_rounds,
                        initialize_from=args.initialize_from)
     else:

@@ -250,3 +250,27 @@ def test_image_conditioned_f2_checkpoint_vjp_matches_ordinary() -> None:
     assert float(results[0][1].abs().sum()) > 0
     assert float(results[0][2].abs().sum()) > 0
     assert float(q1_corner_determinants(results[1][0]).amin()) > 0
+
+
+def test_nondefault_f2_span_changes_motion_not_topology() -> None:
+    torch.manual_seed(953)
+    base = Q1ImageRegistrationNetwork(seed_side=17, final_side=17,
+                                       feature_side=33, width=4, flow_hint=False)
+    common = dict(rounds_by_side={17: 2},
+                  update_families_by_side={17: "f2"})
+    large = RecurrentQ1ImageRegistrationNetwork(base, f2_raw_span=.5, **common)
+    small = RecurrentQ1ImageRegistrationNetwork(base, f2_raw_span=.125, **common)
+    small.heads.load_state_dict(large.heads.state_dict())
+    with torch.no_grad():
+        large.heads["17"].output.bias.copy_(torch.tensor([.8, -.3]))
+        small.heads["17"].output.bias.copy_(torch.tensor([.8, -.3]))
+    fixed = torch.zeros(1, 1, 48, 48)
+    moving = torch.ones_like(fixed)
+    parent = base(fixed, moving)[0]
+    wide = large(fixed, moving)[0]
+    narrow = small(fixed, moving)[0]
+    assert float((wide - narrow).abs().amax()) > 1e-7
+    assert float((narrow - parent).abs().amax()) > 0
+    assert float(q1_corner_determinants(narrow).amin()) > 0
+    narrow.square().mean().backward()
+    assert float(small.heads["17"].output.bias.grad.abs().sum()) > 0

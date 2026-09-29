@@ -19,7 +19,8 @@ LABELS = {
 
 def compare(root: Path, case: str, output: Path, *,
             extra_predictions: dict[str, Path] | None = None,
-            include_full_dhr: bool = True) -> dict:
+            include_full_dhr: bool = True,
+            interpolation: str = "q1") -> dict:
     if case not in LABELS:
         raise ValueError("known development case required")
     canvas = root / "canvas"
@@ -44,6 +45,7 @@ def compare(root: Path, case: str, output: Path, *,
         canvas / f"{case}_full_field.mha",
         canvas / f"{case}_full_params.json", output,
         include_full_dhr=include_full_dhr,
+        interpolation=interpolation,
     )
 
 
@@ -56,13 +58,15 @@ def main() -> None:
                         metavar=("NAME", "SAVED_MAP"), default=[])
     parser.add_argument("--skip-full-dhr", action="store_true",
                         help="reuse prior DHR score without loading its field")
+    parser.add_argument("--interpolation", choices=("q1", "p1"), default="q1")
     args = parser.parse_args()
     extras = {name: Path(path) for name, path in args.extra_prediction}
     if len(extras) != len(args.extra_prediction):
         raise ValueError("duplicate extra prediction name")
     report = compare(args.root, args.case, args.output,
                      extra_predictions=extras,
-                     include_full_dhr=not args.skip_full_dhr)
+                     include_full_dhr=not args.skip_full_dhr,
+                     interpolation=args.interpolation)
     print(json.dumps({key: value["mean_tre_native_moving_px"]
                       for key, value in report["results"].items()}, indent=2))
 

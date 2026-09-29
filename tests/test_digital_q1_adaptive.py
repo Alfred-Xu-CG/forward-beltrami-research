@@ -231,3 +231,21 @@ def test_current_edge_soft_radial_257_near_floor_vjps_finite():
     gradients = torch.autograd.grad(mapped.square().mean(), (base, logits))
     assert bool(torch.isfinite(mapped).all())
     assert all(bool(torch.isfinite(gradient).all()) for gradient in gradients)
+
+
+def test_f2_post_safety_gain_controls_saturated_step_and_vjp():
+    side = 17
+    base = _identity(side, torch.float64)
+    logits = torch.full((1, side - 2, side - 2, 2), 2.,
+                        dtype=torch.float64, requires_grad=True)
+    full = AdaptivePatchQ1Pass(side, 8, raw_span=.5, accepted_gain=1.)
+    quarter = AdaptivePatchQ1Pass(side, 8, raw_span=.5, accepted_gain=.25)
+    broad = full(base, logits)
+    damped = quarter(base, logits)
+    assert float((broad - base).abs().amax()) > 1e-4
+    torch.testing.assert_close(damped - base, .25 * (broad - base),
+                               rtol=1e-12, atol=1e-15)
+    assert _independent_four_corners(damped[0].detach().numpy()).min() > 0
+    gradient, = torch.autograd.grad(damped.square().mean(), logits)
+    assert bool(torch.isfinite(gradient).all())
+    assert float(gradient.abs().sum()) > 0

@@ -361,6 +361,13 @@ class SafePatchQ1Pass(SafePatchFieldPass):
     is preserved only if the input already meets that floor.
     """
 
+    def __init__(self, side: int, patch_cells: int, *,
+                 accepted_gain: float = 1.0, **kwargs: float | None) -> None:
+        if not math.isfinite(accepted_gain) or not 0 < accepted_gain <= 1:
+            raise ValueError("accepted_gain must be in (0,1]")
+        super().__init__(side, patch_cells, **kwargs)
+        self.accepted_gain = accepted_gain
+
     def _raw_displacement(self, patch: torch.Tensor,
                           selected: torch.Tensor) -> torch.Tensor:
         cells = self.patch_cells
@@ -426,7 +433,8 @@ class SafePatchQ1Pass(SafePatchFieldPass):
             torch.maximum(bounds, allowance), bounds.new_tensor(guard),
         )
         scales = torch.where(bounds > 0, quotient, torch.ones_like(bounds)).amin(dim=-1)
-        updated = patch[:, :, 1:-1, 1:-1] + scales[:, :, None, None, None] * raw
+        updated = (patch[:, :, 1:-1, 1:-1]
+                   + self.accepted_gain * scales[:, :, None, None, None] * raw)
         return current.index_copy(1, self.interior_ids, updated.reshape(batch, -1, 2)).reshape(
             batch, side, side, 2,
         )
