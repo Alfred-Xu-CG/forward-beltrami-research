@@ -61,6 +61,7 @@ class RecurrentQ1ImageRegistrationNetwork(nn.Module):
                  proposal_modes_by_side: dict[int, str] | None = None,
                  update_families_by_side: dict[int, str] | None = None,
                  f2_raw_span: float = 0.5,
+                 f2_patch_cells: int = 8,
                  f2_accepted_gain: float = 1.0,
                  checkpoint_rounds: bool = False) -> None:
         super().__init__()
@@ -89,37 +90,47 @@ class RecurrentQ1ImageRegistrationNetwork(nn.Module):
         families = ({side: "f1" for side in self.rounds_by_side}
                     if update_families_by_side is None else dict(update_families_by_side))
         if set(families) != set(self.rounds_by_side) or any(
-            family not in ("f1", "f2") for family in families.values()
+            family not in ("f1", "f2", "f2_f1") for family in families.values()
         ):
-            raise ValueError("one f1/f2 update family per recurrent side required")
+            raise ValueError("one f1/f2/f2_f1 update family per recurrent side required")
         if any(families[side] == "f2" and modes[side] == "fixed_h_soft"
                for side in families):
             raise ValueError("F2 does not implement fixed_h_soft proposal")
+        if any(families[side] == "f2_f1" and modes[side] != "current_edge"
+               for side in families):
+            raise ValueError("mixed F2/F1 currently requires current_edge proposals")
         self.update_families_by_side = families
         self.f2_raw_span = f2_raw_span
+        self.f2_patch_cells = f2_patch_cells
         self.f2_accepted_gain = f2_accepted_gain
         width = base.encoder.stem[0].out_channels
-        self.heads = nn.ModuleDict({str(side): CurrentImageProposalHead(width)
-                                    for side in self.rounds_by_side})
+        self.heads = nn.ModuleDict({
+            str(side): (nn.ModuleDict({
+                "f2": CurrentImageProposalHead(width),
+                "f1": CurrentImageProposalHead(width),
+            }) if families[side] == "f2_f1" else CurrentImageProposalHead(width))
+            for side in self.rounds_by_side
+        })
         update_types = {
             "current_edge": AdaptiveSoftRadialQ1Relaxation,
             "fixed_h": SafeColoredQ1Relaxation,
             "fixed_h_soft": FixedSpanSoftRadialQ1Relaxation,
         }
-        self.updates = nn.ModuleDict({
-            str(side): (
-                update_types[modes[side]](
-                    side, raw_span=raw_span,
-                    minimum_jacobian=base.decoder.seed_update.passes[0].minimum_jacobian,
-                ) if families[side] == "f1" else
-                StaggeredPatchQ1Layer(
-                    side, patch_cells=8, proposal_mode=modes[side],
-                    raw_span=f2_raw_span,
-                    accepted_gain=f2_accepted_gain,
-                    minimum_jacobian=base.decoder.seed_update.passes[0].minimum_jacobian,
-                )
-            ) for side in self.rounds_by_side
-        })
+        floor = base.decoder.seed_update.passes[0].minimum_jacobian
+        self.updates = nn.ModuleDict()
+        for side in self.rounds_by_side:
+            make_f1 = lambda: update_types[modes[side]](
+                side, raw_span=raw_span, minimum_jacobian=floor,
+            )
+            make_f2 = lambda: StaggeredPatchQ1Layer(
+                side, patch_cells=f2_patch_cells, proposal_mode=modes[side],
+                raw_span=f2_raw_span, accepted_gain=f2_accepted_gain,
+                minimum_jacobian=floor,
+            )
+            if families[side] == "f2_f1":
+                self.updates[str(side)] = nn.ModuleDict({"f2": make_f2(), "f1": make_f1()})
+            else:
+                self.updates[str(side)] = make_f1() if families[side] == "f1" else make_f2()
 
     def _repeat(self, mapped: torch.Tensor, fixed: torch.Tensor,
                 moving: torch.Tensor, features: torch.Tensor,
@@ -140,7 +151,9 @@ class RecurrentQ1ImageRegistrationNetwork(nn.Module):
         level_entry_query = Q1ImageRegistrationNetwork.apply_affine(
             mapped, matrix, offset,
         ) if not self.refresh_moving_evidence else None
-        def one_pass(state: torch.Tensor, fraction: float
+        family = self.update_families_by_side[side]
+        def one_pass(state: torch.Tensor, fraction: float,
+                     which: str | None = None
                      ) -> tuple[torch.Tensor, torch.Tensor]:
             # The returned map is A_internal composed with this residual Q1
             # table. Sample the input moving canvas at that actual current
@@ -152,21 +165,29 @@ class RecurrentQ1ImageRegistrationNetwork(nn.Module):
                 moving, 2 * current_query - 1,
                 padding_mode="border", align_corners=False,
             )
-            latent = head(static_features, fixed_nodes, warped,
+            selected_head = head[which] if which is not None else head
+            latent = selected_head(static_features, fixed_nodes, warped,
                           state - identity, fraction)
             return state, latent
 
         def one_round(state: torch.Tensor, round_index: int) -> torch.Tensor:
-            if self.update_families_by_side[side] == "f1":
+            if family == "f1":
                 fraction = (round_index + 1) / self.rounds_by_side[side]
                 current, latent = one_pass(state, fraction)
                 return update(current, latent)
             current = state
-            total = self.rounds_by_side[side] * len(update.passes)
-            for offset_index, patch_pass in enumerate(update.passes):
-                fraction = (round_index * len(update.passes) + offset_index + 1) / total
-                current, latent = one_pass(current, fraction)
+            patch_update = update["f2"] if family == "f2_f1" else update
+            passes_per_round = len(patch_update.passes) + (1 if family == "f2_f1" else 0)
+            total = self.rounds_by_side[side] * passes_per_round
+            for offset_index, patch_pass in enumerate(patch_update.passes):
+                fraction = (round_index * passes_per_round + offset_index + 1) / total
+                current, latent = one_pass(current, fraction,
+                                           "f2" if family == "f2_f1" else None)
                 current = patch_pass(current, latent)
+            if family == "f2_f1":
+                fraction = (round_index + 1) / self.rounds_by_side[side]
+                current, latent = one_pass(current, fraction, "f1")
+                current = update["f1"](current, latent)
             return current
 
         for round_index in range(self.rounds_by_side[side]):

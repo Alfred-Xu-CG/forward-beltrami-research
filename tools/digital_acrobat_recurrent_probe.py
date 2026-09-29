@@ -70,6 +70,7 @@ def _load_model(output: Path, device: str) -> RecurrentQ1ImageRegistrationNetwor
         proposal_modes_by_side=modes,
         update_families_by_side=families,
         f2_raw_span=training.get("f2_raw_span", .5),
+        f2_patch_cells=training.get("f2_patch_cells", 8),
         f2_accepted_gain=training.get("f2_accepted_gain", 1.0),
         checkpoint_rounds=training.get("checkpoint_rounds", False),
     ).to(device)
@@ -91,6 +92,7 @@ def train(root: Path, output: Path, base_checkpoint: Path,
           proposal_mode: str = "current_edge",
           update_family: str = "f1",
           f2_raw_span: float = .5,
+          f2_patch_cells: int = 8,
           f2_accepted_gain: float = 1.0,
           checkpoint_rounds: bool = False,
           initialize_from: Path | None = None) -> dict:
@@ -119,8 +121,9 @@ def train(root: Path, output: Path, base_checkpoint: Path,
     if prior is not None and prior.refresh_moving_evidence != refresh_moving_evidence:
         raise ValueError("initialized recurrence must keep prior image-evidence policy")
     if prior is not None and any(
-        family == "f2" for family in prior.update_families_by_side.values()
+        family in ("f2", "f2_f1") for family in prior.update_families_by_side.values()
     ) and (prior.f2_raw_span != f2_raw_span
+           or prior.f2_patch_cells != f2_patch_cells
            or prior.f2_accepted_gain != f2_accepted_gain):
         raise ValueError("initialized F2 heads require their prior span and gain")
     if prior is not None and not filecmp.cmp(
@@ -139,6 +142,7 @@ def train(root: Path, output: Path, base_checkpoint: Path,
         proposal_modes_by_side=modes,
         update_families_by_side=families,
         f2_raw_span=f2_raw_span,
+        f2_patch_cells=f2_patch_cells,
         f2_accepted_gain=f2_accepted_gain,
         checkpoint_rounds=checkpoint_rounds,
     ).to(target_device).train()
@@ -212,6 +216,7 @@ def train(root: Path, output: Path, base_checkpoint: Path,
         "proposal_modes_by_side": modes,
         "update_families_by_side": families,
         "f2_raw_span": f2_raw_span,
+        "f2_patch_cells": f2_patch_cells,
         "f2_accepted_gain": f2_accepted_gain,
         "checkpoint_rounds": checkpoint_rounds,
         "initialized_head_sides": initialized_sides,
@@ -300,10 +305,11 @@ def main() -> None:
     training.add_argument("--proposal-mode", choices=("current_edge", "fixed_h",
                                                     "fixed_h_soft"),
                           default="current_edge")
-    training.add_argument("--update-family", choices=("f1", "f2"), default="f1",
+    training.add_argument("--update-family", choices=("f1", "f2", "f2_f1"), default="f1",
                           help="family for newly added sides; initialized sides retain their own")
     training.add_argument("--f2-raw-span", type=float, default=.5,
                           help="F2 current-edge span; default .5, does not change F1 span")
+    training.add_argument("--f2-patch-cells", type=int, default=8)
     training.add_argument("--f2-accepted-gain", type=float, default=1.,
                           help="multiply each already safe F2 patch step by a number in (0,1]")
     training.add_argument("--initialize-from", type=Path,
@@ -325,6 +331,7 @@ def main() -> None:
                        proposal_mode=args.proposal_mode,
                        update_family=args.update_family,
                        f2_raw_span=args.f2_raw_span,
+                       f2_patch_cells=args.f2_patch_cells,
                        f2_accepted_gain=args.f2_accepted_gain,
                        checkpoint_rounds=args.checkpoint_rounds,
                        initialize_from=args.initialize_from)

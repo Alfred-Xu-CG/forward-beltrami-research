@@ -225,6 +225,68 @@ def test_image_conditioned_f2_repeats_on_current_map_with_vjp() -> None:
     assert float(gradient.abs().sum()) > 0
 
 
+def test_image_conditioned_mixed_f2_f1_checkpoint_and_vjp() -> None:
+    torch.manual_seed(290930)
+    base = Q1ImageRegistrationNetwork(seed_side=17, final_side=17,
+                                       feature_side=33, width=4, flow_hint=False)
+    ordinary = RecurrentQ1ImageRegistrationNetwork(
+        base, rounds_by_side={17: 2},
+        update_families_by_side={17: "f2_f1"},
+        f2_patch_cells=4, f2_raw_span=1.0,
+    )
+    fixed = torch.rand(1, 1, 48, 48)
+    moving = torch.rand(1, 1, 48, 48)
+    with torch.no_grad():
+        assert torch.equal(ordinary(fixed, moving)[0], base(fixed, moving)[0])
+        ordinary.heads["17"]["f2"].output.bias.copy_(torch.tensor([.2, -.1]))
+        ordinary.heads["17"]["f1"].output.bias.copy_(torch.tensor([.2, .1]))
+        ordinary.heads["17"]["f2"].output.weight.normal_(0, .01)
+        ordinary.heads["17"]["f1"].output.weight.normal_(0, .01)
+    evidence = {"f2": [], "f1": []}
+    handles = [ordinary.heads["17"][kind].register_forward_pre_hook(
+        lambda _module, args, kind=kind: evidence[kind].append(args[2].detach().clone())
+    ) for kind in ("f2", "f1")]
+    with torch.no_grad():
+        ordinary(fixed, moving)
+    for handle in handles:
+        handle.remove()
+    assert len(evidence["f2"]) == 8 and len(evidence["f1"]) == 2
+    assert float((evidence["f2"][0] - evidence["f1"][0]).abs().amax()) > 1e-6
+    replay = copy.deepcopy(ordinary)
+    replay.checkpoint_rounds = True
+    outputs = []
+    for model in (ordinary, replay):
+        moving_input = moving.clone().requires_grad_(True)
+        warped_inputs = {"f2": [], "f1": []}
+        if model is ordinary:
+            def retain_warped(_module, args, kind):
+                args[2].retain_grad()
+                warped_inputs[kind].append(args[2])
+            handles = [model.heads["17"][kind].register_forward_pre_hook(
+                lambda module, args, kind=kind: retain_warped(module, args, kind)
+            ) for kind in ("f2", "f1")]
+        result = model(fixed, moving_input)[0]
+        if model is ordinary:
+            for handle in handles:
+                handle.remove()
+        assert float(q1_corner_determinants(result).amin()) > 0
+        result.square().mean().backward()
+        assert moving_input.grad is not None
+        assert bool(torch.isfinite(moving_input.grad).all())
+        if model is ordinary:
+            assert len(warped_inputs["f2"]) == 8 and len(warped_inputs["f1"]) == 2
+            assert all(any(item.grad is not None and float(item.grad.abs().sum()) > 0
+                           for item in warped_inputs[kind]) for kind in ("f2", "f1"))
+        gradients = tuple(model.heads["17"][kind].output.bias.grad.clone()
+                          for kind in ("f2", "f1"))
+        assert all(bool(torch.isfinite(grad).all()) and float(grad.abs().sum()) > 0
+                   for grad in gradients)
+        outputs.append((result.detach(), gradients))
+    torch.testing.assert_close(outputs[0][0], outputs[1][0], rtol=0, atol=0)
+    for first, second in zip(outputs[0][1], outputs[1][1], strict=True):
+        torch.testing.assert_close(first, second, rtol=1e-5, atol=1e-8)
+
+
 def test_image_conditioned_f2_checkpoint_vjp_matches_ordinary() -> None:
     torch.manual_seed(947)
     base = Q1ImageRegistrationNetwork(seed_side=17, final_side=17,
