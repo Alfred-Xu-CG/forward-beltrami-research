@@ -96,3 +96,15 @@ def test_fresh_evaluation_seals_all_predictions_before_first_teacher(monkeypatch
                           test_ids=[73, 193], device="cpu")
     assert teacher_reads == [73, 193]
     assert len(model_calls) == 4  # one actual plus one blank per held-out case
+
+
+def test_fresh_evaluation_refuses_to_overwrite_existing_heldout_report(tmp_path: Path):
+    from tools.digital_acrobat_fresh_probe import evaluate_frozen
+
+    (tmp_path / "train_manifest.json").write_text(
+        json.dumps({"train_case_ids": [100]}), encoding="utf-8"
+    )
+    (tmp_path / "heldout_report.json").write_text("prior result", encoding="utf-8")
+    with pytest.raises(FileExistsError):
+        evaluate_frozen(root=tmp_path, output=tmp_path,
+                        test_ids=[73], device="cpu")

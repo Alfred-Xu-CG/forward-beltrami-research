@@ -114,6 +114,11 @@ def evaluate_frozen(*, root: Path, output: Path, test_ids: list[int],
     with (output / "train_manifest.json").open(encoding="utf-8") as stream:
         training = json.load(stream)
     ids = validate_eval_ids(test_ids, training["train_case_ids"])
+    if (output / "heldout_report.json").exists() or any(
+        (output / f"{case}_{arm}_safe_q1.npz").exists()
+        for case in ids for arm in ("actual", "blank")
+    ):
+        raise FileExistsError("existing held-out evaluation must not be overwritten")
     target_device = torch.device(device)
     model = load_checkpoint(output / "frozen_weights.npz", device=device).eval()
     identity = identity_vertices(257, device=target_device)
