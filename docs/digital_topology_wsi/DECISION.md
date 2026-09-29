@@ -1,6 +1,6 @@
 # Phase VIII decision: recurrent F1/F2 homeomorphic image maps
 
-This records the T+22-hour independent scientific adjudication, followed by a late same-level mixed-layer extension, for the 24-hour window started at `2026-09-28T18:04:58Z` in `START_TIME.json`. The window's elapsed-time closure is recorded separately in `END_TIME.json` when reached. The decision is about the tested digital-topology WSI system, not a claim that the research objective is solved. Full derivations, configurations and independent checks are in `TOPOLOGY.md`, `EXPERIMENTS.md` and `REVIEW.md`; the figures below retain their own experimental scope.
+This records the T+22-hour **interim** independent scientific adjudication, followed by a late same-level mixed-layer extension, for the window started at `2026-09-28T18:04:58Z` in `START_TIME.json`. Before the original T+24 deadline, the user extended the goal by 12 hours because the system had not achieved useful complex registration; the new T+36 deadline is `2026-09-30T06:04:58Z`. This document is therefore a dated interim decision, **not** the final judgment for the extended window; `END_TIME.json` will be written only when the extended window completes. The decision is about the tested digital-topology WSI system, not a claim that the research objective is solved. Full derivations, configurations and independent checks are in `TOPOLOGY.md`, `EXPERIMENTS.md` and `REVIEW.md`; the figures below retain their own experimental scope.
 
 ## 1. What the layer represents and why repeated updates are necessary
 
