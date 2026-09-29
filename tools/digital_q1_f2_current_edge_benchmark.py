@@ -14,6 +14,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from torch.utils.checkpoint import checkpoint
 
 from qcopt.neural_bijection.dense.digital_q1 import (
     StaggeredPatchQ1Layer, q1_corner_determinants,
@@ -31,7 +32,7 @@ def _map(side: int, device: torch.device, amplitude: float) -> torch.Tensor:
 
 
 def run(side: int, rounds: int, patch_cells: int, device: str,
-        repeats: int, prefix: Path) -> dict:
+        repeats: int, prefix: Path, checkpoint_rounds: bool = False) -> dict:
     if side < 9 or rounds < 1 or repeats < 1 or (side - 1) % patch_cells:
         raise ValueError("side, rounds, repeats and patch compatibility required")
     target_device = torch.device(device)
@@ -52,19 +53,31 @@ def run(side: int, rounds: int, patch_cells: int, device: str,
         "latent_distribution": "independent Gaussian standard deviation 2",
         "source": "x+0.1*sin(2*pi*x)*sin(pi*y), y",
         "target": "x+0.07*sin(2*pi*x)*sin(pi*y), y",
-        "warmup": 1, "timed_repeats": repeats, "arms": {},
+        "warmup": 1, "timed_repeats": repeats,
+        "checkpoint_rounds": checkpoint_rounds, "arms": {},
     }
 
     for mode in ("fixed_h", "current_edge"):
         layer = StaggeredPatchQ1Layer(side, patch_cells=patch_cells,
                                       proposal_mode=mode, raw_span=.5).to(target_device)
 
+        def forward_round(state: torch.Tensor, round_latents: torch.Tensor) -> torch.Tensor:
+            return layer(state, tuple(round_latents.unbind(0)))
+
+        def forward_all(base: torch.Tensor, latents: torch.Tensor) -> torch.Tensor:
+            mapped = base
+            for round_index in range(rounds):
+                if checkpoint_rounds:
+                    mapped = checkpoint(forward_round, mapped, latents[round_index],
+                                        use_reentrant=False)
+                else:
+                    mapped = forward_round(mapped, latents[round_index])
+            return mapped
+
         def evaluate() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
             base = base_values.detach().clone().requires_grad_()
             latents = shared.detach().clone().requires_grad_()
-            mapped = base
-            for round_index in range(rounds):
-                mapped = layer(mapped, tuple(latents[round_index]))
+            mapped = forward_all(base, latents)
             loss = (mapped - target).square().sum(-1).mean()
             grad_base, grad_latents = torch.autograd.grad(loss, (base, latents))
             return mapped, grad_base, grad_latents
@@ -81,9 +94,7 @@ def run(side: int, rounds: int, patch_cells: int, device: str,
             if target_device.type == "cuda":
                 torch.cuda.synchronize(target_device)
             start = time.perf_counter()
-            mapped = base
-            for round_index in range(rounds):
-                mapped = layer(mapped, tuple(latents[round_index]))
+            mapped = forward_all(base, latents)
             if target_device.type == "cuda":
                 torch.cuda.synchronize(target_device)
             mid = time.perf_counter()
@@ -135,10 +146,12 @@ def main() -> None:
     parser.add_argument("--patch-cells", type=int, default=8)
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--checkpoint-rounds", action="store_true")
     parser.add_argument("--prefix", type=Path, required=True)
     args = parser.parse_args()
     print(json.dumps(run(args.side, args.rounds, args.patch_cells,
-                         args.device, args.repeats, args.prefix), indent=2))
+                         args.device, args.repeats, args.prefix,
+                         args.checkpoint_rounds), indent=2))
 
 
 if __name__ == "__main__":
