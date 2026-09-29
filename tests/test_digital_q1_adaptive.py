@@ -28,6 +28,25 @@ def _independent_four_corners(vertices: np.ndarray) -> np.ndarray:
     return np.asarray(out)
 
 
+def test_current_edge_determinant_uses_right_down_left_up_order() -> None:
+    """The row-increasing-y convention makes the opposite cyclic order negative."""
+    cross = lambda u, v: u[0] * v[1] - u[1] * v[0]
+    for east, south, west, north in (
+        (np.array([1., 0.]), np.array([0., 1.]),
+         np.array([-1., 0.]), np.array([0., -1.])),
+        (np.array([1., .2]), np.array([.1, 1.1]),
+         np.array([-.9, .1]), np.array([-.1, -.8])),
+    ):
+        centered_x = (east - west) / 2
+        centered_y = (south - north) / 2
+        direct = cross(centered_x, centered_y)
+        incident = np.array((cross(east, south), cross(south, west),
+                             cross(west, north), cross(north, east)))
+        assert np.all(incident > 0)
+        np.testing.assert_allclose(direct, incident.sum() / 4, rtol=0, atol=1e-15)
+        assert direct > 0
+
+
 def test_current_edge_f2_equals_fixed_h_at_identity_and_stays_safe_repeated() -> None:
     side, cells = 17, 4
     torch.manual_seed(2917)
