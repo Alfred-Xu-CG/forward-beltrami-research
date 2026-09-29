@@ -22,6 +22,7 @@ from qcopt.neural_bijection.dense.q1_filtered_sign import certify_q1_binary_map
 from qcopt.neural_bijection.dense.q1_image_network import Q1ImageRegistrationNetwork
 from qcopt.neural_bijection.dense.q1_image_sampling import fixed_pixel_centers, warp_moving_at_q1_map
 from tools.digital_q1_network_teacher import _save_checkpoint
+from tools.digital_q1_p1_layer import FactorizedP1Map, evaluate_factorized_p1
 
 
 def sine_basis(points: torch.Tensor) -> torch.Tensor:
@@ -41,6 +42,27 @@ def point_grid(side: int, *, centers: bool, device: torch.device) -> torch.Tenso
     axis = torch.arange(side, dtype=torch.float32, device=device) / (side - 1)
     yy, xx = torch.meshgrid(axis, axis, indexing="ij")
     return torch.stack((xx, yy), dim=-1)[None]
+
+
+def warp_moving_at_p1_map(moving: torch.Tensor, vertices: torch.Tensor) -> torch.Tensor:
+    """Sample moving brightness through the fixed SW–NE P1 vertex map."""
+    if moving.ndim != 4 or vertices.ndim != 4 or moving.shape[0] != vertices.shape[0]:
+        raise ValueError("moving image and P1 vertices need a matching batch")
+    batch, _, height, width = moving.shape
+    queries = fixed_pixel_centers(height, width, dtype=vertices.dtype,
+                                  device=vertices.device).expand(batch, -1, -1, -1)
+    mapped = evaluate_factorized_p1(
+        FactorizedP1Map(
+            residual_vertices=vertices,
+            post_affine_matrix=torch.eye(2, dtype=vertices.dtype,
+                                         device=vertices.device)[None].expand(batch, -1, -1),
+            post_affine_offset=torch.zeros((batch, 2), dtype=vertices.dtype,
+                                            device=vertices.device),
+        ),
+        queries.reshape(batch, height * width, 2),
+    ).reshape(batch, height, width, 2)
+    return F.grid_sample(moving, 2 * mapped - 1, mode="bilinear",
+                         padding_mode="border", align_corners=False)
 
 
 def analytic_map(points: torch.Tensor, coefficients: torch.Tensor) -> torch.Tensor:
@@ -91,8 +113,8 @@ def run(*, textures: torch.Tensor, train_texture_indices: list[int],
         raise ValueError("texture indices must be canonical nonnegative indices")
     if min(side, steps, batch, train_count, test_count) < 1:
         raise ValueError("positive dimensions and counts required")
-    if loss_mode not in {"map", "image"}:
-        raise ValueError("loss_mode must be map or image")
+    if loss_mode not in {"map", "image", "p1_image"}:
+        raise ValueError("loss_mode must be map, image or p1_image")
     torch.manual_seed(291001)
     target_device = torch.device(device)
     textures = textures.to(target_device, dtype=torch.float32)
@@ -125,8 +147,10 @@ def run(*, textures: torch.Tensor, train_texture_indices: list[int],
         if loss_mode == "map":
             loss = (prediction - target).square().sum(-1).mean()
         else:
-            warped = warp_moving_at_q1_map(moving, prediction,
-                                           height=image_side, width=image_side)
+            warped = (warp_moving_at_p1_map(moving, prediction)
+                      if loss_mode == "p1_image" else
+                      warp_moving_at_q1_map(moving, prediction,
+                                            height=image_side, width=image_side))
             loss = (warped - fixed).square().mean()
         loss.backward()
         grads = [p.grad for p in model.encoder.parameters() if p.requires_grad]
@@ -160,8 +184,10 @@ def run(*, textures: torch.Tensor, train_texture_indices: list[int],
             )
             if validity["nonpositive_corners"] or validity["boundary_max_error"]:
                 raise AssertionError("predicted Q1 geometry invalid")
-            warped = warp_moving_at_q1_map(moving, prediction,
-                                           height=image_side, width=image_side)
+            warped = (warp_moving_at_p1_map(moving, prediction)
+                      if loss_mode == "p1_image" else
+                      warp_moving_at_q1_map(moving, prediction,
+                                            height=image_side, width=image_side))
             for local in range(indices.numel()):
                 predicted_rmse = float((prediction[local] - target[local]).square().sum(-1).mean().sqrt())
                 identity_rmse = float((vertex_points[0] - target[local]).square().sum(-1).mean().sqrt())
@@ -202,6 +228,9 @@ def run(*, textures: torch.Tensor, train_texture_indices: list[int],
         "train_count": train_count,
         "test_count": test_count,
         "training_loss_mode": loss_mode,
+        "image_interpolation_for_training_and_test": (
+            "fixed_SW_NE_P1" if loss_mode == "p1_image" else "Q1"
+        ),
         "first_train_objective": losses[0],
         "last_train_objective": losses[-1],
         "train_objective_batches_differ": True,
@@ -232,7 +261,7 @@ def main() -> None:
     parser.add_argument("--output-report", type=Path, required=True)
     parser.add_argument("--output-example", type=Path)
     parser.add_argument("--output-weights", type=Path)
-    parser.add_argument("--loss-mode", choices=("map", "image"), default="map")
+    parser.add_argument("--loss-mode", choices=("map", "image", "p1_image"), default="map")
     args = parser.parse_args()
     with np.load(args.textures) as archive:
         textures = torch.from_numpy(archive["images"].copy())
