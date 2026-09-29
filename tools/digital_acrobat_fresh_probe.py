@@ -19,8 +19,10 @@ import torch
 
 from qcopt.neural_bijection.dense.q1_filtered_sign import certify_q1_binary_map
 from qcopt.neural_bijection.dense.q1_image_network import Q1ImageRegistrationNetwork
-from tools.digital_acrobat_blank_ablation import actual_and_blank_outputs
-from tools.digital_acrobat_teacher_probe import _map_rmse, load_case
+from tools.digital_acrobat_blank_ablation import blank_output
+from tools.digital_acrobat_teacher_probe import (
+    _map_rmse, load_case, load_case_inputs, load_case_teacher,
+)
 from tools.digital_q1_dhr_distill import identity_vertices
 from tools.digital_q1_network_teacher import _save_checkpoint, load_checkpoint
 
@@ -41,7 +43,7 @@ def validate_eval_ids(ids: list[int], train_ids: list[int]) -> list[int]:
 
 def train_only(*, root: Path, output: Path, train_ids: list[int], steps: int,
                batch: int, device: str, seed: int = 20260929,
-               learning_rate: float = .002) -> dict:
+               learning_rate: float = .002, flow_hint: bool = False) -> dict:
     train_ids = validate_train_ids(train_ids)
     if steps < 1 or batch < 1 or learning_rate <= 0:
         raise ValueError("positive steps, batch and learning rate required")
@@ -53,7 +55,7 @@ def train_only(*, root: Path, output: Path, train_ids: list[int], steps: int,
     examples = [load_case(root, case, target_device) for case in train_ids]
     model = Q1ImageRegistrationNetwork(seed_side=17, final_side=257,
                                        width=16, feature_side=257,
-                                       flow_hint=True).to(target_device)
+                                       flow_hint=flow_hint).to(target_device)
     optimizer = torch.optim.Adam(model.encoder.parameters(), lr=learning_rate)
     rng = torch.Generator(device="cpu").manual_seed(seed + 1)
     durations: list[float] = []
@@ -90,6 +92,7 @@ def train_only(*, root: Path, output: Path, train_ids: list[int], steps: int,
         "test_case_ids_available_to_training": [],
         "steps": steps, "batch": batch, "seed": seed,
         "learning_rate": learning_rate,
+        "flow_hint": flow_hint,
         "first_minibatch_loss": losses[0], "last_minibatch_loss": losses[-1],
         "median_training_step_seconds": statistics.median(durations),
         "peak_torch_cuda_allocated_bytes": (
@@ -116,10 +119,11 @@ def evaluate_frozen(*, root: Path, output: Path, test_ids: list[int],
     identity = identity_vertices(257, device=target_device)
     reference = identity.cpu().numpy().astype(np.float32)
     cases = []
+    sealed_predictions = []
     with torch.no_grad():
         for case in ids:
-            # Test full teacher is opened only after the frozen checkpoint exists.
-            example = load_case(root, case, target_device)
+            # Seal every prediction before opening any held-out full-DHR label.
+            example = load_case_inputs(root, case, target_device)
             if target_device.type == "cuda":
                 torch.cuda.synchronize(target_device)
             start = time.perf_counter()
@@ -127,10 +131,8 @@ def evaluate_frozen(*, root: Path, output: Path, test_ids: list[int],
             if target_device.type == "cuda":
                 torch.cuda.synchronize(target_device)
             inference_seconds = time.perf_counter() - start
-            _, blank = actual_and_blank_outputs(model, example["fixed"],
-                                                 example["prewarped"])
+            blank = blank_output(model, example["fixed"], example["prewarped"])
             matrix, offset = example["matrix"], example["offset"]
-            full = example["raw_teacher"]
             actual_full = Q1ImageRegistrationNetwork.apply_affine(actual, matrix, offset)
             blank_full = Q1ImageRegistrationNetwork.apply_affine(blank, matrix, offset)
             affine_full = Q1ImageRegistrationNetwork.apply_affine(identity, matrix, offset)
@@ -148,6 +150,13 @@ def evaluate_frozen(*, root: Path, output: Path, test_ids: list[int],
                 if not certificate["valid"]:
                     raise ArithmeticError(f"{case} {label} saved Q1 map invalid")
                 certificates[label] = certificate
+            sealed_predictions.append((case, matrix, offset, actual_full,
+                                       blank_full, affine_full, inference_seconds,
+                                       certificates))
+        for (case, matrix, offset, actual_full, blank_full, affine_full,
+             inference_seconds, certificates) in sealed_predictions:
+            full = load_case_teacher(root, case, target_device, matrix,
+                                     offset)["raw_teacher"]
             cases.append({
                 "case": case,
                 "actual_to_DHR_full_vertex_rmse": _map_rmse(actual_full, full),
@@ -162,6 +171,7 @@ def evaluate_frozen(*, root: Path, output: Path, test_ids: list[int],
         "train_case_ids": training["train_case_ids"], "test_case_ids": ids,
         "external_initial_DHR_affine_required": True,
         "full_DHR_teacher_used_during_model_inference": False,
+        "all_prediction_archives_sealed_before_first_full_DHR_teacher_read": True,
         "cases": cases,
     }
     (output / "heldout_report.json").write_text(json.dumps(report, indent=2) + "\n",
@@ -180,6 +190,8 @@ def main() -> None:
     training.add_argument("--batch", type=int, default=4)
     training.add_argument("--device", default="cuda:0")
     training.add_argument("--seed", type=int, default=20260929)
+    training.add_argument("--flow-hint", action="store_true",
+                          help="override the predeclared no-flow-hint architecture")
     evaluation = commands.add_parser("evaluate")
     evaluation.add_argument("--root", type=Path, required=True)
     evaluation.add_argument("--output", type=Path, required=True)
@@ -189,7 +201,8 @@ def main() -> None:
     if args.command == "train":
         result = train_only(root=args.root, output=args.output,
                             train_ids=args.train_ids, steps=args.steps,
-                            batch=args.batch, device=args.device, seed=args.seed)
+                            batch=args.batch, device=args.device, seed=args.seed,
+                            flow_hint=args.flow_hint)
     else:
         result = evaluate_frozen(root=args.root, output=args.output,
                                  test_ids=args.test_ids, device=args.device)

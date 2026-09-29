@@ -84,20 +84,34 @@ def _case_images(root: Path, case: int) -> tuple[Path, Path]:
     return fixed, moving[0]
 
 
-def load_case(root: Path, case: int, device: torch.device) -> dict:
+def load_case_inputs(root: Path, case: int, device: torch.device) -> dict:
+    """Read only inference inputs; no full-DHR teacher is accessed."""
     fixed_path, moving_path = _case_images(root, case)
     with np.load(root / f"{case}_DHR_physical_initial_teacher_affine.npz") as initial:
         matrix = torch.from_numpy(initial["post_affine_matrix"].astype(np.float32))[None].to(device)
         offset = torch.from_numpy(initial["post_affine_offset"].astype(np.float32))[None].to(device)
-    with np.load(root / f"{case}_DHR_physical_full_teacher_affine.npz") as full:
-        raw = torch.from_numpy(full["raw_teacher_vertices"].astype(np.float32)).to(device)
     fixed = _gray(fixed_path).to(device)
     moving = _gray(moving_path).to(device)
     prewarped = affine_prewarp(moving, matrix, offset)
-    target = factored_residual_target(raw, matrix, offset)
     return {"id": case, "fixed": fixed, "moving": moving,
-            "prewarped": prewarped, "raw_teacher": raw,
-            "target": target, "matrix": matrix, "offset": offset}
+            "prewarped": prewarped, "matrix": matrix, "offset": offset}
+
+
+def load_case_teacher(root: Path, case: int, device: torch.device,
+                      matrix: torch.Tensor, offset: torch.Tensor) -> dict:
+    """Read the full-DHR pseudo-target only after the inference stage."""
+    with np.load(root / f"{case}_DHR_physical_full_teacher_affine.npz") as full:
+        raw = torch.from_numpy(full["raw_teacher_vertices"].astype(np.float32)).to(device)
+    target = factored_residual_target(raw, matrix, offset)
+    return {"raw_teacher": raw, "target": target}
+
+
+def load_case(root: Path, case: int, device: torch.device) -> dict:
+    """Read images, initial affine and full teacher for development training."""
+    example = load_case_inputs(root, case, device)
+    example.update(load_case_teacher(root, case, device, example["matrix"],
+                                     example["offset"]))
+    return example
 
 
 def _map_rmse(predicted: torch.Tensor, target: torch.Tensor) -> float:
@@ -106,7 +120,7 @@ def _map_rmse(predicted: torch.Tensor, target: torch.Tensor) -> float:
 
 def run(*, root: Path, output: Path, all_ids: list[int], test_ids: list[int],
         steps: int, batch: int, device: str, seed: int = 20260929,
-        learning_rate: float = .002) -> dict:
+        learning_rate: float = .002, flow_hint: bool = True) -> dict:
     train_ids, heldout_ids = split_case_ids(all_ids, test_ids)
     if steps < 1 or batch < 1 or learning_rate <= 0:
         raise ValueError("positive steps, batch and learning rate required")
@@ -115,7 +129,7 @@ def run(*, root: Path, output: Path, all_ids: list[int], test_ids: list[int],
     cases = {case: load_case(root, case, target_device) for case in all_ids}
     model = Q1ImageRegistrationNetwork(seed_side=17, final_side=257,
                                        width=16, feature_side=257,
-                                       flow_hint=True).to(target_device)
+                                       flow_hint=flow_hint).to(target_device)
     optimizer = torch.optim.Adam(model.encoder.parameters(), lr=learning_rate)
     rng = torch.Generator(device="cpu").manual_seed(seed + 1)
     step_times: list[float] = []
@@ -190,6 +204,7 @@ def run(*, root: Path, output: Path, all_ids: list[int], test_ids: list[int],
         "fixed_and_moving_images": "common-physical-scale 512x512 white-padded canvases",
         "control_vertices": 257 * 257, "steps": steps, "batch": batch,
         "learning_rate": learning_rate, "seed": seed,
+        "flow_hint": flow_hint,
         "first_train_loss": losses[0], "last_train_loss": losses[-1],
         "median_training_step_seconds": statistics.median(step_times),
         "peak_torch_cuda_allocated_bytes": training_peak,
@@ -209,11 +224,14 @@ def main() -> None:
     parser.add_argument("--batch", type=int, default=2)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--seed", type=int, default=20260929)
+    parser.add_argument("--no-flow-hint", action="store_true",
+                        help="ablate the local brightness-constancy proposal channels")
     args = parser.parse_args()
     result = run(root=args.root, output=args.output,
                  all_ids=[100, 156, 315, 330, 399, 495, 585, 586, 638, 733],
                  test_ids=args.test_ids, steps=args.steps, batch=args.batch,
-                 device=args.device, seed=args.seed)
+                 device=args.device, seed=args.seed,
+                 flow_hint=not args.no_flow_hint)
     print(json.dumps(result, indent=2))
 
 

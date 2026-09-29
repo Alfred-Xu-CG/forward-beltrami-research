@@ -20,11 +20,22 @@ def actual_and_blank_outputs(model: torch.nn.Module, fixed: torch.Tensor,
                              moving: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     """Run unchanged model on real pair and constant-zero grayscale pair."""
     actual, _, _ = model(fixed, moving)
+    return actual, blank_output(model, fixed, moving)
+
+
+def blank_output(model: torch.nn.Module, fixed: torch.Tensor,
+                 moving: torch.Tensor) -> torch.Tensor:
+    """Predict from all-white source images in the inverse-grayscale frame."""
     blank, _, _ = model(torch.zeros_like(fixed), torch.zeros_like(moving))
-    return actual, blank
+    return blank
 
 
-def run(root: Path, output: Path, *, device: str = "cpu") -> dict:
+def checkpoint_for_fold(root: Path, fold: str, prefix: str) -> Path:
+    return root / f"{prefix}{fold}" / "acrobat_teacher_probe_weights.npz"
+
+
+def run(root: Path, output: Path, *, device: str = "cpu",
+        fold_prefix: str = "acrobat_teacher_probe_") -> dict:
     folds = (
         ("8train2test", (495, 733)),
         ("100_638", (100, 638)),
@@ -37,7 +48,7 @@ def run(root: Path, output: Path, *, device: str = "cpu") -> dict:
     reference = identity_vertices(257, device=target_device).cpu().numpy().astype(np.float32)
     results = []
     for fold, test_ids in folds:
-        checkpoint = root / f"acrobat_teacher_probe_{fold}" / "acrobat_teacher_probe_weights.npz"
+        checkpoint = checkpoint_for_fold(root, fold, fold_prefix)
         model = load_checkpoint(checkpoint, device=device).eval()
         with torch.no_grad():
             for case in test_ids:
@@ -66,6 +77,7 @@ def run(root: Path, output: Path, *, device: str = "cpu") -> dict:
                 })
     result = {
         "mode": "frozen_checkpoint_constant_white_image_ablation",
+        "fold_prefix": fold_prefix,
         "full_DHR_used_for_inference": False,
         "test_case_ids": [item["case"] for item in results],
         "cases": results,
@@ -80,8 +92,10 @@ def main() -> None:
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--fold-prefix", default="acrobat_teacher_probe_")
     args = parser.parse_args()
-    print(json.dumps(run(args.root, args.output, device=args.device), indent=2))
+    print(json.dumps(run(args.root, args.output, device=args.device,
+                         fold_prefix=args.fold_prefix), indent=2))
 
 
 if __name__ == "__main__":

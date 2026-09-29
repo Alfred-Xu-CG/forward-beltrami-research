@@ -8,7 +8,10 @@ from tools.digital_acrobat_teacher_probe import (
     factored_residual_target,
     split_case_ids,
 )
-from tools.digital_acrobat_blank_ablation import actual_and_blank_outputs
+from tools.digital_acrobat_blank_ablation import (
+    actual_and_blank_outputs,
+    checkpoint_for_fold,
+)
 
 
 def test_affine_prewarp_uses_image_pixel_centers():
@@ -51,3 +54,32 @@ def test_blank_ablation_changes_only_image_inputs():
     assert actual.shape == blank.shape == (1, 2, 2, 2)
     torch.testing.assert_close(actual, torch.full_like(actual, 3.))
     torch.testing.assert_close(blank, torch.zeros_like(blank))
+
+
+def test_blank_ablation_can_load_distinct_architecture_folds(tmp_path):
+    assert checkpoint_for_fold(tmp_path, "100_638", "acrobat_nohint_") == (
+        tmp_path / "acrobat_nohint_100_638" / "acrobat_teacher_probe_weights.npz"
+    )
+
+
+def test_teacher_probe_supports_no_local_flow_hint(monkeypatch, tmp_path):
+    import tools.digital_acrobat_teacher_probe as probe
+
+    axis = torch.linspace(0, 1, 257)
+    y, x = torch.meshgrid(axis, axis, indexing="ij")
+    identity = torch.stack((x, y), dim=-1)[None]
+
+    def fake_case(root, case, device):
+        image = torch.zeros(1, 1, 16, 16, device=device)
+        vertices = identity.to(device)
+        return {"id": case, "fixed": image, "prewarped": image,
+                "raw_teacher": vertices, "target": vertices,
+                "matrix": torch.eye(2, device=device)[None],
+                "offset": torch.zeros(1, 2, device=device)}
+
+    monkeypatch.setattr(probe, "load_case", fake_case)
+    report = probe.run(root=tmp_path, output=tmp_path / "output",
+                       all_ids=[1, 2], test_ids=[2], steps=1, batch=1,
+                       device="cpu", flow_hint=False)
+    assert report["flow_hint"] is False
+    assert report["cases"][1]["saved_residual_certificate"]["valid"]
