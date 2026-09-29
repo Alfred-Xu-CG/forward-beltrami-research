@@ -18,10 +18,13 @@ MAX_COMBINED_STORED_BYTES = 500_000_000
 
 
 def select_cases(members: Iterable, *, seed: int, exclude: set[int],
-                 per_stain: int = 2) -> dict[str, list[dict]]:
+                 per_stain: int = 2,
+                 stain_order: tuple[str, ...] = STAINS) -> dict[str, list[dict]]:
     """Return disjoint stain-stratified cases under a fixed stored-size cap."""
     if per_stain < 1:
         raise ValueError("per_stain must be positive")
+    if len(stain_order) != len(STAINS) or set(stain_order) != set(STAINS):
+        raise ValueError("stain_order must permute four stains")
     index: dict[int, dict[str, list]] = {}
     for member in members:
         match = MEMBER.fullmatch(member.filename)
@@ -31,7 +34,7 @@ def select_cases(members: Iterable, *, seed: int, exclude: set[int],
     rng = np.random.default_rng(seed)
     used = set(exclude)
     selection: dict[str, list[dict]] = {}
-    for stain in STAINS:
+    for stain in stain_order:
         candidates = []
         for case, files in sorted(index.items()):
             if case in used or len(files.get("HE", [])) != 1 or len(files.get(stain, [])) != 1:
@@ -53,7 +56,8 @@ def select_cases(members: Iterable, *, seed: int, exclude: set[int],
                 if len(chosen) == per_stain:
                     break
         if len(chosen) != per_stain:
-            raise ValueError(f"not enough eligible {stain} cases")
+            raise ValueError(f"not enough eligible {stain} cases: "
+                             f"{len(chosen)} available for {per_stain} requested")
         selection[stain] = chosen
     return selection
 
@@ -64,18 +68,20 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--exclude", type=int, nargs="+", required=True)
     parser.add_argument("--seed", type=int, default=20260930)
+    parser.add_argument("--per-stain", type=int, default=2)
     args = parser.parse_args()
     if args.output.exists():
         raise FileExistsError(args.output)
     with RemoteZip(args.archive_url, timeout=120) as archive:
         selected = select_cases(archive.infolist(), seed=args.seed,
-                                exclude=set(args.exclude))
+                                exclude=set(args.exclude), per_stain=args.per_stain)
     report = {
         "source": "official_ACROBAT_training_archive_part1_zip_metadata_only",
         "archive_url": args.archive_url,
         "seed": args.seed,
         "excluded_case_ids": sorted(set(args.exclude)),
         "max_combined_stored_bytes_exclusive": MAX_COMBINED_STORED_BYTES,
+        "per_stain": args.per_stain,
         "selection": selected,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
