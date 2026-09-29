@@ -1,5 +1,7 @@
 """Repeated image-conditioned passes preserve the shared Q1 grid."""
 
+import copy
+
 import torch
 import torch.nn.functional as F
 import pytest
@@ -136,3 +138,115 @@ def test_fixed_h_recurrent_proposal_is_safe_control() -> None:
         model.heads["17"].output.bias.copy_(torch.tensor([2., -1.]))
         mapped = model(torch.zeros(1, 1, 64, 64), torch.ones(1, 1, 64, 64))[0]
     assert float(q1_corner_determinants(mapped).amin()) > 0
+
+
+def test_proposal_modes_can_change_only_new_fine_level() -> None:
+    from qcopt.neural_bijection.dense.digital_q1 import (
+        AdaptiveSoftRadialQ1Relaxation, FixedSpanSoftRadialQ1Relaxation,
+    )
+
+    base = Q1ImageRegistrationNetwork(seed_side=17, final_side=33,
+                                       feature_side=33, width=4, flow_hint=False)
+    model = RecurrentQ1ImageRegistrationNetwork(
+        base, rounds_by_side={17: 2, 33: 2},
+        proposal_mode="fixed_h_soft",
+        proposal_modes_by_side={17: "current_edge", 33: "fixed_h_soft"},
+    )
+    assert type(model.updates["17"]) is AdaptiveSoftRadialQ1Relaxation
+    assert type(model.updates["33"]) is FixedSpanSoftRadialQ1Relaxation
+    with torch.no_grad():
+        model.heads["17"].output.bias.copy_(torch.tensor([.6, -.3]))
+        model.heads["33"].output.bias.copy_(torch.tensor([-.5, .4]))
+        mapped = model(torch.zeros(1, 1, 64, 64), torch.ones(1, 1, 64, 64))[0]
+    assert float(q1_corner_determinants(mapped).amin()) > 0
+    with pytest.raises(ValueError, match="one valid proposal mode"):
+        RecurrentQ1ImageRegistrationNetwork(
+            base, rounds_by_side={17: 2, 33: 2},
+            proposal_modes_by_side={17: "current_edge"},
+        )
+
+
+def test_round_checkpoint_replays_same_map_and_vjp() -> None:
+    torch.manual_seed(941)
+    base = Q1ImageRegistrationNetwork(seed_side=17, final_side=17,
+                                       feature_side=33, width=4, flow_hint=False)
+    ordinary = RecurrentQ1ImageRegistrationNetwork(base, rounds_by_side={17: 2})
+    with torch.no_grad():
+        ordinary.heads["17"].output.weight.normal_(0, .01)
+        ordinary.heads["17"].output.bias.copy_(torch.tensor([.7, -.4]))
+    replay = copy.deepcopy(ordinary)
+    replay.checkpoint_rounds = True
+    first = torch.rand(1, 1, 48, 48)
+    second = torch.rand(1, 1, 48, 48)
+    results = []
+    for network in (ordinary, replay):
+        fixed = first.clone().requires_grad_(True)
+        moving = second.clone().requires_grad_(True)
+        mapped = network(fixed, moving)[0]
+        mapped.square().mean().backward()
+        results.append((mapped.detach().clone(), fixed.grad.clone(), moving.grad.clone(),
+                        network.heads["17"].output.weight.grad.clone()))
+    for old, new in zip(results[0], results[1], strict=True):
+        torch.testing.assert_close(old, new, rtol=0, atol=1e-7)
+    assert float(q1_corner_determinants(results[1][0]).amin()) > 0
+
+
+def test_image_conditioned_f2_repeats_on_current_map_with_vjp() -> None:
+    torch.manual_seed(943)
+    base = Q1ImageRegistrationNetwork(seed_side=17, final_side=17,
+                                       feature_side=33, width=4, flow_hint=False)
+    model = RecurrentQ1ImageRegistrationNetwork(
+        base, rounds_by_side={17: 2},
+        update_families_by_side={17: "f2"},
+    )
+    fixed = torch.rand(1, 1, 48, 48)
+    moving = ((torch.arange(48, dtype=torch.float32) + .5) / 48
+              ).reshape(1, 1, 1, 48).expand(1, 1, 48, 48).clone()
+    with torch.no_grad():
+        parent = base(fixed, moving)[0]
+        neutral = model(fixed, moving)[0]
+    assert torch.equal(parent, neutral)
+    with torch.no_grad():
+        model.heads["17"].output.bias.copy_(torch.tensor([.8, -.3]))
+    evidence = []
+    handle = model.heads["17"].register_forward_pre_hook(
+        lambda _module, args: evidence.append(args[2].detach().clone())
+    )
+    result = model(fixed, moving)[0]
+    handle.remove()
+    assert len(evidence) == 8
+    assert float((evidence[0] - evidence[1]).abs().amax()) > 1e-6
+    assert float((result - parent).abs().amax()) > 1e-6
+    assert float(q1_corner_determinants(result).amin()) > 0
+    model.zero_grad(set_to_none=True)
+    result.square().mean().backward()
+    gradient = model.heads["17"].output.bias.grad
+    assert gradient is not None and bool(torch.isfinite(gradient).all())
+    assert float(gradient.abs().sum()) > 0
+
+
+def test_image_conditioned_f2_checkpoint_vjp_matches_ordinary() -> None:
+    torch.manual_seed(947)
+    base = Q1ImageRegistrationNetwork(seed_side=17, final_side=17,
+                                       feature_side=33, width=4, flow_hint=False)
+    plain = RecurrentQ1ImageRegistrationNetwork(
+        base, rounds_by_side={17: 2}, update_families_by_side={17: "f2"},
+    )
+    with torch.no_grad():
+        plain.heads["17"].output.weight.normal_(0, .01)
+        plain.heads["17"].output.bias.copy_(torch.tensor([.8, -.3]))
+    saved = copy.deepcopy(plain)
+    saved.checkpoint_rounds = True
+    inputs = (torch.rand(1, 1, 48, 48), torch.rand(1, 1, 48, 48))
+    results = []
+    for network in (plain, saved):
+        fixed, moving = (image.clone().requires_grad_(True) for image in inputs)
+        mapped = network(fixed, moving)[0]
+        mapped.square().mean().backward()
+        results.append((mapped.detach(), fixed.grad, moving.grad,
+                        network.heads["17"].output.bias.grad))
+    for ordinary, checkpointed in zip(*results, strict=True):
+        torch.testing.assert_close(ordinary, checkpointed, rtol=0, atol=1e-7)
+    assert float(results[0][1].abs().sum()) > 0
+    assert float(results[0][2].abs().sum()) > 0
+    assert float(q1_corner_determinants(results[1][0]).amin()) > 0

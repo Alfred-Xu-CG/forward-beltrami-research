@@ -8,6 +8,7 @@ of those cases is explicitly exploratory, not a second blind confirmation.
 from __future__ import annotations
 
 import argparse
+import filecmp
 import json
 import shutil
 import statistics
@@ -56,10 +57,19 @@ def _load_model(output: Path, device: str) -> RecurrentQ1ImageRegistrationNetwor
     training = json.loads((output / "train_manifest.json").read_text())
     schedule = {int(side): int(count)
                 for side, count in training["rounds_by_side"].items()}
+    modes = training.get("proposal_modes_by_side")
+    modes = ({int(side): mode for side, mode in modes.items()}
+             if modes is not None else None)
+    families = training.get("update_families_by_side")
+    families = ({int(side): family for side, family in families.items()}
+                if families is not None else None)
     model = RecurrentQ1ImageRegistrationNetwork(
         base, rounds_by_side=schedule,
         refresh_moving_evidence=training.get("refresh_moving_evidence", True),
         proposal_mode=training.get("proposal_mode", "current_edge"),
+        proposal_modes_by_side=modes,
+        update_families_by_side=families,
+        checkpoint_rounds=training.get("checkpoint_rounds", False),
     ).to(device)
     with np.load(output / "recurrent_heads.npz") as archive:
         state = {
@@ -76,6 +86,8 @@ def train(root: Path, output: Path, base_checkpoint: Path,
           rounds_by_side: dict[int, int] | None = None,
           refresh_moving_evidence: bool = True,
           proposal_mode: str = "current_edge",
+          update_family: str = "f1",
+          checkpoint_rounds: bool = False,
           initialize_from: Path | None = None) -> dict:
     if output.exists() and any(output.iterdir()):
         raise FileExistsError("fresh recurrent output required")
@@ -86,16 +98,38 @@ def train(root: Path, output: Path, base_checkpoint: Path,
     torch.manual_seed(seed)
     examples = [load_case(root, case, target_device) for case in train_ids]
     schedule = rounds_by_side or ROUNDS
+    prior = _load_model(initialize_from, device) if initialize_from is not None else None
+    if prior is not None:
+        prior_training = json.loads((initialize_from / "train_manifest.json").read_text())
+        if set(prior_training["train_case_ids"]) != set(train_ids):
+            raise ValueError("initialized heads require the identical training-case set")
+    if prior is not None and not set(prior.heads).issubset({str(side) for side in schedule}):
+        raise ValueError("initialized heads must be present in new schedule")
+    if prior is not None and any(
+        schedule[side] != count for side, count in prior.rounds_by_side.items()
+    ):
+        raise ValueError("initialized recurrent round counts must stay unchanged")
+    if prior is not None and prior.refresh_moving_evidence != refresh_moving_evidence:
+        raise ValueError("initialized recurrence must keep prior image-evidence policy")
+    if prior is not None and not filecmp.cmp(
+        base_checkpoint, initialize_from / "base_frozen_weights.npz", shallow=False,
+    ):
+        raise ValueError("initialized recurrence must keep identical frozen base")
+    modes = {side: proposal_mode for side in schedule}
+    families = {side: update_family for side in schedule}
+    if prior is not None:
+        modes.update(prior.proposal_modes_by_side)
+        families.update(prior.update_families_by_side)
     model = RecurrentQ1ImageRegistrationNetwork(
         load_checkpoint(base_checkpoint, device=device), rounds_by_side=schedule,
         refresh_moving_evidence=refresh_moving_evidence,
         proposal_mode=proposal_mode,
+        proposal_modes_by_side=modes,
+        update_families_by_side=families,
+        checkpoint_rounds=checkpoint_rounds,
     ).to(target_device).train()
     initialized_sides = []
-    if initialize_from is not None:
-        prior = _load_model(initialize_from, device)
-        if not set(prior.heads).issubset(model.heads):
-            raise ValueError("initialized heads must be present in new schedule")
+    if prior is not None:
         for side, head in prior.heads.items():
             model.heads[side].load_state_dict(head.state_dict(), strict=True)
             for parameter in model.heads[side].parameters():
@@ -157,6 +191,9 @@ def train(root: Path, output: Path, base_checkpoint: Path,
         "rounds_by_side": schedule,
         "refresh_moving_evidence": refresh_moving_evidence,
         "proposal_mode": proposal_mode,
+        "proposal_modes_by_side": modes,
+        "update_families_by_side": families,
+        "checkpoint_rounds": checkpoint_rounds,
         "initialized_head_sides": initialized_sides,
         "trainable_head_sides": trainable_sides,
         "initialize_from": str(initialize_from) if initialize_from is not None else None,
@@ -242,8 +279,12 @@ def main() -> None:
     training.add_argument("--proposal-mode", choices=("current_edge", "fixed_h",
                                                     "fixed_h_soft"),
                           default="current_edge")
+    training.add_argument("--update-family", choices=("f1", "f2"), default="f1",
+                          help="family for newly added sides; initialized sides retain their own")
     training.add_argument("--initialize-from", type=Path,
                           help="copy and freeze existing recurrent heads; train added sides")
+    training.add_argument("--checkpoint-rounds", action="store_true",
+                          help="recompute each recurrent round during backward to save memory")
     prediction = commands.add_parser("predict")
     prediction.add_argument("--root", type=Path, required=True)
     prediction.add_argument("--output", type=Path, required=True)
@@ -256,6 +297,8 @@ def main() -> None:
                        device=args.device, rounds_by_side=args.rounds,
                        refresh_moving_evidence=not args.freeze_moving_evidence,
                        proposal_mode=args.proposal_mode,
+                       update_family=args.update_family,
+                       checkpoint_rounds=args.checkpoint_rounds,
                        initialize_from=args.initialize_from)
     else:
         result = predict(args.root, args.output, args.test_ids, device=args.device)

@@ -10,9 +10,11 @@ from __future__ import annotations
 import torch
 import torch.nn.functional as F
 from torch import nn
+from torch.utils.checkpoint import checkpoint
 
 from .digital_q1 import (AdaptiveSoftRadialQ1Relaxation, FixedSpanSoftRadialQ1Relaxation,
-                         SafeColoredQ1Relaxation, q1_dyadic_refine)
+                         SafeColoredQ1Relaxation, StaggeredPatchQ1Layer,
+                         q1_dyadic_refine)
 from .q1_image_network import Q1ImageRegistrationNetwork
 
 
@@ -55,7 +57,10 @@ class RecurrentQ1ImageRegistrationNetwork(nn.Module):
                  rounds_by_side: dict[int, int] | None = None,
                  raw_span: float = 8.0,
                  refresh_moving_evidence: bool = True,
-                 proposal_mode: str = "current_edge") -> None:
+                 proposal_mode: str = "current_edge",
+                 proposal_modes_by_side: dict[int, str] | None = None,
+                 update_families_by_side: dict[int, str] | None = None,
+                 checkpoint_rounds: bool = False) -> None:
         super().__init__()
         self.base = base
         for parameter in self.base.parameters():
@@ -70,18 +75,43 @@ class RecurrentQ1ImageRegistrationNetwork(nn.Module):
         if proposal_mode not in ("current_edge", "fixed_h", "fixed_h_soft"):
             raise ValueError("proposal_mode must be current_edge, fixed_h or fixed_h_soft")
         self.proposal_mode = proposal_mode
+        self.checkpoint_rounds = checkpoint_rounds
+        modes = ({side: proposal_mode for side in self.rounds_by_side}
+                 if proposal_modes_by_side is None else dict(proposal_modes_by_side))
+        if set(modes) != set(self.rounds_by_side) or any(
+            mode not in ("current_edge", "fixed_h", "fixed_h_soft")
+            for mode in modes.values()
+        ):
+            raise ValueError("one valid proposal mode per recurrent side required")
+        self.proposal_modes_by_side = modes
+        families = ({side: "f1" for side in self.rounds_by_side}
+                    if update_families_by_side is None else dict(update_families_by_side))
+        if set(families) != set(self.rounds_by_side) or any(
+            family not in ("f1", "f2") for family in families.values()
+        ):
+            raise ValueError("one f1/f2 update family per recurrent side required")
+        if any(families[side] == "f2" and modes[side] == "fixed_h_soft"
+               for side in families):
+            raise ValueError("F2 does not implement fixed_h_soft proposal")
+        self.update_families_by_side = families
         width = base.encoder.stem[0].out_channels
         self.heads = nn.ModuleDict({str(side): CurrentImageProposalHead(width)
                                     for side in self.rounds_by_side})
-        update_type = {
+        update_types = {
             "current_edge": AdaptiveSoftRadialQ1Relaxation,
             "fixed_h": SafeColoredQ1Relaxation,
             "fixed_h_soft": FixedSpanSoftRadialQ1Relaxation,
-        }[proposal_mode]
+        }
         self.updates = nn.ModuleDict({
-            str(side): update_type(
-                side, raw_span=raw_span,
-                minimum_jacobian=base.decoder.seed_update.passes[0].minimum_jacobian,
+            str(side): (
+                update_types[modes[side]](
+                    side, raw_span=raw_span,
+                    minimum_jacobian=base.decoder.seed_update.passes[0].minimum_jacobian,
+                ) if families[side] == "f1" else
+                StaggeredPatchQ1Layer(
+                    side, patch_cells=8, proposal_mode=modes[side], raw_span=.5,
+                    minimum_jacobian=base.decoder.seed_update.passes[0].minimum_jacobian,
+                )
             ) for side in self.rounds_by_side
         })
 
@@ -104,21 +134,43 @@ class RecurrentQ1ImageRegistrationNetwork(nn.Module):
         level_entry_query = Q1ImageRegistrationNetwork.apply_affine(
             mapped, matrix, offset,
         ) if not self.refresh_moving_evidence else None
-        for round_index in range(self.rounds_by_side[side]):
+        def one_pass(state: torch.Tensor, fraction: float
+                     ) -> tuple[torch.Tensor, torch.Tensor]:
             # The returned map is A_internal composed with this residual Q1
             # table. Sample the input moving canvas at that actual current
             # position, not at the un-affined residual coordinate.
             current_query = (Q1ImageRegistrationNetwork.apply_affine(
-                mapped, matrix, offset,
+                state, matrix, offset,
             ) if self.refresh_moving_evidence else level_entry_query)
             warped = F.grid_sample(
                 moving, 2 * current_query - 1,
                 padding_mode="border", align_corners=False,
             )
             latent = head(static_features, fixed_nodes, warped,
-                          mapped - identity,
-                          (round_index + 1) / self.rounds_by_side[side])
-            mapped = update(mapped, latent)
+                          state - identity, fraction)
+            return state, latent
+
+        def one_round(state: torch.Tensor, round_index: int) -> torch.Tensor:
+            if self.update_families_by_side[side] == "f1":
+                fraction = (round_index + 1) / self.rounds_by_side[side]
+                current, latent = one_pass(state, fraction)
+                return update(current, latent)
+            current = state
+            total = self.rounds_by_side[side] * len(update.passes)
+            for offset_index, patch_pass in enumerate(update.passes):
+                fraction = (round_index * len(update.passes) + offset_index + 1) / total
+                current, latent = one_pass(current, fraction)
+                current = patch_pass(current, latent)
+            return current
+
+        for round_index in range(self.rounds_by_side[side]):
+            if self.checkpoint_rounds and self.training:
+                mapped = checkpoint(
+                    lambda state, round_index=round_index: one_round(state, round_index),
+                    mapped, use_reentrant=False,
+                )
+            else:
+                mapped = one_round(mapped, round_index)
         return mapped
 
     def forward(self, fixed: torch.Tensor, moving: torch.Tensor
