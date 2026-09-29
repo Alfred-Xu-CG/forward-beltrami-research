@@ -77,6 +77,11 @@ def benchmark(root: Path, model_output: Path, output: Path, *,
             if any(gradient is None or not bool(torch.isfinite(gradient).all())
                    for gradient in head_gradients):
                 raise FloatingPointError("missing or nonfinite 257-head gradient")
+            family_grad_l1 = ({
+                family: float(sum(parameter.grad.abs().sum()
+                                  for parameter in subhead.parameters()))
+                for family, subhead in head.items()
+            } if isinstance(head, torch.nn.ModuleDict) else None)
             if repeat == repeats:
                 key = "checkpoint" if checkpointed else "ordinary"
                 gradients[key] = torch.cat([
@@ -95,6 +100,7 @@ def benchmark(root: Path, model_output: Path, output: Path, *,
                     "photometric_mse": float(loss.detach()),
                     "head_parameter_grad_l1": float(sum(
                         gradient.abs().sum() for gradient in head_gradients)),
+                    "family_parameter_grad_l1": family_grad_l1,
                 })
         rows.append({
             "checkpoint_rounds": checkpointed,

@@ -1,0 +1,105 @@
+{
+  "question": "P1 query plus image-sampling first-order VJP and checkpoint cost",
+  "model_output": "scaleup102/recurrent102_dense257_mixed_p8_k4_2400",
+  "case": 168,
+  "control_vertices_per_axis": 257,
+  "image_and_query_pixels_per_axis": 512,
+  "query": "fixed canvas pixel centers ((j+0.5)/512,(i+0.5)/512)",
+  "loss": "mean (fixed brightness minus prewarped-moving brightness at internal-affine P1 map)^2",
+  "external_initial_affine_already_prewarped_moving": true,
+  "frozen_inherited_head_sides": [
+    17,
+    33,
+    65
+  ],
+  "all_257_head_parameter_gradients_checked": true,
+  "warmups": 1,
+  "timed_repeats": 3,
+  "device": "cuda:0",
+  "rows": [
+    {
+      "checkpoint_rounds": false,
+      "median_forward_seconds": 0.11637933179736137,
+      "median_forward_plus_vjp_seconds": 0.2564097121357918,
+      "max_measured_peak_allocated_bytes": 1258252288,
+      "samples": [
+        {
+          "forward_seconds": 0.1164626032114029,
+          "forward_plus_vjp_seconds": 0.25563492625951767,
+          "peak_torch_cuda_allocated_bytes": 1258252288,
+          "photometric_mse": 0.006293482147157192,
+          "head_parameter_grad_l1": 0.03841624781489372,
+          "family_parameter_grad_l1": {
+            "f2": 0.019138317555189133,
+            "f1": 0.01927793212234974
+          }
+        },
+        {
+          "forward_seconds": 0.11571640521287918,
+          "forward_plus_vjp_seconds": 0.2579452730715275,
+          "peak_torch_cuda_allocated_bytes": 1258252288,
+          "photometric_mse": 0.006293482147157192,
+          "head_parameter_grad_l1": 0.03841624781489372,
+          "family_parameter_grad_l1": {
+            "f2": 0.019138317555189133,
+            "f1": 0.01927793212234974
+          }
+        },
+        {
+          "forward_seconds": 0.11637933179736137,
+          "forward_plus_vjp_seconds": 0.2564097121357918,
+          "peak_torch_cuda_allocated_bytes": 1258252288,
+          "photometric_mse": 0.006293482147157192,
+          "head_parameter_grad_l1": 0.03841624781489372,
+          "family_parameter_grad_l1": {
+            "f2": 0.019138317555189133,
+            "f1": 0.01927793212234974
+          }
+        }
+      ]
+    },
+    {
+      "checkpoint_rounds": true,
+      "median_forward_seconds": 0.13348495960235596,
+      "median_forward_plus_vjp_seconds": 0.3889864534139633,
+      "max_measured_peak_allocated_bytes": 342725120,
+      "samples": [
+        {
+          "forward_seconds": 0.13348495960235596,
+          "forward_plus_vjp_seconds": 0.48642653226852417,
+          "peak_torch_cuda_allocated_bytes": 342725120,
+          "photometric_mse": 0.006293482147157192,
+          "head_parameter_grad_l1": 0.03841624781489372,
+          "family_parameter_grad_l1": {
+            "f2": 0.019138317555189133,
+            "f1": 0.01927793212234974
+          }
+        },
+        {
+          "forward_seconds": 0.1333681307733059,
+          "forward_plus_vjp_seconds": 0.3880898840725422,
+          "peak_torch_cuda_allocated_bytes": 342725120,
+          "photometric_mse": 0.006293482147157192,
+          "head_parameter_grad_l1": 0.03841624781489372,
+          "family_parameter_grad_l1": {
+            "f2": 0.019138317555189133,
+            "f1": 0.01927793212234974
+          }
+        },
+        {
+          "forward_seconds": 0.13535567745566368,
+          "forward_plus_vjp_seconds": 0.3889864534139633,
+          "peak_torch_cuda_allocated_bytes": 342725120,
+          "photometric_mse": 0.006293482147157192,
+          "head_parameter_grad_l1": 0.03841624781489372,
+          "family_parameter_grad_l1": {
+            "f2": 0.019138317555189133,
+            "f1": 0.01927793212234974
+          }
+        }
+      ]
+    }
+  ],
+  "ordinary_checkpoint_map_bitwise_equal": true,
+  "maximum_absolute_257_head_parameter_gradient_difference": 7.275957614183426e-12
+}
