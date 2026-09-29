@@ -1,6 +1,6 @@
 # Q1 topology and F1-D / F2-D derivations
 
-Geometry Builder draft, 2026-09-29. This document supplies mathematical derivations and legacy-code deltas; it is **not independent approval**, an IEEE arithmetic proof, or a G1–G4 verdict. Statements marked PROVED below are exact-arithmetic derivations subject to the independent geometry review. No production code was modified for this document.
+Geometry Builder derivations, 2026-09-29. This document supplies mathematical derivations and legacy-code deltas; it is **not by itself independent approval**, an IEEE arithmetic proof, or a G1–G4 verdict. Statements marked PROVED below concern exact arithmetic under their stated hypotheses; independent checks and scoped saved-output findings are recorded separately in [REVIEW.md](REVIEW.md).
 
 ## 1. Representation, units, and hypotheses
 
@@ -85,7 +85,7 @@ All four positive imply a positive central result; the converse fails. With nonu
 
 Primary prior art: [Liu et al., §2.2 Definition 3 and §2.3](https://arxiv.org/html/2212.06060#S2.SS2) gives the digital four-difference / alternative-triangle criterion and explains central-difference failure. The Q1 interpolation and boundary extension above are explicit derivations for this repository, not quotations of a stronger theorem from that source.
 
-## 5. F1-D incident constraints — PROVED formula, implementation pending review
+## 5. F1-D incident constraints — PROVED exact-arithmetic formula
 
 Fix an initially valid map, a single active interior vertex `i`, and its proposed displacement `r_i`. A triangle's determinant is affine in any one of its vertices. The relevant list is all four corner triangles of all four incident cells **which contain i**, not just the four differences centered at i.
 
