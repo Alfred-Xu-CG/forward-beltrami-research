@@ -31,6 +31,19 @@ from tools.digital_q1_network_teacher import load_checkpoint
 ROUNDS = {17: 4, 33: 2, 65: 1}
 
 
+def parse_rounds(value: str) -> dict[int, int]:
+    try:
+        pairs = [part.split(":") for part in value.split(",")]
+        rounds = {int(side): int(count) for side, count in pairs}
+    except (ValueError, TypeError) as error:
+        raise argparse.ArgumentTypeError("expected side:rounds comma-separated") from error
+    if len(pairs) != len(rounds) or not rounds or any(len(pair) != 2 for pair in pairs):
+        raise argparse.ArgumentTypeError("unique side:rounds pairs required")
+    if any(side not in (17, 33, 65, 129, 257) or count < 1 for side, count in rounds.items()):
+        raise argparse.ArgumentTypeError("sides must be 17,33,65,129,257 with positive rounds")
+    return rounds
+
+
 def _save_heads(path: Path, model: RecurrentQ1ImageRegistrationNetwork) -> None:
     np.savez_compressed(path, **{
         "state__" + key: value.detach().cpu().numpy()
@@ -40,7 +53,14 @@ def _save_heads(path: Path, model: RecurrentQ1ImageRegistrationNetwork) -> None:
 
 def _load_model(output: Path, device: str) -> RecurrentQ1ImageRegistrationNetwork:
     base = load_checkpoint(output / "base_frozen_weights.npz", device=device)
-    model = RecurrentQ1ImageRegistrationNetwork(base, rounds_by_side=ROUNDS).to(device)
+    training = json.loads((output / "train_manifest.json").read_text())
+    schedule = {int(side): int(count)
+                for side, count in training["rounds_by_side"].items()}
+    model = RecurrentQ1ImageRegistrationNetwork(
+        base, rounds_by_side=schedule,
+        refresh_moving_evidence=training.get("refresh_moving_evidence", True),
+        proposal_mode=training.get("proposal_mode", "current_edge"),
+    ).to(device)
     with np.load(output / "recurrent_heads.npz") as archive:
         state = {
             key[len("state__"):]: torch.from_numpy(archive[key].copy())
@@ -52,7 +72,11 @@ def _load_model(output: Path, device: str) -> RecurrentQ1ImageRegistrationNetwor
 
 def train(root: Path, output: Path, base_checkpoint: Path,
           selection: Path, *, steps: int, batch: int, device: str,
-          seed: int = 20261004) -> dict:
+          seed: int = 20261004,
+          rounds_by_side: dict[int, int] | None = None,
+          refresh_moving_evidence: bool = True,
+          proposal_mode: str = "current_edge",
+          initialize_from: Path | None = None) -> dict:
     if output.exists() and any(output.iterdir()):
         raise FileExistsError("fresh recurrent output required")
     if steps < 1 or batch < 1:
@@ -61,10 +85,28 @@ def train(root: Path, output: Path, base_checkpoint: Path,
     target_device = torch.device(device)
     torch.manual_seed(seed)
     examples = [load_case(root, case, target_device) for case in train_ids]
+    schedule = rounds_by_side or ROUNDS
     model = RecurrentQ1ImageRegistrationNetwork(
-        load_checkpoint(base_checkpoint, device=device), rounds_by_side=ROUNDS,
+        load_checkpoint(base_checkpoint, device=device), rounds_by_side=schedule,
+        refresh_moving_evidence=refresh_moving_evidence,
+        proposal_mode=proposal_mode,
     ).to(target_device).train()
-    trainable = list(model.heads.parameters())
+    initialized_sides = []
+    if initialize_from is not None:
+        prior = _load_model(initialize_from, device)
+        if not set(prior.heads).issubset(model.heads):
+            raise ValueError("initialized heads must be present in new schedule")
+        for side, head in prior.heads.items():
+            model.heads[side].load_state_dict(head.state_dict(), strict=True)
+            for parameter in model.heads[side].parameters():
+                parameter.requires_grad_(False)
+            initialized_sides.append(int(side))
+        del prior
+    trainable_sides = sorted(set(schedule) - set(initialized_sides))
+    if not trainable_sides:
+        raise ValueError("initialization leaves no trainable new head")
+    trainable = [parameter for side in trainable_sides
+                 for parameter in model.heads[str(side)].parameters()]
     optimizer = torch.optim.Adam(trainable, lr=.002)
     sample_rng = torch.Generator(device="cpu").manual_seed(seed + 1)
     augment_rng = torch.Generator(device="cpu").manual_seed(seed + 2)
@@ -112,7 +154,12 @@ def train(root: Path, output: Path, base_checkpoint: Path,
         "test_case_ids_available_to_training": [],
         "steps": steps, "batch": batch, "seed": seed,
         "learning_rate": .002, "dihedral_augmentation": True,
-        "rounds_by_side": ROUNDS,
+        "rounds_by_side": schedule,
+        "refresh_moving_evidence": refresh_moving_evidence,
+        "proposal_mode": proposal_mode,
+        "initialized_head_sides": initialized_sides,
+        "trainable_head_sides": trainable_sides,
+        "initialize_from": str(initialize_from) if initialize_from is not None else None,
         "frozen_base": True,
         "confirmation_teacher_previously_opened_before_architecture_test": True,
         "first_minibatch_loss": first_loss,
@@ -188,6 +235,15 @@ def main() -> None:
     training.add_argument("--steps", type=int, default=2400)
     training.add_argument("--batch", type=int, default=4)
     training.add_argument("--device", default="cuda:0")
+    training.add_argument("--rounds", type=parse_rounds, default=ROUNDS,
+                          help="e.g. 17:1,33:1,65:1; default 17:4,33:2,65:1")
+    training.add_argument("--freeze-moving-evidence", action="store_true",
+                          help="reuse each level-entry image sample through its rounds")
+    training.add_argument("--proposal-mode", choices=("current_edge", "fixed_h",
+                                                    "fixed_h_soft"),
+                          default="current_edge")
+    training.add_argument("--initialize-from", type=Path,
+                          help="copy and freeze existing recurrent heads; train added sides")
     prediction = commands.add_parser("predict")
     prediction.add_argument("--root", type=Path, required=True)
     prediction.add_argument("--output", type=Path, required=True)
@@ -197,7 +253,10 @@ def main() -> None:
     if args.command == "train":
         result = train(args.root, args.output, args.base_checkpoint,
                        args.selection, steps=args.steps, batch=args.batch,
-                       device=args.device)
+                       device=args.device, rounds_by_side=args.rounds,
+                       refresh_moving_evidence=not args.freeze_moving_evidence,
+                       proposal_mode=args.proposal_mode,
+                       initialize_from=args.initialize_from)
     else:
         result = predict(args.root, args.output, args.test_ids, device=args.device)
     print(json.dumps(result, indent=2))

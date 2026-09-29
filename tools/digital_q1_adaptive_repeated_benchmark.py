@@ -19,7 +19,9 @@ from qcopt.neural_bijection.dense.digital_q1 import (
 
 
 def benchmark(side: int, rounds: int, latent_scale: float, device: str,
-              repeats: int, output: Path) -> list[dict]:
+              repeats: int, output: Path,
+              modes: tuple[str, ...] | None = None,
+              save_vjp: bool = False) -> list[dict]:
     if side < 3 or rounds < 1 or repeats < 1 or latent_scale <= 0:
         raise ValueError("positive side, rounds, repeats and latent scale required")
     if output.exists():
@@ -40,14 +42,25 @@ def benchmark(side: int, rounds: int, latent_scale: float, device: str,
     )
     results = []
     output.parent.mkdir(parents=True, exist_ok=True)
-    for label, layer in (
+    available = (
         ("fixed_h_radial", SafeColoredQ1Relaxation(side)),
         ("current_geometry_ellipsoid", AdaptiveEllipsoidQ1Relaxation(side)),
         ("current_edge_soft_radial", AdaptiveSoftRadialQ1Relaxation(side)),
+        ("current_edge_soft_radial_checkpointed",
+         AdaptiveSoftRadialQ1Relaxation(side, checkpoint_colors=True)),
+    )
+    requested = tuple(label for label, _ in available) if modes is None else modes
+    if not requested or len(set(requested)) != len(requested) or (
+        set(requested) - {label for label, _ in available}
     ):
+        raise ValueError("select distinct available benchmark modes")
+    for label, layer in available:
+        if label not in requested:
+            continue
         layer = layer.to(target_device)
         forward_times, full_times, memories = [], [], []
         saved = None
+        saved_vjp = None
         clip_counts = []
         for iteration in range(repeats + 1):
             logits = initial_logits.detach().clone().requires_grad_(True)
@@ -81,6 +94,8 @@ def benchmark(side: int, rounds: int, latent_scale: float, device: str,
             if iteration == repeats:
                 corners = q1_corner_determinants(mapped)
                 saved = mapped.detach().cpu().numpy().astype(np.float32)
+                if save_vjp:
+                    saved_vjp = logits.grad.detach().cpu().numpy().astype(np.float32)
                 record = {
                     "mode": label, "side": side, "rounds": rounds,
                     "latent_scale": latent_scale, "device": str(target_device),
@@ -92,17 +107,21 @@ def benchmark(side: int, rounds: int, latent_scale: float, device: str,
                     "mean_vertex_motion": float(torch.linalg.vector_norm(
                         mapped - base, dim=-1).mean()),
                     "gradient_finite": bool(torch.isfinite(logits.grad).all()),
+                    "latent_vjp_l2_norm": float(torch.linalg.vector_norm(logits.grad)),
                     "mean_fixed_radial_clip_fraction_by_round": (
                         clip_counts if clip_counts else None),
                 }
         assert saved is not None
-        np.savez_compressed(
-            output.with_name(output.stem + "_" + label + ".npz"),
-            vertices=saved,
-            boundary_reference=base.detach().cpu().numpy().astype(np.float32),
-            post_affine_matrix=np.eye(2, dtype=np.float32),
-            post_affine_offset=np.zeros(2, dtype=np.float32),
-        )
+        archive = {
+            "vertices": saved,
+            "boundary_reference": base.detach().cpu().numpy().astype(np.float32),
+            "post_affine_matrix": np.eye(2, dtype=np.float32),
+            "post_affine_offset": np.zeros(2, dtype=np.float32),
+        }
+        if saved_vjp is not None:
+            archive["latent_vjp"] = saved_vjp
+        np.savez_compressed(output.with_name(output.stem + "_" + label + ".npz"),
+                            **archive)
         results.append(record)
     output.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
     return results
@@ -115,10 +134,17 @@ def main() -> None:
     parser.add_argument("--latent-scale", type=float, default=2)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--modes", nargs="+", choices=(
+        "fixed_h_radial", "current_geometry_ellipsoid",
+        "current_edge_soft_radial", "current_edge_soft_radial_checkpointed",
+    ))
+    parser.add_argument("--save-vjp", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     print(json.dumps(benchmark(args.side, args.rounds, args.latent_scale,
-                               args.device, args.repeats, args.output), indent=2))
+                               args.device, args.repeats, args.output,
+                               tuple(args.modes) if args.modes else None,
+                               args.save_vjp), indent=2))
 
 
 if __name__ == "__main__":

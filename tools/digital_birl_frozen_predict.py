@@ -22,7 +22,8 @@ from tools.digital_q1_network_teacher import load_checkpoint
 
 
 def predict(fixed: Path, moving: Path, initial_affine: Path, checkpoint: Path,
-            output: Path, *, device: str = "cpu") -> dict:
+            output: Path, *, device: str = "cpu",
+            supplied_model: torch.nn.Module | None = None) -> dict:
     if output.exists() and any(output.iterdir()):
         raise FileExistsError("fresh prediction output required")
     target_device = torch.device(device)
@@ -37,7 +38,8 @@ def predict(fixed: Path, moving: Path, initial_affine: Path, checkpoint: Path,
         float(torch.linalg.det(matrix)) <= 0
     ):
         raise ValueError("finite orientation-preserving initial affine required")
-    model = load_checkpoint(checkpoint, device=device).eval()
+    model = (load_checkpoint(checkpoint, device=device) if supplied_model is None
+             else supplied_model.to(target_device)).eval()
     fixed_image = _gray(fixed).to(target_device)
     moving_image = _gray(moving).to(target_device)
     prewarped = affine_prewarp(moving_image, matrix, offset)

@@ -11,7 +11,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from .digital_q1 import AdaptiveSoftRadialQ1Relaxation, q1_dyadic_refine
+from .digital_q1 import (AdaptiveSoftRadialQ1Relaxation, FixedSpanSoftRadialQ1Relaxation,
+                         SafeColoredQ1Relaxation, q1_dyadic_refine)
 from .q1_image_network import Q1ImageRegistrationNetwork
 
 
@@ -52,7 +53,9 @@ class RecurrentQ1ImageRegistrationNetwork(nn.Module):
 
     def __init__(self, base: Q1ImageRegistrationNetwork, *,
                  rounds_by_side: dict[int, int] | None = None,
-                 raw_span: float = 8.0) -> None:
+                 raw_span: float = 8.0,
+                 refresh_moving_evidence: bool = True,
+                 proposal_mode: str = "current_edge") -> None:
         super().__init__()
         self.base = base
         for parameter in self.base.parameters():
@@ -63,18 +66,28 @@ class RecurrentQ1ImageRegistrationNetwork(nn.Module):
                                for side, rounds in schedule.items()):
             raise ValueError("nonempty positive rounds on existing levels required")
         self.rounds_by_side = dict(sorted(schedule.items()))
+        self.refresh_moving_evidence = refresh_moving_evidence
+        if proposal_mode not in ("current_edge", "fixed_h", "fixed_h_soft"):
+            raise ValueError("proposal_mode must be current_edge, fixed_h or fixed_h_soft")
+        self.proposal_mode = proposal_mode
         width = base.encoder.stem[0].out_channels
         self.heads = nn.ModuleDict({str(side): CurrentImageProposalHead(width)
                                     for side in self.rounds_by_side})
+        update_type = {
+            "current_edge": AdaptiveSoftRadialQ1Relaxation,
+            "fixed_h": SafeColoredQ1Relaxation,
+            "fixed_h_soft": FixedSpanSoftRadialQ1Relaxation,
+        }[proposal_mode]
         self.updates = nn.ModuleDict({
-            str(side): AdaptiveSoftRadialQ1Relaxation(
+            str(side): update_type(
                 side, raw_span=raw_span,
                 minimum_jacobian=base.decoder.seed_update.passes[0].minimum_jacobian,
             ) for side in self.rounds_by_side
         })
 
     def _repeat(self, mapped: torch.Tensor, fixed: torch.Tensor,
-                moving: torch.Tensor, features: torch.Tensor) -> torch.Tensor:
+                moving: torch.Tensor, features: torch.Tensor,
+                matrix: torch.Tensor, offset: torch.Tensor) -> torch.Tensor:
         side = mapped.shape[1]
         if side not in self.rounds_by_side:
             return mapped
@@ -88,9 +101,19 @@ class RecurrentQ1ImageRegistrationNetwork(nn.Module):
             fixed, 2 * identity - 1, padding_mode="border", align_corners=False,
         )
         head, update = self.heads[str(side)], self.updates[str(side)]
+        level_entry_query = Q1ImageRegistrationNetwork.apply_affine(
+            mapped, matrix, offset,
+        ) if not self.refresh_moving_evidence else None
         for round_index in range(self.rounds_by_side[side]):
+            # The returned map is A_internal composed with this residual Q1
+            # table. Sample the input moving canvas at that actual current
+            # position, not at the un-affined residual coordinate.
+            current_query = (Q1ImageRegistrationNetwork.apply_affine(
+                mapped, matrix, offset,
+            ) if self.refresh_moving_evidence else level_entry_query)
             warped = F.grid_sample(
-                moving, 2 * mapped - 1, padding_mode="border", align_corners=False,
+                moving, 2 * current_query - 1,
+                padding_mode="border", align_corners=False,
             )
             latent = head(static_features, fixed_nodes, warped,
                           mapped - identity,
@@ -102,6 +125,7 @@ class RecurrentQ1ImageRegistrationNetwork(nn.Module):
                 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         encoder, decoder = self.base.encoder, self.base.decoder
         features = encoder.features(fixed, moving)
+        matrix, offset = self.base.affine_head(features)
         batch = fixed.shape[0]
         seed_side = decoder.seed_side
         seed_features = F.interpolate(features, size=(seed_side, seed_side),
@@ -114,7 +138,7 @@ class RecurrentQ1ImageRegistrationNetwork(nn.Module):
         yy, xx = torch.meshgrid(axis, axis, indexing="ij")
         identity = torch.stack((xx, yy), dim=-1)[None].expand(batch, -1, -1, -1)
         mapped = decoder.seed_update(identity, seed_logits)
-        mapped = self._repeat(mapped, fixed, moving, features)
+        mapped = self._repeat(mapped, fixed, moving, features, matrix, offset)
         for side, level_head, level_update in zip(
             decoder.level_sides, encoder.level_heads, decoder.level_updates,
             strict=True,
@@ -127,6 +151,5 @@ class RecurrentQ1ImageRegistrationNetwork(nn.Module):
             mapped = level_update(mapped, torch.where(
                 new_vertices, latent, torch.zeros_like(latent),
             ))
-            mapped = self._repeat(mapped, fixed, moving, features)
-        matrix, offset = self.base.affine_head(features)
+            mapped = self._repeat(mapped, fixed, moving, features, matrix, offset)
         return mapped, matrix, offset

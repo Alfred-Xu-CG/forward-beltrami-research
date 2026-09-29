@@ -103,7 +103,15 @@ def load_effective_vertices(map_path: Path) -> tuple[np.ndarray, dict]:
         a, b, c, d = (Fraction.from_float(float(value)) for value in affine.flat)
         positive = a * d - b * c > 0
         report["stored_affine_det_positive_exact"] = bool(positive)
-        effective = effective @ affine.astype(np.float64).T + offset.astype(np.float64)
+        # A 2x2 point transform needs no BLAS; componentwise arithmetic also
+        # avoids conflicting OpenMP runtimes in some Windows NumPy environments.
+        transformed_x = (effective[..., 0] * float(affine[0, 0])
+                         + effective[..., 1] * float(affine[0, 1])
+                         + float(offset[0]))
+        transformed_y = (effective[..., 0] * float(affine[1, 0])
+                         + effective[..., 1] * float(affine[1, 1])
+                         + float(offset[1]))
+        effective = np.stack((transformed_x, transformed_y), axis=-1)
     report["composite_representation_valid"] = bool(
         certificate["valid"] and (affine is None or report["stored_affine_det_positive_exact"])
     )

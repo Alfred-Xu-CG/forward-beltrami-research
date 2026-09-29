@@ -53,7 +53,12 @@ def test_affine_postmap_archive_is_evaluated_as_composition(tmp_path) -> None:
     np.savez_compressed(path, vertices=identity, boundary_reference=identity,
                         post_affine_matrix=matrix, post_affine_offset=offset)
     effective, report = load_effective_vertices(path)
-    np.testing.assert_allclose(effective, identity[0] @ matrix.T + offset, atol=0, rtol=0)
+    reference = identity[0].astype(np.float64)
+    expected = np.stack((
+        reference[..., 0] * matrix[0, 0] + reference[..., 1] * matrix[0, 1] + offset[0],
+        reference[..., 0] * matrix[1, 0] + reference[..., 1] * matrix[1, 1] + offset[1],
+    ), axis=-1)
+    np.testing.assert_allclose(effective, expected, atol=0, rtol=0)
     assert report["composite_representation_valid"]
     assert report["stored_affine_det_positive_exact"]
 

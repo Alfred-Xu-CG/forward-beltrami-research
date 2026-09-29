@@ -13,10 +13,8 @@ import json
 from pathlib import Path
 
 import numpy as np
-import torch
 from PIL import Image
 
-from tools.digital_compare_appearance import dhr_map_at_unit_queries
 from tools.digital_dhr_field_eval import _landmarks
 from tools.digital_q1_real_eval import load_effective_vertices
 
@@ -60,7 +58,8 @@ def q1_at_queries(vertices: np.ndarray, unit_xy: np.ndarray) -> np.ndarray:
 
 def score_pair(layout_path: Path, fixed_landmarks: Path, moving_landmarks: Path,
                map_paths: dict[str, Path], initial_affine: Path,
-               full_field: Path, full_params: Path, output: Path) -> dict:
+               full_field: Path, full_params: Path, output: Path, *,
+               include_full_dhr: bool = True) -> dict:
     if output.exists():
         raise FileExistsError("scoring report must not overwrite a prior run")
     layout = json.loads(layout_path.read_text(encoding="utf-8"))
@@ -77,11 +76,13 @@ def score_pair(layout_path: Path, fixed_landmarks: Path, moving_landmarks: Path,
     with np.load(initial_affine) as data:
         matrix = np.asarray(data["post_affine_matrix"], dtype=np.float64)
         offset = np.asarray(data["post_affine_offset"], dtype=np.float64)
-    if matrix.shape != (2, 2) or offset.shape != (2,) or np.linalg.det(matrix) <= 0:
+    if (matrix.shape != (2, 2) or offset.shape != (2,)
+            or matrix[0, 0] * matrix[1, 1] - matrix[0, 1] * matrix[1, 0] <= 0):
         raise ValueError("positive 2D affine required")
-    import SimpleITK as sitk
-    field = sitk.GetArrayFromImage(sitk.ReadImage(str(full_field)))
-    params = json.loads(full_params.read_text(encoding="utf-8"))
+    if include_full_dhr:
+        import SimpleITK as sitk
+        field = sitk.GetArrayFromImage(sitk.ReadImage(str(full_field)))
+        params = json.loads(full_params.read_text(encoding="utf-8"))
     with Image.open(layout["fixed"]["source"]) as image:
         fixed_size = image.size
     with Image.open(layout["moving"]["source"]) as image:
@@ -97,13 +98,19 @@ def score_pair(layout_path: Path, fixed_landmarks: Path, moving_landmarks: Path,
     if np.any((query < 0) | (query > 1)):
         raise ValueError("landmark outside fixed canvas")
     predicted = {name: q1_at_queries(vertices, query) for name, vertices in maps.items()}
-    predicted["initial_affine"] = query @ matrix.T + offset
+    predicted["initial_affine"] = np.stack((
+        query[:, 0] * matrix[0, 0] + query[:, 1] * matrix[0, 1] + offset[0],
+        query[:, 0] * matrix[1, 0] + query[:, 1] * matrix[1, 1] + offset[1],
+    ), axis=-1)
     predicted["canvas_identity"] = query
-    full_query = torch.from_numpy(query.astype(np.float32)).reshape(1, 1, -1, 2)
-    predicted["full_DHR"] = dhr_map_at_unit_queries(
-        field, params, fixed_size=(side, side), moving_size=(side, side),
-        query=full_query,
-    )[0, 0].cpu().numpy().astype(np.float64)
+    if include_full_dhr:
+        import torch
+        from tools.digital_compare_appearance import dhr_map_at_unit_queries
+        full_query = torch.from_numpy(query.astype(np.float32)).reshape(1, 1, -1, 2)
+        predicted["full_DHR"] = dhr_map_at_unit_queries(
+            field, params, fixed_size=(side, side), moving_size=(side, side),
+            query=full_query,
+        )[0, 0].cpu().numpy().astype(np.float64)
     results = {}
     for name, canvas_unit in predicted.items():
         original_xy = canvas_unit_to_original_pixel(canvas_unit, layout["moving"], side)
@@ -121,6 +128,7 @@ def score_pair(layout_path: Path, fixed_landmarks: Path, moving_landmarks: Path,
         }
     report = {
         "mode": "read_only_BIRL_5pc_development_landmark_diagnostic",
+        "full_DHR_evaluated": include_full_dhr,
         "scale_assumption": layout["scale_assumption"], "side": side,
         "landmark_count": len(names),
         "fixed_only_ids": sorted(fixed.keys() - moving.keys()),

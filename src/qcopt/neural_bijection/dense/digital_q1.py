@@ -297,6 +297,16 @@ class AdaptiveSoftRadialQ1Relaxation(SafeColoredQ1Relaxation):
                          minimum_jacobian=minimum_jacobian,
                          checkpoint_colors=checkpoint_colors)
 
+    def _raw_proposal(self, current: torch.Tensor, vertices: torch.Tensor,
+                      selected: torch.Tensor) -> torch.Tensor:
+        horizontal = (current[:, vertices + 1].to(torch.float64)
+                      - current[:, vertices - 1].to(torch.float64)) / 2
+        vertical = (current[:, vertices + self.side].to(torch.float64)
+                    - current[:, vertices - self.side].to(torch.float64)) / 2
+        wx, wy = torch.tanh(selected.to(torch.float64)).unbind(-1)
+        return self.raw_span * (horizontal * wx[..., None]
+                                + vertical * wy[..., None])
+
     def _update_color(
         self, current: torch.Tensor, latent: torch.Tensor,
         area_floor: torch.Tensor | None, color: int,
@@ -319,13 +329,7 @@ class AdaptiveSoftRadialQ1Relaxation(SafeColoredQ1Relaxation):
             )
         valid_margin = (budget > 0).all(dim=-1)
         safe_budget = torch.where(budget > 0, budget, torch.ones_like(budget))
-        horizontal = (current[:, vertices + 1].to(torch.float64)
-                      - current[:, vertices - 1].to(torch.float64)) / 2
-        vertical = (current[:, vertices + self.side].to(torch.float64)
-                    - current[:, vertices - self.side].to(torch.float64)) / 2
-        wx, wy = torch.tanh(latent[:, local].to(torch.float64)).unbind(-1)
-        raw = self.raw_span * (horizontal * wx[..., None]
-                               + vertical * wy[..., None])
+        raw = self._raw_proposal(current, vertices, latent[:, local])
         adverse = -(edge[..., 0] * raw[:, :, None, 1]
                     - edge[..., 1] * raw[:, :, None, 0]) / safe_budget
         maximum = adverse.clamp_min(0).amax(dim=-1)
@@ -338,6 +342,14 @@ class AdaptiveSoftRadialQ1Relaxation(SafeColoredQ1Relaxation):
         return current.index_copy(1, vertices, point + displacement.to(current.dtype))
 
 
+class FixedSpanSoftRadialQ1Relaxation(AdaptiveSoftRadialQ1Relaxation):
+    """Fixed reference-cell proposal with the *same* soft radial safety law."""
+
+    def _raw_proposal(self, current: torch.Tensor, vertices: torch.Tensor,
+                      selected: torch.Tensor) -> torch.Tensor:
+        return self.raw_span / (self.side - 1) * torch.tanh(selected.to(torch.float64))
+
+
 class SafePatchQ1Pass(SafePatchFieldPass):
     """F2-D: simultaneous patch motion with all four corner constraints.
 
@@ -348,6 +360,13 @@ class SafePatchQ1Pass(SafePatchFieldPass):
     and a fixed bijective outer boundary. An optional normalized area floor
     is preserved only if the input already meets that floor.
     """
+
+    def _raw_displacement(self, patch: torch.Tensor,
+                          selected: torch.Tensor) -> torch.Tensor:
+        cells = self.patch_cells
+        return self.raw_span * cells / (self.side - 1) * torch.tanh(selected).reshape(
+            patch.shape[0], patch.shape[1], cells - 1, cells - 1, 2,
+        )
 
     def forward(self, base: torch.Tensor, logits: torch.Tensor) -> torch.Tensor:
         side, cells = self.side, self.patch_cells
@@ -367,9 +386,7 @@ class SafePatchQ1Pass(SafePatchFieldPass):
             logits.reshape(batch, -1, 2)[:, self.latent_ids]
             if logits.shape == full_shape else logits
         )
-        raw = self.raw_span * cells / (side - 1) * torch.tanh(selected).reshape(
-            batch, self.patch_ids.shape[0], cells - 1, cells - 1, 2,
-        )
+        raw = self._raw_displacement(patch, selected)
         displacement = torch.zeros_like(patch)
         displacement[:, :, 1:-1, 1:-1] = raw
 
@@ -415,13 +432,45 @@ class SafePatchQ1Pass(SafePatchFieldPass):
         )
 
 
+class AdaptivePatchQ1Pass(SafePatchQ1Pass):
+    """F2 patch pass using the *current* one-ring as a proposal basis.
+
+    Only the raw direction changes. The parent class still computes a common
+    quadratic Q1-corner path bound for every simultaneously moving patch.
+    """
+
+    def __init__(self, side: int, patch_cells: int, *,
+                 raw_span: float = 0.5, **kwargs: float | None) -> None:
+        if not math.isfinite(raw_span) or not 0 < raw_span <= 16:
+            raise ValueError("current-edge F2 raw_span must be in (0,16]")
+        super().__init__(side, patch_cells, raw_span=raw_span, **kwargs)
+
+    def _raw_displacement(self, patch: torch.Tensor,
+                          selected: torch.Tensor) -> torch.Tensor:
+        cells = self.patch_cells
+        latent = torch.tanh(selected).reshape(
+            patch.shape[0], patch.shape[1], cells - 1, cells - 1, 2,
+        )
+        horizontal = (patch[:, :, 1:-1, 2:] - patch[:, :, 1:-1, :-2]) / 2
+        vertical = (patch[:, :, 2:, 1:-1] - patch[:, :, :-2, 1:-1]) / 2
+        return self.raw_span * cells * (
+            horizontal * latent[..., 0, None]
+            + vertical * latent[..., 1, None]
+        )
+
+
 class StaggeredPatchQ1Layer(torch.nn.Module):
     """Four sequential nonconflicting F2-D passes on one shared Q1 grid."""
 
-    def __init__(self, side: int, patch_cells: int = 8, **kwargs: float | None) -> None:
+    def __init__(self, side: int, patch_cells: int = 8, *,
+                 proposal_mode: str = "fixed_h",
+                 **kwargs: float | None) -> None:
         super().__init__()
         if patch_cells % 2:
             raise ValueError("patch_cells must be even for the staggered schedule")
+        if proposal_mode not in ("fixed_h", "current_edge"):
+            raise ValueError("proposal_mode must be fixed_h or current_edge")
+        pass_type = SafePatchQ1Pass if proposal_mode == "fixed_h" else AdaptivePatchQ1Pass
         shift = patch_cells // 2
         # With one patch across the entire domain there are no interior
         # seams; shifted full-size patches do not exist or need to be run.
@@ -430,7 +479,7 @@ class StaggeredPatchQ1Layer(torch.nn.Module):
             ((0, 0), (shift, 0), (0, shift), (shift, shift))
         )
         self.passes = torch.nn.ModuleList(
-            SafePatchQ1Pass(
+            pass_type(
                 side, patch_cells, offset_row=row, offset_column=column,
                 **kwargs,
             )

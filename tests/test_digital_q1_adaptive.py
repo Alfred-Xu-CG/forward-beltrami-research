@@ -5,6 +5,8 @@ import torch
 
 from qcopt.neural_bijection.dense.digital_q1 import (
     AdaptiveEllipsoidQ1Relaxation, AdaptiveSoftRadialQ1Relaxation,
+    AdaptivePatchQ1Pass, FixedSpanSoftRadialQ1Relaxation,
+    SafePatchQ1Pass, StaggeredPatchQ1Layer,
 )
 
 
@@ -24,6 +26,104 @@ def _independent_four_corners(vertices: np.ndarray) -> np.ndarray:
             out.extend((cross(b - a, d - a), cross(b - a, c - b),
                         cross(c - d, c - b), cross(c - d, d - a)))
     return np.asarray(out)
+
+
+def test_current_edge_f2_equals_fixed_h_at_identity_and_stays_safe_repeated() -> None:
+    side, cells = 17, 4
+    torch.manual_seed(2917)
+    base = _identity(side, torch.float64)
+    latent = torch.randn(1, side - 2, side - 2, 2, dtype=torch.float64) * 2
+    fixed = SafePatchQ1Pass(side, cells, raw_span=.5)
+    current = AdaptivePatchQ1Pass(side, cells, raw_span=.5)
+    torch.testing.assert_close(fixed(base, latent), current(base, latent),
+                               atol=1e-15, rtol=1e-12)
+
+    axis = torch.linspace(0, 1, side, dtype=torch.float64)
+    yy, xx = torch.meshgrid(axis, axis, indexing="ij")
+    mapped = base.clone()
+    mapped[..., 0] += .08 * torch.sin(torch.pi * xx) * torch.sin(torch.pi * yy)
+    assert _independent_four_corners(mapped[0].numpy()).min() > 0
+    layer = StaggeredPatchQ1Layer(
+        side, patch_cells=cells, proposal_mode="current_edge", raw_span=.5,
+    )
+    latents = [torch.randn_like(latent).requires_grad_() for _ in range(8)]
+    for round_index in range(2):
+        mapped = layer(mapped, tuple(latents[4 * round_index:4 * round_index + 4]))
+        assert _independent_four_corners(mapped[0].detach().numpy()).min() > 0
+        torch.testing.assert_close(mapped[:, 0], base[:, 0], atol=0, rtol=0)
+        torch.testing.assert_close(mapped[:, -1], base[:, -1], atol=0, rtol=0)
+    gradients = torch.autograd.grad(mapped.square().mean(), tuple(latents))
+    assert all(bool(torch.isfinite(gradient).all()) for gradient in gradients)
+    assert any(float(gradient.abs().max()) > 0 for gradient in gradients)
+
+
+def test_current_edge_f2_rejects_extreme_raw_span() -> None:
+    for value in (0, -1, 1e20, float("nan"), float("inf")):
+        try:
+            AdaptivePatchQ1Pass(5, 2, raw_span=value)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("unsafe or unsupported F2 raw span accepted")
+
+
+def test_fixed_span_soft_radial_is_matched_safety_law_control() -> None:
+    side = 17
+    base = _identity(side, torch.float64)
+    torch.manual_seed(2918)
+    latent = torch.randn(1, side - 2, side - 2, 2, dtype=torch.float64)
+    current_edge = AdaptiveSoftRadialQ1Relaxation(side)
+    fixed_span = FixedSpanSoftRadialQ1Relaxation(side)
+    flat = base.reshape(1, side * side, 2)
+    source_floor = torch.tensor([.05 / (side - 1) ** 2], dtype=base.dtype)
+    first_current = current_edge._update_color(flat, latent.reshape(1, -1, 2),
+                                               source_floor, 0)
+    first_fixed = fixed_span._update_color(flat, latent.reshape(1, -1, 2),
+                                          source_floor, 0)
+    torch.testing.assert_close(first_current, first_fixed, atol=1e-15, rtol=1e-12)
+    mapped = base
+    for _ in range(3):
+        mapped = fixed_span(mapped, latent)
+        assert _independent_four_corners(mapped[0].numpy()).min() > 0
+
+
+def test_soft_radial_local_inverse_reaches_nearby_map_exactly():
+    side = 9
+    layer = AdaptiveSoftRadialQ1Relaxation(side)
+    base = _identity(side, torch.float64)
+    axis = torch.linspace(0, 1, side, dtype=torch.float64)
+    yy, xx = torch.meshgrid(axis, axis, indexing="ij")
+    target = base.clone()
+    target[..., 0] += .001 * torch.sin(torch.pi * xx) * torch.sin(torch.pi * yy)
+    current = base.reshape(1, side * side, 2)
+    floor = torch.tensor([.05 / (side - 1) ** 2], dtype=torch.float64)
+    for color in range(4):
+        vertices = getattr(layer, f"_vertices_{color}")
+        opposite = vertices[:, None, None] + layer._opposite_offsets[None]
+        local = ((vertices // side - 1) * (side - 2) + vertices % side - 1)
+        point = current[:, vertices]
+        start = current[:, opposite[..., 0]]
+        end = current[:, opposite[..., 1]]
+        edge = end - start
+        relative = point[:, :, None] - start
+        areas = edge[..., 0] * relative[..., 1] - edge[..., 1] * relative[..., 0]
+        budget = torch.minimum(.75 * areas, areas - floor[:, None, None])
+        assert bool((budget > 0).all())
+        desired = target.reshape(1, side * side, 2)[:, vertices] - point
+        adverse = -(edge[..., 0] * desired[:, :, None, 1]
+                    - edge[..., 1] * desired[:, :, None, 0]) / budget
+        maximum = adverse.clamp_min(0).amax(dim=-1)
+        assert bool((maximum < 1).all())
+        raw = desired / (1 - maximum)[..., None]
+        horizontal = (current[:, vertices + 1] - current[:, vertices - 1]) / 2
+        vertical = (current[:, vertices + side] - current[:, vertices - side]) / 2
+        edge_matrix = torch.stack((horizontal, vertical), dim=-1)
+        hyperbolic = torch.linalg.solve(edge_matrix, raw[..., None])[..., 0] / layer.raw_span
+        assert bool((hyperbolic.abs() < 1).all())
+        logits = torch.zeros(1, side - 2, side - 2, 2, dtype=torch.float64)
+        logits.reshape(1, -1, 2)[:, local] = torch.atanh(hyperbolic)
+        current = layer._update_color(current, logits.reshape(1, -1, 2), floor, color)
+    torch.testing.assert_close(current.reshape_as(base), target, rtol=0, atol=5e-16)
 
 
 def test_repeated_adaptive_updates_preserve_independent_q1_corner_floor():
