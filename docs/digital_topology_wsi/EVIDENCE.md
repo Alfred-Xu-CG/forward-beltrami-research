@@ -83,3 +83,49 @@ The [official ACROBAT data page](https://acrobat.grand-challenge.org/data/) prov
 `tools/digital_acrobat_thumbnail.py` reads a low TIFF pyramid level before making a 512² RGB preview, rather than decompressing the hundreds-of-megapixels base. It records the original/read dimensions and pyramid level beside each PNG. For example, case 638 H&E is 20,608×20,480 pixels at the base and 644×640 at read level 5; PGR is 17,024×17,408 and 532×544 at read level 5. **Each preview is independently squeezed to a square.** Its unit-square coordinates are consequently a *development canvas*, not the scanner's physical coordinate system and not an official ACROBAT submission/evaluation protocol. The same issue is severe for case 315 (H&E 27,776×49,152; HER2 16,128×39,936). Results on these previews cannot be interpreted as physical WSI registration accuracy.
 
 As a format/pipeline diagnostic only, the installed DeeperHistReg 1.0.1 image-only pipeline was run on case 638 PGR→H&E 512² previews with 256/512 registration sizes and resample ratio 1. The saved **initial-only** backward displacement grid has 0 nonpositive Q1 corners among 1,044,484 corner evaluations and minimum determinant 1.149095; the saved **full** nonrigid grid has 1 nonpositive corner and minimum −0.070453, with maximum field magnitude 49.65 preview pixels. The detector computes the full map `identity + displacement`, not the displacement Jacobian. The MHA files were copied to the D: subset directory and re-read locally for these figures. This is one selected development pair, with no landmarks and an altered input canvas; it is neither a claim that DeeperHistReg generally folds nor a candidate-vs-baseline accuracy comparison. It establishes that the actual saved baseline field can fail the project's strict all-corner digital topology condition even in a visually plausible real pair.
+
+The same fixed development configuration was run on four more independently square-resized training pairs. Each saved 512² field was re-read from MHA and scored on $4(511)^2=1{,}044{,}484$ Q1 corner determinants of the **full** map. None of the five initial-only fields had a nonpositive corner; each corresponding full nonrigid field did. Counts include all corners, including background, as the declared map covers the complete canvas. This is a topology audit of a specific reduced configuration, not a leaderboard or anatomical accuracy audit.
+
+| ACROBAT train case / stain | Initial: nonpositive / min determinant | Full: nonpositive / min determinant |
+| --- | ---: | ---: |
+| 156 / KI67 | 0 / 1.433863 | 172 / −1.322602 |
+| 315 / HER2 | 0 / 1.965548 | 3,897 / −1.210743 |
+| 585 / ER | 0 / .569842 | 16 / −.133290 |
+| 638 / PGR | 0 / 1.149095 | 1 / −.070453 |
+| 733 / HER2 | 0 / .756973 | 296 / −.449884 |
+
+The independent-square previews are now superseded for future **physical-scale** diagnostics by `tools/digital_acrobat_pair_canvas.py`. It reads TIFF X/Y resolution tags, converts pixels/cm or pixels/inch to µm/pixel, resizes both members of one case with a common µm/canvas-pixel scale and pads with white rather than stretching each to 512². Metadata records each original-to-canvas pixel-center map. On case 638 both TIFFs report `.909772 µm/pixel`; the H&E 20,480×20,608 source becomes 509×512 plus padding, while PGR 17,408×17,024 becomes 432×423 plus padding, all within a 512² canvas at `36.6183 µm/pixel`. This preserves pairwise physical scale and per-slide aspect **but does not register tissue, recover scanner origins, or supply landmarks**. For another case, 315, the very wide H&E source yields a 512² preview with tissue only tens of pixels high; this is inadequate for fine nonrigid accuracy and motivates tissue-ROI work at larger physical resolution. A case-638 full DHR run on the new canvas had 114 nonpositive Q1 corner determinants (minimum −.163513); its max displacement ~716 px includes a possible 180° rotation on a 512² canvas and is not, by itself, an error score. Its saved field remains a development output, not an official physical WSI benchmark.
+
+The same physical-scale, white-padded 512² construction was then run for **ten selected official training cases**, with IHC as moving image and H&E as fixed image. DeeperHistReg 1.0.1 used the same reduced development configuration (initial feature sizes 256/512, initial-resample ratio 1, 150 nonrigid steps); its initial-only and full fields were saved separately. Each reported determinant is a Q1 corner determinant of the **complete backward coordinate map**, normalized by source-canvas cell area. There are 4(511)² = 1,044,484 corner evaluations per 512² field; counts include white background, and several corners of one cell can contribute separately. The underlying measurements are in [the case-level CSV](acrobat_10case_physical_canvas_topology.csv):
+
+| Case / moving stain | Canvas µm/px | Initial nonpositive / min | Full nonpositive / min |
+| --- | ---: | ---: | ---: |
+| 100 / PGR | 38.21 | 0 / .8568 | 20,008 / −.0325 |
+| 156 / KI67 | 43.04 | 0 / .9450 | 4,788 / −.3246 |
+| 315 / HER2 | 87.45 | 0 / 1.0352 | 104 / −.0552 |
+| 330 / HER2 | 89.27 | 0 / .9936 | 84 / −.8996 |
+| 399 / KI67 | 78.03 | 0 / .9521 | 19 / −.4785 |
+| 495 / HER2 | 58.07 | 0 / 1.0712 | 64 / −.4026 |
+| 585 / ER | 70.77 | 0 / .9758 | 1,272 / −.3585 |
+| 586 / PGR | 98.38 | 0 / 1.0946 | 2,203 / −.0743 |
+| 638 / PGR | 36.62 | 0 / .9883 | 114 / −.1635 |
+| 733 / HER2 | 77.61 | 0 / .9745 | 4 / −.2023 |
+
+These are **selected cases, not a random ACROBAT accuracy sample**. Re-reading their saved fields establishes an empirical failure of our strict all-corner output condition for these ten full DHR fields, not a universal statement about DHR. Initial-only passing a finite check is likewise no all-input theorem. The canvas gives a common within-pair length scale but centers slides independently; unknown scanner origins, rotations, tissue correspondence and much finer original image structure remain unresolved. Its 36.62–98.38 µm/px resolution is too coarse for a cellular alignment claim. All TIFFs, PNGs, layout JSONs and MHA fields remain on D: outside Git.
+
+**Resolution-sensitivity diagnostic, not an expanded cohort.** Cases 100 and 638 were independently re-rendered from their TIFF pyramids as physical-scale 1024² input canvases, at 19.105 and 18.309 µm/input-pixel respectively, then rerun with the same reduced DHR configuration. DHR's fixed preprocessing resolution is 768: all four saved MHA fields have shape **768²**, and the recorded initial-resample ratio is `4/3`. They are not 1024² displacement fields. Independent full-map Q1 corner recomputation on each stored 768² field found:
+
+| Case | Initial 768²: nonpositive / min | Full 768²: nonpositive / min |
+| --- | ---: | ---: |
+| 100 / PGR | 0 / .843017 | 55,625 / −.380442 |
+| 638 / PGR | 0 / .868811 | 0 / .011138 |
+
+For comparison, their earlier **different-input 512²** full-field counts were 20,008 and 114. The case-638 full field happens to pass this particular 768² corner test, whereas its 512² field failed; case 100 fails at both sizes. These are different resized images and DHR preprocessing trajectories, so the difference is **not** a causal claim that resolution alone removes or creates folds. Four-corner positivity of the 768² field also does not by itself verify its boundary injectivity, 1024² resampled export or anatomical registration quality. Raw 1024² PNG/metadata and complete 768² DHR outputs are saved on D: in the ACROBAT subset directory.
+
+### Proven affine-head coverage limitation
+
+The present `PositiveAffineHead` builds
+
+$$M=\begin{pmatrix}s_x&s_xu\\ \ell s_x&\ell s_xu+s_y\end{pmatrix},\qquad s_x,s_y>0.$$
+
+Hence every finite output has $M_{11}=s_x>0$ and $\det M=s_xs_y>0$. The safe residual map $f$ fixes the square boundary exactly, so the composite $A\circ f$ maps the bottom-edge corner difference $(1,0)-(0,0)$ to $M(1,0)$; no interior F1/F2 latent can reverse its $x$ component. In the **development** case 733, a least-squares positive affine fitted to DHR's image-only field had $M_{11}=-.843961$ and determinant `.737669`; this particular teacher boundary behavior is outside the current head's range. On the **new physical-scale canvases**, the analogous fitted positive-determinant affine has negative $M_{11}$ in three of ten cases: 586 (`−1.012809`), 638 (`−.968619`) and 733 (`−.964664`); the other seven are positive. See [the factor CSV](acrobat_10case_safe_distill.csv). This does not establish that DHR chose the anatomically correct rotation, nor that ACROBAT truth necessarily needs it. It establishes an algebraic capacity gap relative to these external teacher boundary motions. A candidate *not yet implemented* is $M=R(4\arctan t)L_{\rm tri}\operatorname{diag}(s_x,s_y)U_{\rm tri}$, where the last two factors are triangular with diagonal one. This keeps positive determinant and represents a finite 180° rotation at $t=1$; any bounded scale/shear/translation range still needs explicit coverage testing.

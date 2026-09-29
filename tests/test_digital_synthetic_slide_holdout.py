@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import pytest
+import numpy as np
 import torch
 
 from qcopt.neural_bijection.dense.q1_image_network import Q1ImageRegistrationNetwork
 from tools import digital_q1_synthetic_slide_holdout as holdout
 from tools.digital_q1_network_teacher import _save_checkpoint
 from tools.digital_q1_synthetic_slide_holdout import (
-    analytic_map, point_grid, run, synthesize,
+    analytic_map, make_coefficients, point_grid, run, synthesize,
 )
 from tools.digital_q1_synthetic_slide_baseline import optimize_baseline
 from tools.digital_q1_synthetic_p1_eval import evaluate
@@ -104,3 +105,44 @@ def test_p1_ood_scale_requires_positive_bounded_deformation(tmp_path) -> None:
                  test_texture_indices=[1], weights=tmp_path / "unused.npz",
                  side=33, test_count=1, batch=1, device="cpu",
                  coefficient_scale=0)
+
+
+def test_no_network_baseline_can_use_matching_p1_sampling_and_scale(tmp_path) -> None:
+    report = optimize_baseline(
+        textures=torch.rand((2, 1, 32, 32)), test_texture_indices=[1],
+        side=33, steps=1, batch=1, test_count=1, device="cpu",
+        learning_rate=.01, regularization=.1, coefficient_scale=2.0,
+        image_interpolation="p1", output_example=tmp_path / "example.npz",
+    )
+    assert report["coefficient_scale"] == 2.0
+    assert report["image_interpolation"] == "fixed_SW_NE_P1"
+    assert report["saved_example_certificate"]["valid"]
+    assert report["mean_map_rmse"] >= 0
+    assert report["mean_query_map_rmse"] >= 0
+    with np.load(tmp_path / "example.npz") as archive:
+        vertices = archive["vertices"][0]
+    line = (np.arange(32) + .5) / 32
+    qx, qy = np.meshgrid(line, line)
+    sx, sy = qx * 32, qy * 32
+    col, row = np.floor(sx).astype(int), np.floor(sy).astype(int)
+    tx, ty = sx - col, sy - row
+    a, b = vertices[row, col], vertices[row, col + 1]
+    c, d = vertices[row + 1, col + 1], vertices[row + 1, col]
+    lower = a + tx[..., None] * (b - a) + ty[..., None] * (c - b)
+    upper = a + tx[..., None] * (c - d) + ty[..., None] * (d - a)
+    mapped = np.where((tx >= ty)[..., None], lower, upper)
+    truth = analytic_map(
+        point_grid(32, centers=True, device=torch.device("cpu")),
+        2 * make_coefficients(1, 291003),
+    )[0].numpy()
+    expected = np.sqrt(np.mean(np.sum((mapped - truth) ** 2, axis=-1)))
+    assert abs(expected - report["mean_query_map_rmse"]) < 1e-6
+
+
+def test_no_network_baseline_rejects_out_of_family_scale() -> None:
+    with pytest.raises(ValueError, match="coefficient scale"):
+        optimize_baseline(
+            textures=torch.rand((2, 1, 32, 32)), test_texture_indices=[1],
+            side=33, steps=1, batch=1, test_count=1, device="cpu",
+            learning_rate=.01, coefficient_scale=0,
+        )

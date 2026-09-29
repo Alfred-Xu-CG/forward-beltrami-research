@@ -18,9 +18,12 @@ import torch
 from qcopt.neural_bijection.dense.digital_q1 import validate_q1_map
 from qcopt.neural_bijection.dense.forward_q1_pyramid import HybridPatchSeedVertexQ1Pyramid
 from qcopt.neural_bijection.dense.q1_filtered_sign import certify_q1_binary_map
-from qcopt.neural_bijection.dense.q1_image_sampling import warp_moving_at_q1_map
+from qcopt.neural_bijection.dense.q1_image_sampling import (
+    q1_map_at_pixel_centers, warp_moving_at_q1_map,
+)
+from tools.digital_q1_p1_layer import FactorizedP1Map, evaluate_factorized_p1
 from tools.digital_q1_synthetic_slide_holdout import (
-    _batch, make_coefficients, point_grid,
+    _batch, analytic_map, make_coefficients, point_grid, warp_moving_at_p1_map,
 )
 
 
@@ -29,6 +32,8 @@ def optimize_baseline(*, textures: torch.Tensor, test_texture_indices: list[int]
                       device: str, learning_rate: float,
                       regularization: float = 0.0,
                       coefficient_seed: int = 291003,
+                      coefficient_scale: float = 1.0,
+                      image_interpolation: str = "q1",
                       output_example: Path | None = None) -> dict:
     if min(side, steps, batch, test_count) < 1 or not test_texture_indices:
         raise ValueError("invalid baseline dimensions")
@@ -36,13 +41,21 @@ def optimize_baseline(*, textures: torch.Tensor, test_texture_indices: list[int]
         raise ValueError("texture indices must be canonical nonnegative indices")
     if regularization < 0:
         raise ValueError("regularization must be nonnegative")
+    if not (0 < coefficient_scale <= 3.0):
+        raise ValueError("coefficient scale must be in (0, 3]")
+    if image_interpolation not in {"q1", "p1"}:
+        raise ValueError("image_interpolation must be q1 or p1")
     target_device = torch.device(device)
     textures = textures.to(target_device, dtype=torch.float32)
     test_textures = textures[test_texture_indices]
     image_side = int(textures.shape[-1])
     pixel_points = point_grid(image_side, centers=True, device=target_device)
     vertex_points = point_grid(side, centers=False, device=target_device)
-    test_coeff = make_coefficients(test_count, coefficient_seed).to(target_device)
+    test_coeff = (coefficient_scale *
+                  make_coefficients(test_count, coefficient_seed)).to(target_device)
+    warp_image = (warp_moving_at_p1_map if image_interpolation == "p1"
+                  else lambda image, vertices: warp_moving_at_q1_map(
+                      image, vertices, height=image_side, width=image_side))
     decoder = HybridPatchSeedVertexQ1Pyramid(17, side).to(target_device)
     cases = []
     step_times = []
@@ -69,8 +82,7 @@ def optimize_baseline(*, textures: torch.Tensor, test_texture_indices: list[int]
             started = time.perf_counter()
             optimizer.zero_grad(set_to_none=True)
             predicted = decoder(seed, levels)
-            warped = warp_moving_at_q1_map(moving, predicted,
-                                           height=image_side, width=image_side)
+            warped = warp_image(moving, predicted)
             loss = (warped - fixed).square().mean() + regularization * (
                 predicted - vertex_points
             ).square().sum(-1).mean()
@@ -89,14 +101,27 @@ def optimize_baseline(*, textures: torch.Tensor, test_texture_indices: list[int]
             )
             if validity["nonpositive_corners"] or validity["boundary_max_error"]:
                 raise AssertionError("optimized Q1 output invalid")
-            warped = warp_moving_at_q1_map(moving, prediction,
-                                           height=image_side, width=image_side)
+            warped = warp_image(moving, prediction)
+            if image_interpolation == "p1":
+                query_map = evaluate_factorized_p1(
+                    FactorizedP1Map(
+                        residual_vertices=prediction,
+                        post_affine_matrix=torch.eye(2, device=target_device)[None].expand(size, -1, -1),
+                        post_affine_offset=torch.zeros((size, 2), device=target_device),
+                    ),
+                    pixel_points.expand(size, -1, -1, -1).reshape(size, -1, 2),
+                ).reshape(size, image_side, image_side, 2)
+            else:
+                query_map = q1_map_at_pixel_centers(prediction, image_side, image_side)
+            query_target = analytic_map(pixel_points, test_coeff[indices])
             for local in range(size):
                 cases.append({
                     "sample_index": int(indices[local]),
                     "texture_index": test_texture_indices[int(indices[local]) % len(test_texture_indices)],
                     "map_rmse": float((prediction[local] - target[local]).square().sum(-1).mean().sqrt()),
                     "identity_rmse": float((vertex_points[0] - target[local]).square().sum(-1).mean().sqrt()),
+                    "query_map_rmse": float((query_map[local] - query_target[local]).square().sum(-1).mean().sqrt()),
+                    "identity_query_map_rmse": float((pixel_points[0] - query_target[local]).square().sum(-1).mean().sqrt()),
                     "initial_image_mse": float(initial_image_mse[local]),
                     "optimized_image_mse": float((warped[local] - fixed[local]).square().mean()),
                 })
@@ -122,8 +147,13 @@ def optimize_baseline(*, textures: torch.Tensor, test_texture_indices: list[int]
         "learning_rate": learning_rate,
         "regularization": regularization,
         "coefficient_seed": coefficient_seed,
+        "coefficient_scale": coefficient_scale,
+        "image_interpolation": ("fixed_SW_NE_P1" if image_interpolation == "p1"
+                                else "Q1"),
         "mean_map_rmse": statistics.mean(x["map_rmse"] for x in cases),
         "mean_identity_rmse": statistics.mean(x["identity_rmse"] for x in cases),
+        "mean_query_map_rmse": statistics.mean(x["query_map_rmse"] for x in cases),
+        "mean_identity_query_map_rmse": statistics.mean(x["identity_query_map_rmse"] for x in cases),
         "mean_initial_image_mse": statistics.mean(x["initial_image_mse"] for x in cases),
         "mean_optimized_image_mse": statistics.mean(x["optimized_image_mse"] for x in cases),
         "median_complete_step_seconds": statistics.median(step_times),
@@ -149,6 +179,8 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=.04)
     parser.add_argument("--regularization", type=float, default=0.0)
     parser.add_argument("--coefficient-seed", type=int, default=291003)
+    parser.add_argument("--coefficient-scale", type=float, default=1.0)
+    parser.add_argument("--image-interpolation", choices=("q1", "p1"), default="q1")
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--output-report", type=Path, required=True)
     parser.add_argument("--output-example", type=Path)
@@ -161,6 +193,8 @@ def main() -> None:
         side=args.side, steps=args.steps, batch=args.batch, test_count=args.test_count,
         device=args.device, learning_rate=args.learning_rate,
         regularization=args.regularization, coefficient_seed=args.coefficient_seed,
+        coefficient_scale=args.coefficient_scale,
+        image_interpolation=args.image_interpolation,
         output_example=args.output_example,
     )
     report["texture_sources"] = sources

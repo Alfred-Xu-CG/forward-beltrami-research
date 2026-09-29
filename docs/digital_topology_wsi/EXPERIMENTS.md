@@ -337,3 +337,45 @@ The same image-only network experiment was repeated with HistoReg and lesion gro
 Finally, a fresh network in each fold was trained for 800 steps using **the actual fixed-diagonal P1 map inside the 512² image loss**, so the CNN, F2/F1 safe updates, P1 barycentric query and bilinear brightness sampler all participated in backpropagation. Compared with Q1-loss training followed by P1 deployment, P1-loss training improved P1 image MSE on all three folds, but vertex map RMSE improved only on lesion and slightly worsened on HistoReg/kidney. Full hot batch-4 network→P1 query→image-warp throughput was about **5.0 ms per image**, complete training step `.079–.083 s` per batch, peak allocated ~**598 MB**. This is a concrete trainable 257² P1 layer on a narrow synthetic same-modality task, not real cross-stain G2/G3 success. The earlier ~4.4-ms network number counted vertex generation alone; it must not be compared as a full image-registration latency against 50-step per-pair optimization.
 
 A paired three-seed replay retained the same synthetic 64-case test sets and P1 image loss. Adding nine MIIT single-image textures to the training side (without treating them as paired or patient-independent records) lowered held-out vertex RMSE in 8/9 seed×fold comparisons, with foldwise three-seed means HistoReg `.005141→.004886`, lesion `.006770→.005462`, kidney `.007119→.005540`; one HistoReg seed worsened. The 512² P1-query stress test at 2×/3× deformation coefficients showed that geometry gains shrink sharply outside the training amplitude range even while all checked P1 triangles remain positive. These are development probes, not independent clinical generalization. Formulas, comparisons and exact data scope are in [SYNTHETIC_SLIDE_HOLDOUT.md](SYNTHETIC_SLIDE_HOLDOUT.md).
+
+On the same kidney 3× synthetic test set, training the network at 3× rather than 1× **worsened** P1 query-map RMSE `.022987→.024006` while improving image MSE `.006723→.005999`. A newly matched P1-query no-network 50-step Adam control drove image MSE lower (~`.00304`) but gave query-map RMSE `.027576` (no regularizer) or `.024904` (the prior development-chosen weight 10), both worse than identity `.024825`. This sharpens the limited conclusion: image fit and map truth diverge at larger deformations, even with the same hard-safe P1 output. It does not establish network superiority on real cross-stain pairs or against all optimizers.
+
+## Ten ACROBAT training-case image-only fields: safe representation, not inference
+
+The selected official training subset and the physical 512² pair canvases are defined in [EVIDENCE.md](EVIDENCE.md). At 512², the saved DeeperHistReg initial-only fields had no nonpositive Q1 corners in these ten cases, whereas all ten saved full fields did; [the case-level field table](acrobat_10case_physical_canvas_topology.csv) retains every count. There are no ACROBAT training landmarks, and independently centered physical-scale canvases do not recover scanner origins. Therefore neither those fields nor the following fits have measured anatomical accuracy.
+
+The **representation** experiment uses the external full DHR field as a privileged per-pair target. Let $v_i$ be the identity vertex position on the fixed 257² control grid and $T_i$ the sampled complete DHR backward map, both in normalized canvas coordinates. Fit a least-squares orientation-preserving affine factor $A(x)=Mx+b$ to all $T_i$ and define residual targets $R_i=M^{-1}(T_i-b)$. For each pair independently, optimize the F2-seed/F1-fine latent tensors for 200 Adam steps at learning rate `.04`, minimizing the mean squared Euclidean distance from the safe residual map $F_\theta(v_i)$ to $R_i$ over **strict interior** vertices. Its boundary remains identity, so the saved complete map is $\widehat T_i=M F_\theta(v_i)+b$. This fit consumes the entire DHR output; no CNN infers these latents from the two images. It is neither amortized inference nor a fair end-to-end image-only competitor to DHR.
+
+Evaluation below is deliberately in the **complete normalized map frame**, after restoring the affine factor. For a vertex set $S$, `RMSE(S) = sqrt(mean_{i in S} ||widehat T_i - T_i||_2²)`; the boundary column is the maximum Euclidean error over all boundary vertices. A Q1 corner count is taken on the saved 257² map, not on its 512² parent field. The teacher's 257² corner count is reported separately because subsampling a folded 512² field can hide a fold. Values are from [the full case CSV](acrobat_10case_safe_distill.csv); the independently checked saved-map certificate is recorded separately rather than inferred from an optimizer loss.
+
+| Case | Teacher 257² nonpositive corners | Safe 257² nonpositive corners | Safe interior RMSE | Safe all-vertex RMSE | Boundary maximum |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 100 | 4,131 | 0 | .000436 | .001561 | .027734 |
+| 156 | 913 | 0 | .000772 | .001956 | .036695 |
+| 315 | 0 | 0 | .000318 | .000907 | .014183 |
+| 330 | 0 | 0 | .000176 | .000739 | .011953 |
+| 399 | 0 | 0 | .000445 | .000920 | .014440 |
+| 495 | 0 | 0 | .000678 | .001445 | .018648 |
+| 585 | 42 | 0 | .000310 | .000880 | .014376 |
+| 586 | 981 | 0 | .000531 | .001619 | .021283 |
+| 638 | 136 | 0 | .000579 | .001955 | .034970 |
+| 733 | 0 | 0 | .000294 | .000652 | .009914 |
+
+The sampled teacher has nonpositive corners in five of ten cases; the saved safe maps have none in the reported floating-point audit. The smaller interior errors are partly a consequence of fitting only the interior, while fixed-boundary residuals cannot exactly reproduce the teacher edge. Crucially, even a tiny coordinate RMSE against DHR is **not** evidence of correct histological correspondence. The experiment establishes that this decoder can represent approximations to these particular external fields under its own topology constraint; it does not meet G2 (learned image-to-latent advantage), G3 (registered real-data accuracy) or G4 (SOTA). Raw target and factorized output arrays are held on D: under `D:\QC_optimization_data\digital_topology_wsi\ACROBAT_train_subset`; code is [the DHR target/fitting tool](../../tools/digital_q1_dhr_distill.py).
+
+An independent *off-vertex* comparison evaluates both maps at every fixed 512² pixel center $q_{ij}=((j+1/2)/512,(i+1/2)/512)$. The comparator is the saved full DHR field sampled with its recorded padding/resample metadata; the safe output is the original 257² Q1 residual evaluated at $q_{ij}$ and then postcomposed with its stored affine. The affine-only control applies that same post-affine directly to $q_{ij}$, so it isolates the safe nonrigid residual's contribution. The metric is the square root of the mean squared Euclidean coordinate difference against DHR, **not an error against anatomy**. All ten cases have unit DHR resample ratios and zero postprocessing pads; independently reconstructing the 257² targets from MHA agrees within `1.79e-7` per coordinate.
+
+| Case | Safe-versus-DHR 512²-query RMSE | Affine-only-versus-DHR RMSE |
+| --- | ---: | ---: |
+| 100 | .001044695 | .011198967 |
+| 156 | .001374224 | .010071878 |
+| 315 | .000642920 | .005555282 |
+| 330 | .000509672 | .005875563 |
+| 399 | .000704537 | .007248728 |
+| 495 | .001070633 | .011935995 |
+| 585 | .000629806 | .007343010 |
+| 586 | .001064915 | .011394330 |
+| 638 | .001241506 | .011016723 |
+| 733 | .000563731 | .008180520 |
+
+Thus the safe residual reduces coordinate discrepancy to this **external teacher** to 6.9–13.6% of affine-only discrepancy on these pairs; it says nothing about whether the teacher is anatomically correct. In a separate empirical probe, bilinear-resampling the ten safe residuals to a **new non-nested 512² endpoint vertex grid**, then rounding to binary32, produced no nonpositive Q1 corner among 10,444,840 checks; the separately affine-composed rounded grids also had none. Their normalized minima ranged `.044498–.050265` (residual) and `.038875–.054161` (composite). This observation **does not transfer** the exact 257² factorized certificate to arbitrary resampling or unseen outputs; the delivered representation remains the original factorized 257² map. The independent saved-output check and deliberate invalid fixtures are in [REVIEW.md](REVIEW.md).
