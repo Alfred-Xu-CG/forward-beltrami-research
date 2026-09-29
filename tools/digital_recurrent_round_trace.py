@@ -40,9 +40,11 @@ def corner_min_and_nonpositive(vertices: np.ndarray) -> tuple[float, int]:
 
 
 def trace(root: Path, model_output: Path, cases: list[int], output: Path,
-          device: str) -> dict:
+          device: str, states_archive: Path | None = None) -> dict:
     if output.exists():
         raise FileExistsError(output)
+    if states_archive is not None and states_archive.exists():
+        raise FileExistsError(states_archive)
     if not cases or len(set(cases)) != len(cases):
         raise ValueError("distinct nonempty case IDs required")
     model = _load_model(model_output, device)
@@ -57,6 +59,8 @@ def trace(root: Path, model_output: Path, cases: list[int], output: Path,
 
     handle = model.updates["257"].register_forward_hook(hook)
     rows = []
+    all_states = []
+    all_references = []
     try:
         for case in cases:
             captured.clear()
@@ -71,6 +75,11 @@ def trace(root: Path, model_output: Path, cases: list[int], output: Path,
             with np.load(model_output / f"{case}_actual_safe_q1.npz",
                          allow_pickle=False) as archive:
                 saved_final = archive["vertices"][0].astype(np.float64)
+                reference = archive["boundary_reference"]
+            if states_archive is not None:
+                all_states.append(np.stack(captured).astype(np.float32))
+                all_references.append(np.repeat(reference,
+                                                len(captured), axis=0))
             with np.load(root / f"{case}_DHR_physical_full_teacher_affine.npz",
                          allow_pickle=False) as archive:
                 teacher = archive["raw_teacher_vertices"][0].astype(np.float64)
@@ -102,6 +111,13 @@ def trace(root: Path, model_output: Path, cases: list[int], output: Path,
         "mean_round_vector_rmse": np.mean(
             [row["round_vector_rmse"] for row in rows], axis=0).tolist(),
     }
+    if states_archive is not None:
+        states_archive.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(states_archive,
+                            vertices=np.concatenate(all_states),
+                            boundary_reference=np.concatenate(all_references))
+        report["states_archive"] = str(states_archive)
+        report["state_count"] = len(cases) * (model.rounds_by_side[257] + 1)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return report
@@ -114,9 +130,11 @@ def main() -> None:
     parser.add_argument("--cases", type=int, nargs="+", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--states-archive", type=Path,
+                        help="optional saved binary32 stack for full exact-sign audit")
     args = parser.parse_args()
     result = trace(args.root, args.model_output, args.cases, args.output,
-                   args.device)
+                   args.device, args.states_archive)
     print(json.dumps({key: value for key, value in result.items()
                       if key != "rows"}))
 
