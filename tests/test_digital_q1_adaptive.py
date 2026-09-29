@@ -249,3 +249,53 @@ def test_f2_post_safety_gain_controls_saturated_step_and_vjp():
     gradient, = torch.autograd.grad(damped.square().mean(), logits)
     assert bool(torch.isfinite(gradient).all())
     assert float(gradient.abs().sum()) > 0
+
+
+def test_current_edge_f1_commutes_with_positive_affine_without_absolute_floor():
+    side = 17
+    base = _identity(side, torch.float64)
+    torch.manual_seed(941)
+    logits = (.12 * torch.randn(1, side - 2, side - 2, 2,
+                                   dtype=torch.float64)).requires_grad_()
+    matrix = torch.tensor([[1.3, .2], [.1, .8]], dtype=torch.float64)
+    offset = torch.tensor([.07, -.04], dtype=torch.float64)
+    transform = lambda x: torch.einsum("ij,...j->...i", matrix, x) + offset
+    current = AdaptiveSoftRadialQ1Relaxation(side, minimum_jacobian=None)
+    reference = current(base, logits)
+    transformed = current(transform(base), logits)
+    torch.testing.assert_close(transformed, transform(reference), rtol=0, atol=2e-15)
+    cotangent = torch.randn_like(reference)
+    pullback_cotangent = torch.einsum("ij,...i->...j", matrix, cotangent)
+    transformed_vjp, = torch.autograd.grad((transformed * cotangent).sum(), logits,
+                                            retain_graph=True)
+    reference_vjp, = torch.autograd.grad((reference * pullback_cotangent).sum(), logits)
+    torch.testing.assert_close(transformed_vjp, reference_vjp, rtol=2e-12, atol=2e-14)
+    fixed = FixedSpanSoftRadialQ1Relaxation(side, minimum_jacobian=None)
+    assert float((fixed(transform(base), logits) - transform(fixed(base, logits))).abs().max()) > 1e-4
+
+
+def test_current_edge_f2_commutes_with_positive_affine_when_guard_inactive():
+    side = 17
+    base = _identity(side, torch.float64)
+    torch.manual_seed(942)
+    logits = tuple((.12 * torch.randn(1, side - 2, side - 2, 2,
+                                         dtype=torch.float64)).requires_grad_()
+                   for _ in range(4))
+    matrix = torch.tensor([[1.3, .2], [.1, .8]], dtype=torch.float64)
+    offset = torch.tensor([.07, -.04], dtype=torch.float64)
+    transform = lambda x: torch.einsum("ij,...j->...i", matrix, x) + offset
+    current = StaggeredPatchQ1Layer(side, patch_cells=8, proposal_mode="current_edge",
+                                    minimum_jacobian=None)
+    reference = current(base, logits)
+    transformed = current(transform(base), logits)
+    torch.testing.assert_close(transformed, transform(reference), rtol=0, atol=3e-15)
+    cotangent = torch.randn_like(reference)
+    pullback_cotangent = torch.einsum("ij,...i->...j", matrix, cotangent)
+    transformed_vjp = torch.autograd.grad((transformed * cotangent).sum(), logits,
+                                           retain_graph=True)
+    reference_vjp = torch.autograd.grad((reference * pullback_cotangent).sum(), logits)
+    for left, right in zip(transformed_vjp, reference_vjp, strict=True):
+        torch.testing.assert_close(left, right, rtol=3e-12, atol=2e-14)
+    fixed = StaggeredPatchQ1Layer(side, patch_cells=8, proposal_mode="fixed_h",
+                                  minimum_jacobian=None)
+    assert float((fixed(transform(base), logits) - transform(fixed(base, logits))).abs().max()) > 1e-4
