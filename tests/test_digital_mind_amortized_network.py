@@ -37,3 +37,14 @@ def test_image_only_predictor_import_and_pure_torch_affine_warp():
     warped = warp_moving_to_fixed(moving, torch.eye(2), torch.zeros(2),
                                   height=8, width=8)
     torch.testing.assert_close(warped, moving, atol=1e-5, rtol=0)
+
+
+def test_global_context_variant_preserves_safe_gradient():
+    torch.manual_seed(9)
+    feature = torch.randn((1, 43, 128, 128))
+    model = MindSafeImageNetwork(width=8, architecture="global")
+    mapped = model(feature)
+    assert validate_q1_map(mapped, identity_vertices(65, device=feature.device))["valid"]
+    mapped.square().mean().backward()
+    assert all(p.grad is not None and torch.isfinite(p.grad).all()
+               for p in model.parameters())

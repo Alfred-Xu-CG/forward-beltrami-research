@@ -32,7 +32,7 @@ def predict(checkpoint: Path, fixed_path: Path, moving_path: Path,
         raise ValueError("positive repeats required")
     device = torch.device(device_name)
     saved = torch.load(checkpoint, map_location=device, weights_only=False)
-    model = MindSafeImageNetwork().to(device)
+    model = MindSafeImageNetwork(architecture=saved.get("architecture", "local")).to(device)
     model.load_state_dict(saved["state_dict"])
     model.eval()
     fixed, _ = _read_gray_thumbnail(fixed_path, 512)

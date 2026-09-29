@@ -60,17 +60,31 @@ def image_features(fixed: torch.Tensor, moving: torch.Tensor
 
 
 class MindSafeImageNetwork(nn.Module):
-    def __init__(self, *, width: int = 32) -> None:
+    def __init__(self, *, width: int = 32,
+                 architecture: str = "local") -> None:
         super().__init__()
+        if architecture not in ("local", "global"):
+            raise ValueError("architecture must be local or global")
+        self.architecture = architecture
         self.stem = nn.Sequential(
             nn.Conv2d(43, width, 3, padding=1), nn.GELU(),
             nn.Conv2d(width, width, 3, padding=1), nn.GELU(),
         )
-        self.down = nn.Sequential(
-            nn.Conv2d(width, width, 3, stride=2, padding=1), nn.GELU(),
-            nn.Conv2d(width, width, 3, padding=1), nn.GELU(),
-        )
-        self.fuse = nn.Sequential(nn.Conv2d(width, width, 3, padding=1), nn.GELU())
+        if architecture == "local":
+            self.down = nn.Sequential(
+                nn.Conv2d(width, width, 3, stride=2, padding=1), nn.GELU(),
+                nn.Conv2d(width, width, 3, padding=1), nn.GELU(),
+            )
+            self.fuse = nn.Sequential(nn.Conv2d(width, width, 3, padding=1), nn.GELU())
+        else:
+            self.global_downs = nn.ModuleList(nn.Sequential(
+                nn.Conv2d(width, width, 3, stride=2, padding=1), nn.GELU(),
+                nn.Conv2d(width, width, 3, padding=1), nn.GELU(),
+            ) for _ in range(4))
+            self.global_ups = nn.ModuleList(nn.Sequential(
+                nn.Conv2d(2 * width, width, 3, padding=1), nn.GELU(),
+                nn.Conv2d(width, width, 3, padding=1), nn.GELU(),
+            ) for _ in range(4))
         self.sides = (17, 33, 65)
         self.heads = nn.ModuleList(nn.Conv2d(width, 2, 1) for _ in self.sides)
         for head in self.heads:
@@ -88,9 +102,21 @@ class MindSafeImageNetwork(nn.Module):
         if final_side not in (65, 257):
             raise ValueError("supported final sides are 65 or 257")
         coarse = self.stem(feature)
-        context = self.down(coarse)
-        fused = self.fuse(coarse + F.interpolate(context, size=(128, 128),
-                                                 mode="bilinear", align_corners=False))
+        if self.architecture == "local":
+            context = self.down(coarse)
+            fused = self.fuse(coarse + F.interpolate(
+                context, size=(128, 128), mode="bilinear", align_corners=False))
+        else:
+            skips = [coarse]
+            context = coarse
+            for down in self.global_downs:
+                context = down(context)
+                skips.append(context)
+            for up, skip in zip(self.global_ups, reversed(skips[:-1])):
+                context = up(torch.cat((skip, F.interpolate(
+                    context, size=skip.shape[-2:], mode="bilinear",
+                    align_corners=False)), dim=1))
+            fused = context
         current = identity_vertices(17, device=feature.device).to(feature.dtype)
         current = current.expand(feature.shape[0], -1, -1, -1)
         for index, (side, head, update) in enumerate(zip(self.sides, self.heads, self.updates)):
@@ -119,21 +145,33 @@ def split_ids(case_ids: list[int], *, seed: int = 20260929) -> tuple[list[int], 
 
 
 def train(root: Path, selection: Path, checkpoint: Path, *, steps: int,
-          device_name: str, learning_rate: float = .001, batch_size: int = 4) -> dict:
+          device_name: str, learning_rate: float = .001, batch_size: int = 4,
+          architecture: str = "local", affine_source: str = "DHR") -> dict:
     if checkpoint.exists() or checkpoint.with_suffix(".json").exists():
         raise FileExistsError(checkpoint)
     if steps < 1 or batch_size < 1 or learning_rate <= 0:
         raise ValueError("positive training settings required")
     case_ids = json.loads(selection.read_text(encoding="utf-8"))["combined_train_ids"]
     train_ids, val_ids = split_ids(case_ids)
+    missing_affine_ids = []
+    if affine_source == "image_only":
+        missing_affine_ids = [case for case in case_ids
+                              if not (root / f"{case}_directSG_affine.npz").exists()]
+        available = set(case_ids) - set(missing_affine_ids)
+        train_ids = [case for case in train_ids if case in available]
+        val_ids = [case for case in val_ids if case in available]
+        if not train_ids or not val_ids:
+            raise ValueError("image-only initializer leaves empty train/validation split")
+    used_ids = train_ids + val_ids
     device = torch.device(device_name)
     torch.manual_seed(20260929)
     rng = np.random.default_rng(20260930)
     cases = {}
     precompute_start = time.perf_counter()
     with torch.no_grad():
-        for case_id in case_ids:
-            case = load_case_inputs(root, case_id, device)
+        for case_id in used_ids:
+            case = load_case_inputs(root, case_id, device,
+                                    affine_source=affine_source)
             fixed = F.interpolate(case["fixed"], size=(128, 128), mode="area")
             moving = F.interpolate(case["prewarped"], size=(128, 128), mode="area")
             cases[case_id] = tuple(item.detach() for item in image_features(fixed, moving))
@@ -141,7 +179,7 @@ def train(root: Path, selection: Path, checkpoint: Path, *, steps: int,
         torch.cuda.synchronize(device)
         torch.cuda.reset_peak_memory_stats(device)
     precompute_seconds = time.perf_counter() - precompute_start
-    model = MindSafeImageNetwork().to(device)
+    model = MindSafeImageNetwork(architecture=architecture).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-4)
     identity = identity_vertices(65, device=device)
     loss_trace = []
@@ -185,10 +223,16 @@ def train(root: Path, selection: Path, checkpoint: Path, *, steps: int,
             })
     checkpoint.parent.mkdir(parents=True, exist_ok=True)
     torch.save({"state_dict": model.state_dict(), "train_ids": train_ids,
-                "validation_ids": val_ids, "steps": steps}, checkpoint)
+                "validation_ids": val_ids, "steps": steps,
+                "architecture": architecture,
+                "affine_source": affine_source}, checkpoint)
     result = {
         "method": "MIND-like 5x5 local cost-volume CNN -> safe 17/33/65 F1 -> 257 Q1/P1",
-        "case_count": len(case_ids), "train_case_count": len(train_ids),
+        "architecture": architecture,
+        "affine_source": affine_source,
+        "case_count": len(used_ids), "source_case_count": len(case_ids),
+        "missing_affine_ids": missing_affine_ids,
+        "train_case_count": len(train_ids),
         "validation_case_count": len(val_ids), "train_ids": train_ids,
         "validation_ids": val_ids, "steps": steps, "batch_size": batch_size,
         "learning_rate": learning_rate, "precompute_seconds": precompute_seconds,
@@ -198,7 +242,7 @@ def train(root: Path, selection: Path, checkpoint: Path, *, steps: int,
         "loss_trace": loss_trace,
         "validation": validation,
         "landmarks_machine_matches_full_DHR_displacement_loaded": False,
-        "DHR_derived_initial_affine_loaded": True,
+        "DHR_derived_initial_affine_loaded": affine_source == "DHR",
     }
     checkpoint.with_suffix(".json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     return result
@@ -213,10 +257,14 @@ def main() -> None:
     parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--learning-rate", type=float, default=.001)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--architecture", choices=("local", "global"), default="local")
+    parser.add_argument("--affine-source", choices=("DHR", "image_only"),
+                        default="DHR")
     args = parser.parse_args()
     result = train(args.root, args.selection, args.checkpoint, steps=args.steps,
                    device_name=args.device, learning_rate=args.learning_rate,
-                   batch_size=args.batch)
+                   batch_size=args.batch, architecture=args.architecture,
+                   affine_source=args.affine_source)
     print(json.dumps({key: result[key] for key in (
         "case_count", "train_case_count", "validation_case_count", "steps",
         "precompute_seconds", "training_seconds", "peak_torch_cuda_allocated_bytes",

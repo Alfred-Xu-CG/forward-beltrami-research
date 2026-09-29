@@ -84,17 +84,23 @@ def _case_images(root: Path, case: int) -> tuple[Path, Path]:
     return fixed, moving[0]
 
 
-def load_case_inputs(root: Path, case: int, device: torch.device) -> dict:
+def load_case_inputs(root: Path, case: int, device: torch.device, *,
+                     affine_source: str = "DHR") -> dict:
     """Read only inference inputs; no full-DHR teacher is accessed."""
     fixed_path, moving_path = _case_images(root, case)
-    with np.load(root / f"{case}_DHR_physical_initial_teacher_affine.npz") as initial:
+    if affine_source not in ("DHR", "image_only"):
+        raise ValueError("affine source must be DHR or image_only")
+    suffix = ("DHR_physical_initial_teacher_affine" if affine_source == "DHR"
+              else "directSG_affine")
+    with np.load(root / f"{case}_{suffix}.npz") as initial:
         matrix = torch.from_numpy(initial["post_affine_matrix"].astype(np.float32))[None].to(device)
         offset = torch.from_numpy(initial["post_affine_offset"].astype(np.float32))[None].to(device)
     fixed = _gray(fixed_path).to(device)
     moving = _gray(moving_path).to(device)
     prewarped = affine_prewarp(moving, matrix, offset)
     return {"id": case, "fixed": fixed, "moving": moving,
-            "prewarped": prewarped, "matrix": matrix, "offset": offset}
+            "prewarped": prewarped, "matrix": matrix, "offset": offset,
+            "affine_source": affine_source}
 
 
 def load_case_teacher(root: Path, case: int, device: torch.device,
