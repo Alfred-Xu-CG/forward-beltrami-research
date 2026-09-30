@@ -1,4 +1,4 @@
-"""Run a frozen force-recurrent P1 student on disjoint ACROBAT validation IDs.
+"""Run a frozen force-recurrent P1 student on declared ACROBAT cohort IDs.
 
 This is an image-only inference audit, not an anatomy-landmark evaluation. It
 saves each predicted binary32 map and its exact Q1 certificate before summary.
@@ -38,7 +38,12 @@ def run(root: Path, selection: Path, checkpoint: Path, base: Path, one_head: Pat
     selection_data = json.loads(selection.read_text(encoding="utf-8"))
     selected = selection_data["combined_train_ids"]
     train_ids, val_ids = split_ids(selected)
-    if cohort == "validation":
+    if cohort == "train":
+        checkpoint_metadata = torch.load(checkpoint, map_location="cpu",
+                                         weights_only=False)
+        ids = [int(case) for case in checkpoint_metadata["train_ids"]]
+        allowed = set(train_ids)
+    elif cohort == "validation":
         ids = [int(item["case"]) for item in saved["validation_final"]]
         allowed = set(val_ids)
     elif cohort == "confirmation":
@@ -47,11 +52,11 @@ def run(root: Path, selection: Path, checkpoint: Path, base: Path, one_head: Pat
         if allowed & set(selected):
             raise ValueError("confirmation IDs overlap all selected training-source IDs")
     else:
-        raise ValueError("cohort must be validation or confirmation")
-    if not ids or len(ids) != len(set(ids)) or not set(ids).issubset(allowed) or (
-        set(ids) & set(train_ids)
-    ):
-        raise ValueError("cohort IDs are not unique/disjoint as expected")
+        raise ValueError("cohort must be train, validation or confirmation")
+    if not ids or len(ids) != len(set(ids)) or not set(ids).issubset(allowed):
+        raise ValueError("cohort IDs are not unique or outside the declared split")
+    if cohort != "train" and set(ids) & set(train_ids):
+        raise ValueError("evaluation cohort intersects model-training IDs")
     rows = []
     output_dir.mkdir(parents=True, exist_ok=True)
     for case in ids:
@@ -88,12 +93,13 @@ def run(root: Path, selection: Path, checkpoint: Path, base: Path, one_head: Pat
             "q1_corners_below_point1": int((corner < 0.1).sum()),
         })
     report = {
-        "method": "frozen recurrent student, case-disjoint ACROBAT image-only inference",
+        "method": "frozen recurrent student, ACROBAT image-only inference",
         "cohort": cohort,
         "checkpoint": str(checkpoint), "tag": tag,
         "logit_gain": logit_gain,
         "match_feedback_gain": match_feedback_gain,
-        "cohort_id_source": (str(checkpoint.with_suffix(".json")) if cohort ==
+        "cohort_id_source": (str(checkpoint) if cohort == "train" else
+                             str(checkpoint.with_suffix(".json")) if cohort ==
                              "validation" else str(selection)),
         "selection": str(selection),
         "selection_validation_count": len(val_ids),
@@ -119,7 +125,7 @@ def main() -> None:
                             required=True)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--repeats", type=int, default=1)
-    parser.add_argument("--cohort", choices=("validation", "confirmation"),
+    parser.add_argument("--cohort", choices=("train", "validation", "confirmation"),
                         default="validation")
     parser.add_argument("--logit-gain", type=float, default=1.)
     parser.add_argument("--matches-dir", type=Path)

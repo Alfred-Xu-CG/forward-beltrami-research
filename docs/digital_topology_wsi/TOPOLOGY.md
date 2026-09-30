@@ -685,3 +685,37 @@ A focused float64 **formula** test on a nonuniformly deformed 17² table now der
 - **What would falsify it:** An implementation coordinate formula different from \(a_j=(j+1/2)/257\), a nonpositive diagonal in the claimed rank submatrix, or an exact arithmetic error in the constructive upper bound. Anatomical causation additionally requires a controlled trained-head comparison.
 - **Smallest decisive test:** Compare the formula with PyTorch basis interpolation; compute the left-vector recurrence bound and numerical singular spectrum; train a zero-initialized additive direct-vertex residual readout while holding all other training conditions fixed and evaluate on unlabeled case-disjoint validation before any reused anatomical labels.
 - **Prior work:** This is elementary interpolation-matrix analysis, not a novel map theorem. The decoder's current-edge positive-area proof and finite precision audit remain unchanged by a readout-only variant.
+# Research card: image-versus-machine-match gradient conflict (2026-09-30)
+
+- **Question:** At retained 257² saved maps, do the unsupervised image descriptor and selected-machine-match objectives recommend locally opposed interior vertex changes?
+- **Exact claim to test:** For each case, compute the cosine between exact autograd gradients of the image and robust-match losses with respect to the same aligned 255² interior vertex table. A negative dot product means their unconstrained steepest-descent directions locally conflict. It does not prove anatomy favors either objective or that a topology-safe finite update has the same sign.
+- **Assumptions:** Frozen image-derived affine/match selections, the same image objective/coordinate frame as training, and no human landmarks in this diagnostic.
+- **Falsifier:** Mostly nonnegative cosines despite the prior 26/26 finite match-feedback image-proxy regressions; this would require looking at finite-step safety scaling, objective curvature or feedback construction instead of blaming first-order objective opposition.
+- **Smallest test:** One saved validation case, then all 18 disjoint validation and eight confirmation maps if frame checks pass. Report counts, cosines, gradient norms and map margins, without anatomy-based model selection.
+- **Prior work:** This is a straightforward multiobjective-gradient diagnostic, not a new registration algorithm. The earlier analytic match-feedback intervention supplies the finite-step comparison.
+# Research card: two-direction inverse consistency (2026-09-30)
+
+- **Question:** Do independently predicted maps for the two directions of each of ten unordered stain pairs approximately invert one another, and does the learned residual improve or worsen this unlabeled geometric property relative to the common affine and frozen-map controls?
+- **Exact measurement:** On a declared common 65² query lattice, keep queries whose forward image lies inside the unit destination canvas for **all** compared methods, then evaluate \(F_{j\to i}(F_{i\to j}(q))-q\) using each method's full saved P1-plus-affine map. Report 512-canvas-pixel errors, coverage and pairwise distributions. This is not anatomical TRE and does not certify composition on the original grid.
+- **Assumptions:** Fixed→moving frame and affine metadata are correct; maps for all 20 ordered directions are the already saved same-specimen maps; P1 interpolation is evaluated only inside each destination canvas.
+- **Falsifier:** If learned maps have substantially worse cycle error than frozen/affine on the same accepted queries, the residual's pairwise accuracy gains do not imply globally coherent registrations.
+- **Smallest decisive test:** One opposite-direction pair with explicit coordinate-frame assertions, then all ten unordered pairs. No new model or target landmarks are used.
+- **Prior work:** Inverse-consistency is a standard registration property; this is only an audit of this particular forward layer and specimen.
+
+# Research card: is the learned gain genuinely non-affine? (2026-09-30)
+
+- **Question:** Could the reported anatomy gain over the external affine be an almost-affine correction rather than useful spatially varying deformation?
+- **Exact measurement:** For each of the unchanged 20 saved lung directions, fit the best least-squares affine map to the 257² *composite* vertex table and report the root-mean-square non-affine residual in 512-canvas pixels. Independently decompose the retained-minus-frozen vertex increment into its least-squares affine projection and orthogonal residual, recording their RMS magnitudes and the fraction of squared increment energy that is non-affine. This measures geometric complexity, **not** registration correctness or new-patient generalization.
+- **Assumptions:** All stored maps share the same reference 257² square grid and affine metadata; vertices are cast to float64 before projection; the constant, x and y basis is full rank.
+- **Falsifier:** Negligible non-affine residual versus the affine component, or an almost purely affine learned increment, would weaken the claim that the current network uses dense spatial degrees of freedom.
+- **Smallest decisive test:** One map with an identity and a synthetic non-affine perturbation for formula sanity, followed by all 20 saved directions; do not read anatomical landmarks or select any model with this metric.
+- **Prior work:** Affine detrending and orthogonal projection are standard. This audit is specific to the claimed dense learned layer and does not establish clinical utility.
+
+# Research card: train-versus-validation image-proxy gap (2026-09-30)
+
+- **Question:** Does the 63-pair amortized model merely fail to fit its own training image evidence, or does it fit training substantially better than the 18 eligible held-out cases?
+- **Exact measurement:** Freeze the retained 1000-step checkpoint and all external image-only affines/selected machine correspondences. On all 63 eligible training IDs and the same 18 validation IDs, run the identical saved-map inference path and report casewise frozen and retained MIND-like image proxy, and counts where retained improves frozen. Compare equal-case means and medians without tuning or new training. Do not use manual anatomy or pseudo-teacher map targets for model selection.
+- **Assumptions:** The training and validation IDs and retained checkpoint metadata are immutable, all required images/matches/affines are available, and the same decoding/proxy code and frame are used in both cohorts. This metric is only an image-descriptor proxy; a gap is not clinical generalization evidence.
+- **Falsifier:** Similar train/validation proxy levels and gains would not support a simple overfit-to-proxy explanation; a large gap would motivate more independent subjects before decoder expansion.
+- **Smallest decisive test:** One training ID smoke case then the predeclared 63/18 cohorts at 257² on an idle GPU; record all failures, topology and timing scope. No landmark read.
+- **Prior work:** Ordinary generalization-gap auditing; here it distinguishes the user's network-expressivity concern from data-limited fitting of this particular surrogate objective.
