@@ -1,6 +1,6 @@
 # Digital-topology pathology registration: current reading order
 
-This directory contains several research windows. **The old Phase VIII verdict in `DECISION.md` is an interim result, not the complete record of the subsequent user-authorized 12-hour extension.** Begin with the following three documents:
+This directory contains several research windows. **Sections 1–6 of `DECISION.md` are the old interim verdict; its §7 and `END_TIME.json` close the subsequent user-authorized 12-hour extension.** Begin with the following three documents:
 
 1. [`PHASE6_EXTENSION_12H_SUMMARY.md`](PHASE6_EXTENSION_12H_SUMMARY.md): what the extension actually achieved, failed to achieve, measured time/memory, and the evidence boundary.
 2. [`CURRENT_LEARNED_LAYER_FORMULATION.md`](CURRENT_LEARNED_LAYER_FORMULATION.md): mathematical input, output, safe P1/Q1 decoder, actual differentiation path, and limitations.
