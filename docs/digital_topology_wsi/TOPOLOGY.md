@@ -764,3 +764,11 @@ A focused float64 **formula** test on a nonuniformly deformed 17² table now der
 - **Falsifier:** Coarse maps fail exact topology or lose clinically material TRE relative to 257²; then high-resolution control or another multilevel representation may be essential even on this specimen.
 - **Smallest decisive test:** One H&E→Cc10 scale sanity and exact-cert check, then the complete 20×4 table from unchanged maps. No model selection based on these reused annotations.
 - **Prior work:** Multiresolution mesh restriction and P1 interpolation are standard; the finding concerns whether this particular trained decoder currently exploits its high-resolution output.
+### Research card — correspondence coverage diagnostic (2026-09-30)
+
+- **Question:** Is the retained model's anatomical improvement concentrated near the fixed-side machine matches that feed its dynamic head?
+- **Exact claim to test:** On the already saved twenty lung directions, the fixed-side distance from a manual landmark to its nearest selected machine-match source may predict the incremental TRE change from frozen to dynamic P1. This is a diagnostic association, not a causal or generalization claim.
+- **Assumptions:** Reuse unchanged saved maps, selected match archives, original landmark CSVs and layout metadata; manual landmarks are evaluation-only and this one specimen has been viewed repeatedly.
+- **Falsifier:** Similar or larger incremental improvement at distant landmarks, or no stable relation across direction-wise summaries.
+- **Smallest decisive test:** Compute all 1,600 source landmark nearest-match distances in the fixed 512 canvas and paired frozen-minus-dynamic native-pixel TRE gains; report both pooled quartiles and equal-direction Spearman/near-far summaries without selecting a new model.
+- **Prior work:** The immediately preceding output-gradient support diagnostic found sparse match-gradient support (about 163 of 65,025 interior vertices); this new test asks whether that sparse support spatially relates to the *manual* landmark outcome, without using manual labels in training.
