@@ -719,3 +719,21 @@ A focused float64 **formula** test on a nonuniformly deformed 17² table now der
 - **Falsifier:** Similar train/validation proxy levels and gains would not support a simple overfit-to-proxy explanation; a large gap would motivate more independent subjects before decoder expansion.
 - **Smallest decisive test:** One training ID smoke case then the predeclared 63/18 cohorts at 257² on an idle GPU; record all failures, topology and timing scope. No landmark read.
 - **Prior work:** Ordinary generalization-gap auditing; here it distinguishes the user's network-expressivity concern from data-limited fitting of this particular surrogate objective.
+
+# Research card: does the image proxy rank the better anatomical model? (2026-09-30)
+
+- **Question:** On the already evaluated 20 lung directions, does the MIND-like image proxy agree even in sign with the anatomy-TRE ranking of the six-channel versus 12-channel safe P1 models?
+- **Exact measurement:** Without changing any map, join each direction's pre-existing saved prediction report and anatomy score for the two fixed checkpoints. Assert identical direction sets, external affine metadata, and frozen composite maps; confirm the reported image value is the same kind of postmap proxy. Count the 2×2 sign agreement table for image-loss reduction versus TRE reduction, list discordant directions, and report paired mean deltas. This is **post-hoc** on one known specimen and may not be used to tune a model.
+- **Assumptions:** The archived six- and 12-channel predictor calls used the same image descriptors/masks and positive affine coordinate frame, and score reports use the same 80 annotations per direction. If the frozen map or affine differs, the comparison is not isolated and must be described as such.
+- **Falsifier:** Image and anatomy improvements agree on most directions; then the earlier feedback proxy tradeoff may be intervention-specific rather than a broader ranking failure.
+- **Smallest decisive test:** One H&E→Cc10 frame/archive check, then all 20 archived directions. No inference, training, new labels or checkpoint selection.
+- **Prior work:** Surrogate-objective versus human-correspondence discordance is an established registration concern; this is a dataset- and architecture-specific audit of our current evidence.
+
+# Research card: compare the match proxy under the same model pair (2026-09-30)
+
+- **Question:** When the image proxy often ranks the 12-channel model worse despite better known-specimen TRE, do the fixed selected *machine-match* residuals rank it more consistently with anatomy?
+- **Exact measurement:** For the same unchanged six- and 12-channel saved maps, use **one common archive of image-derived aligned matches per direction** and evaluate both raw aligned P1 vertex tables at those fixed source coordinates. Calculate the exact training robust loss — mean “√(r²+4²)−4” with displacement in 512-canvas pixels — and its sign relative to the already saved per-direction TRE difference. Verify match archive affine against both map archives and report all directions, not only improved ones.
+- **Assumptions:** The selected matches were extracted from the fixed/moving images without human landmarks, are in the aligned frame before the common post-affine, and are **the 12-channel model's input**. Hence fit on these matches is not independent evaluation and a favourable result cannot establish anatomical truth.
+- **Falsifier:** Similar or worse sign agreement than the image proxy; then neither current surrogate reliably ranks the anatomy on this cohort.
+- **Smallest decisive test:** One H&E→Cc10 frame check and loss calculation, then all 20 archived directions; no model changes or new labels.
+- **Prior work:** Common-correspondence robust residual scoring is standard. Here it diagnoses which current proxy may be informative for the next data-collection and training design.
