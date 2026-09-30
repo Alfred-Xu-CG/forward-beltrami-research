@@ -772,3 +772,12 @@ A focused float64 **formula** test on a nonuniformly deformed 17² table now der
 - **Falsifier:** Similar or larger incremental improvement at distant landmarks, or no stable relation across direction-wise summaries.
 - **Smallest decisive test:** Compute all 1,600 source landmark nearest-match distances in the fixed 512 canvas and paired frozen-minus-dynamic native-pixel TRE gains; report both pooled quartiles and equal-direction Spearman/near-far summaries without selecting a new model.
 - **Prior work:** The immediately preceding output-gradient support diagnostic found sparse match-gradient support (about 163 of 65,025 interior vertices); this new test asks whether that sparse support spatially relates to the *manual* landmark outcome, without using manual labels in training.
+
+### Research card — does non-affine geometry actually improve anatomy? (2026-09-30)
+
+- **Question:** The retained-minus-frozen 257² vertex increment has a large non-affine component, but does that component materially lower manual landmark TRE relative to the best affine component of the same learned increment?
+- **Exact measurement:** At each saved aligned grid, fit the best affine **post-map** `A u+b` from frozen to dynamic vertex locations by least squares over all 66,049 vertices, without manual landmarks. Score original frozen, `A∘frozen+b`, and full dynamic P1 maps at the same 80 landmarks per direction, followed by the original common external affine. Require `det A>0`; then the counterfactual is a homeomorphism as a *factorized* composition of a previously certified frozen P1 map and a positive affine, without asserting that a newly rounded flattened vertex table has been certified.
+- **Assumptions:** The projection uses all 66,049 vertices, not manual landmarks, and its extra affine is globally unconstrained except positive determinant. It is a fixed post-hoc counterfactual, not a newly trained architecture. All 20 directions come from one previously viewed specimen.
+- **Falsifier:** Full dynamic does not consistently beat its affine-projected-increment counterfactual; in that case the observed landmark gain cannot be attributed mainly to useful non-affine refinement.
+- **Smallest decisive test:** One direction frame/positive-affine check followed by all 20 direction means and improvement counts. No model choice follows from this reused truth.
+- **Prior work:** The preceding affine-orthogonal decomposition measured 74.21% of increment squared vertex-displacement energy as non-affine but did not test that component's *anatomical utility*.
