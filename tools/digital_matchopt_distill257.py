@@ -20,6 +20,7 @@ from tools.digital_acrobat_teacher_probe import load_case_inputs
 from tools.digital_mind_amortized_network import image_features, split_ids, structural_loss
 from tools.digital_mind_dense257_head import DenseSafeHead, dense_features, load_global_base
 from tools.digital_mind_match_conditioned257 import gaussian_match_features
+from tools.digital_image_force_feature257 import image_force_features
 from tools.digital_mind_recurrent257 import RecurrentDenseSafeHead
 from tools.digital_mind_safe_optimize import strain_penalty
 from tools.digital_mind_sparse_match_finetune import p1_at_points, robust_match_loss
@@ -36,6 +37,7 @@ def train(root: Path, selection: Path, matches: Path, teachers: Path,
           trunk_from_onehead: Path | None = None,
           context: str = "local",
           match_channels: int = 6,
+          evidence_mode: str = "gaussian",
           teacher_suffix: str = "matchopt4_safe257") -> dict:
     if output.exists() or output.with_suffix(".json").exists():
         raise FileExistsError(output)
@@ -43,6 +45,15 @@ def train(root: Path, selection: Path, matches: Path, teachers: Path,
         raise ValueError("positive steps and batch required")
     if kernel_maps is not None and frozen_maps is not None:
         raise ValueError("choose one initial map type")
+    if evidence_mode not in ("gaussian", "gaussian_force", "gaussian_zeros",
+                             "force_only", "force_recurrent") or (
+        evidence_mode in ("gaussian_force", "gaussian_zeros")
+        and match_channels != 12
+    ) or (evidence_mode in ("force_only", "force_recurrent")
+          and match_channels != 6
+    ) or (evidence_mode == "force_recurrent" and context == "multilevel_unet"
+    ):
+        raise ValueError("evidence mode and channel count disagree")
     ids = json.loads(selection.read_text(encoding="utf-8"))["combined_train_ids"]
     train_ids, val_ids = split_ids(ids)
     device = torch.device(device_name)
@@ -118,7 +129,15 @@ def train(root: Path, selection: Path, matches: Path, teachers: Path,
                 feature, item["fixed"], item["prewarped"], coarse,
                 feature_geometry=residual_feature_geometry)
             raster = (gaussian_match_features(source, target)
-                      if match_channels else None)
+                      if match_channels and evidence_mode not in (
+                          "force_only", "force_recurrent") else None)
+            if evidence_mode == "gaussian_force":
+                force = image_force_features(fdesc, mdesc, mask, coarse)
+                raster = torch.cat((raster, force), dim=1)
+            elif evidence_mode == "gaussian_zeros":
+                raster = torch.cat((raster, torch.zeros_like(raster)), dim=1)
+            elif evidence_mode == "force_only":
+                raster = image_force_features(fdesc, mdesc, mask, coarse)
             cache[case] = tuple(x.detach() if x is not None else None for x in (
                 coarse, fine, fdesc, mdesc, mask, raster, teacher,
                 source, target))
@@ -135,13 +154,19 @@ def train(root: Path, selection: Path, matches: Path, teachers: Path,
         torch.cuda.reset_peak_memory_stats(device)
     precompute_seconds = time.perf_counter() - started
 
+    def run_model(coarse, fine, fdesc, mdesc, mask, raster):
+        if evidence_mode == "force_recurrent":
+            return model(coarse, fine, evidence_fn=lambda current:
+                         image_force_features(fdesc, mdesc, mask, current))
+        return model(coarse, fine, match_feature=raster)
+
     def evaluate() -> list[dict]:
         model.eval()
         rows = []
         with torch.no_grad():
             for case in available_val:
                 coarse, fine, fdesc, mdesc, mask, raster, teacher, source, target = cache[case]
-                mapped = model(coarse, fine, match_feature=raster)
+                mapped = run_model(coarse, fine, fdesc, mdesc, mask, raster)
                 rows.append({
                     "case": case, "match_count": len(source),
                     "teacher_map_rmse_from_model_unit": float(
@@ -168,7 +193,7 @@ def train(root: Path, selection: Path, matches: Path, teachers: Path,
         optimizer.zero_grad(set_to_none=True)
         for case in chosen:
             coarse, fine, fdesc, mdesc, mask, raster, teacher, source, target = cache[int(case)]
-            mapped = model(coarse, fine, match_feature=raster)
+            mapped = run_model(coarse, fine, fdesc, mdesc, mask, raster)
             map_losses.append((mapped - teacher).square().sum(-1).mean())
             image_losses.append(structural_loss(fdesc, mdesc, mask, mapped))
             match_losses.append(robust_match_loss(p1_at_points(mapped, source), target))
@@ -199,6 +224,7 @@ def train(root: Path, selection: Path, matches: Path, teachers: Path,
     torch.save({
         "model_state_dict": model.state_dict(), "passes": 4,
         "match_channels": match_channels,
+        "evidence_mode": evidence_mode,
         "context": context,
         "residual_feature_geometry": residual_feature_geometry,
         "train_ids": available_train, "validation_ids": available_val,
@@ -222,6 +248,7 @@ def train(root: Path, selection: Path, matches: Path, teachers: Path,
         "context": context,
         "residual_feature_geometry": residual_feature_geometry,
         "match_channels": match_channels,
+        "evidence_mode": evidence_mode,
         "teacher_suffix": teacher_suffix,
         "validation_count": len(available_val), "steps": steps,
         "batch_size": batch_size, "map_weight": map_weight,
@@ -261,7 +288,11 @@ def main() -> None:
     parser.add_argument("--trunk-from-onehead", type=Path)
     parser.add_argument("--context", choices=("local", "dilated", "unet",
                                               "multilevel_unet"), default="local")
-    parser.add_argument("--match-channels", type=int, choices=(0, 6), default=6)
+    parser.add_argument("--match-channels", type=int, choices=(0, 6, 12), default=6)
+    parser.add_argument("--evidence-mode",
+                        choices=("gaussian", "gaussian_force", "gaussian_zeros",
+                                 "force_only", "force_recurrent"),
+                        default="gaussian")
     parser.add_argument("--teacher-suffix", default="matchopt4_safe257")
     args = parser.parse_args()
     if min(args.map_weight, args.image_weight, args.match_weight,
@@ -280,6 +311,7 @@ def main() -> None:
         fit_one_case=args.fit_one_case,
         trunk_from_onehead=args.trunk_from_onehead,
         context=args.context, match_channels=args.match_channels,
+        evidence_mode=args.evidence_mode,
         teacher_suffix=args.teacher_suffix)
     print(json.dumps({key: result[key] for key in (
         "train_count", "validation_count", "training_seconds",

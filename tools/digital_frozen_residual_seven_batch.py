@@ -17,6 +17,7 @@ def main() -> None:
     parser.add_argument("--residual", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--tag", required=True)
+    parser.add_argument("--omit-matches", action="store_true")
     parser.add_argument("--device", default="cuda:0")
     args = parser.parse_args()
     root = args.root
@@ -38,11 +39,13 @@ def main() -> None:
     rows = []
     for name, fixed, moving, affine, matches in pairs:
         output = args.output_dir / f"{name}_{args.tag}_safe257.npz"
-        for path in (fixed, moving, affine, matches):
+        selected_matches = None if args.omit_matches else matches
+        for path in (fixed, moving, affine) + (
+            () if selected_matches is None else (selected_matches,)):
             if not path.is_file():
                 raise FileNotFoundError(path)
         report = predict(args.base, args.one_head, args.residual,
-                         fixed, moving, affine, matches, output,
+                         fixed, moving, affine, selected_matches, output,
                          device_name=args.device, repeats=2)
         rows.append({"name": name, "forward_s": report["full_forward_seconds_median"],
                      "vjp_s": report[

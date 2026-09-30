@@ -26,6 +26,7 @@ from tools.digital_mind_dense257_head import (
     DenseSafeHead, dense_features, load_global_base,
 )
 from tools.digital_mind_match_conditioned257 import gaussian_match_features
+from tools.digital_image_force_feature257 import image_force_features
 from tools.digital_mind_recurrent257 import RecurrentDenseSafeHead
 from tools.digital_q1_dhr_distill import identity_vertices
 from tools.digital_q1_real_optimize import _read_gray_thumbnail
@@ -50,10 +51,23 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
     residual_saved = torch.load(residual_checkpoint, map_location=device,
                                 weights_only=False)
     match_channels = int(residual_saved.get("match_channels", 0))
-    if residual_saved.get("frozen_maps") is None or match_channels not in (0, 6):
+    evidence_mode = residual_saved.get("evidence_mode", "gaussian")
+    if (residual_saved.get("frozen_maps") is None or
+            match_channels not in (0, 6, 12) or
+            (evidence_mode in ("gaussian_force", "gaussian_zeros")
+             and match_channels != 12) or
+            (evidence_mode in ("force_only", "force_recurrent")
+             and match_channels != 6) or
+            evidence_mode not in ("gaussian", "gaussian_force", "gaussian_zeros",
+                                  "force_only", "force_recurrent") or
+            (evidence_mode == "force_recurrent" and
+             residual_saved.get("context", "local") == "multilevel_unet")):
         raise ValueError("checkpoint is not a frozen-onehead residual student")
-    if match_channels and matches_path is None:
+    if (match_channels and evidence_mode not in ("force_only", "force_recurrent")
+            and matches_path is None):
         raise ValueError("match-conditioned checkpoint requires matches")
+    if evidence_mode in ("force_only", "force_recurrent") and matches_path is not None:
+        raise ValueError("force-only inference must not receive matches")
     residual = RecurrentDenseSafeHead(
         passes=4, match_channels=match_channels,
         context=residual_saved.get("context", "local")).to(device).eval()
@@ -90,6 +104,9 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
     fixed, _ = _read_gray_thumbnail(fixed_path, 512)
     moving, _ = _read_gray_thumbnail(moving_path, 512)
     fixed, moving = fixed.to(device), moving.to(device)
+    if evidence_mode in ("force_only", "force_recurrent"):
+        fixed.requires_grad_(True)
+        moving.requires_grad_(True)
     m = torch.tensor(matrix, device=device)
     shift = torch.tensor(offset, device=device)
     reference = identity_vertices(257, device=device)
@@ -100,7 +117,7 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
             F.interpolate(fixed, size=(128, 128), mode="area"),
             F.interpolate(aligned, size=(128, 128), mode="area"))
         raster = (gaussian_match_features(source, target)
-                  if match_channels else None)
+                  if match_channels and source is not None else None)
         return aligned, feature, raster
 
     def forward(aligned, feature, raster):
@@ -113,7 +130,19 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
             feature, fixed, aligned, frozen,
             feature_geometry=residual_saved.get(
                 "residual_feature_geometry", "legacy_align_corners"))
-        mapped = residual(frozen, fine_new, match_feature=raster)
+        evidence = raster
+        if evidence_mode == "gaussian_force":
+            force = image_force_features(fdesc, mdesc, mask, frozen)
+            evidence = torch.cat((raster, force), dim=1)
+        elif evidence_mode == "gaussian_zeros":
+            evidence = torch.cat((raster, torch.zeros_like(raster)), dim=1)
+        elif evidence_mode == "force_only":
+            evidence = image_force_features(fdesc, mdesc, mask, frozen)
+        if evidence_mode == "force_recurrent":
+            mapped = residual(frozen, fine_new, evidence_fn=lambda current:
+                              image_force_features(fdesc, mdesc, mask, current))
+        else:
+            mapped = residual(frozen, fine_new, match_feature=evidence)
         return mapped, frozen, fdesc, mdesc, mask
 
     def sync():
@@ -159,6 +188,9 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
         if source is not None:
             source.grad = None
             target.grad = None
+        if evidence_mode in ("force_only", "force_recurrent"):
+            fixed.grad = None
+            moving.grad = None
         sync()
         start = time.perf_counter()
         aligned, feature, raster = prepare()
@@ -173,10 +205,15 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
             finite &= (source.grad is not None and target.grad is not None and
                        bool(torch.isfinite(source.grad).all()) and
                        bool(torch.isfinite(target.grad).all()))
+        if evidence_mode in ("force_only", "force_recurrent"):
+            finite &= (fixed.grad is not None and moving.grad is not None and
+                       bool(torch.isfinite(fixed.grad).all()) and
+                       bool(torch.isfinite(moving.grad).all()))
     vjp_peak = (None if device.type != "cuda" else
                 int(torch.cuda.max_memory_allocated(device)))
     report = {
         "method": "full frozen image-base plus 257 onehead plus four safe residual passes",
+        "evidence_mode": evidence_mode,
         "base_checkpoint": str(base_checkpoint),
         "one_head_checkpoint": str(one_head_checkpoint),
         "residual_checkpoint": str(residual_checkpoint),
@@ -194,6 +231,8 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
         "forward_peak_torch_cuda_allocated_bytes": forward_peak,
         "vjp_peak_torch_cuda_allocated_bytes": vjp_peak,
         "finite_full_vjp": finite,
+        "image_pixels_in_vjp_check": evidence_mode in (
+            "force_only", "force_recurrent"),
         "saved_binary_certificate": binary,
         "anatomical_landmarks_or_DHR_full_field_loaded": False,
         "external_matcher_affine_excluded_from_time_and_gradient": True,

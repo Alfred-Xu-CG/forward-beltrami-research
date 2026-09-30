@@ -26,6 +26,7 @@ def main() -> None:
     parser.add_argument("--teacher-dir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--ridges", default=".001,.01,.1,1,10")
+    parser.add_argument("--loo-scales-px", default="none")
     parser.add_argument("--device", default="cuda:0")
     args = parser.parse_args()
     if args.output.exists():
@@ -33,6 +34,9 @@ def main() -> None:
     ids = json.loads(args.selection.read_text())["combined_train_ids"]
     _, val_ids = split_ids(ids)
     ridges = [float(x) for x in args.ridges.split(",")]
+    loo_scales = [None if x == "none" else float(x)
+                  for x in args.loo_scales_px.split(",")]
+    settings = [(ridge, scale) for ridge in ridges for scale in loo_scales]
     device = torch.device(args.device)
     reference = identity_vertices(257, device=device)
     rows = []
@@ -60,12 +64,14 @@ def main() -> None:
             base_map_rmse = float((baseline - teacher).square().sum(-1).mean().sqrt())
             base_held = float(robust_match_loss(
                 p1_at_points(baseline, held_s), held_t))
-            for ridge in ridges:
+            for ridge, loo_scale in settings:
                 if device.type == "cuda":
                     torch.cuda.synchronize(device)
                 started = time.perf_counter()
-                full, _ = dual_fit_map(baseline, source, target, ridge=ridge)
-                held, _ = dual_fit_map(baseline, train_s, train_t, ridge=ridge)
+                full, _ = dual_fit_map(baseline, source, target, ridge=ridge,
+                                       loo_scale_px=loo_scale)
+                held, _ = dual_fit_map(baseline, train_s, train_t, ridge=ridge,
+                                       loo_scale_px=loo_scale)
                 if device.type == "cuda":
                     torch.cuda.synchronize(device)
                 seconds = time.perf_counter() - started
@@ -74,7 +80,8 @@ def main() -> None:
                 ):
                     raise RuntimeError(f"invalid dual map for {case} ridge {ridge}")
                 rows.append({
-                    "case": case, "ridge": ridge, "match_count": len(source),
+                    "case": case, "ridge": ridge,
+                    "loo_scale_px": loo_scale, "match_count": len(source),
                     "train_matches": len(train_s), "held_matches": len(held_s),
                     "baseline_teacher_rmse_unit": base_map_rmse,
                     "dual_teacher_rmse_unit": float(
@@ -87,9 +94,11 @@ def main() -> None:
     aggregates = []
     if len({row["case"] for row in rows}) != 18:
         raise ValueError("expected exactly 18 available validation cases")
-    for ridge in ridges:
-        group = [row for row in rows if row["ridge"] == ridge]
-        aggregates.append({"ridge": ridge, "cases": len(group),
+    for ridge, loo_scale in settings:
+        group = [row for row in rows if (
+            row["ridge"] == ridge and row["loo_scale_px"] == loo_scale)]
+        aggregates.append({"ridge": ridge, "loo_scale_px": loo_scale,
+            "cases": len(group),
             "baseline_teacher_rmse_unit": float(np.mean([
                 row["baseline_teacher_rmse_unit"] for row in group])),
             "dual_teacher_rmse_unit": float(np.mean([
@@ -101,7 +110,8 @@ def main() -> None:
             "mean_two_forward_seconds": float(np.mean([
                 row["two_forward_seconds"] for row in group]))})
     result = {"mode": "18 case-disjoint ACROBAT image/match-only validation",
-              "ridges": ridges, "aggregates": aggregates, "rows": rows,
+              "ridges": ridges, "loo_scales_px": loo_scales,
+              "aggregates": aggregates, "rows": rows,
               "anatomical_labels_used": False}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")

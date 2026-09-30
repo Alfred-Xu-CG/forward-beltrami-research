@@ -11,6 +11,7 @@ import argparse
 import json
 import time
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 import torch
@@ -123,17 +124,22 @@ class RecurrentDenseSafeHead(nn.Module):
     def forward(self, coarse: torch.Tensor,
                 fine_feature: torch.Tensor, *,
                 match_feature: torch.Tensor | None = None,
+                evidence_fn: Callable[[torch.Tensor], torch.Tensor] | None = None,
                 return_passes: bool = False) -> torch.Tensor | list[torch.Tensor]:
         if coarse.ndim != 4 or coarse.shape[1:] != (257, 257, 2) or (
             fine_feature.shape != (coarse.shape[0], 88, 256, 256)
         ):
             raise ValueError("matching coarse map and Bx88x256x256 features required")
-        if self.match_channels:
+        if evidence_fn is not None and (match_feature is not None or
+                                        self.context == "multilevel_unet" or
+                                        not self.match_channels):
+            raise ValueError("dynamic evidence requires non-multilevel evidence head")
+        if self.match_channels and evidence_fn is None:
             if match_feature is None or match_feature.shape != (
                 coarse.shape[0], self.match_channels, 256, 256
             ):
                 raise ValueError("matching rasterized match features required")
-        elif match_feature is not None:
+        elif not self.match_channels and match_feature is not None:
             raise ValueError("this model has no match input")
         if self.context == "multilevel_unet":
             feedback = torch.zeros_like(p1_cell_centers(coarse)).permute(0, 3, 1, 2)
@@ -173,9 +179,14 @@ class RecurrentDenseSafeHead(nn.Module):
         base_centers = p1_cell_centers(coarse).permute(0, 3, 1, 2)
         outputs = []
         for head in self.heads:
+            evidence = evidence_fn(current) if evidence_fn is not None else match_feature
+            if evidence_fn is not None and evidence.shape != (
+                coarse.shape[0], self.match_channels, 256, 256
+            ):
+                raise ValueError("dynamic evidence has wrong shape")
             feedback = p1_cell_centers(current).permute(0, 3, 1, 2) - base_centers
-            channels = ((fine_feature, feedback) if match_feature is None else
-                        (fine_feature, match_feature, feedback))
+            channels = ((fine_feature, feedback) if evidence is None else
+                        (fine_feature, evidence, feedback))
             hidden = self.trunk(torch.cat(channels, dim=1))
             proposed = F.interpolate(head(hidden), size=(257, 257),
                                      mode="bilinear", align_corners=False)

@@ -69,21 +69,62 @@ def multilevel_design(query: torch.Tensor,
     return design
 
 
+def loo_confidence(gram: torch.Tensor, desired: torch.Tensor, *,
+                   ridge: float, scale_px: float) -> tuple[torch.Tensor, torch.Tensor]:
+    """Ridge leave-one-out error and smooth reliability weight per match.
+
+    For S=Phi Phi^T+ridge I and alpha=S^-1 d, the error when row i is
+    omitted is alpha_i/(S^-1)_ii. This measures spatial redundancy; it is
+    not a calibrated probability that a machine match is anatomically true.
+    """
+    if (gram.ndim != 2 or gram.shape[0] != gram.shape[1]
+            or desired.shape != (len(gram), 2)
+            or not np.isfinite(ridge) or ridge <= 0
+            or not np.isfinite(scale_px) or scale_px <= 0):
+        raise ValueError("valid Gram, displacement, ridge and scale required")
+    identity = torch.eye(len(gram), device=gram.device, dtype=gram.dtype)
+    inverse = torch.linalg.solve(gram + ridge * identity, identity)
+    alpha = inverse @ desired
+    loo_error = alpha / torch.diagonal(inverse)[:, None]
+    error_px = 512 * torch.linalg.vector_norm(loo_error, dim=-1)
+    confidence = 1 / (1 + (error_px / scale_px).square())
+    return confidence, error_px
+
+
 def dual_fit_map(baseline: torch.Tensor, source: torch.Tensor,
                  target: torch.Tensor, *, ridge: float,
                  levels: tuple[int, ...] = (17, 33, 65),
-                 passes: int = 4) -> tuple[torch.Tensor, torch.Tensor]:
+                 passes: int = 4,
+                 loo_scale_px: float | None = None) -> tuple[torch.Tensor, torch.Tensor]:
     if ridge <= 0 or not np.isfinite(ridge):
         raise ValueError("positive finite ridge required")
-    if baseline.shape != (1, 257, 257, 2) or source.shape != target.shape:
+    if (baseline.shape != (1, 257, 257, 2) or source.ndim != 2
+            or source.shape[1] != 2 or len(source) < 1
+            or source.shape != target.shape):
         raise ValueError("baseline and matched Nx2 points required")
+    if (source.device != target.device or source.device != baseline.device
+            or source.dtype != target.dtype or source.dtype != baseline.dtype):
+        raise ValueError("baseline and matches must share device and dtype")
+    if not bool(torch.isfinite(target).all()):
+        raise ValueError("finite target coordinates required")
     design = multilevel_design(source, levels)
     desired = target - p1_at_points(baseline, source)
     gram = design @ design.T
-    system = gram + ridge * torch.eye(len(source), device=source.device,
-                                      dtype=source.dtype)
-    dual = torch.linalg.solve(system, desired)
-    coefficients = design.T @ dual
+    if loo_scale_px is not None:
+        confidence, _ = loo_confidence(
+            gram, desired, ridge=ridge, scale_px=loo_scale_px)
+        root = confidence.sqrt()
+        weighted_design = design * root[:, None]
+        weighted_desired = desired * root[:, None]
+        system = weighted_design @ weighted_design.T + ridge * torch.eye(
+            len(source), device=source.device, dtype=source.dtype)
+        dual = torch.linalg.solve(system, weighted_desired)
+        coefficients = weighted_design.T @ dual
+    else:
+        system = gram + ridge * torch.eye(len(source), device=source.device,
+                                          dtype=source.dtype)
+        dual = torch.linalg.solve(system, desired)
+        coefficients = design.T @ dual
     residual = torch.zeros_like(baseline).permute(0, 3, 1, 2)
     offset = 0
     for side in levels:
@@ -100,6 +141,7 @@ def dual_fit_map(baseline: torch.Tensor, source: torch.Tensor,
 
 def run(baseline_path: Path, matches_path: Path, output: Path, *,
         ridge: float = .1, passes: int = 4,
+        loo_scale_px: float | None = None,
         device_name: str = "cuda:0") -> dict:
     if output.exists() or output.with_suffix(".json").exists():
         raise FileExistsError(output)
@@ -131,7 +173,8 @@ def run(baseline_path: Path, matches_path: Path, output: Path, *,
         torch.cuda.synchronize(device)
     started = time.perf_counter()
     mapped, controls = dual_fit_map(baseline, source, target,
-                                    ridge=ridge, passes=passes)
+                                    ridge=ridge, passes=passes,
+                                    loo_scale_px=loo_scale_px)
     if device.type == "cuda":
         torch.cuda.synchronize(device)
     forward_seconds = time.perf_counter() - started
@@ -161,6 +204,7 @@ def run(baseline_path: Path, matches_path: Path, output: Path, *,
         "method": "dual ridge multilevel hat-basis fit plus safe four-pass P1 steering",
         "baseline": str(baseline_path), "matches": str(matches_path),
         "match_count": len(source), "ridge": ridge, "passes": passes,
+        "loo_scale_px": loo_scale_px,
         "control_scalar_count": 2 * len(controls),
         "forward_seconds": forward_seconds,
         "backward_seconds": backward_seconds,
@@ -183,10 +227,12 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--ridge", type=float, default=.1)
     parser.add_argument("--passes", type=int, default=4)
+    parser.add_argument("--loo-scale-px", type=float)
     parser.add_argument("--device", default="cuda:0")
     args = parser.parse_args()
     result = run(args.baseline, args.matches, args.output,
                  ridge=args.ridge, passes=args.passes,
+                 loo_scale_px=args.loo_scale_px,
                  device_name=args.device)
     print(json.dumps({key: result[key] for key in (
         "match_count", "ridge", "forward_seconds", "backward_seconds",
