@@ -21,10 +21,20 @@ from tools.digital_mind_amortized_network import split_ids
 
 def run(root: Path, selection: Path, checkpoint: Path, base: Path, one_head: Path,
         output_dir: Path, report_path: Path, *, device: str, repeats: int,
-        cohort: str = "validation", logit_gain: float = 1.) -> dict:
+        cohort: str = "validation", logit_gain: float = 1.,
+        matches_dir: Path | None = None,
+        tag: str = "force_recurrent_strain02",
+        match_feedback_gain: float = 0.) -> dict:
     if report_path.exists():
         raise FileExistsError(report_path)
     saved = json.loads(checkpoint.with_suffix(".json").read_text(encoding="utf-8"))
+    if not tag or any(character in tag for character in "/\\"):
+        raise ValueError("tag must be one filename component")
+    requires_matches = (int(saved.get("match_channels", 0)) > 0 and
+                        saved.get("evidence_mode") not in (
+                            "force_only", "force_recurrent"))
+    if requires_matches != (matches_dir is not None):
+        raise ValueError("match directory presence disagrees with checkpoint")
     selection_data = json.loads(selection.read_text(encoding="utf-8"))
     selected = selection_data["combined_train_ids"]
     train_ids, val_ids = split_ids(selected)
@@ -47,10 +57,13 @@ def run(root: Path, selection: Path, checkpoint: Path, base: Path, one_head: Pat
     for case in ids:
         fixed, moving = _case_images(root, case)
         affine = root / f"{case}_directSG_affine.npz"
-        output = output_dir / f"{case}_force_recurrent_strain02_safe257.npz"
+        output = output_dir / f"{case}_{tag}_safe257.npz"
+        matches = (None if matches_dir is None else
+                   matches_dir / f"{case}_alignedSG_matches.npz")
         result = predict(base, one_head, checkpoint, fixed, moving, affine,
-                         None, output, device_name=device, repeats=repeats,
-                         logit_gain=logit_gain)
+                         matches, output, device_name=device, repeats=repeats,
+                         logit_gain=logit_gain,
+                         match_feedback_gain=match_feedback_gain)
         cert = result["saved_binary_certificate"]
         with np.load(output) as archive:
             vertices = torch.from_numpy(archive["vertices"].copy())
@@ -68,19 +81,24 @@ def run(root: Path, selection: Path, checkpoint: Path, base: Path, one_head: Pat
             "forward_peak_bytes": result["forward_peak_torch_cuda_allocated_bytes"],
             "vjp_peak_bytes": result["vjp_peak_torch_cuda_allocated_bytes"],
             "finite_vjp": result["finite_full_vjp"],
+            "match_affine_frame_machine_checked": result[
+                "match_affine_frame_machine_checked"],
             "q1_certificate_valid": cert["valid"],
             "q1_min_normalized_corner": float(corner.amin()),
             "q1_corners_below_point1": int((corner < 0.1).sum()),
         })
     report = {
-        "method": "frozen dynamic-force strain-0.2 student, case-disjoint ACROBAT image-only inference",
+        "method": "frozen recurrent student, case-disjoint ACROBAT image-only inference",
         "cohort": cohort,
+        "checkpoint": str(checkpoint), "tag": tag,
         "logit_gain": logit_gain,
+        "match_feedback_gain": match_feedback_gain,
         "cohort_id_source": (str(checkpoint.with_suffix(".json")) if cohort ==
                              "validation" else str(selection)),
         "selection": str(selection),
         "selection_validation_count": len(val_ids),
-        "no_selected_matches_supplied_to_student": True,
+        "no_selected_matches_supplied_to_student": matches_dir is None,
+        "matches_dir": None if matches_dir is None else str(matches_dir),
         "affine_is_external_image_only_direct_superglue": True,
         "landmarks_or_teacher_maps_read_at_inference": False,
         "case_count": len(rows),
@@ -104,11 +122,16 @@ def main() -> None:
     parser.add_argument("--cohort", choices=("validation", "confirmation"),
                         default="validation")
     parser.add_argument("--logit-gain", type=float, default=1.)
+    parser.add_argument("--matches-dir", type=Path)
+    parser.add_argument("--tag", default="force_recurrent_strain02")
+    parser.add_argument("--match-feedback-gain", type=float, default=0.)
     args = parser.parse_args()
     report = run(args.root, args.selection, args.checkpoint, args.base, args.one_head,
                  args.output_dir, args.report, device=args.device,
                  repeats=args.repeats, cohort=args.cohort,
-                 logit_gain=args.logit_gain)
+                 logit_gain=args.logit_gain, matches_dir=args.matches_dir,
+                 tag=args.tag,
+                 match_feedback_gain=args.match_feedback_gain)
     print(json.dumps({key: report[key] for key in (
         "case_count", "student_better_image_count", "all_saved_q1_valid",
         "all_finite_vjp",

@@ -76,7 +76,8 @@ class GlobalMatchTrunk(nn.Module):
 class RecurrentDenseSafeHead(nn.Module):
     def __init__(self, *, width: int = 32, passes: int = 4,
                  match_channels: int = 0,
-                 context: str = "local") -> None:
+                 context: str = "local",
+                 direct_vertex_residual: bool = False) -> None:
         super().__init__()
         if passes < 1:
             raise ValueError("at least one pass required")
@@ -85,6 +86,9 @@ class RecurrentDenseSafeHead(nn.Module):
         if context not in ("local", "dilated", "unet", "multilevel_unet"):
             raise ValueError("unknown residual context")
         self.context = context
+        self.direct_vertex_residual = direct_vertex_residual
+        if direct_vertex_residual and context == "multilevel_unet":
+            raise ValueError("direct vertex residual requires a per-pass head")
         if context in ("unet", "multilevel_unet"):
             self.trunk = GlobalMatchTrunk(90 + match_channels, width)
         else:
@@ -104,6 +108,13 @@ class RecurrentDenseSafeHead(nn.Module):
         for head in self.heads:
             nn.init.zeros_(head.weight)
             nn.init.zeros_(head.bias)
+        self.vertex_heads = (nn.ModuleList(
+            nn.ConvTranspose2d(width, 2, kernel_size=2, stride=1)
+            for _ in range(head_count)) if direct_vertex_residual else None)
+        if self.vertex_heads is not None:
+            for head in self.vertex_heads:
+                nn.init.zeros_(head.weight)
+                nn.init.zeros_(head.bias)
         self.update = AdaptiveSoftRadialQ1Relaxation(
             257, raw_span=8., safety_fraction=.75, minimum_jacobian=.05)
 
@@ -182,7 +193,7 @@ class RecurrentDenseSafeHead(nn.Module):
         current = coarse
         base_centers = p1_cell_centers(coarse).permute(0, 3, 1, 2)
         outputs = []
-        for head in self.heads:
+        for pass_index, head in enumerate(self.heads):
             evidence = evidence_fn(current) if evidence_fn is not None else match_feature
             if evidence_fn is not None and evidence.shape != (
                 coarse.shape[0], self.match_channels, 256, 256
@@ -194,6 +205,8 @@ class RecurrentDenseSafeHead(nn.Module):
             hidden = self.trunk(torch.cat(channels, dim=1))
             proposed = F.interpolate(head(hidden), size=(257, 257),
                                      mode="bilinear", align_corners=False)
+            if self.vertex_heads is not None:
+                proposed = proposed + self.vertex_heads[pass_index](hidden)
             logits = proposed[:, :, 1:-1, 1:-1].permute(0, 2, 3, 1)
             current = self.update(current, logits if logit_gain == 1. else
                                   logits * logit_gain)

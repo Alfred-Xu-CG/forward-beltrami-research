@@ -27,6 +27,7 @@ from tools.digital_mind_dense257_head import (
 )
 from tools.digital_mind_match_conditioned257 import gaussian_match_features
 from tools.digital_image_force_feature257 import image_force_features
+from tools.digital_match_feedback257 import AnalyticMatchFeedback257
 from tools.digital_mind_recurrent257 import RecurrentDenseSafeHead
 from tools.digital_q1_dhr_distill import identity_vertices
 from tools.digital_q1_real_optimize import _read_gray_thumbnail
@@ -36,19 +37,33 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
             residual_checkpoint: Path, fixed_path: Path, moving_path: Path,
             affine_path: Path, matches_path: Path | None, output: Path, *,
             device_name: str = "cuda:0", repeats: int = 3,
-            logit_gain: float = 1.) -> dict:
+            logit_gain: float = 1.,
+            match_feedback_gain: float = 0.,
+            map_output_vjp_probe: bool = False,
+            probe_float64: bool = False) -> dict:
     if output.exists() or output.with_suffix(".json").exists():
         raise FileExistsError(output)
     if repeats < 1:
         raise ValueError("positive repeats required")
+    if not np.isfinite(match_feedback_gain) or match_feedback_gain < 0:
+        raise ValueError("finite nonnegative match-feedback gain required")
+    if probe_float64 and not map_output_vjp_probe:
+        raise ValueError("float64 probe requires --map-output-vjp-probe")
+    if probe_float64 and match_feedback_gain:
+        raise ValueError("float64 probe currently excludes analytic match feedback")
     device = torch.device(device_name)
+    scalar_dtype = torch.float64 if probe_float64 else torch.float32
     base = load_global_base(base_checkpoint, device).eval()
+    if probe_float64:
+        base = base.double()
     for parameter in base.parameters():
         parameter.requires_grad_(True)
     one_saved = torch.load(one_head_checkpoint, map_location=device,
                            weights_only=False)
     one = DenseSafeHead().to(device).eval()
     one.load_state_dict(one_saved["head_state_dict"])
+    if probe_float64:
+        one = one.double()
     residual_saved = torch.load(residual_checkpoint, map_location=device,
                                 weights_only=False)
     match_channels = int(residual_saved.get("match_channels", 0))
@@ -73,8 +88,14 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
         raise ValueError("force-only inference must not receive matches")
     residual = RecurrentDenseSafeHead(
         passes=4, match_channels=match_channels,
-        context=residual_saved.get("context", "local")).to(device).eval()
+        context=residual_saved.get("context", "local"),
+        direct_vertex_residual=bool(residual_saved.get(
+            "direct_vertex_residual", False))).to(device).eval()
     residual.load_state_dict(residual_saved["model_state_dict"])
+    if probe_float64:
+        residual = residual.double()
+    feedback = (None if match_feedback_gain == 0 else
+                AnalyticMatchFeedback257(gain=match_feedback_gain).to(device))
     with np.load(affine_path) as data:
         matrix = np.asarray(data["post_affine_matrix"], dtype=np.float32)
         offset = np.asarray(data["post_affine_offset"], dtype=np.float32)
@@ -102,18 +123,23 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
             np.array_equal(match_matrix, matrix) and np.array_equal(match_offset, offset)
         ):
             raise ValueError("match archive affine frame differs")
-        source = torch.from_numpy(source_data.copy()).to(device).requires_grad_(True)
-        target = torch.from_numpy(target_data.copy()).to(device).requires_grad_(True)
+        source = torch.from_numpy(source_data.copy()).to(
+            device=device, dtype=scalar_dtype).requires_grad_(True)
+        target = torch.from_numpy(target_data.copy()).to(
+            device=device, dtype=scalar_dtype).requires_grad_(True)
+    if feedback is not None and source is None:
+        raise ValueError("analytic match feedback requires selected matches")
     fixed, _ = _read_gray_thumbnail(fixed_path, 512)
     moving, _ = _read_gray_thumbnail(moving_path, 512)
-    fixed, moving = fixed.to(device), moving.to(device)
+    fixed = fixed.to(device=device, dtype=scalar_dtype)
+    moving = moving.to(device=device, dtype=scalar_dtype)
     if evidence_mode in ("force_only", "force_recurrent",
                          "gaussian_force_recurrent"):
         fixed.requires_grad_(True)
         moving.requires_grad_(True)
-    m = torch.tensor(matrix, device=device)
-    shift = torch.tensor(offset, device=device)
-    reference = identity_vertices(257, device=device)
+    m = torch.tensor(matrix, device=device, dtype=scalar_dtype)
+    shift = torch.tensor(offset, device=device, dtype=scalar_dtype)
+    reference = identity_vertices(257, device=device).to(dtype=scalar_dtype)
 
     def prepare():
         aligned = warp_moving_to_fixed(moving, m, shift, height=512, width=512)
@@ -154,6 +180,8 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
         else:
             mapped = residual(frozen, fine_new, match_feature=evidence,
                               logit_gain=logit_gain)
+        if feedback is not None:
+            mapped = feedback(mapped, source, target)
         return mapped, frozen, fdesc, mdesc, mask
 
     def sync():
@@ -224,10 +252,106 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
                        bool(torch.isfinite(moving.grad).all()))
     vjp_peak = (None if device.type != "cuda" else
                 int(torch.cuda.max_memory_allocated(device)))
+    probe_report = None
+    if map_output_vjp_probe:
+        if source is None or target is None or not fixed.requires_grad:
+            raise ValueError("map-output VJP probe requires matches and image gradients")
+        # A local linear map-output functional has no direct image-loss path.
+        # The target and image perturbations are chosen before examining errors.
+        center = source.detach()[0]
+        vertex_weight = torch.exp(-((reference - center).square().sum(-1)) /
+                                  (2 * .04 ** 2))
+        vertex_weight = vertex_weight / vertex_weight.sum()
+        channel_weight = torch.tensor([1., .3], device=device, dtype=scalar_dtype)
+        pixel_axis = (torch.arange(512, device=device, dtype=scalar_dtype) + .5) / 512
+        yy, xx = torch.meshgrid(pixel_axis, pixel_axis, indexing="ij")
+        pixel_radius_sq = (xx - center[0]).square() + (yy - center[1]).square()
+        pixel_window = (torch.exp(-pixel_radius_sq / (2 * .012 ** 2)) *
+                        (pixel_radius_sq < .025 ** 2))
+        random = torch.randn(fixed.shape, device=device, dtype=scalar_dtype,
+                             generator=torch.Generator(device=device).manual_seed(20260930))
+        image_direction = random * pixel_window[None, None]
+        image_direction = image_direction / image_direction.abs().amax()
+        moving_center = m @ center + shift
+        moving_window = torch.exp(-((xx - moving_center[0]).square() +
+                                    (yy - moving_center[1]).square()) / (2 * .08 ** 2))
+        moving_direction = random * moving_window[None, None]
+        moving_direction = moving_direction / moving_direction.abs().amax()
+        target_direction = torch.zeros_like(target)
+        target_direction[0, 0] = 1.
+
+        def map_functional():
+            aligned_p, feature_p, raster_p = prepare()
+            map_p, _, _, _, mask_p = forward(aligned_p, feature_p, raster_p)
+            scalar_p = ((map_p - reference) *
+                        vertex_weight[..., None] * channel_weight).sum()
+            return scalar_p, map_p, mask_p
+
+        scalar, _, baseline_mask = map_functional()
+        baseline_mask = baseline_mask.detach()
+        image_grad, moving_grad, target_grad = torch.autograd.grad(
+            scalar, (fixed, moving, target))
+        directional = {
+            "fixed_image": float((image_grad * image_direction).sum()),
+            "moving_image": float((moving_grad * moving_direction).sum()),
+            "selected_target_x": float((target_grad * target_direction).sum()),
+        }
+        finite_difference = {}
+        image_steps = ((1e-7, 1e-6, 1e-5, 5e-5, 1e-4, 5e-4, 1e-3)
+                       if probe_float64 else (1e-3, 2e-3))
+        with torch.no_grad():
+            for name, variable, direction, steps in (
+                ("fixed_image", fixed, image_direction, image_steps),
+                ("moving_image", moving, moving_direction, image_steps),
+                ("selected_target_x", target, target_direction, (1e-4, 2e-4)),
+            ):
+                entries = []
+                original = variable.detach().clone()
+                for step in steps:
+                    try:
+                        variable.copy_(original + step * direction)
+                        plus, plus_map, plus_mask = map_functional()
+                        plus_valid = bool(validate_q1_map(plus_map, reference)["valid"])
+                        plus_mask_changed = int((plus_mask != baseline_mask).sum())
+                        plus_mask_locations = torch.nonzero(
+                            plus_mask != baseline_mask)[:5].cpu().tolist()
+                        variable.copy_(original - step * direction)
+                        minus, minus_map, minus_mask = map_functional()
+                        minus_valid = bool(validate_q1_map(minus_map, reference)["valid"])
+                        minus_mask_changed = int((minus_mask != baseline_mask).sum())
+                        minus_mask_locations = torch.nonzero(
+                            minus_mask != baseline_mask)[:5].cpu().tolist()
+                    finally:
+                        variable.copy_(original)
+                    fd = float((plus - minus) / (2 * step))
+                    ad = directional[name]
+                    entries.append({
+                        "step": step, "central_difference": fd,
+                        "autodiff": ad, "relative_error": abs(fd - ad) /
+                        max(abs(fd), abs(ad), 1e-9),
+                        "both_perturbed_maps_valid_in_memory": plus_valid and minus_valid,
+                        "plus_descriptor_mask_changed_cells": plus_mask_changed,
+                        "minus_descriptor_mask_changed_cells": minus_mask_changed,
+                        "plus_mask_first_changed_indices": plus_mask_locations,
+                        "minus_mask_first_changed_indices": minus_mask_locations,
+                    })
+                finite_difference[name] = entries
+        probe_report = {
+            "functional": "Gaussian-weighted interior map displacement near first selected source",
+            "selected_source_unit": center.tolist(),
+            "directional_autodiff": directional,
+            "finite_difference": finite_difference,
+            "matcher_selection_and_affine_held_fixed": True,
+            "no_direct_image_loss_path": True,
+            "floating_point_dtype": str(scalar_dtype),
+        }
     report = {
         "method": "full frozen image-base plus 257 onehead plus four safe residual passes",
         "evidence_mode": evidence_mode,
         "logit_gain": logit_gain,
+        "match_feedback_gain": match_feedback_gain,
+        "match_feedback_sigma": None if feedback is None else feedback.sigma,
+        "match_feedback_tau": None if feedback is None else feedback.tau,
         "base_checkpoint": str(base_checkpoint),
         "one_head_checkpoint": str(one_head_checkpoint),
         "residual_checkpoint": str(residual_checkpoint),
@@ -252,6 +376,7 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
         "external_matcher_affine_excluded_from_time_and_gradient": True,
         "match_affine_frame_machine_checked": (
             None if source is None else match_matrix is not None),
+        "map_output_vjp_probe": probe_report,
     }
     output.with_suffix(".json").write_text(json.dumps(report, indent=2) + "\n",
                                            encoding="utf-8")
@@ -267,12 +392,18 @@ def main() -> None:
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--logit-gain", type=float, default=1.)
+    parser.add_argument("--match-feedback-gain", type=float, default=0.)
+    parser.add_argument("--map-output-vjp-probe", action="store_true")
+    parser.add_argument("--probe-float64", action="store_true")
     args = parser.parse_args()
     result = predict(args.base_checkpoint, args.one_head_checkpoint,
                      args.residual_checkpoint, args.fixed, args.moving,
                      args.affine, args.matches, args.output,
                      device_name=args.device, repeats=args.repeats,
-                     logit_gain=args.logit_gain)
+                     logit_gain=args.logit_gain,
+                     match_feedback_gain=args.match_feedback_gain,
+                     map_output_vjp_probe=args.map_output_vjp_probe,
+                     probe_float64=args.probe_float64)
     print(json.dumps({key: result[key] for key in (
         "frozen_image", "residual_image", "full_forward_seconds_median",
         "full_forward_and_parameter_match_vjp_seconds_median",

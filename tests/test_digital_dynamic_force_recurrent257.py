@@ -2,10 +2,41 @@
 
 import pytest
 import torch
+from torch.nn import functional as F
 
 from qcopt.neural_bijection.dense.digital_q1 import validate_q1_map
 from tools.digital_mind_recurrent257 import RecurrentDenseSafeHead
 from tools.digital_q1_dhr_distill import identity_vertices
+
+
+def test_cell_to_vertex_interpolation_formula():
+    torch.manual_seed(21)
+    cells = torch.randn((1, 1, 1, 256), dtype=torch.float64)
+    observed = F.interpolate(cells, size=(1, 257), mode="bilinear",
+                             align_corners=False)[0, 0, 0, 1:-1]
+    j = torch.arange(1, 256, dtype=torch.float64)
+    a = (j + .5) / 257.
+    expected = a * cells[0, 0, 0, :-1] + (1 - a) * cells[0, 0, 0, 1:]
+    assert torch.allclose(observed, expected, atol=1e-13, rtol=0)
+
+
+def test_zero_initialized_direct_vertex_readout_preserves_baseline_and_trains():
+    torch.manual_seed(19)
+    original = RecurrentDenseSafeHead(width=4, passes=1)
+    expanded = RecurrentDenseSafeHead(width=4, passes=1,
+                                      direct_vertex_residual=True)
+    expanded.load_state_dict(original.state_dict(), strict=False)
+    identity = identity_vertices(257, device=torch.device("cpu"))
+    feature = torch.randn((1, 88, 256, 256)) * .01
+    baseline = original(identity, feature)
+    mapped = expanded(identity, feature)
+    assert torch.equal(mapped, baseline)
+    assert validate_q1_map(mapped, identity)["valid"]
+    loss = mapped[0, 128, 128, 0]
+    loss.backward()
+    gradient = expanded.vertex_heads[0].weight.grad
+    assert gradient is not None and torch.isfinite(gradient).all()
+    assert bool(gradient.abs().sum() > 0)
 
 
 def test_dynamic_evidence_four_current_map_calls_and_vjp():
@@ -87,3 +118,38 @@ def test_twelve_channel_fixed_match_plus_current_image_cue_vjp():
     assert cue.grad is not None and bool(torch.isfinite(cue.grad).all())
     assert bool(raster.grad.abs().sum() > 0)
     assert bool(cue.grad.abs().sum() > 0)
+
+
+def test_twelve_channel_recurrent_evidence_directional_derivatives():
+    torch.manual_seed(11)
+    model = RecurrentDenseSafeHead(width=4, passes=2,
+                                   match_channels=12).double()
+    with torch.no_grad():
+        for head in model.heads:
+            head.weight.fill_(.02)
+            head.bias.copy_(torch.tensor([.03, -.02], dtype=torch.float64))
+    identity = identity_vertices(257, device=torch.device("cpu")).double()
+    feature = torch.zeros((1, 88, 256, 256), dtype=torch.float64)
+    ones = torch.ones((1, 6, 256, 256), dtype=torch.float64)
+
+    def value(match_scale, force_scale):
+        def evidence(current):
+            local = .5 + current[:, :-1, :-1, :1].permute(0, 3, 1, 2)
+            return torch.cat((match_scale * ones,
+                              force_scale * ones * local), dim=1)
+        mapped = model(identity, feature, evidence_fn=evidence)
+        return mapped[0, 128, 128, 0] + .7 * mapped[0, 129, 128, 1]
+
+    match_scale = torch.tensor(.8, dtype=torch.float64, requires_grad=True)
+    force_scale = torch.tensor(1.1, dtype=torch.float64, requires_grad=True)
+    expected = torch.autograd.grad(value(match_scale, force_scale),
+                                   (match_scale, force_scale))
+    epsilon = 1e-4
+    for index, analytic in enumerate(expected):
+        plus = [match_scale.detach(), force_scale.detach()]
+        minus = [match_scale.detach(), force_scale.detach()]
+        plus[index] = plus[index] + epsilon
+        minus[index] = minus[index] - epsilon
+        finite_difference = (value(*plus) - value(*minus)) / (2 * epsilon)
+        assert torch.isfinite(analytic)
+        assert torch.allclose(analytic, finite_difference, atol=1e-7, rtol=.03)

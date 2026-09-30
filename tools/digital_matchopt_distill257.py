@@ -26,6 +26,47 @@ from tools.digital_mind_safe_optimize import strain_penalty
 from tools.digital_mind_sparse_match_finetune import p1_at_points, robust_match_loss
 
 
+def square_symmetry_coords(points: torch.Tensor, symmetry: int) -> torch.Tensor:
+    """Coordinate involutions preserving the square's TL-to-BR diagonal."""
+    if symmetry == 0:
+        return points
+    if symmetry == 1:
+        return 1. - points
+    if symmetry == 2:
+        return points[..., [1, 0]]
+    if symmetry == 3:
+        return 1. - points[..., [1, 0]]
+    raise ValueError("symmetry must be 0, 1, 2 or 3")
+
+
+def square_symmetry_image(image: torch.Tensor, symmetry: int) -> torch.Tensor:
+    if symmetry == 0:
+        return image
+    if symmetry == 1:
+        return image.flip(-2, -1)
+    if symmetry == 2:
+        return image.transpose(-2, -1)
+    if symmetry == 3:
+        return image.transpose(-2, -1).flip(-2, -1)
+    raise ValueError("symmetry must be 0, 1, 2 or 3")
+
+
+def square_symmetry_map(vertices: torch.Tensor, symmetry: int) -> torch.Tensor:
+    if vertices.ndim != 4 or vertices.shape[-1] != 2:
+        raise ValueError("vertices must have shape BxHxWx2")
+    if symmetry == 0:
+        return vertices
+    if symmetry == 1:
+        spatial = vertices.flip(1, 2)
+    elif symmetry == 2:
+        spatial = vertices.transpose(1, 2)
+    elif symmetry == 3:
+        spatial = vertices.transpose(1, 2).flip(1, 2)
+    else:
+        raise ValueError("symmetry must be 0, 1, 2 or 3")
+    return square_symmetry_coords(spatial, symmetry)
+
+
 def train(root: Path, selection: Path, matches: Path, teachers: Path,
           base_checkpoint: Path, initial_checkpoint: Path, output: Path, *,
           steps: int, batch_size: int, device_name: str,
@@ -38,11 +79,18 @@ def train(root: Path, selection: Path, matches: Path, teachers: Path,
           context: str = "local",
           match_channels: int = 6,
           evidence_mode: str = "gaussian",
-          teacher_suffix: str = "matchopt4_safe257") -> dict:
+          teacher_suffix: str = "matchopt4_safe257",
+          photometric_variants: int = 1,
+          symmetry_variants: int = 1,
+          direct_vertex_residual: bool = False) -> dict:
     if output.exists() or output.with_suffix(".json").exists():
         raise FileExistsError(output)
     if steps < 1 or batch_size < 1:
         raise ValueError("positive steps and batch required")
+    if photometric_variants < 1:
+        raise ValueError("at least one photometric variant required")
+    if symmetry_variants not in (1, 4):
+        raise ValueError("symmetry variants must be 1 or 4")
     if kernel_maps is not None and frozen_maps is not None:
         raise ValueError("choose one initial map type")
     if evidence_mode not in ("gaussian", "gaussian_force", "gaussian_zeros",
@@ -59,12 +107,15 @@ def train(root: Path, selection: Path, matches: Path, teachers: Path,
         raise ValueError("evidence mode and channel count disagree")
     ids = json.loads(selection.read_text(encoding="utf-8"))["combined_train_ids"]
     train_ids, val_ids = split_ids(ids)
+    train_set = set(train_ids)
     device = torch.device(device_name)
     torch.manual_seed(20261005)
     rng = np.random.default_rng(20261005)
+    symmetry_rng = np.random.default_rng(20261006)
     base = load_global_base(base_checkpoint, device)
     model = RecurrentDenseSafeHead(passes=4, match_channels=match_channels,
-                                   context=context).to(device)
+                                   context=context,
+                                   direct_vertex_residual=direct_vertex_residual).to(device)
     if trunk_from_onehead is None:
         residual_feature_geometry = "legacy_align_corners"
         saved = torch.load(initial_checkpoint, map_location=device, weights_only=False)
@@ -117,35 +168,62 @@ def train(root: Path, selection: Path, matches: Path, teachers: Path,
                     raise ValueError(f"teacher/initializer affine mismatch for {case}")
             if teacher.shape != (1, 257, 257, 2):
                 raise ValueError(f"invalid teacher grid for {case}")
-            item = load_case_inputs(root, case, device, affine_source="image_only")
-            feature, _, _, _ = image_features(
-                F.interpolate(item["fixed"], size=(128, 128), mode="area"),
-                F.interpolate(item["prewarped"], size=(128, 128), mode="area"))
-            coarse = base(feature, final_side=257)
+            initial_map = None
             if initial_path is not None:
                 with np.load(initial_path) as data:
                     if not (np.array_equal(data["post_affine_matrix"], teacher_m)
                             and np.array_equal(data["post_affine_offset"], teacher_b)):
                         raise ValueError(f"initial-map/teacher affine mismatch for {case}")
-                    coarse = torch.from_numpy(data["vertices"].copy()).to(device)
-            fine, fdesc, mdesc, mask = dense_features(
-                feature, item["fixed"], item["prewarped"], coarse,
-                feature_geometry=residual_feature_geometry)
-            raster = (gaussian_match_features(source, target)
-                      if match_channels and evidence_mode not in (
-                          "force_only", "force_recurrent") else None)
-            if evidence_mode == "gaussian_force":
-                force = image_force_features(fdesc, mdesc, mask, coarse)
-                raster = torch.cat((raster, force), dim=1)
-            elif evidence_mode == "gaussian_zeros":
-                raster = torch.cat((raster, torch.zeros_like(raster)), dim=1)
-            elif evidence_mode == "force_only":
-                raster = image_force_features(fdesc, mdesc, mask, coarse)
-            cache[case] = tuple(x.detach() if x is not None else None for x in (
-                coarse, fine, fdesc, mdesc, mask, raster, teacher,
-                source, target))
-    available_train = [case for case in train_ids if case in cache]
-    available_val = [case for case in val_ids if case in cache]
+                    initial_map = torch.from_numpy(data["vertices"].copy()).to(device)
+            item = load_case_inputs(root, case, device, affine_source="image_only")
+            variant_count = (photometric_variants * symmetry_variants
+                             if case in train_set else 1)
+            for variant in range(variant_count):
+                fixed_image, prewarped = item["fixed"], item["prewarped"]
+                symmetry = variant // photometric_variants
+                photo_variant = variant % photometric_variants
+                if symmetry:
+                    fixed_image = square_symmetry_image(fixed_image, symmetry)
+                    prewarped = square_symmetry_image(prewarped, symmetry)
+                source_variant = square_symmetry_coords(source, symmetry)
+                target_variant = square_symmetry_coords(target, symmetry)
+                teacher_variant = square_symmetry_map(teacher, symmetry)
+                initial_variant = (None if initial_map is None else
+                                   square_symmetry_map(initial_map, symmetry))
+                if photo_variant:
+                    photo_rng = np.random.default_rng(
+                        20261030 + 1009 * int(case) + 7919 * photo_variant)
+                    def alter(image):
+                        gamma = float(photo_rng.uniform(.8, 1.2))
+                        contrast = float(photo_rng.uniform(.9, 1.1))
+                        return (1. - contrast * (1. - image).clamp(0., 1.).pow(
+                            gamma)).clamp(0., 1.)
+                    fixed_image = alter(fixed_image)
+                    prewarped = alter(prewarped)
+                feature, _, _, _ = image_features(
+                    F.interpolate(fixed_image, size=(128, 128), mode="area"),
+                    F.interpolate(prewarped, size=(128, 128), mode="area"))
+                coarse = (base(feature, final_side=257) if initial_variant is None
+                          else initial_variant)
+                fine, fdesc, mdesc, mask = dense_features(
+                    feature, fixed_image, prewarped, coarse,
+                    feature_geometry=residual_feature_geometry)
+                raster = (gaussian_match_features(source_variant, target_variant)
+                          if match_channels and evidence_mode not in (
+                              "force_only", "force_recurrent") else None)
+                if evidence_mode == "gaussian_force":
+                    force = image_force_features(fdesc, mdesc, mask, coarse)
+                    raster = torch.cat((raster, force), dim=1)
+                elif evidence_mode == "gaussian_zeros":
+                    raster = torch.cat((raster, torch.zeros_like(raster)), dim=1)
+                elif evidence_mode == "force_only":
+                    raster = image_force_features(fdesc, mdesc, mask, coarse)
+                cache[(case, variant)] = tuple(
+                    x.detach() if x is not None else None for x in (
+                        coarse, fine, fdesc, mdesc, mask, raster, teacher_variant,
+                        source_variant, target_variant))
+    available_train = [case for case in train_ids if (case, 0) in cache]
+    available_val = [case for case in val_ids if (case, 0) in cache]
     if fit_one_case is not None:
         if fit_one_case not in available_train:
             raise ValueError("fit-one-case must be available in training split")
@@ -172,7 +250,7 @@ def train(root: Path, selection: Path, matches: Path, teachers: Path,
         rows = []
         with torch.no_grad():
             for case in available_val:
-                coarse, fine, fdesc, mdesc, mask, raster, teacher, source, target = cache[case]
+                coarse, fine, fdesc, mdesc, mask, raster, teacher, source, target = cache[(case, 0)]
                 mapped = run_model(coarse, fine, fdesc, mdesc, mask, raster)
                 rows.append({
                     "case": case, "match_count": len(source),
@@ -199,7 +277,15 @@ def train(root: Path, selection: Path, matches: Path, teachers: Path,
         map_losses, image_losses, match_losses, strain_losses = [], [], [], []
         optimizer.zero_grad(set_to_none=True)
         for case in chosen:
-            coarse, fine, fdesc, mdesc, mask, raster, teacher, source, target = cache[int(case)]
+            total_variants = photometric_variants * symmetry_variants
+            if total_variants == 1:
+                variant = 0
+            elif symmetry_variants > 1:
+                # Preserve the unaugmented control's case-sampling RNG stream.
+                variant = int(symmetry_rng.integers(total_variants))
+            else:
+                variant = int(rng.integers(total_variants))
+            coarse, fine, fdesc, mdesc, mask, raster, teacher, source, target = cache[(int(case), variant)]
             mapped = run_model(coarse, fine, fdesc, mdesc, mask, raster)
             map_losses.append((mapped - teacher).square().sum(-1).mean())
             image_losses.append(structural_loss(fdesc, mdesc, mask, mapped))
@@ -230,6 +316,7 @@ def train(root: Path, selection: Path, matches: Path, teachers: Path,
     output.parent.mkdir(parents=True, exist_ok=True)
     torch.save({
         "model_state_dict": model.state_dict(), "passes": 4,
+        "direct_vertex_residual": direct_vertex_residual,
         "match_channels": match_channels,
         "evidence_mode": evidence_mode,
         "context": context,
@@ -243,6 +330,8 @@ def train(root: Path, selection: Path, matches: Path, teachers: Path,
         "frozen_maps": None if frozen_maps is None else str(frozen_maps),
         "zero_residual_head_initialization": (
             kernel_maps is not None or frozen_maps is not None),
+        "photometric_variants": photometric_variants,
+        "symmetry_variants": symmetry_variants,
         "map_weight": map_weight, "image_weight": image_weight,
         "match_weight": match_weight, "strain_weight": strain_weight,
     }, output)
@@ -253,11 +342,18 @@ def train(root: Path, selection: Path, matches: Path, teachers: Path,
         "trunk_from_onehead": (None if trunk_from_onehead is None
                                else str(trunk_from_onehead)),
         "context": context,
+        "direct_vertex_residual": direct_vertex_residual,
         "residual_feature_geometry": residual_feature_geometry,
         "match_channels": match_channels,
         "evidence_mode": evidence_mode,
         "teacher_suffix": teacher_suffix,
         "validation_count": len(available_val), "steps": steps,
+        "photometric_variants": photometric_variants,
+        "symmetry_variants": symmetry_variants,
+        "photometric_augmentation": (
+            "none" if photometric_variants == 1 else
+            "training-only monotone 1-c*(1-I)^gamma, gamma 0.8..1.2, "
+            "c 0.9..1.1; validation original only"),
         "batch_size": batch_size, "map_weight": map_weight,
         "image_weight": image_weight, "match_weight": match_weight,
         "strain_weight": strain_weight,
@@ -302,6 +398,9 @@ def main() -> None:
                                  "gaussian_force_recurrent"),
                         default="gaussian")
     parser.add_argument("--teacher-suffix", default="matchopt4_safe257")
+    parser.add_argument("--photometric-variants", type=int, default=1)
+    parser.add_argument("--symmetry-variants", type=int, choices=(1, 4), default=1)
+    parser.add_argument("--direct-vertex-residual", action="store_true")
     args = parser.parse_args()
     if min(args.map_weight, args.image_weight, args.match_weight,
            args.strain_weight) < 0:
@@ -320,7 +419,10 @@ def main() -> None:
         trunk_from_onehead=args.trunk_from_onehead,
         context=args.context, match_channels=args.match_channels,
         evidence_mode=args.evidence_mode,
-        teacher_suffix=args.teacher_suffix)
+        teacher_suffix=args.teacher_suffix,
+        photometric_variants=args.photometric_variants,
+        symmetry_variants=args.symmetry_variants,
+        direct_vertex_residual=args.direct_vertex_residual)
     print(json.dumps({key: result[key] for key in (
         "train_count", "validation_count", "training_seconds",
         "peak_torch_cuda_allocated_bytes",
