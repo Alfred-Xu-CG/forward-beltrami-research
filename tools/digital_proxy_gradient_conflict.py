@@ -27,7 +27,8 @@ from tools.digital_q1_real_optimize import _read_gray_thumbnail
 
 def audit(root: Path, matches: Path, maps: Path, report: Path,
           device: torch.device, feedback_maps: Path | None = None,
-          feedback_gains: tuple[float, ...] = ()) -> dict:
+          feedback_gains: tuple[float, ...] = (),
+          teachers: Path | None = None) -> dict:
     prior = json.loads(report.read_text(encoding="utf-8"))
     rows = []
     for previous in prior["rows"]:
@@ -95,6 +96,46 @@ def audit(root: Path, matches: Path, maps: Path, report: Path,
             "same_direction_first_order": bool(dot > 0),
             "map_strain": float(strain_penalty(mapped).detach()),
         }
+        if teachers is not None:
+            with np.load(teachers / f"{case}_multilevel25_safe257.npz") as data:
+                if not (np.array_equal(matrix, data["post_affine_matrix"])
+                        and np.array_equal(offset, data["post_affine_offset"])):
+                    raise ValueError(f"teacher affine mismatch: {case}")
+                teacher = torch.from_numpy(
+                    data["vertices"].astype(np.float32)).to(device)
+            if teacher.shape != mapped.shape:
+                raise ValueError(f"teacher shape mismatch: {case}")
+            map_loss = (mapped - teacher).square().sum(-1).mean()
+            strain_loss = strain_penalty(mapped)
+            map_grad = torch.autograd.grad(map_loss, mapped)[0][:, 1:-1, 1:-1]
+            strain_grad = torch.autograd.grad(strain_loss, mapped)[0][:, 1:-1, 1:-1]
+            weighted = {
+                "map": 1000. * map_grad,
+                "image": .1 * image_grad,
+                "match": .01 * match_grad,
+                "strain": .2 * strain_grad,
+            }
+            norms = {key: float(torch.linalg.vector_norm(value))
+                     for key, value in weighted.items()}
+            if not all(np.isfinite(value) for value in norms.values()):
+                raise FloatingPointError(f"invalid weighted gradient: {case}")
+            total_grad = sum(weighted.values())
+            row.update({
+                "teacher_map_mse": float(map_loss),
+                "weighted_interior_gradient_norms": norms,
+                "dominant_weighted_interior_gradient": max(norms, key=norms.get),
+                "weighted_total_interior_gradient_norm": float(
+                    torch.linalg.vector_norm(total_grad)),
+                "weighted_map_image_cosine": float(torch.sum(
+                    weighted["map"] * weighted["image"]) / (
+                        norms["map"] * norms["image"])),
+                "weighted_map_match_cosine": float(torch.sum(
+                    weighted["map"] * weighted["match"]) / (
+                        norms["map"] * norms["match"])),
+                "weighted_strain_match_cosine": float(torch.sum(
+                    weighted["strain"] * weighted["match"]) / (
+                        norms["strain"] * norms["match"])),
+            })
         if feedback_maps is not None:
             feedback_path = feedback_maps / (
                 f"{case}_hybrid_matchfeedback1_safe257.npz")
@@ -165,6 +206,24 @@ def audit(root: Path, matches: Path, maps: Path, report: Path,
             "feedback_actual_match_better_count": sum(
                 row["match_actual_feedback_change_px"] < 0 for row in rows),
         })
+    if teachers is not None:
+        result.update({
+            "teacher_map_source": str(teachers),
+            "loss_weights_map_image_match_strain": [1000., .1, .01, .2],
+            "weighted_output_gradient_scope": "aligned 255x255 interior vertex "
+                "coordinates, not neural-parameter VJP",
+            "mean_weighted_gradient_norms": {
+                key: float(np.mean([
+                    row["weighted_interior_gradient_norms"][key]
+                    for row in rows]))
+                for key in ("map", "image", "match", "strain")},
+            "dominant_gradient_counts": {
+                key: sum(row["dominant_weighted_interior_gradient"] == key
+                         for row in rows)
+                for key in ("map", "image", "match", "strain")},
+            "mean_weighted_total_gradient_norm": float(np.mean([
+                row["weighted_total_interior_gradient_norm"] for row in rows])),
+        })
     if feedback_gains:
         result["gain_sweep_summary"] = [{
             "gain": gain,
@@ -191,6 +250,7 @@ def main() -> None:
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--feedback-maps", type=Path)
     parser.add_argument("--feedback-gains", type=float, nargs="*", default=[])
+    parser.add_argument("--teachers", type=Path)
     args = parser.parse_args()
     if args.output.exists():
         raise FileExistsError(args.output)
@@ -198,7 +258,7 @@ def main() -> None:
         raise ValueError("diagnostic feedback gains must lie in (0,1]")
     result = audit(args.root, args.matches, args.maps, args.report,
                    torch.device(args.device), args.feedback_maps,
-                   tuple(args.feedback_gains))
+                   tuple(args.feedback_gains), args.teachers)
     args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({key: result[key] for key in (
         "case_count", "opposing_gradient_count", "mean_cosine", "median_cosine")}))
