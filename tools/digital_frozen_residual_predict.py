@@ -35,7 +35,8 @@ from tools.digital_q1_real_optimize import _read_gray_thumbnail
 def predict(base_checkpoint: Path, one_head_checkpoint: Path,
             residual_checkpoint: Path, fixed_path: Path, moving_path: Path,
             affine_path: Path, matches_path: Path | None, output: Path, *,
-            device_name: str = "cuda:0", repeats: int = 3) -> dict:
+            device_name: str = "cuda:0", repeats: int = 3,
+            logit_gain: float = 1.) -> dict:
     if output.exists() or output.with_suffix(".json").exists():
         raise FileExistsError(output)
     if repeats < 1:
@@ -54,13 +55,15 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
     evidence_mode = residual_saved.get("evidence_mode", "gaussian")
     if (residual_saved.get("frozen_maps") is None or
             match_channels not in (0, 6, 12) or
-            (evidence_mode in ("gaussian_force", "gaussian_zeros")
+            (evidence_mode in ("gaussian_force", "gaussian_zeros",
+                               "gaussian_force_recurrent")
              and match_channels != 12) or
             (evidence_mode in ("force_only", "force_recurrent")
              and match_channels != 6) or
             evidence_mode not in ("gaussian", "gaussian_force", "gaussian_zeros",
-                                  "force_only", "force_recurrent") or
-            (evidence_mode == "force_recurrent" and
+                                  "force_only", "force_recurrent",
+                                  "gaussian_force_recurrent") or
+            (evidence_mode in ("force_recurrent", "gaussian_force_recurrent") and
              residual_saved.get("context", "local") == "multilevel_unet")):
         raise ValueError("checkpoint is not a frozen-onehead residual student")
     if (match_channels and evidence_mode not in ("force_only", "force_recurrent")
@@ -104,7 +107,8 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
     fixed, _ = _read_gray_thumbnail(fixed_path, 512)
     moving, _ = _read_gray_thumbnail(moving_path, 512)
     fixed, moving = fixed.to(device), moving.to(device)
-    if evidence_mode in ("force_only", "force_recurrent"):
+    if evidence_mode in ("force_only", "force_recurrent",
+                         "gaussian_force_recurrent"):
         fixed.requires_grad_(True)
         moving.requires_grad_(True)
     m = torch.tensor(matrix, device=device)
@@ -140,9 +144,16 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
             evidence = image_force_features(fdesc, mdesc, mask, frozen)
         if evidence_mode == "force_recurrent":
             mapped = residual(frozen, fine_new, evidence_fn=lambda current:
-                              image_force_features(fdesc, mdesc, mask, current))
+                              image_force_features(fdesc, mdesc, mask, current),
+                              logit_gain=logit_gain)
+        elif evidence_mode == "gaussian_force_recurrent":
+            mapped = residual(frozen, fine_new, evidence_fn=lambda current:
+                              torch.cat((raster, image_force_features(
+                                  fdesc, mdesc, mask, current)), dim=1),
+                              logit_gain=logit_gain)
         else:
-            mapped = residual(frozen, fine_new, match_feature=evidence)
+            mapped = residual(frozen, fine_new, match_feature=evidence,
+                              logit_gain=logit_gain)
         return mapped, frozen, fdesc, mdesc, mask
 
     def sync():
@@ -188,7 +199,8 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
         if source is not None:
             source.grad = None
             target.grad = None
-        if evidence_mode in ("force_only", "force_recurrent"):
+        if evidence_mode in ("force_only", "force_recurrent",
+                             "gaussian_force_recurrent"):
             fixed.grad = None
             moving.grad = None
         sync()
@@ -205,7 +217,8 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
             finite &= (source.grad is not None and target.grad is not None and
                        bool(torch.isfinite(source.grad).all()) and
                        bool(torch.isfinite(target.grad).all()))
-        if evidence_mode in ("force_only", "force_recurrent"):
+        if evidence_mode in ("force_only", "force_recurrent",
+                             "gaussian_force_recurrent"):
             finite &= (fixed.grad is not None and moving.grad is not None and
                        bool(torch.isfinite(fixed.grad).all()) and
                        bool(torch.isfinite(moving.grad).all()))
@@ -214,6 +227,7 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
     report = {
         "method": "full frozen image-base plus 257 onehead plus four safe residual passes",
         "evidence_mode": evidence_mode,
+        "logit_gain": logit_gain,
         "base_checkpoint": str(base_checkpoint),
         "one_head_checkpoint": str(one_head_checkpoint),
         "residual_checkpoint": str(residual_checkpoint),
@@ -232,7 +246,7 @@ def predict(base_checkpoint: Path, one_head_checkpoint: Path,
         "vjp_peak_torch_cuda_allocated_bytes": vjp_peak,
         "finite_full_vjp": finite,
         "image_pixels_in_vjp_check": evidence_mode in (
-            "force_only", "force_recurrent"),
+            "force_only", "force_recurrent", "gaussian_force_recurrent"),
         "saved_binary_certificate": binary,
         "anatomical_landmarks_or_DHR_full_field_loaded": False,
         "external_matcher_affine_excluded_from_time_and_gradient": True,
@@ -252,11 +266,13 @@ def main() -> None:
     parser.add_argument("--matches", type=Path)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--logit-gain", type=float, default=1.)
     args = parser.parse_args()
     result = predict(args.base_checkpoint, args.one_head_checkpoint,
                      args.residual_checkpoint, args.fixed, args.moving,
                      args.affine, args.matches, args.output,
-                     device_name=args.device, repeats=args.repeats)
+                     device_name=args.device, repeats=args.repeats,
+                     logit_gain=args.logit_gain)
     print(json.dumps({key: result[key] for key in (
         "frozen_image", "residual_image", "full_forward_seconds_median",
         "full_forward_and_parameter_match_vjp_seconds_median",

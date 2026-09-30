@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import time
 from pathlib import Path
 from typing import Callable
@@ -125,7 +126,10 @@ class RecurrentDenseSafeHead(nn.Module):
                 fine_feature: torch.Tensor, *,
                 match_feature: torch.Tensor | None = None,
                 evidence_fn: Callable[[torch.Tensor], torch.Tensor] | None = None,
-                return_passes: bool = False) -> torch.Tensor | list[torch.Tensor]:
+                return_passes: bool = False,
+                logit_gain: float = 1.) -> torch.Tensor | list[torch.Tensor]:
+        if not math.isfinite(logit_gain) or logit_gain <= 0:
+            raise ValueError("positive finite logit gain required")
         if coarse.ndim != 4 or coarse.shape[1:] != (257, 257, 2) or (
             fine_feature.shape != (coarse.shape[0], 88, 256, 256)
         ):
@@ -191,7 +195,8 @@ class RecurrentDenseSafeHead(nn.Module):
             proposed = F.interpolate(head(hidden), size=(257, 257),
                                      mode="bilinear", align_corners=False)
             logits = proposed[:, :, 1:-1, 1:-1].permute(0, 2, 3, 1)
-            current = self.update(current, logits)
+            current = self.update(current, logits if logit_gain == 1. else
+                                  logits * logit_gain)
             if return_passes:
                 outputs.append(current)
         return outputs if return_passes else current

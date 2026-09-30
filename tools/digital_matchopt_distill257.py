@@ -46,12 +46,15 @@ def train(root: Path, selection: Path, matches: Path, teachers: Path,
     if kernel_maps is not None and frozen_maps is not None:
         raise ValueError("choose one initial map type")
     if evidence_mode not in ("gaussian", "gaussian_force", "gaussian_zeros",
-                             "force_only", "force_recurrent") or (
-        evidence_mode in ("gaussian_force", "gaussian_zeros")
+                             "force_only", "force_recurrent",
+                             "gaussian_force_recurrent") or (
+        evidence_mode in ("gaussian_force", "gaussian_zeros",
+                          "gaussian_force_recurrent")
         and match_channels != 12
     ) or (evidence_mode in ("force_only", "force_recurrent")
           and match_channels != 6
-    ) or (evidence_mode == "force_recurrent" and context == "multilevel_unet"
+    ) or (evidence_mode in ("force_recurrent", "gaussian_force_recurrent")
+          and context == "multilevel_unet"
     ):
         raise ValueError("evidence mode and channel count disagree")
     ids = json.loads(selection.read_text(encoding="utf-8"))["combined_train_ids"]
@@ -158,6 +161,10 @@ def train(root: Path, selection: Path, matches: Path, teachers: Path,
         if evidence_mode == "force_recurrent":
             return model(coarse, fine, evidence_fn=lambda current:
                          image_force_features(fdesc, mdesc, mask, current))
+        if evidence_mode == "gaussian_force_recurrent":
+            return model(coarse, fine, evidence_fn=lambda current:
+                         torch.cat((raster, image_force_features(
+                             fdesc, mdesc, mask, current)), dim=1))
         return model(coarse, fine, match_feature=raster)
 
     def evaluate() -> list[dict]:
@@ -291,7 +298,8 @@ def main() -> None:
     parser.add_argument("--match-channels", type=int, choices=(0, 6, 12), default=6)
     parser.add_argument("--evidence-mode",
                         choices=("gaussian", "gaussian_force", "gaussian_zeros",
-                                 "force_only", "force_recurrent"),
+                                 "force_only", "force_recurrent",
+                                 "gaussian_force_recurrent"),
                         default="gaussian")
     parser.add_argument("--teacher-suffix", default="matchopt4_safe257")
     args = parser.parse_args()
