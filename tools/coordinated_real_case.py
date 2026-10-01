@@ -21,6 +21,7 @@ from qcopt.neural_bijection.dense.coordinated_patches import CoordinatedPatchQ1P
 from qcopt.neural_bijection.dense.digital_q1 import AdaptiveSoftRadialQ1Relaxation, StaggeredPatchQ1Layer, q1_corner_determinants, validate_q1_map
 from qcopt.neural_bijection.dense.q1_image_sampling import q1_map_at_pixel_centers
 from qcopt.neural_bijection.dense.coordinated_sampling import p1_map_at_pixel_centers
+from qcopt.neural_bijection.dense.coordinated_correspondence import ImageCorrespondences
 from qcopt.neural_bijection.dense.q1_filtered_sign import certify_q1_binary_map
 from tools.digital_mind_objective_probe import self_similarity
 from tools.digital_mind_safe_optimize import strain_penalty
@@ -43,11 +44,14 @@ def corner_symmetric_dirichlet(vertices):
 class Evidence:
     """Fixed mask, original evidence, and explicitly penalized out-of-bounds."""
 
-    def __init__(self, fixed, moving, matrix, offset, loss, strain_weight, oob_weight, shape_weight=0., fixed_mask=None, interpolation="q1"):
+    def __init__(self, fixed, moving, matrix, offset, loss, strain_weight, oob_weight, shape_weight=0., fixed_mask=None, interpolation="q1", matches=None, match_weight=0.):
         self.fixed, self.moving = fixed, moving
         self.matrix, self.offset = matrix, offset
         self.loss, self.strain_weight, self.oob_weight = loss, strain_weight, oob_weight
         self.shape_weight = shape_weight
+        if not np.isfinite(match_weight) or match_weight<0 or (match_weight>0 and matches is None):
+            raise ValueError("positive match weight requires explicit frozen point evidence")
+        self.matches,self.match_weight=matches,float(match_weight)
         if interpolation not in ("q1","p1_ac","p1_bd"):
             raise ValueError("declare q1, p1_ac or p1_bd map interpretation")
         self.interpolation=interpolation
@@ -90,11 +94,53 @@ class Evidence:
         shape = corner_symmetric_dirichlet(vertices) if self.shape_weight else None
         if shape is not None:
             total = total + self.shape_weight*shape
+        match = self.matches(vertices,self.matrix,self.interpolation) if self.match_weight else None
+        if match is not None:
+            total = total + self.match_weight*match
         outside_fraction = (((query < 0) | (query > 1)).any(-1)[:, None]*self.mask).sum()/self.denominator
         parts = dict(image=image, strain=strain, oob=oob, outside_fraction=outside_fraction)
         if shape is not None:
             parts["shape"] = shape
+        if match is not None:
+            parts["match"] = match
         return total, parts
+
+
+def load_image_matches(path,matrix,offset,*,fixed_path,moving_path,image_side,device,dtype,robust_scale):
+    record=json.loads(path.read_text(encoding="utf-8"))
+    if record.get("targets_manual_landmarks_or_dense_teacher_loaded") is not False:
+        raise ValueError("match provenance must explicitly exclude map/manual/dense targets")
+    if record.get("image_side")!=image_side or Path(record["fixed"]).name!=fixed_path.name or Path(record["moving"]).name!=moving_path.name:
+        raise ValueError("match raster/frame does not agree with this image pair")
+    recorded_matrix=np.asarray(record["post_affine_matrix"],dtype=matrix.dtype)
+    recorded_offset=np.asarray(record["post_affine_offset"],dtype=offset.dtype)
+    if not np.array_equal(recorded_matrix,matrix) or not np.array_equal(recorded_offset,offset):
+        raise ValueError("frozen matcher affine does not agree with optimizer affine")
+    source=np.asarray(record["source_points_unit"],dtype=np.float64)
+    target=np.asarray(record["target_points_unit"],dtype=np.float64)
+    confidence=np.asarray(record["confidence"],dtype=np.float64)
+    if source.ndim!=2 or source.shape[-1]!=2 or target.shape!=source.shape or confidence.shape!=(len(source),):
+        raise ValueError("invalid correspondence table")
+    if not np.isfinite(confidence).all() or ((confidence<0)|(confidence>1)).any():
+        raise ValueError("invalid original matcher confidence")
+    world=target@matrix.T+offset
+    eligible=((world>=0)&(world<=1)).all(-1)
+    # This exclusion is STATIC original-moving-domain validity, not loss-dependent
+    # overlap cropping. Every manual evaluation landmark remains separately scored.
+    weights=confidence*eligible
+    if int((weights>0).sum())<8:
+        raise ValueError("fewer than8 original-moving-domain image matches")
+    points=lambda value:torch.as_tensor(value,device=device,dtype=dtype)
+    matches=ImageCorrespondences(points(source),points(target),points(weights),
+        pixel_scale=image_side,robust_scale=robust_scale)
+    metadata=dict(path=str(path),raw_matches=len(source),eligible_matches=int(eligible.sum()),
+        static_original_moving_domain_excluded=int((~eligible).sum()),
+        confidence_denominator=float(weights.sum()),robust_scale_canvas_px=robust_scale,
+        target_frame="affine-aligned moving; loss uses image_side*A(mapped(q)-p)",
+        path_check="raster basenames plus side and sampling-affine values; relocated paths allowed, not content identity proof",
+        sampling_affine_storage_dtype=str(matrix.dtype),
+        mask="fixed target coordinate inside original moving rectangle; no adaptive query dropping")
+    return matches,metadata
 
 
 def optimize(args, accepted_stage_callback=None):
@@ -130,10 +176,17 @@ def optimize(args, accepted_stage_callback=None):
         torch.cuda.synchronize(device)
     loading_seconds = time.perf_counter()-overall_start
     feature_start = time.perf_counter()
+    matches,match_metadata=None,None
+    match_weight=getattr(args,"match_weight",0.)
+    if match_weight:
+        if getattr(args,"matches",None) is None:
+            raise ValueError("declare --matches for a positive match weight")
+        matches,match_metadata=load_image_matches(args.matches,a,b,fixed_path=args.fixed,moving_path=args.moving,
+            image_side=args.image_side,device=device,dtype=dtype,robust_scale=getattr(args,"match_robust_scale",8.))
     evidence = Evidence(fixed, moving, torch.from_numpy(a).to(device=device, dtype=dtype),
                         torch.from_numpy(b).to(device=device, dtype=dtype), args.loss,
                         args.strain_weight, args.oob_weight, getattr(args,"shape_weight",0.),
-                        interpolation=getattr(args,"interpolation","q1"))
+                        interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight)
     evidence_by_resolution={args.image_side:evidence}
     for image_resolution in sorted(set(image_levels)):
         if image_resolution not in evidence_by_resolution:
@@ -142,7 +195,7 @@ def optimize(args, accepted_stage_callback=None):
             reduced_mask=F.interpolate(evidence.mask,size=(image_resolution,image_resolution),mode="area")
             evidence_by_resolution[image_resolution]=Evidence(reduced_fixed,reduced_moving,evidence.matrix,
                 evidence.offset,args.loss,args.strain_weight,args.oob_weight,getattr(args,"shape_weight",0.),
-                reduced_mask,interpolation=getattr(args,"interpolation","q1"))
+                reduced_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight)
     synchronize = lambda: torch.cuda.synchronize(device) if device.type == "cuda" else None
     synchronize()
     feature_seconds = time.perf_counter()-feature_start
@@ -291,6 +344,7 @@ def optimize(args, accepted_stage_callback=None):
                   geometry_dtype=str(dtype),evidence_dtype=str(image_dtype),
                   image_levels=image_levels,
                   output_selection=output_selection,selected_stage=full_best_stage if output_selection=="best_full" else len(stages)-1,
+                  image_match_evidence=match_metadata,
                   terminal_full_total=terminal_full_loss,best_accepted_full_total=full_best_loss,
                   acceptance_objective="complete objective at current image resolution; full-resolution trajectory may not be monotone",
                   oob="zero padding, fixed denominator, explicit quadratic excess penalty; no query dropping")
@@ -317,6 +371,9 @@ def main():
     p.add_argument("--levels", type=int, nargs="+", default=[17,33,65,129,257])
     p.add_argument("--output-selection",choices=("last","best_full"),default="last",
                    help="Select accepted output using full-resolution complete objective only, never landmarks")
+    p.add_argument("--matches",type=Path,help="frozen image-only raw matcher JSON in the identical affine frame")
+    p.add_argument("--match-weight",type=float,default=0.)
+    p.add_argument("--match-robust-scale",type=float,default=8.,help="pseudohuber error scale in full moving-canvas pixels")
     p.add_argument("--inner-steps", type=int, default=5)
     p.add_argument("--cycles", type=int, default=2)
     p.add_argument("--learning-rate", type=float, default=.004)

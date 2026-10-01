@@ -276,3 +276,44 @@ It does NOT prove that every digital embedding has such a path, that a fixed sma
 depth is universal, or that image optimization finds the path quickly. No removal
 of those assumptions is claimed without a separate theorem with correct boundary
 and graph hypotheses.
+
+## 9. Optional frozen image-correspondence evidence
+
+This option uses an EXISTING frozen SuperPoint/SuperGlue model, not a new image-to-
+deformation network. For fixed keypoint(pixel center)x_j and affine-prewarped moving
+keypoint p_j^pix, store q_j=(x_j+.5)/(W,H) and p_j=(p_j^pix+.5)/(W,H). The latter
+is in the affine-ALIGNED coordinate frame: the corresponding original moving query
+is A p_j+b, not p_j. Original pixel numbering starts at0. For our square512canvas,
+
+    e_j(Y)=512[A f_Y(q_j)+b-(A p_j+b)]=512 A(f_Y(q_j)-p_j).
+
+Thus the offset cancels but the matrix must remain in the physical metric. Define
+
+    r_j=e_j/κ, κ=8canvas pixels;
+    ρ(r_j)=sqrt(1+||r_j||²)-1;
+    E_match(Y)=sum_j w_j ρ(r_j), sum_j w_j=1.
+
+This is DIMENSIONLESS pseudohuber, without the usual optionalκ² multiplier. Weights
+are the original fixed matcher confidences, normalized after static validity:
+targets A p_j+b outside the original moving rectangle receive weight0, because the
+affine prewarp's border extension does not supply genuine outside image evidence.
+Counts and excluded targets are reported. This selection does NOT depend on current
+Y, overlap or objective values. Fixed image/manual evaluation denominators are not
+altered; no manual correspondence or competitor's dense map is read by optimization.
+The point term uses the DECLARED Q1/P1 interpolator and SAME512pixel metric at every
+image-pyramid level. Complete acceptance/selection uses
+
+    E_image,l + .05 E_strain + E_OOB + 1e-4 E_shape + λ_match E_match.
+
+The first predeclared test usesλ_match=.1;λ=0is the exact paired control. Machine
+matching is frozen and discrete, so we do NOT claim differentiation through its
+keypoint detection/matching. Gradients of this fixed point evidence to decoder/map
+vertices are tested independently. Topology comes ONLY from the feasible decoder
+and saved map checks, not the matcher or this robust penalty. Accurate sparse fits
+can leave unobserved dense regions wrong; confidence is not anatomical correctness.
+
+Global-similarity RANSAC is not used in the new raw probe: measured known-target
+matches are accurate even where their motion disagrees with one global similarity.
+The prior filtered probe remains a distinct comparison, not silently overwritten.
+Original affine metadata, raster names/size and static-domain counts are recorded;
+basename comparisons permit relocation but are not a proof of image-content identity.

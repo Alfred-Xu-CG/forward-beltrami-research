@@ -109,7 +109,8 @@ def score(layout_path, fixed_path, moving_path, maps, affine, output, dhr=None):
     report = dict(protocol="reused public development specimen, not independent or official ACROBAT/ANHIR test",
                   interpolation=interpolation,map_direction="fixed to moving",landmark_count=len(ids),
                   fixed_only_ids=sorted(fixed.keys()-moving.keys()),moving_only_ids=sorted(moving.keys()-fixed.keys()),
-                  layout=str(layout_path),results=results)
+                  layout=str(layout_path),fixed_landmarks=str(fixed_path),moving_landmarks=str(moving_path),
+                  maps={name:str(path) for name,path in maps.items()},affine=str(affine),results=results)
     report["fixed_boundary_target_domain"]=domain_bound
     output.parent.mkdir(parents=True,exist_ok=True)
     output.write_text(json.dumps(report,indent=2)+"\n",encoding="utf-8")

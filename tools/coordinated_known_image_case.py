@@ -298,7 +298,7 @@ def annotate_ncc_truth_floor(path):
 
 
 def run(args,manifest):
-    from tools.coordinated_real_case import Evidence,optimize,corner_symmetric_dirichlet
+    from tools.coordinated_real_case import Evidence,optimize,corner_symmetric_dirichlet,load_image_matches
     from tools.digital_q1_real_optimize import _read_gray_thumbnail
     if args.output.exists():
         raise FileExistsError(args.output)
@@ -317,9 +317,17 @@ def run(args,manifest):
         fixed=fixed.double()
         with np.load(folder/case["target_archive"]) as data:
             target=torch.from_numpy(data["vertices"])
+        matches,match_path=None,None
+        if getattr(args,"match_weight",0.):
+            if getattr(args,"matches_dir",None) is None:
+                raise ValueError("declare --matches-dir for a positive match weight")
+            match_path=args.matches_dir/("known_"+case["target"]+"_sg_raw_matches.json")
+            matches,_=load_image_matches(match_path,np.eye(2,dtype=np.float32),np.zeros(2,dtype=np.float32),
+                fixed_path=folder/case["fixed"],moving_path=folder/manifest["moving"],image_side=args.image_side,
+                device=torch.device("cpu"),dtype=torch.float64,robust_scale=args.match_robust_scale)
         evidence=Evidence(fixed,moving,torch.eye(2,dtype=torch.float64),
                           torch.zeros(2,dtype=torch.float64),args.loss,args.strain_weight,1.,
-                          shape_weight=args.shape_weight)
+                          shape_weight=args.shape_weight,matches=matches,match_weight=getattr(args,"match_weight",0.))
         truth_total,truth_parts=evidence(target)
         initial=image_metrics(fixed,moving,reference)
         for method in args.methods:
@@ -336,6 +344,8 @@ def run(args,manifest):
                 strain_weight=args.strain_weight,oob_weight=1.,minimum_jacobian=args.minimum_jacobian,
                 precision="float64",image_precision="float64",shape_weight=args.shape_weight,
                 image_levels=args.image_levels,device=args.device,threads=args.threads)
+            opt.matches=match_path;opt.match_weight=getattr(args,"match_weight",0.)
+            opt.match_robust_scale=getattr(args,"match_robust_scale",8.)
             snapshots=[]
             def observe_stage(vertices,stage,elapsed):
                 # No truth/queries are consulted here. Image-only acceptance
@@ -413,6 +423,9 @@ def main():
     p.add_argument("--strain-weight",type=float,default=.05)
     p.add_argument("--shape-weight",type=float,default=0.,
                    help="same common corner symmetric-Dirichlet weight for truth evaluation and all optimizers")
+    p.add_argument("--matches-dir",type=Path)
+    p.add_argument("--match-weight",type=float,default=0.)
+    p.add_argument("--match-robust-scale",type=float,default=8.)
     p.add_argument("--minimum-jacobian",type=float,default=.001)
     p.add_argument("--loss",choices=("mind","local_ncc"),default="mind")
     p.add_argument("--device",default="cpu")

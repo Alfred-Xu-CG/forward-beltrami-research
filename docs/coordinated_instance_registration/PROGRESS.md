@@ -269,3 +269,103 @@ Next discriminators: cross-resolution output selection by the common full object
 (without changing optimizer trajectory), and fewer resets/longer stage solves under
 the SAME total gradient budget. Image landmarks remain evaluation-only. No third
 regional patch-size sweep or unrelated alternative mechanism is opened.
+
+## Reset allocation and image-generated correspondence discriminator
+
+Question: does cold-resetting a stage every5Adam steps limit coordinated capture?
+Exact experiment: SAME known rasters/geometry/objective,300total gradients, change
+cycles6/inner5 tocycles2/inner15 (joint controls twice cycles). Falsifier: no map or
+objective gain after counting ALL evaluations/time. Result: analytic query RMSE
+shear12.219->6.067px,rotation7.819->4.460,coarse-fine3.537->2.358. Radial improves2/3;
+F1/F2 worsen all6. All12savedmaps valid,zero failures;362 rather than482total E calls.
+This is a schedule/convergence finding, not proof of uniform method superiority.
+Real matched P1 short/long300 runs are underway; no label-driven iterate selection.
+
+Question: is there independent image-generated information about displaced regions,
+or do proposed sparse matches only cover stationary texture? Reuse installed frozen
+[SuperGlue](https://openaccess.thecvf.com/content_CVPR_2020/papers/Sarlin_SuperGlue_Learning_Feature_Matching_With_Graph_Neural_Networks_CVPR_2020_paper.pdf)
+and [DHR](https://github.com/MWod/DeeperHistReg) code/weights; do not train a new matcher.
+SIFT has3/4/11retained real matches with very narrow kidney coverage. Global-similarity
+RANSAC SuperGlue gives114/140/68retained realmatches; knowntexture retainedmatches
+have meanerrors .62/.45/.74px, but only63/19/62 cover>5px true movement. SIFT rotation
+matches coverZERO>5px movement. Those are posthoc diagnoses, not ground-truth filters.
+Global-affine RANSAC can reject genuinely nonrigid matches; a raw-confidence probe
+now preserves the original match assignment, records its exact affine and .5pixel
+coordinates, and reads NO manual label/maptruth. Seven focused tests pass.
+
+Potential next decisive test, only after raw accuracy/coverage diagnosis: common
+robust machine-match objective added to existing image/shape/strain evidence. With
+fixed source q_j and aligned-moving p_j, complete moving error is
+512 A(f_Y(q_j)-p_j). Define rho(r)=sqrt(1+||r||²)-1 with r=error/8px and average
+with fixed normalized matcher confidences. This is a conventional robust landmark
+energy on MACHINE-generated points, not manual anatomical training supervision.
+Predeclare one common weight and all eligible failures, compareagainstweight0; no
+new affine is fitted and no competitor's dense output is loaded. Falsifier: weak
+coverage, inaccurate raw correspondences, or image-match gains without true map/
+anatomical gains. No claimed novelty for SuperGlue or robust point fitting itself.
+
+Git milestone298e433 pushed;83affected tests pass at that milestone. Research goal
+remains active; modelcapacity interrupted ONE bounded builder followup, not the
+remote computation or research. No installedskill/port/sharedjob was changed.
+
+Stage30 allocation (cycles1/inner30, SAME300gradients) further improves all6coordinate
+fits: analytic shear1.478px,rotation3.437,coarse-fine1.974. F1/F2 again worsen all6.
+Every stage still gains objective during its last5steps; no gradient-magnitude history
+was recorded. Shear/coarse-fine finalE fall BELOW their targetE, reminding us that the
+synthetic truth is a feasible comparator, not the objective's global minimum.
+
+The corresponding REAL P1 pyramid stage15 test fails to transfer this advantage:
+Histo coordinate means3.37/2.80px,lesion7.76/8.38,kidney5.66/8.52, versus affine
+2.33/4.90/6.12. F2 kidney3.35is useful, but othercases do not beat baseline consistently.
+This is strong adverse evidence for coarse cross-stain image capture; fewerresetssolve
+one R2bottleneck but are not by themselves a solution of R3. No manual-label selection.
+
+RawSG knownmatches cover322/316/317points, means .660/.676/.773px,95--97%within2px.
+There are142/97/119matches with>20px TRUE movement, versus much weakerglobal-RANSAC
+coverage. Truth was only loaded AFTER extraction. This justifies one COMMON optional
+robust point term λ=.1,κ8px, with static original-moving-domain exclusions reported.
+Independent checker uses different NumPy bilinear/barycentric formulas and FD:
+values agree<5e-16,VJP<5e-10, and point term is identical across16/32rasterpyramids.
+Twenty focused point/extraction tests pass;56affected app/known/point tests pass.
+Small actual257 GPU smoke passes before matched medium matrices. No ground-truth
+or DHR-dense teacher is introduced, and no new matching network is trained.
+
+Temporary-file correction: three coordinator pytest directories from this turn
+mistakenly used Windows' default C: TEMP. Exact current-test targets3359/3360/3361
+were verified and moved intact to D:outputs/relocated_test_temp; older tests untouched.
+Subsequent tests explicitly set D:TEMP/TMP/basetemp and disable Python bytecode writes.
+
+## T+3.7h: machine evidence helps, but real competitiveness remains unresolved
+
+Known SAMEstage30/300-gradient matrix, λmatch0->.1, analytic query RMSE .824/1.209/.717px
+versus1.478/3.437/1.974, all12methods/targets improve query AND raster errors. All300
+gradients/332complete E calls,zero failed trials,allbinarycertificates valid. Raw/static
+eligible322/322,316/316,317/317; no point exclusion. Analytic optimizer4.76--6.15s;
+matcher setup/inference is separate about1s/pair here, not hidden in a zero-cost encoder.
+Sparse machine-point fitting below the truth's pointE reflects subpixel matcher noise,
+not an exactly reproduced teacher. Unaugmented image/prior E worsens for F2 despite
+better correspondence, explicitly saved; augmented totals cannot be compared toλ0
+totals as if the objective were unchanged.
+
+REAL matched P1(ac),same300-gradient stage30,pyramid,shape,init,boundary,precision,
+only λmatch changed. Mean TRE512canvas pixels (native baseline unchanged):
+
+| Development specimen | Radial λ0->.1 | Analytic λ0->.1 | F1 λ0->.1 | F2 λ0->.1 | Native DHR |
+|---|---|---|---|---|---|
+| HistoReg | 3.193->1.849 | 2.516->1.587 | 1.352->1.179 | 1.198->1.182 | .943 |
+| Lung lesion | 7.606->5.423 | 8.015->5.082 | 4.538->4.453 | 4.651->4.518 | 4.347 |
+| Rat kidney | 9.022->4.990 | 11.009->5.259 | 3.878->3.698 | 3.622->3.388 | 3.432 |
+
+All12real runs complete300gradients withzero failures and certified actualP1outputs;
+allrawmachinepoints125/192/111remain statically eligible. Allsharedmanual IDs77/78/69
+are scored. Coordinator's new read-only scoring wrapper stores explicit CSV/map/affine
+provenance; it does not invoke optimization or select iterates. Analytic kidney p90
+falls28.108->11.297px but remains worse than native7.110. F2 kidney mean3.388is close
+to native3.432, yet costsabout15s vsnative~2s. Coordinate optimizersabout6--7s at~241MB
+peak do not establish competitive accuracy. Matcher confidence is NOT ground truth.
+
+Decision: preserve the meaningful known-texture coordinated result; do NOT rename it
+real-data success. Next examine EXACTnative preprocessing/pyramid versus raw-NCC
+approximation, and source-compatible P1 layer scaling. No more adjacent patch-size
+or safety-coefficient trials. Focused affected milestone suite103tests passed; existing
+legacy test archive is not repeatedly rerun. Goal remains active until real24h window.
