@@ -1,4 +1,4 @@
-"""Split one fixed-stage real trial; no optimization or geometric cache changes."""
+"""Split one fixed-stage real trial, with an explicit optional geometry cache."""
 from __future__ import annotations
 
 import argparse
@@ -15,14 +15,22 @@ from qcopt.neural_bijection.dense.coordinated_update import CoordinatedQ1Update,
 from tools.coordinated_real_case import Evidence,load_registration_evidence,load_image_matches
 
 
-def profile_one_trial(anchor,evidence,*,level=33,amplitude=.002,warmup=10,repeats=10):
+def profile_one_trial(anchor,evidence,*,level=33,amplitude=.002,warmup=10,repeats=10,decoder_kind="original"):
     if anchor.requires_grad:raise ValueError("fixed stage anchor must not require gradients")
     if anchor.shape[0]!=1 or anchor.dtype!=torch.float64 or level<3 or level>min(anchor.shape[1:3]):
         raise ValueError("batch1 float64 anchor and fitting coefficient level required")
     if warmup<10 or repeats<10:raise ValueError("at least10 warmups/10 timed trials required")
     device=anchor.device
     sync=lambda:torch.cuda.synchronize(device) if device.type=="cuda" else None
-    layer=CoordinatedQ1Update((1.,0.),mode="analytic",minimum_jacobian=.001,theta=.95).to(device)
+    if decoder_kind not in ("original","stage_cache"):
+        raise ValueError("declare original or constant-anchor stage_cache")
+    sync();setup_tick=time.perf_counter()
+    if decoder_kind=="original":
+        layer=CoordinatedQ1Update((1.,0.),mode="analytic",minimum_jacobian=.001,theta=.95).to(device)
+    else:
+        from qcopt.neural_bijection.dense.coordinated_stage_cache import FrozenAnchorCoordinatedUpdate
+        layer=FrozenAnchorCoordinatedUpdate(anchor,direction=(1.,0.),mode="analytic",minimum_jacobian=.001,theta=.95)
+    sync();decoder_setup_seconds=time.perf_counter()-setup_tick
     axis=torch.linspace(0,1,level,dtype=anchor.dtype,device=device)
     y,x=torch.meshgrid(axis,axis,indexing="ij")
     raw=(amplitude*torch.sin(torch.pi*x).square()*torch.sin(torch.pi*y).square())[None,None,1:-1,1:-1]
@@ -31,7 +39,7 @@ def profile_one_trial(anchor,evidence,*,level=33,amplitude=.002,warmup=10,repeat
         proposal=interpolate_proposal(coarse[:,0],tuple(anchor.shape[1:3]))
         # EXACT current application's path: omitted reference constructs unitgrid,
         # and validate=False still recomputes actual candidate corner margins.
-        return layer(anchor,proposal,validate=False)
+        return layer(anchor,proposal,validate=False) if decoder_kind=="original" else layer(proposal,validate=False)
     times={name:[] for name in ("decoder_forward_seconds","evidence_forward_seconds","combined_vjp_seconds",
         "separate_evidence_vjp_seconds","separate_decoder_vjp_seconds")}
     residents=[];peaks=[];difference=0.
@@ -70,6 +78,8 @@ def profile_one_trial(anchor,evidence,*,level=33,amplitude=.002,warmup=10,repeat
     combined=medians["median_decoder_forward_seconds"]+medians["median_evidence_forward_seconds"]+medians["median_combined_vjp_seconds"]
     geometry_share=(medians["median_decoder_forward_seconds"]+medians["median_separate_decoder_vjp_seconds"])/combined
     return dict(**times,**medians,geometry_cost_share_estimate=geometry_share,
+        decoder_kind=decoder_kind,decoder_setup_seconds=decoder_setup_seconds,
+        decoder_constant_bytes=layer.resident_constant_bytes if decoder_kind=="stage_cache" else 0,
         share_caution="separately synchronized chain-rule split is diagnostic, not perfectly additive to one fused backward",
         anchor_requires_grad=False,coefficient_parameters=raw.numel(),finite_gradient=True,gradient_rms=gradient_rms,
         chain_rule_gradient_max_difference=difference,objective=objective,objective_parts=objective_parts,
@@ -99,7 +109,8 @@ def run(args):
     evidence.prepare_fixed_p1_sampling(*anchor.shape[1:3],dtype=anchor.dtype,device=device)
     if device.type=="cuda":torch.cuda.synchronize(device)
     setup=time.perf_counter()-tick
-    result=profile_one_trial(anchor,evidence,level=args.level,amplitude=args.amplitude,warmup=args.warmup,repeats=args.repeats)
+    result=profile_one_trial(anchor,evidence,level=args.level,amplitude=args.amplitude,warmup=args.warmup,repeats=args.repeats,
+        decoder_kind=getattr(args,"decoder_kind","original"))
     payload=dict(configuration={k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()},
         anchor_source_configuration=config,actual_objective=dict(loss="mind",strain_weight=3.,shape_weight=.0001,
             match_weight=.1,match_robust_scale=8.,geometry_dtype="float64",evidence_dtype="float32",p1_sampling="frozen",
@@ -119,6 +130,7 @@ def main():
     p.add_argument("--level",type=int,default=33);p.add_argument("--amplitude",type=float,default=.002)
     p.add_argument("--device",default="cpu");p.add_argument("--threads",type=int,default=2)
     p.add_argument("--warmup",type=int,default=10);p.add_argument("--repeats",type=int,default=10)
+    p.add_argument("--decoder-kind",choices=("original","stage_cache"),default="original")
     run(p.parse_args())
 
 

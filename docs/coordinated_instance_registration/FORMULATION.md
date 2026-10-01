@@ -519,3 +519,126 @@ can change floating-point ties. A compact active-row table with bounded chunked
 local recomputation is permitted; dropping tied rows is not. Input tensors need
 not be copied, but their saved storage still counts toward resident memory.
 Default rounded-output checks remain independent of this derivative computation.
+
+Selected-stencil manual-backward research card (T+5.7h): the first explicit VJP
+greatly reduces retained storage but is SLOWER for active257/513 trials. Question:
+replace only tiny local reverse-mode graphs with direct local derivatives. Forward
+normalization, tie indices, scale, candidate and rounded checks remain unchanged.
+For the ACTUAL corner expression q=det(E,F), E=Y_j-Y_i, F=Y_l-Y_k,
+the derivatives scatter (+R F,-R F,-R E,+R E) to (i,j,k,l), respectively.
+Repeated indices sum their contributions. In row-major cell ordering(a,b,d,c),
+the corner edge tuples are (0,1,0,2), (0,1,1,3), (2,3,1,3), (2,3,0,2).
+The directional-change derivatives still use the original triangle triples
+(0,1,2), (0,1,3), (2,1,3), (0,3,2) and the formulas above. This preserves
+which edges are differentiated rather than rewriting corner values algebraically.
+All tied rows remain in the subgradient; bounded processing is not row selection.
+Different accumulation grouping can yield tiny floating-point gradient differences,
+so agreement tolerances are reported, not bitwise gradient equivalence. Falsifiers:
+full-Y/latent derivative or tie/branch/cascade/finite-difference tests fail, or
+measured active performance still offers no benefit. No application integration
+or optional compiler dependency is justified by algebra alone. This candidate
+engineering refinement is independently checked by the coordinator before coding.
+
+## 15. Known-image recovery with a declared P1 estimate and frozen Q1 truth
+
+Research card (T+5.3h): the prior known-texture experiment used Q1 both for
+generating images and evaluating fitted maps. Question: does its recovery carry
+over when the actual optimizer and estimated function are P1 on a declared
+diagonal? Keep ALL prepared Q1 images/matches and ground-truth vertex tables
+unchanged. Estimate interpolation is an explicit option; no old result is relabeled.
+Let f_true be the Q1 function used to generate fixed intensities from the original
+moving raster, and f_est the fitted P1 function. Independent held-out queries
+q_k use the same seed/count as before, NEVER optimization or output selection:
+
+    RMSE_px=S sqrt[(1/Q) sum_k ||f_est(q_k)-f_true(q_k)||^2].
+
+S is image width in canvas pixels. P1 estimates must NOT be scored using their
+Q1 reinterpretation. The raster residual likewise evaluates the actual declared
+estimated function; the PNG truth floor still uses the ORIGINAL Q1 function.
+The truth-objective diagnostic evaluates that Q1 function and is labeled as such,
+not as an exactly representable P1 optimum. Report separately the discrepancy
+between P1 and Q1 interpretations of the SAME target vertex table: this measures
+an interpolation discrepancy, NOT the best possible P1 approximation lower bound.
+Smallest decisive tests: a nonaffine quad with distinct Q1/AC/BD values, exact
+affine values/endpoints, independent triangle search, and a mocked image-only
+optimizer receiving no truth or evaluation queries. Default Q1 behavior remains.
+Failure at the new P1 setting is evidence about this objective/budget/representation,
+not proof that no P1 homeomorphism can register those images.
+
+## 16. Constant-anchor stage caching (instance optimization only)
+
+Research card (T+5.4h): current per-instance optimization freezes the accepted
+anchor Y during each thirty-step latent stage. Question: can reference areas,
+current slacks and determinant slope coefficients be computed ONCE per stage,
+without changing any trial or scalar-latent derivative? Claim: the same normalized
+delta and slack enter the existing radial/analytic layer, with identical corner
+arithmetic. Assumptions: Y, reference and direction are constants for the ENTIRE
+stage; all are cloned when the cache is built. A changed anchor requires a new
+cache. Trainable anchors/references are explicitly rejected, not silently detached.
+This is NOT a full-Y neural-cascade adjoint; Section14 provides that separate API.
+Falsifiers: candidate/diagnostic/proposal-gradient disagreement, mutable caller
+inputs invalidating cached geometry, or no end-to-end improvement after counting
+construction and resident storage. Test both modes, non-square batches, explicit
+references, tiny/inactive proposals, caller mutation and rounded output rejection.
+Prior work: reuse of fixed coefficients in a matrix-free linear operator; the
+directional determinant identity of Section2. No new deformation family is claimed.
+
+For each oriented corner triangle (p,q,r), precompute the constants
+
+    k1=det(e,Y_r-Y_p), k2=det(Y_q-Y_p,e).
+
+For every new scalar proposal u, the unnormalized determinant change remains
+(u_q-u_p)k1+(u_r-u_p)k2. Use the same corner triples and operation order as the
+existing implementation, then divide by stored qref. The normalized slack is
+q(Y)/qref-eta and is constant throughout the stage. Reuse the existing gauge,
+scale and all public diagnostic derivatives with respect to u. Output corners
+are STILL freshly computed from the actual rounded candidate on EVERY trial;
+constant-anchor caching does not replace this check with a predicted margin.
+Stage construction time and extra constant arrays count in application cost.
+
+## 17. Multilevel multi-stage latent decoder benchmark (not encoder training)
+
+Research card (T+6h): one-layer VJP measurements do not establish memory or
+gradient behavior for a complex decoder. Question: can ten compatible vertex-table
+updates propagate derivatives from multilevel latents through their changing
+geometry at257 and1025 control resolutions? This is a benchmark of the same
+mechanism, not a new registration objective or a trained image encoder.
+At nested coefficient levels17,33,65,129,257 (continuing to513,1025 for a
+1025-control benchmark), let z_l contain two scalar interior
+coefficient tables. Pad their boundaries with zero and prolong RAW proposals,
+then apply horizontal and vertical analytic coordinated candidates sequentially
+on the SAME material grid. Every successful intermediate output undergoes its
+actual four-corner checks; Section6 gives the compatible P1 interpretation.
+The final output is the final vertex table with the original fixed P1 diagonal,
+not a resampled unrelated composition. Changing mapped geometry is an INPUT to
+each subsequent stage, so its full derivative must remain connected.
+
+Probe proposals use bounded deterministic synthetic latents, not anatomy or
+evaluation targets. Their amplitudes and coefficient sizes are recorded. The
+benchmark gradient is that of a declared synthetic scalar output probe with
+respect to ALL latent tables and the initial map, not an image-training claim.
+Compare ordinary autodiff, explicit manual adjoints and checkpointed explicit
+adjoints. Checkpointing means recomputing selected forward blocks during backward,
+not truncating their derivatives or freezing intermediate mapped vertices.
+Compilation/cache/setup cost, warmup, successful/rejected stages, minimum actual
+corner values, full forward/backward time and total/resident allocated memory
+are separate measurements. Falsifiers: mismatched output or full-chain derivative,
+rounded-output rejection, or no practical memory benefit after recomputation cost.
+Start with tiny finite differences and two-stage equality before large grids.
+No fixed-depth universality, image-to-latent training, or independent anatomical
+registration conclusion follows from this benchmark.
+
+Control resolution is NOT latent freedom: if every raw proposal is interpolated
+on the FIXED source grid and each stage uses ONE spatially uniform scale, the
+final displacement is a sum of those source-basis fields. For nested bilinear
+coefficient grids all coarse spaces lie in the finest coefficient space.
+Repeating such stages does not itself introduce new spatial basis functions.
+Therefore the main dense-cascade comparison includes a coefficient level equal
+to control resolution; a257-latent/1025-control auxiliary must be labeled limited
+latent freedom, not generic1025 expressivity. Full-grid finite-depth universality
+still does not follow, even when the finest coefficients have full dimension.
+
+Checkpoint recomputation uses explicit use_reentrant=False and fixed, nonrandom
+forward blocks, passing changing tensors as inputs rather than mutable loop/global
+state. It trades computation for retained activations; see the runtime-version
+[PyTorch2.5 checkpoint documentation](https://docs.pytorch.org/docs/2.5/checkpoint.html).

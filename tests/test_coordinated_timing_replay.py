@@ -20,3 +20,12 @@ def test_counterbalanced_order_and_only_sampling_changes():
 def test_rejects_q1_template():
     with pytest.raises(ValueError,match="actual P1"):
         replay_configuration({"configuration":{"interpolation":"q1"}},Path("x.npz"),"frozen")
+
+
+def test_geometry_comparison_preserves_frozen_sampler_and_all_evidence():
+    report={"configuration":dict(fixed="f.png",moving="m.png",affine="a.npz",matches="raw.json",
+        output="old.npz",p1_sampling="frozen",interpolation="p1_ac",strain_weight=3.,method="analytic")}
+    config=replay_configuration(report,Path("new.npz"),"stage_cache","geometry")
+    assert config.geometry_backend=="stage_cache" and config.p1_sampling=="frozen"
+    assert config.strain_weight==3. and config.matches==Path("raw.json")
+    assert "geometry_backend" not in report["configuration"]

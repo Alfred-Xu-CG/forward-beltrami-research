@@ -1,9 +1,11 @@
 import importlib.util
+import pytest
 
 import torch
 
 
-def test_fixed_anchor_profile_uses_real_evidence_and_chain_rule():
+@pytest.mark.parametrize("decoder_kind",["original","stage_cache"])
+def test_fixed_anchor_profile_uses_real_evidence_and_chain_rule(decoder_kind):
     name="tools.coordinated_profile_trial"
     assert importlib.util.find_spec(name) is not None,"trial profiler not implemented"
     from tools.coordinated_profile_trial import profile_one_trial
@@ -19,7 +21,10 @@ def test_fixed_anchor_profile_uses_real_evidence_and_chain_rule():
     evidence=Evidence(fixed,fixed.clone(),torch.eye(2,dtype=torch.float64),torch.zeros(2,dtype=torch.float64),
         "mind",3.,1.,.0001,interpolation="p1_ac",matches=matches,match_weight=.1)
     evidence.prepare_fixed_p1_sampling(9,9,dtype=anchor.dtype,device=anchor.device)
-    result=profile_one_trial(anchor,evidence,level=5,amplitude=.002,warmup=10,repeats=10)
+    result=profile_one_trial(anchor,evidence,level=5,amplitude=.002,warmup=10,repeats=10,decoder_kind=decoder_kind)
+    assert result["decoder_kind"]==decoder_kind
+    assert result["decoder_setup_seconds"]>=0
+    assert (result["decoder_constant_bytes"]>0)==(decoder_kind=="stage_cache")
     assert result["coefficient_parameters"]==9
     assert result["anchor_requires_grad"] is False
     assert result["chain_rule_gradient_max_difference"]<1e-12

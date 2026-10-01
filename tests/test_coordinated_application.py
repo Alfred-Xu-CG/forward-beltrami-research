@@ -242,3 +242,29 @@ def test_prepared_p1_evidence_same_loss_and_vertex_gradient(diagonal):
     q1=Evidence(image,image,torch.eye(2),torch.zeros(2),"mind",.05,1.)
     with pytest.raises(ValueError,match="P1"):
         q1.prepare_fixed_p1_sampling(9,9,dtype=torch.float32,device="cpu")
+
+
+@pytest.mark.parametrize("mode",["radial","analytic"])
+def test_complete_tiny_stage_cache_optimization_matches_existing(tmp_path,mode):
+    import argparse
+    from PIL import Image
+    from tools.coordinated_real_case import optimize
+    raster=np.random.default_rng(20261001).integers(0,220,(16,16),dtype=np.uint8)
+    Image.fromarray(raster).save(tmp_path/"fixed.png")
+    Image.fromarray(np.roll(raster,1,axis=1)).save(tmp_path/"moving.png")
+    np.savez(tmp_path/"affine.npz",post_affine_matrix=np.eye(2,dtype=np.float32),post_affine_offset=np.zeros(2,dtype=np.float32))
+    config=dict(fixed=tmp_path/"fixed.png",moving=tmp_path/"moving.png",affine=tmp_path/"affine.npz",
+        method=mode,loss="mind",grid_side=9,image_side=16,image_levels=[8,16],levels=[5,9],
+        inner_steps=2,cycles=1,learning_rate=.004,lr_calibration="edge",strain_weight=3.,
+        shape_weight=.0001,oob_weight=1.,minimum_jacobian=.001,precision="float64",image_precision="float32",
+        device="cpu",threads=2,interpolation="p1_ac",p1_sampling="frozen",output_selection="best_full")
+    results=[]
+    for backend in ("existing","stage_cache"):
+        options=argparse.Namespace(**config,geometry_backend=backend,output=tmp_path/(backend+".npz"))
+        report=optimize(options)
+        assert report["geometry_backend"]==backend and report["failed_trials"]==0
+        assert report["gradient_steps"]==8 and report["saved_binary_certificate"]["valid"]
+        with np.load(options.output) as archive:vertices=archive["vertices"].copy()
+        results.append((report,vertices))
+    np.testing.assert_array_equal(results[0][1],results[1][1])
+    assert results[0][0]["trace"]==results[1][0]["trace"]

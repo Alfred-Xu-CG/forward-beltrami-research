@@ -571,3 +571,74 @@ Independent checker confirmed configuration preservation, no label reads and
 no surviving GPU tensor ownership. Historical end_to_end_seconds stops before
 final shape diagnostic/report writing; future timing replays additionally measure
 the complete optimize() call. Coordinator's combined affected suites102pass.
+
+## T+6h: actual P1 recovery and two distinct acceleration scopes
+
+Known-image extension keeps prepared Q1-generating PNGs/matches/truth unchanged,
+but explicitly optimizes and evaluates P1(ac) estimates. No Q1 reinterpretation
+of a fitted P1 map enters query or raster metrics. Independent numerical/scoping
+review passed; the mocked optimizer-interface test now exercises all three
+interpretations, forwarding cache flags while never passing truth. Twenty tests
+pass. Actual P1 analytic queryRMSE=.542089/1.335958/.502327px for the three
+targets, all twelve methods/targets300gradients, zero failures, valid certificates.
+Same-target-vertex P1-versus-Q1 discrepancies=.000493/.001180/.000483px are
+reported separately, NOT best-approximation lower bounds. PNG truth residual is
+the generating-map quantization residual, NOT a proved minimal image loss.
+
+Candidate-only full-current-Y/proposal adjoint: retained active-row storage
+avoids full constraint trajectories. The first local-autograd-stencil variant
+is slower when bounds are active at257/513; retain that negative measurement.
+Replacing ONLY local stencil graphs with direct q1-edge/triangle differentials
+now gives the following same-process candidate-only operator comparison:
+
+| Float64 grid,B1,A6000, default checks on BOTH | Existing -> explicit manual forward+VJP ms | Existing -> explicit peak MiB |
+|---|---|---|
+|257^2, active radial|10.639->8.153|52.05->26.02|
+|257^2, active analytic|11.249->8.550|52.05->26.02|
+|1025^2, active radial|25.437->13.823|816.31->400.27|
+|1025^2, active analytic|25.661->13.943|816.31->400.27|
+
+Both Y and z require gradients; same integer-refined nonregular anchor and
+upstream, fresh independent output corners, warm3/repeat10. All nine manual
+benchmark cases have bit-identical candidate values; relative derivative L2
+errors<=1.75e-16(Y)/1.02e-16(z). Absolute errors/RMS scales are also saved.
+Unique active constraint per batch; many-tie speed NOT tested on GPU, while
+CPU >4096-tie correctness is tested. Retained unique storage, including input
+Y/z, falls432.031->24.047MiB at1025. First-order/fixed-reference/fixed-boundary
+candidate-only scope remains; no diagnostic-gradient or higher-order claim.
+Coordinator independently read the direct stencil and reran82affected tests.
+No Triton dependency was needed. This is NOT full image-registration speed.
+
+Measurement correction: the first saved-tensor probe accidentally retained
+differentiable tensors in hook handles, producing reference cycles and inflated
+resident/peak measurements. It is preserved and explicitly marked INVALID for
+memory. A failing lifetime regression led to detached storage-only handles;
+all corrected CUDA probes return EXACT resident baseline after counting. Corrected
+and original numerical/timing records remain separate, not silently overwritten.
+
+Constant-anchor stage cache is a DIFFERENT scoped engineering optimization:
+cloned fixed Y/reference plus unnormalized determinant slopes computed once per
+stage; no trainable-anchor differentiation claim. All public proposal-dependent
+diagnostics and actual output checks remain connected. Independent11core tests,
+33integration/profile/timing tests passed; coordinator44affected tests include
+two-stage actual-image optimizations with identical exported maps and traces.
+
+Complete rat-kidney analytic comparison, frozen P1 cache on BOTH, ten full runs
+(two warmups+four AB/BA measured pairs), SAME image objective/300 gradients:
+median optimizer4.88570->3.58688s; complete optimize() call4.99664->3.66890s.
+All runs zero failures/valid saved certificates. Stage cache constructor costs
+are INSIDE optimization time. Optimizer-phase peak216,908,800->219,011,072bytes
+slightly INCREASES; this is speed engineering, not a memory saving claim. Each
+cache retains approximately10.5MB at257. Component trial timings alone varied
+under shared-host scheduling, so full same-process repeated comparisons take
+precedence. Only one development specimen has this repeated backend comparison
+so far; other specimens and larger complete-instance scales remain to be measured.
+
+Important diagnosis: in the calibrated MIND/point/strain3 analytic development
+matrix, all310evaluated trials in EACH of three cases have scale1; maximum gauges
+about.52/.49/.70, belowtheta.95. Thus the guard did not limit these trajectories.
+It still guarantees feasibility for other latent proposals, and other active
+benchmarks exercise its nontrivial derivative. Do not attribute remaining
+development error solely to conservative step scaling or claim a guard-free
+network would always be legal. Independent-cohort and image-to-neural training
+evidence remains absent; the approved phase's main results are instance optimization.

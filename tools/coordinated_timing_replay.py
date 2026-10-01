@@ -10,20 +10,22 @@ import time
 from tools.coordinated_real_case import optimize
 
 
-def replay_configuration(report, output, sampling):
+def replay_configuration(report, output, sampling,comparison="sampling"):
     config=dict(report["configuration"])
     for name in ("fixed","moving","affine","matches"):
         if config.get(name) is not None:
             config[name]=Path(config[name])
     config["output"]=Path(output)
-    config["p1_sampling"]=sampling
+    if comparison=="sampling":config["p1_sampling"]=sampling
+    elif comparison=="geometry":config["geometry_backend"]=sampling
+    else:raise ValueError("declare sampling or geometry comparison")
     if config.get("interpolation") not in ("p1_ac","p1_bd"):
         raise ValueError("timing comparison requires a declared actual P1 output")
     return argparse.Namespace(**config)
 
 
-def sampling_order(repeat):
-    return ("existing","frozen") if repeat%2==0 else ("frozen","existing")
+def sampling_order(repeat,variants=("existing","frozen")):
+    return variants if repeat%2==0 else tuple(reversed(variants))
 
 
 def run(args):
@@ -34,16 +36,19 @@ def run(args):
     args.output.parent.mkdir(parents=True,exist_ok=True)
     report=json.loads(args.report.read_text())
     rows=[]
+    comparison=getattr(args,"comparison","sampling")
+    variants=("existing","frozen") if comparison=="sampling" else ("existing","stage_cache")
     # Both full configurations warm up in the SAME process before any timed pair.
     for repeat in range(-1,args.repeats):
-        for sampling in sampling_order(max(repeat,0)):
+        for sampling in sampling_order(max(repeat,0),variants):
             suffix="warmup" if repeat<0 else f"repeat{repeat}"
             output=args.output.parent/(args.output.stem+"_"+suffix+"_"+sampling+".npz")
-            config=replay_configuration(report,output,sampling)
+            config=replay_configuration(report,output,sampling,comparison)
             tick=time.perf_counter()
             result=optimize(config)
             call_seconds=time.perf_counter()-tick
             row=dict(repeat=repeat,sampling=sampling,warmup=repeat<0,
+                comparison=comparison,variant=sampling,
                 complete_call_seconds=call_seconds,
                 optimize_seconds=result["optimize_seconds"],
                 end_to_end_seconds=result["end_to_end_seconds"],
@@ -56,12 +61,12 @@ def run(args):
             rows.append(row)
             print(json.dumps(row),flush=True)
     medians={}
-    for sampling in ("existing","frozen"):
+    for sampling in variants:
         selected=[row for row in rows if not row["warmup"] and row["sampling"]==sampling]
         medians[sampling]={name:statistics.median(row[name] for row in selected)
             for name in ("optimize_seconds","end_to_end_seconds","complete_call_seconds","feature_seconds","peak_allocated_bytes")
             if selected[0][name] is not None}
-    payload=dict(template=str(args.report),configuration=report["configuration"],rows=rows,medians=medians,
+    payload=dict(template=str(args.report),comparison=comparison,configuration=report["configuration"],rows=rows,medians=medians,
         scope="warmed steady-state same-process AB/BA registrations; no anatomical labels loaded; complete_call_seconds includes final diagnostic/report serialization; historical end_to_end_seconds stops before these; peak_allocated_bytes is optimizer-phase peak after feature setup, includes resident cache but not setup temporaries",
         precision_caution="CUDA reduction/optimizer branches may differ slightly; cache is not a different deformation family")
     args.output.write_text(json.dumps(payload,indent=2)+"\n")
@@ -73,6 +78,7 @@ def main():
     parser.add_argument("--report",type=Path,required=True)
     parser.add_argument("--output",type=Path,required=True)
     parser.add_argument("--repeats",type=int,default=4)
+    parser.add_argument("--comparison",choices=("sampling","geometry"),default="sampling")
     run(parser.parse_args())
 
 

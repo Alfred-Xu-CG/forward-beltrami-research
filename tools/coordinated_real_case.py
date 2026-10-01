@@ -189,6 +189,11 @@ def optimize(args, accepted_stage_callback=None):
         raise ValueError("one image resolution per coefficient level, ending at full image_side")
     if min(args.strain_weight,args.oob_weight,getattr(args,"shape_weight",0.))<0:
         raise ValueError("nonnegative objective weights required")
+    geometry_backend=getattr(args,"geometry_backend","existing")
+    if geometry_backend not in ("existing","stage_cache"):
+        raise ValueError("declare existing or fixed-anchor stage_cache geometry backend")
+    if geometry_backend=="stage_cache" and args.method not in ("radial","analytic"):
+        raise ValueError("stage_cache currently supports global radial/analytic instance stages only")
     device = torch.device(args.device)
     torch.set_num_threads(args.threads)
     dtype = torch.float64 if args.precision == "float64" else torch.float32
@@ -273,8 +278,13 @@ def optimize(args, accepted_stage_callback=None):
                         coverage = f2_coverage(layer,args.grid_side,dtype)
                 else:
                     mode = "analytic" if "analytic" in args.method else "radial"
-                    layer = CoordinatedQ1Update(direction, mode=mode,
-                        minimum_jacobian=args.minimum_jacobian, theta=.95).to(device)
+                    if geometry_backend=="stage_cache":
+                        from qcopt.neural_bijection.dense.coordinated_stage_cache import FrozenAnchorCoordinatedUpdate
+                        layer=FrozenAnchorCoordinatedUpdate(anchor,direction=direction,mode=mode,
+                            minimum_jacobian=args.minimum_jacobian,theta=.95)
+                    else:
+                        layer = CoordinatedQ1Update(direction, mode=mode,
+                            minimum_jacobian=args.minimum_jacobian, theta=.95).to(device)
                     regional_active = args.method.startswith(("regional_","tapered_global_")) and level >= getattr(args,"regional_min_level",3)
                     if regional_active:
                         half=args.regional_cells//2
@@ -304,7 +314,8 @@ def optimize(args, accepted_stage_callback=None):
                         else:
                             if regional_active and args.method.startswith("tapered_global_"):
                                 proposal=regional.windowed_proposal(proposal)
-                            result = layer(anchor, proposal, validate=False)
+                            result = (layer(proposal,validate=False) if geometry_backend=="stage_cache"
+                                      else layer(anchor, proposal, validate=False))
                             scales,gauges=result.scale,result.gauge
                         candidate = result.vertices
                         diagnostics = dict(scale=float(scales.detach().min()),mean_scale=float(scales.detach().mean()),
@@ -386,6 +397,7 @@ def optimize(args, accepted_stage_callback=None):
                   image_match_evidence=match_metadata,
                   image_preprocessing=preprocessing_metadata,
                   p1_sampling=p1_sampling,
+                  geometry_backend=geometry_backend,
                   fixed_p1_cache_bytes=sum(buffer.numel()*buffer.element_size()
                     for item in evidence_by_resolution.values() if item.fixed_p1_evaluator is not None
                     for buffer in item.fixed_p1_evaluator.buffers()),
@@ -412,6 +424,8 @@ def main():
     p.add_argument("--interpolation",choices=("q1","p1_ac","p1_bd"),default="q1")
     p.add_argument("--p1-sampling",choices=("existing","frozen"),default="existing",
                    help="Optional immutable fixed-source query cache; no moving-query gradients")
+    p.add_argument("--geometry-backend",choices=("existing","stage_cache"),default="existing",
+                   help="Optional constant-anchor global radial/analytic instance-stage cache; not trainable-anchor neural API")
     p.add_argument("--grid-side", type=int, default=257)
     p.add_argument("--image-side", type=int, default=512)
     p.add_argument("--image-levels", type=int, nargs="+",

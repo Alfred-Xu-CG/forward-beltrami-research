@@ -3,7 +3,8 @@
 Research card: Can the shared image objective recover an independently legal
 warp of real histology texture when oracle correspondence capacity is known?
 The target is an analytic shear/rotation/coarse-fine map, never a solver field.
-Assume fixed boundary, Q1 interpolation, and a single original moving raster.
+Assume fixed boundary, Q1 generating truth, an explicitly declared Q1/P1
+estimated function, and a single original moving raster.
 Failure of image-selected output to recover held-out queries falsifies recovery
 under this objective/budget, NOT expressivity or the possibility of correspondence.
 Smallest tests: identity pixels, affine off-grid queries, actual target corners.
@@ -37,8 +38,14 @@ def generic_corner_ratio(vertices, reference):
     return float((triangles(vertices)/triangles(reference)).min())
 
 
-def generate_fixed(moving, target):
-    query = q1_map_at_pixel_centers(target, *moving.shape[-2:])
+def generate_fixed(moving, target, interpolation="q1"):
+    if interpolation=="q1":
+        query = q1_map_at_pixel_centers(target, *moving.shape[-2:])
+    elif interpolation in ("p1_ac","p1_bd"):
+        from qcopt.neural_bijection.dense.coordinated_sampling import p1_map_at_pixel_centers
+        query=p1_map_at_pixel_centers(target,*moving.shape[-2:],diagonal=interpolation[-2:])
+    else:
+        raise ValueError("declare q1, p1_ac or p1_bd")
     return F.grid_sample(moving, 2*query-1, mode="bilinear",
                          padding_mode="zeros", align_corners=False)
 
@@ -57,13 +64,33 @@ def sample_q1_queries(vertices, points):
             +u*v*vertices[0,r+1,c+1]+(1-u)*v*vertices[0,r+1,c])
 
 
-def held_out_map_metrics(estimate, target, image_side, count=4096):
+def sample_declared_queries(vertices,points,interpolation="q1"):
+    """Independent explicit barycentric evaluation for the declared estimate."""
+    if interpolation=="q1":return sample_q1_queries(vertices,points)
+    if interpolation not in ("p1_ac","p1_bd"):
+        raise ValueError("declare q1, p1_ac or p1_bd")
+    if vertices.shape[0]!=1 or points.ndim!=2 or points.shape[1]!=2:
+        raise ValueError("one map and N by2 source queries required")
+    if not bool(torch.isfinite(points).all() and ((points>=0)&(points<=1)).all()):
+        raise ValueError("finite in-domain source queries required")
+    rows,columns=vertices.shape[1:3]
+    x,y=points[:,0]*(columns-1),points[:,1]*(rows-1)
+    c,r=x.floor().long().clamp_max(columns-2),y.floor().long().clamp_max(rows-2)
+    u,v=(x-c)[:,None],(y-r)[:,None]
+    a,b,d,ne=vertices[0,r,c],vertices[0,r,c+1],vertices[0,r+1,c],vertices[0,r+1,c+1]
+    if interpolation=="p1_ac":
+        return torch.where(u>=v,(1-u)*a+(u-v)*b+v*ne,(1-v)*a+u*ne+(v-u)*d)
+    return torch.where(u+v<=1,(1-u-v)*a+u*b+v*d,(1-v)*b+(u+v-1)*ne+(1-u)*d)
+
+
+def held_out_map_metrics(estimate, target, image_side, count=4096, *, estimate_interpolation="q1"):
     rng = np.random.default_rng(20261001)
     points = torch.from_numpy(rng.uniform(.00001,.99999,(count,2))).to(target)
-    delta = sample_q1_queries(estimate.to(target),points)-sample_q1_queries(target,points)
+    delta = sample_declared_queries(estimate.to(target),points,estimate_interpolation)-sample_q1_queries(target,points)
     errors = delta.square().sum(-1).sqrt()
     rmse = float(errors.square().mean().sqrt())
     return dict(query_count=count,query_seed=20261001,queries_used_for_optimization=False,
+                estimate_interpolation=estimate_interpolation,target_interpolation="q1",
                 euclidean_query_rmse_normalized=rmse,
                 euclidean_query_rmse_canvas_pixels=rmse*image_side,
                 p90_query_error_canvas_pixels=float(torch.quantile(errors,.9))*image_side,
@@ -135,8 +162,8 @@ def prepare(args):
     return manifest
 
 
-def image_metrics(fixed,moving,vertices):
-    warped=generate_fixed(moving,vertices)
+def image_metrics(fixed,moving,vertices,interpolation="q1"):
+    warped=generate_fixed(moving,vertices,interpolation)
     mask=(fixed>.04).to(fixed)
     difference=(fixed-warped).square()
     return dict(raster_rmse_all_pixels=float(difference.mean().sqrt()),
@@ -303,6 +330,7 @@ def run(args,manifest):
     if args.output.exists():
         raise FileExistsError(args.output)
     rows=[]
+    interpolation=getattr(args,"interpolation","q1")
     folder=args.inputs_from.parent if args.inputs_from is not None else args.output.parent
     fixed_moving,_ = _read_gray_thumbnail(folder/manifest["moving"],args.image_side)
     moving=fixed_moving.double()
@@ -348,6 +376,8 @@ def run(args,manifest):
                 precision="float64",image_precision="float64",shape_weight=args.shape_weight,
                 image_levels=args.image_levels,device=args.device,threads=args.threads)
             opt.preprocessing=getattr(args,"preprocessing","raw_inverted")
+            opt.interpolation=interpolation
+            opt.p1_sampling=getattr(args,"p1_sampling","existing")
             opt.matches=match_path;opt.match_weight=getattr(args,"match_weight",0.)
             opt.match_robust_scale=getattr(args,"match_robust_scale",8.)
             snapshots=[]
@@ -358,10 +388,10 @@ def run(args,manifest):
             report=(optimize(opt,accepted_stage_callback=observe_stage)
                     if args.record_stages else optimize(opt))
             query_history=[dict(stage=stage,optimizer_seconds=elapsed,
-                                held_out=held_out_map_metrics(vertices,target,args.image_side),
+                                held_out=held_out_map_metrics(vertices,target,args.image_side,estimate_interpolation=interpolation),
                                 actual_minimum_normalized_corner=generic_corner_ratio(vertices,reference))
                            for vertices,stage,elapsed in snapshots]
-            initial_query=held_out_map_metrics(reference,target,args.image_side)
+            initial_query=held_out_map_metrics(reference,target,args.image_side,estimate_interpolation=interpolation)
             times={str(threshold):(0. if initial_query["euclidean_query_rmse_canvas_pixels"]<=threshold
                    else next((item["optimizer_seconds"] for item in query_history
                               if item["held_out"]["euclidean_query_rmse_canvas_pixels"]<=threshold),None))
@@ -369,13 +399,17 @@ def run(args,manifest):
             with np.load(output) as data:
                 estimated=torch.from_numpy(data["vertices"])
             row=dict(target=case["target"],method=method,target_specification=case,
-                held_out=held_out_map_metrics(estimated,target,args.image_side),
+                held_out=held_out_map_metrics(estimated,target,args.image_side,estimate_interpolation=interpolation),
                 initial_held_out=initial_query,
-                image_error_initial=initial,image_error_final=image_metrics(fixed,moving,estimated),
+                image_error_initial=initial,image_error_final=image_metrics(fixed,moving,estimated,interpolation),
+                estimate_interpolation=interpolation,target_interpolation="q1",
+                target_vertex_interpolation_discrepancy=held_out_map_metrics(target,target,args.image_side,estimate_interpolation=interpolation),
+                target_objective_interpolation="q1 (original generating function, not P1 optimum)",
                 target_objective_total=float(truth_total),target_objective_parts={k:float(v) for k,v in truth_parts.items()},
                 target_corner_shape=float(corner_symmetric_dirichlet(target)),
                 final_corner_shape=float(corner_symmetric_dirichlet(estimated)),
                 target_raster_floor=image_metrics(fixed,moving,target),
+                target_raster_floor_scope="residual at original Q1 generating map after PNG quantization, not a proved attainable-error lower bound",
                 actual_minimum_normalized_corner=generic_corner_ratio(estimated,reference),
                 optimize_seconds=report["optimize_seconds"],gradient_steps=report["gradient_steps"],
                 decoder_trial_evaluations=report["evaluations"],failed_trials=report["failed_trials"],
@@ -434,6 +468,9 @@ def main():
     p.add_argument("--minimum-jacobian",type=float,default=.001)
     p.add_argument("--loss",choices=("mind","local_ncc"),default="mind")
     p.add_argument("--preprocessing",choices=("raw_inverted","native_dhr"),default="raw_inverted")
+    p.add_argument("--interpolation",choices=("q1","p1_ac","p1_bd"),default="q1",
+                   help="Estimated function only; prepared known-image truth remains original Q1")
+    p.add_argument("--p1-sampling",choices=("existing","frozen"),default="existing")
     p.add_argument("--device",default="cpu")
     p.add_argument("--threads",type=int,default=2)
     args=p.parse_args()

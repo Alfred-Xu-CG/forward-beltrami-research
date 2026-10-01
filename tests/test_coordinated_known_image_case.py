@@ -119,7 +119,8 @@ def test_root_p1_and_q1_are_distinct_on_non_affine_quad():
     assert float(p1_map_at_queries(vertices,points[None],"bd")[0,0,0])==pytest.approx(.3)
 
 
-def test_common_shape_weight_and_target_free_optimizer_interface(tmp_path,monkeypatch):
+@pytest.mark.parametrize("interpolation",["q1","p1_ac","p1_bd"])
+def test_common_shape_weight_and_target_free_optimizer_interface(tmp_path,monkeypatch,interpolation):
     from PIL import Image
     from types import SimpleNamespace
     import tools.coordinated_real_case as app
@@ -136,8 +137,11 @@ def test_common_shape_weight_and_target_free_optimizer_interface(tmp_path,monkey
         targets=["wide_shear"],methods=["radial"],loss="mind",strain_weight=.05,shape_weight=1e-4,
         levels=[5],inner_steps=1,cycles=1,learning_rate=.004,minimum_jacobian=.001,
         image_levels=None,device="cpu",threads=2,record_stages=False,query_thresholds=[1.,5.,10.])
+    args.interpolation=interpolation
+    args.p1_sampling="existing" if interpolation=="q1" else "frozen"
     def image_only_optimizer(opt):
         assert opt.shape_weight==args.shape_weight
+        assert opt.interpolation==interpolation and opt.p1_sampling==args.p1_sampling
         assert not any(word in key for key in vars(opt) for word in ("target","landmark","truth"))
         assert opt.fixed.name=="fixed.png" and opt.moving.name=="moving.png"
         assert opt.affine.name=="identity.npz"
@@ -147,6 +151,8 @@ def test_common_shape_weight_and_target_free_optimizer_interface(tmp_path,monkey
                     peak_allocated_bytes=None,initial={},final={},saved_binary_certificate={"valid":True})
     monkeypatch.setattr(app,"optimize",image_only_optimizer)
     row=run(args,manifest)["results"][0]
+    assert row["estimate_interpolation"]==interpolation
+    assert row["target_interpolation"]=="q1"
     fixed,_=_read_gray_thumbnail(tmp_path/"fixed.png",16)
     baseline=app.Evidence(fixed.double(),fixed.double(),torch.eye(2,dtype=torch.float64),
                           torch.zeros(2,dtype=torch.float64),"mind",.05,1.)(target)[0]
@@ -165,3 +171,25 @@ def test_native_posthoc_constant_translation_matches_physical_units():
     assert report["euclidean_query_rmse_canvas_pixels"]<2e-6
     assert report["query_seed"]==20261001 and report["denominator"]==67
     assert report["queries_dropped"]==0 and report["out_of_unit_square_predictions"]>0
+
+
+@pytest.mark.parametrize("diagonal",["ac","bd"])
+def test_declared_estimate_metrics_use_actual_p1_not_q1(diagonal):
+    from tools.coordinated_known_image_case import sample_declared_queries
+    rng=np.random.default_rng(661)
+    vertices=torch.from_numpy(rng.normal(size=(1,4,7,2)))
+    points=rng.uniform(0,1,(23,2))
+    actual=sample_declared_queries(vertices,torch.from_numpy(points),"p1_"+diagonal)
+    np.testing.assert_allclose(actual.numpy(),_independent_p1(vertices[0].numpy(),points,diagonal),atol=2e-14,rtol=0)
+    report=held_out_map_metrics(vertices,vertices,512,count=31,estimate_interpolation="p1_"+diagonal)
+    assert report["euclidean_query_rmse_canvas_pixels"]>1
+    assert report["estimate_interpolation"]=="p1_"+diagonal
+    assert report["target_interpolation"]=="q1"
+
+
+@pytest.mark.parametrize("interpolation",["p1_ac","p1_bd"])
+def test_declared_p1_raster_identity_preserves_non_square_texture(interpolation):
+    moving=torch.arange(99,dtype=torch.float64).reshape(1,1,9,11)/100
+    y,x=torch.meshgrid(torch.linspace(0,1,5,dtype=torch.float64),torch.linspace(0,1,7,dtype=torch.float64),indexing="ij")
+    vertices=torch.stack((x,y),-1)[None]
+    torch.testing.assert_close(generate_fixed(moving,vertices,interpolation),moving,atol=1e-14,rtol=0)
