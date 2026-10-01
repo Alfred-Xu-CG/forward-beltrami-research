@@ -16,6 +16,7 @@ def main():
     p.add_argument("--device",default="cuda")
     p.add_argument("--f2-accepted-gain",type=float,default=1.)
     p.add_argument("--strain-weight",type=float,default=.05)
+    p.add_argument("--strain-model",choices=("displacement_gradient","p1_arap"),default="displacement_gradient")
     p.add_argument("--regional-min-level",type=int,default=3)
     p.add_argument("--precision",choices=("float32","float64"),default="float32")
     p.add_argument("--image-precision",choices=("same","float32","float64"),default="same")
@@ -59,7 +60,7 @@ def main():
                 cycles=args.base_cycles*(2 if method in ("f1","f2") else 1)*args.budget_multiplier,learning_rate=.004,lr_calibration=args.lr_calibration,patch_cells=8,
                 f2_accepted_gain=args.f2_accepted_gain,
                 regional_cells=32,regional_min_level=args.regional_min_level,
-                strain_weight=args.strain_weight,oob_weight=1.,minimum_jacobian=.001,precision=args.precision,
+                strain_weight=args.strain_weight,strain_model=args.strain_model,oob_weight=1.,minimum_jacobian=.001,precision=args.precision,
                 image_precision=args.image_precision,shape_weight=args.shape_weight,
                 interpolation=args.interpolation,
                 p1_sampling=args.p1_sampling,

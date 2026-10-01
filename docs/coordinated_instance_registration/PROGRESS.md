@@ -1031,3 +1031,72 @@ tests and one existing300gradient matrix, no weight grid search.
 Prior work: standard ARAP/corotational distortion (SLIM2017 equations1--2,
 https://igl.ethz.ch/projects/slim/SLIM2017.pdf); this is a conventional objective
 ablation prompted by observed evidence/prior conflict, not novel geometry.
+
+Read-only decisive comparison succeeds for rotation: on SAME stored truth/
+alternatingA/jointA vertex tables, actual-AC ARAP prior .0259849/.0107068/
+.0102986 replaces membrane .0508837/.0191669/~.018; new weight3 completeE
+.149747/.162723/.162050 reverses truth/final ranking. Shear totals .116988/
+.114927/.114305 and coarse-fine .101761/.104075/.100003 remain mixed. No
+optimization or truth-based output selection occurred. Q1/P1 truth comparator
+gap is only1.41e-7 objective and .00118px query discrepancy; neither explains
+the7.7px rotation error. ALL rotation analytic scales inactive (maxg~.442),
+so active safe scaling is NOT its demonstrated bottleneck. Independent checker
+derives polar formula, actualface weights and collapse limitation (Section25).
+Proceed one conventional ARAP objective ablation, not another LR/filter sweep.
+
+ARAP author31independent-face/SVD/FD/second-derivative tests and coordinator84
+affected tests pass; independent checker101operator/app/sweep/known tests pass.
+Checker also supplies compressed-shear negative curvature example (Section25):
+rotation invariance does NOT imply convexity. p1_arap rejects Q1 and coarse_exact
+membrane quadrature rather than silently changing their mathematics. Known
+Q1-generating truth is unchanged; additional same-declared-P1 objective comparator
+is labeled separately. All pyramid stages receive identical chosen strain model.
+IdleGPU6real12-run andGPU7known12-run matrices started after resource check;
+no filter/rate change, allR/A/F1/F2 use shared prior3/MIND/machine-point evidence.
+
+Both matrices complete all24runs,300gradients each,zero failed trials,allvalid.
+Real analytic meanTRE membrane->ARAP: H.800718->.793449,L3.689299->3.657262,
+K2.450187->2.351586; p90ARAP1.544649/7.080791/4.507429. These are modest
+DEVELOPMENT gains, not independent validation. ARAP radialmeans.882463/3.700171/
+2.328260; F1.808723/4.031140/4.028482; F2.787888/3.669633/2.394303. Single-run
+analytic optimizer3.85/4.35/3.94s, peak225--229MB; F1~9s/341--343MB,
+F2~15.5s/499--500MB. No warmed timing superiority claim from these single runs;
+allactual257CONTROL/512query/P1ac/mixedprecision, same300gradient budget but
+scalar/vector field and geometry-pass counts differ explicitly.
+
+Known analytic queryRMSE membrane->ARAP shear .53138->.68548(WORSE),
+rotation7.72023->3.39263 (~56percent lower), coarse-fine .76104->.59565.
+RadialARAP .88251/4.04729/.87792. Known F1 20.69492/14.15570/15.45156 and
+F2 14.10876/8.99728/9.30272 remain behind R/A at this budget. No new raster/
+matcher/GTinputs, Q1-generating truth retained. Allsnapshots used ONLY posthoc;
+known tests are warped textures of one existing specimen, not heldout patients.
+RotationARAP finalE.152433>truth-table .149747 leaves optimization/evidence
+questions unresolved; prior conflict was alleviated, not all errors solved.
+
+### T+8.9h bounded evidence-evaluation card
+
+Question: does descriptor TRANSPORT create an avoidable optimization bias under
+large local rotation/stretch? Existing MIND-like pipeline compares Phi(If)
+with sampled Phi(Im). In general Phi(W_F Im) != W_F Phi(Im), where W_F samples
+the original moving raster through currentdeclaredmap and Phi is the EXISTING
+eight-offset self-similarity descriptor. Independent read-only knownrotation
+check: unquantized truth transported image cost .070843; recomputed-after-warp
+image cost .008584 against the PNG fixed raster. Thus quantization alone is
+not the transported-descriptor error. This is diagnostic, not general anatomy.
+
+Exact candidate changes ONLY descriptor order: compare Phi(If) with Phi(W_F Im)
+under unchanged mask/denominator/ARAP3/shape1e-4/frozenpoints/init/geometry/Adam.
+Backpropagate through raster sampling AND all descriptor operations; never
+cache/detach candidate descriptors. Assumptions: same P1 query convention,
+zero raster OOB and replicated descriptor boundaries, originalmovingraster,
+same offsets3x3patch scale1e-4. No learned descriptor/newmatching network.
+Falsifier: independent operator/FD fails, time/memory is prohibitive, or one
+predefined same3case and3known-target matrix yields no useful accuracy/time
+tradeoff. Smallest decisive test: literal tiny reference computation and full-Y
+FD away from bilinear/absolute/minimum knots, then same300gradient matrices.
+No descriptor parameters or prior coefficients tuned per case.
+Prior work: MIND's self-similarity descriptor is established (Heinrich2012,
+https://pubmed.ncbi.nlm.nih.gov/22722056/); our eight-offset implementation is
+MIND-LIKE, not a faithful new reference implementation or novelty claim.
+Noncommutation is an operator fact; it does NOT prove this revised objective
+will perform better on different stains/noncorresponding tissue.

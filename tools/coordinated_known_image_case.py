@@ -13,6 +13,7 @@ Prior work reused: existing analytic capacity targets and shared real-case optim
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -331,6 +332,7 @@ def run(args,manifest):
         raise FileExistsError(args.output)
     rows=[]
     interpolation=getattr(args,"interpolation","q1")
+    strain_model=getattr(args,"strain_model","displacement_gradient")
     folder=args.inputs_from.parent if args.inputs_from is not None else args.output.parent
     fixed_moving,_ = _read_gray_thumbnail(folder/manifest["moving"],args.image_side)
     moving=fixed_moving.double()
@@ -358,8 +360,12 @@ def run(args,manifest):
                 device=torch.device("cpu"),dtype=torch.float64,robust_scale=args.match_robust_scale)
         evidence=Evidence(evidence_fixed,evidence_moving,torch.eye(2,dtype=torch.float64),
                           torch.zeros(2,dtype=torch.float64),args.loss,args.strain_weight,1.,
-                          shape_weight=args.shape_weight,fixed_mask=evidence_mask,matches=matches,match_weight=getattr(args,"match_weight",0.))
+                          shape_weight=args.shape_weight,fixed_mask=evidence_mask,matches=matches,match_weight=getattr(args,"match_weight",0.),
+                          interpolation=interpolation if strain_model=="p1_arap" else "q1",strain_model=strain_model)
         truth_total,truth_parts=evidence(target)
+        declared_truth_evidence=copy.copy(evidence)
+        declared_truth_evidence.interpolation=interpolation
+        declared_truth_total,declared_truth_parts=declared_truth_evidence(target)
         initial=image_metrics(fixed,moving,reference)
         for method in args.methods:
             output=args.output.with_name(args.output.stem+"_"+case["target"]+"_"+method+".npz")
@@ -382,6 +388,7 @@ def run(args,manifest):
             opt.joint_backend=getattr(args,"joint_backend","cached_manual")
             opt.geometry_backend=getattr(args,"geometry_backend","existing")
             opt.output_selection=getattr(args,"output_selection","last")
+            opt.strain_model=strain_model
             opt.matches=match_path;opt.match_weight=getattr(args,"match_weight",0.)
             opt.match_robust_scale=getattr(args,"match_robust_scale",8.)
             snapshots=[]
@@ -408,8 +415,12 @@ def run(args,manifest):
                 image_error_initial=initial,image_error_final=image_metrics(fixed,moving,estimated,interpolation),
                 estimate_interpolation=interpolation,target_interpolation="q1",
                 target_vertex_interpolation_discrepancy=held_out_map_metrics(target,target,args.image_side,estimate_interpolation=interpolation),
-                target_objective_interpolation="q1 (original generating function, not P1 optimum)",
+                target_objective_interpolation=("q1 (original generating function, not P1 optimum)" if strain_model=="displacement_gradient"
+                    else interpolation+" vertex-table comparator, NOT original Q1 generating function"),
                 target_objective_total=float(truth_total),target_objective_parts={k:float(v) for k,v in truth_parts.items()},
+                target_declared_objective_total=float(declared_truth_total),
+                target_declared_objective_parts={k:float(v) for k,v in declared_truth_parts.items()},
+                target_declared_objective_interpolation=interpolation,strain_model=strain_model,
                 target_corner_shape=float(corner_symmetric_dirichlet(target)),
                 final_corner_shape=float(corner_symmetric_dirichlet(estimated)),
                 target_raster_floor=image_metrics(fixed,moving,target),
@@ -467,6 +478,7 @@ def main():
     p.add_argument("--inner-steps",type=int,default=5)
     p.add_argument("--learning-rate",type=float,default=.004)
     p.add_argument("--strain-weight",type=float,default=.05)
+    p.add_argument("--strain-model",choices=("displacement_gradient","p1_arap"),default="displacement_gradient")
     p.add_argument("--shape-weight",type=float,default=0.,
                    help="same common corner symmetric-Dirichlet weight for truth evaluation and all optimizers")
     p.add_argument("--matches-dir",type=Path)

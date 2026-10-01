@@ -53,7 +53,7 @@ def require_nested_fine_margin(vertices,reference_corners,minimum_jacobian,conte
 class Evidence:
     """Fixed mask, original evidence, and explicitly penalized out-of-bounds."""
 
-    def __init__(self, fixed, moving, matrix, offset, loss, strain_weight, oob_weight, shape_weight=0., fixed_mask=None, interpolation="q1", matches=None, match_weight=0.):
+    def __init__(self, fixed, moving, matrix, offset, loss, strain_weight, oob_weight, shape_weight=0., fixed_mask=None, interpolation="q1", matches=None, match_weight=0., strain_model="displacement_gradient"):
         self.fixed, self.moving = fixed, moving
         self.matrix, self.offset = matrix, offset
         self.loss, self.strain_weight, self.oob_weight = loss, strain_weight, oob_weight
@@ -64,6 +64,9 @@ class Evidence:
         if interpolation not in ("q1","p1_ac","p1_bd"):
             raise ValueError("declare q1, p1_ac or p1_bd map interpretation")
         self.interpolation=interpolation
+        if strain_model not in ("displacement_gradient","p1_arap") or (strain_model=="p1_arap" and interpolation=="q1"):
+            raise ValueError("declare displacement_gradient or actual P1 p1_arap strain model")
+        self.strain_model=strain_model
         self.fixed_p1_evaluator=None
         self.nested_priors=None
         self.mask = (fixed > .04).to(fixed.dtype) if fixed_mask is None else fixed_mask.to(fixed)
@@ -96,6 +99,8 @@ class Evidence:
         """
         if self.interpolation not in ("p1_ac","p1_bd"):
             raise ValueError("coarse nested evidence requires declared P1 interpolation")
+        if self.strain_model!="displacement_gradient":
+            raise ValueError("exact nested membrane quadrature does not implement ARAP")
         from qcopt.neural_bijection.dense.coordinated_nested_priors import ExactNestedP1Priors
         result=copy.copy(self)
         result.nested_priors=ExactNestedP1Priors(coarse_side,fine_side,
@@ -130,7 +135,11 @@ class Evidence:
         outside = (F.relu(-query) + F.relu(query-1)).square().sum(-1)[:, None]
         oob = (outside*self.mask).sum()/self.denominator
         if self.nested_priors is None:
-            strain = strain_penalty(vertices)
+            if self.strain_model=="displacement_gradient":
+                strain = strain_penalty(vertices)
+            else:
+                from qcopt.neural_bijection.dense.coordinated_arap import p1_arap_energy
+                strain = p1_arap_energy(vertices,diagonal=self.interpolation[-2:],validate=False)
             shape = corner_symmetric_dirichlet(vertices) if self.shape_weight else None
         else:
             strain,nested_shape = self.nested_priors(vertices)
@@ -252,6 +261,10 @@ def optimize(args, accepted_stage_callback=None):
         raise ValueError("nested evaluation must be full_fine or coarse_exact")
     if nested_evaluation=="coarse_exact" and not nested:
         raise ValueError("coarse_exact evaluation requires nested_p1 control hierarchy")
+    strain_model=getattr(args,"strain_model","displacement_gradient")
+    if strain_model not in ("displacement_gradient","p1_arap") or (strain_model=="p1_arap" and
+            (getattr(args,"interpolation","q1")=="q1" or nested_evaluation=="coarse_exact")):
+        raise ValueError("p1_arap needs declared P1 and ordinary fine prior evaluation")
     if nested and (args.method not in ("radial","analytic") or args.cycles!=1 or
             getattr(args,"interpolation","q1") not in ("p1_ac","p1_bd") or
             args.levels[-1]!=args.grid_side or
@@ -288,7 +301,7 @@ def optimize(args, accepted_stage_callback=None):
     evidence = Evidence(fixed, moving, torch.from_numpy(a).to(device=device, dtype=dtype),
                         torch.from_numpy(b).to(device=device, dtype=dtype), args.loss,
                         args.strain_weight, args.oob_weight, getattr(args,"shape_weight",0.),
-                        fixed_mask=fixed_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight)
+                        fixed_mask=fixed_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model)
     evidence_by_resolution={args.image_side:evidence}
     for image_resolution in sorted(set(image_levels)):
         if image_resolution not in evidence_by_resolution:
@@ -297,7 +310,7 @@ def optimize(args, accepted_stage_callback=None):
             reduced_mask=F.interpolate(evidence.mask,size=(image_resolution,image_resolution),mode="area")
             evidence_by_resolution[image_resolution]=Evidence(reduced_fixed,reduced_moving,evidence.matrix,
                 evidence.offset,args.loss,args.strain_weight,args.oob_weight,getattr(args,"shape_weight",0.),
-                reduced_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight)
+                reduced_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model)
     p1_sampling=getattr(args,"p1_sampling","existing")
     if p1_sampling not in ("existing","frozen"):
         raise ValueError("P1 sampling must be existing or frozen")
@@ -557,6 +570,7 @@ def optimize(args, accepted_stage_callback=None):
                   landmarks_used=False, mask="fixed grayscale inversion > .04, constant denominator",
                   final_corner_shape=float(corner_symmetric_dirichlet(current.double())),
                   geometry_dtype=str(dtype),evidence_dtype=str(image_dtype),
+                  strain_model=strain_model,
                   image_levels=image_levels,
                   continuation_scope=continuation_scope,
                   output_selection=output_selection,selected_stage=full_best_stage if output_selection=="best_full" else len(stages)-1,
@@ -630,6 +644,7 @@ def main():
     p.add_argument("--learning-rate", type=float, default=.004)
     p.add_argument("--lr-calibration", choices=("physical", "edge"), default="physical")
     p.add_argument("--strain-weight", type=float, default=.05)
+    p.add_argument("--strain-model",choices=("displacement_gradient","p1_arap"),default="displacement_gradient")
     p.add_argument("--shape-weight", type=float, default=0.)
     p.add_argument("--oob-weight", type=float, default=1.)
     p.add_argument("--minimum-jacobian", type=float, default=.001)

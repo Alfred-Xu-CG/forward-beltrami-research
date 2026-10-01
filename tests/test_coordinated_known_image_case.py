@@ -119,9 +119,11 @@ def test_root_p1_and_q1_are_distinct_on_non_affine_quad():
     assert float(p1_map_at_queries(vertices,points[None],"bd")[0,0,0])==pytest.approx(.3)
 
 
-@pytest.mark.parametrize("interpolation",["q1","p1_ac","p1_bd"])
+@pytest.mark.parametrize("interpolation,strain_model",[("q1","displacement_gradient"),
+    ("p1_ac","displacement_gradient"),("p1_bd","displacement_gradient"),
+    ("p1_ac","p1_arap"),("p1_bd","p1_arap")])
 @pytest.mark.parametrize("coordinate_mode",["alternating","joint"])
-def test_common_shape_weight_and_target_free_optimizer_interface(tmp_path,monkeypatch,interpolation,coordinate_mode):
+def test_common_shape_weight_and_target_free_optimizer_interface(tmp_path,monkeypatch,interpolation,strain_model,coordinate_mode):
     from PIL import Image
     from types import SimpleNamespace
     import tools.coordinated_real_case as app
@@ -139,6 +141,7 @@ def test_common_shape_weight_and_target_free_optimizer_interface(tmp_path,monkey
         levels=[5],inner_steps=1,cycles=1,learning_rate=.004,minimum_jacobian=.001,
         image_levels=None,device="cpu",threads=2,record_stages=False,query_thresholds=[1.,5.,10.])
     args.interpolation=interpolation
+    args.strain_model=strain_model
     args.coordinate_mode=coordinate_mode;args.joint_backend="cached_manual"
     args.geometry_backend="existing";args.output_selection="best_full"
     args.p1_sampling="existing" if interpolation=="q1" else "frozen"
@@ -147,6 +150,7 @@ def test_common_shape_weight_and_target_free_optimizer_interface(tmp_path,monkey
         assert opt.interpolation==interpolation and opt.p1_sampling==args.p1_sampling
         assert opt.coordinate_mode==coordinate_mode and opt.joint_backend=="cached_manual"
         assert opt.geometry_backend=="existing" and opt.output_selection=="best_full"
+        assert opt.strain_model==strain_model
         assert not any(word in key for key in vars(opt) for word in ("target","landmark","truth"))
         assert opt.fixed.name=="fixed.png" and opt.moving.name=="moving.png"
         assert opt.affine.name=="identity.npz"
@@ -160,9 +164,11 @@ def test_common_shape_weight_and_target_free_optimizer_interface(tmp_path,monkey
     assert row["target_interpolation"]=="q1"
     fixed,_=_read_gray_thumbnail(tmp_path/"fixed.png",16)
     baseline=app.Evidence(fixed.double(),fixed.double(),torch.eye(2,dtype=torch.float64),
-                          torch.zeros(2,dtype=torch.float64),"mind",.05,1.)(target)[0]
+                          torch.zeros(2,dtype=torch.float64),"mind",.05,1.,
+                          interpolation=interpolation if strain_model=="p1_arap" else "q1",strain_model=strain_model)(target)[0]
     assert row["target_objective_total"]==pytest.approx(float(baseline)+1e-4*row["target_corner_shape"])
     assert row["target_objective_parts"]["shape"]==pytest.approx(row["target_corner_shape"])
+    assert row["strain_model"]==strain_model and row["target_declared_objective_interpolation"]==interpolation
 
 
 def test_native_posthoc_constant_translation_matches_physical_units():

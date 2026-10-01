@@ -948,3 +948,72 @@ uses r=4 only at levels129/257, against r=0 with physical Adam rate .004,
 unchanged three development cases,300 gradients and all original objectives.
 Report raw/filtered amplitudes and accepted displacement as well as gauge,
 accuracy, time and memory; no anatomy improvement follows from this derivation.
+
+## 25. A conventional rotation-aware elastic-prior ablation
+
+This is an objective change, not a new homeomorphism construction. The source
+rectangle and its fixed declared P1 triangles remain unchanged. For each actual
+face t=(i,j,k), source edge matrix B_t and mapped edge matrix D_t define
+
+\[
+J_t=D_tB_t^{-1},\qquad
+\phi(J)=\min_{R\in SO(2)}\|J-R\|_F^2,\qquad
+S_{\rm ARAP}(Y)=\frac{1}{2A}\sum_t |t|\phi(J_t),
+\quad A=\sum_t|t|.
+\]
+
+Here SO(2) is the set of two-dimensional orientation-preserving rotation
+matrices, |t| is the SOURCE triangle area, and batch outputs are averaged over
+maps. Uniform rectangular cells give equal source triangle areas, so this is
+one half the mean over the TWO actual P1 faces per cell. Do not average all four
+alternative corner Jacobians or weight by their deformed areas.
+On a uniform grid with spacings hx=1/(columns-1), hy=1/(rows-1), cyclic cell
+vertices a,b,c,d give AC Jacobians [(b-a)/hx,(c-b)/hy] and
+[(c-d)/hx,(d-a)/hy]; BD gives [(b-a)/hx,(d-a)/hy] and
+[(c-d)/hx,(c-b)/hy]. These formulas apply to the unit-rectangle material grid,
+not arbitrary curved/general reference meshes.
+
+For J=[[J00,J01],[J10,J11]], let a=J00+J11, b=J10-J01 and s=sqrt(a^2+b^2).
+A rotation of angle theta satisfies tr(R^T J)=a*cos(theta)+b*sin(theta), whose
+unique maximizer when s>0 gives
+
+\[
+R_*(J)=\frac1s\begin{pmatrix}a&-b\\b&a\end{pmatrix},\qquad
+\phi(J)=\|J\|_F^2+2-2s.
+\]
+
+Since s^2=||J||_F^2+2detJ>0 for detJ>0, this formula is smooth on the valid
+domain, including identity and repeated singular values. Implementation uses
+||J-R_*||_F^2 directly to avoid cancellation near identity, with ordinary AD
+through R_*; no global solve or SVD derivative is required. The scalar energy
+has matrix gradient 2(J-R_*) (the minimizing rotation's variation cancels by
+stationarity). Full-Y gradients also apply the actual source-face edge adjoint.
+
+The old affine displacement-gradient prior is .5||J-I||_F^2. Near identity,
+.5phi(I+H)=.5||symH||_F^2+O(||H||^3); the new prior deliberately removes the
+infinitesimal rotational cost. Keeping coefficient3 does NOT make the priors
+equivalent. A spatially varying rotation and its transition generally cost
+stretch energy. For J=epsilon*I, .5phi(J)=(1-epsilon)^2 stays finite at collapse:
+ARAP is NOT a flip barrier or a topology certificate. All four-corner safe
+updates, eta, reciprocal shape penalty, boundary and binary checks stay intact.
+
+Nor is ARAP convex or uniformly well-conditioned on positive determinants.
+For J(t)=sI+t*e1*e2^T with s>0 (e1,e2 are Cartesian unit vectors), detJ=s^2
+for all t, yet .5phi(J(t))=s^2+.5t^2+1-sqrt(4s^2+t^2), with second derivative
+at t=0 equal to1-1/(2s), negative for s<.5. Thus even rank-one convexity can
+fail under compression. The retained shape term is a safeguard, not a proved
+convexification at its chosen weight. Rotation invariance alone cannot establish
+convergence or good image correspondence.
+
+Bounded application: choose displacement_gradient (default) or p1_arap as the
+strain model, keeping weight3, MIND, original frozen points, shape1e-4, affine,
+edge-calibrated Adam,300gradients and best_full policy. Use ordinary fine P1
+evaluation, not the previously derived exact coarse membrane quadrature: its
+formula is NOT an ARAP quadrature. Known Q1-generating truth remains unchanged;
+report its raw-raster/query error separately from the same vertex table evaluated
+by the declared P1 functional. Ground truth is never an optimization input.
+
+Prior art: this is the established ARAP distortion measure, not a novel energy
+or the local/global SLIM solver; see [SLIM2017, equations1--2](https://igl.ethz.ch/projects/slim/SLIM2017.pdf).
+Its use here is motivated by a measured registration-objective conflict and
+does not itself establish better anatomical correspondence or convergence.
