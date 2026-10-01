@@ -180,8 +180,125 @@ def persist_finite_amplitude_attenuation(path, sides=(33,65,129,257)):
     return payload["finite_amplitude_attenuation"]
 
 
+def objective_call_count(report):
+    if "objective_evaluations" in report:
+        return report["objective_evaluations"]
+    if "objective_evaluations_total" in report:
+        return report["objective_evaluations_total"]
+    # Older single-resolution reports lack the per-stage full-resolution call.
+    stages=report["stages"]
+    return report["evaluations"]+len(stages)+sum("accepted_full_total" in s for s in stages)+2
+
+
+def refresh_objective_counts(path):
+    payload=json.loads(path.read_text(encoding="utf-8"))
+    for row in payload["results"]:
+        method_report=json.loads((path.parent/Path(row["output_map"]).with_suffix(".json")).read_text(encoding="utf-8"))
+        row["objective_evaluations_including_stage_anchors"]=objective_call_count(method_report)
+        row["objective_call_count_source"]="actual method report: trials + anchors + recorded full-resolution stage evaluations + initial/final"
+    path.write_text(json.dumps(payload,indent=2)+"\n",encoding="utf-8")
+
+
+def native_dhr_query_metrics(field,params,target,image_side,count=4096):
+    """Read-only native field evaluation; never called by image optimization."""
+    from tools.digital_compare_appearance import dhr_map_at_unit_queries
+    points=np.random.default_rng(20261001).uniform(.00001,.99999,(count,2))
+    query=torch.from_numpy(points).float().reshape(1,1,count,2)
+    predicted=dhr_map_at_unit_queries(field,params,fixed_size=(image_side,image_side),
+        moving_size=(image_side,image_side),query=query)[0,0].double()
+    expected=sample_q1_queries(target.double(),torch.from_numpy(points))
+    errors=(predicted-expected).square().sum(-1).sqrt()
+    return dict(query_count=count,query_seed=20261001,queries_used_for_optimization=False,
+        euclidean_query_rmse_normalized=float(errors.square().mean().sqrt()),
+        euclidean_query_rmse_canvas_pixels=float(errors.square().mean().sqrt())*image_side,
+        p90_query_error_canvas_pixels=float(torch.quantile(errors,.9))*image_side,
+        coordinate_component_rmse_normalized=float((predicted-expected).square().mean().sqrt()),
+        out_of_unit_square_predictions=int(((predicted<0)|(predicted>1)).any(-1).sum()),
+        denominator=count,queries_dropped=0,native_sampling_dtype="float32",
+        maximum_source_query_float32_rounding_canvas_pixels=float(
+            np.abs(query.numpy().reshape(count,2).astype(np.float64)-points).max())*image_side)
+
+
+def score_native_dhr(args):
+    import SimpleITK as sitk
+    if args.output.exists():
+        raise FileExistsError(args.output)
+    if args.inputs_from is None:
+        raise ValueError("native scoring requires the existing known-image input manifest")
+    manifest=json.loads(args.inputs_from.read_text(encoding="utf-8"))
+    if manifest["image_side"]!=args.image_side:
+        raise ValueError("native scoring image units differ from prepared canvas")
+    native_root=args.native_dhr_root or args.output.parent
+    rows=[]
+    for case in manifest["cases"]:
+        if case["target"] not in args.targets:
+            continue
+        native=native_root/("known_dhr_"+case["target"])
+        field_path=native/"common_affine_dhr"/"Results_Final"/"displacement_field.mha"
+        params_path=field_path.with_name("postprocessing_params.json")
+        params=json.loads(params_path.read_text(encoding="utf-8"))
+        runtime=json.loads((native/"runtime.json").read_text(encoding="utf-8"))
+        config=json.loads((native/"config.json").read_text(encoding="utf-8"))
+        if not (np.array_equal(runtime["post_affine_matrix"],np.eye(2)) and
+                np.array_equal(runtime["post_affine_offset"],np.zeros(2))):
+            raise ValueError("native comparison did not use the declared identity affine")
+        field=sitk.GetArrayFromImage(sitk.ReadImage(str(field_path)))
+        with np.load(args.inputs_from.parent/case["target_archive"]) as archive:
+            target=torch.from_numpy(archive["vertices"])
+        row=dict(target=case["target"],held_out=native_dhr_query_metrics(field,params,target,args.image_side),
+            common_identity_verified=True,native_field=str(field_path),native_field_shape=list(field.shape),
+            runtime_seconds=runtime["runtime_seconds"],nonrigid_seconds=runtime["nonrigid_seconds"],
+            preprocessing_seconds=runtime["preprocessing_seconds"],postprocessing=params,
+            native_cost=config["nonrigid_registration_params"]["cost_function"],
+            native_cost_parameters=config["nonrigid_registration_params"]["cost_function_params"],
+            native_regularizer=config["nonrigid_registration_params"]["regularization_function"],
+            clahe=config["preprocessing_params"]["clahe"],boundary="native free boundary; not shared fixed-boundary feasible class",
+            hard_topology_certificate=None,native_field_used_by_shared_optimizer=False)
+        rows.append(row)
+        print(json.dumps(row),flush=True)
+    payload=dict(question="Posthoc native DHR comparison on the SAME known histology image pairs",
+        input_manifest=str(args.inputs_from),target_interpolation="Q1",map_direction="fixed -> moving",
+        query_protocol="seed20261001,4096 uniform normalized queries; no dropping or query-based selection",
+        differences="native CLAHE/NCC/diffusion-relative regularization and free boundary; no hard topology certificate; different optimization budgets",
+        results=rows)
+    args.output.parent.mkdir(parents=True,exist_ok=True)
+    args.output.write_text(json.dumps(payload,indent=2)+"\n",encoding="utf-8")
+    return payload
+
+
+def annotate_ncc_truth_floor(path):
+    """Posthoc only: isolate PNG error from the stabilized local-NCC floor."""
+    from tools.coordinated_real_case import Evidence
+    from tools.digital_q1_real_optimize import _read_gray_thumbnail
+    payload=json.loads(path.read_text(encoding="utf-8"))
+    if payload["configuration"]["loss"]!="local_ncc":
+        raise ValueError("local-NCC floor annotation needs the local-NCC experiment")
+    manifest=payload["inputs"]
+    side=manifest["image_side"]
+    moving,_=_read_gray_thumbnail(path.parent/manifest["moving"],side)
+    moving=moving.double()
+    rows=[]
+    for case in manifest["cases"]:
+        fixed,_=_read_gray_thumbnail(path.parent/case["fixed"],side)
+        fixed=fixed.double()
+        with np.load(path.parent/case["target_archive"]) as archive:
+            target=torch.from_numpy(archive["vertices"])
+            perfect=torch.from_numpy(archive["generated_fixed_float64"])
+        evidence=lambda f,m:Evidence(f,m,torch.eye(2,dtype=torch.float64),
+            torch.zeros(2,dtype=torch.float64),"local_ncc",0.,0.)
+        rows.append(dict(target=case["target"],
+            quantized_true_warp_ncc_image=float(evidence(fixed,moving)(target)[1]["image"]),
+            exact_float_true_warp_ncc_image=float(evidence(perfect,moving)(target)[1]["image"]),
+            identical_fixed_self_ncc_image=float(evidence(fixed,fixed)(reference_grid(manifest["grid_side"]))[1]["image"])))
+    payload["local_ncc_truth_floor_diagnostic"]=dict(posthoc_only=True,optimizer_changed=False,
+        question="Is nonzero true-warp NCC loss caused by quantization or the intrinsic stabilized low-texture floor?",
+        stabilizer=1e-5,results=rows)
+    path.write_text(json.dumps(payload,indent=2)+"\n",encoding="utf-8")
+    return payload["local_ncc_truth_floor_diagnostic"]
+
+
 def run(args,manifest):
-    from tools.coordinated_real_case import Evidence,optimize
+    from tools.coordinated_real_case import Evidence,optimize,corner_symmetric_dirichlet
     from tools.digital_q1_real_optimize import _read_gray_thumbnail
     if args.output.exists():
         raise FileExistsError(args.output)
@@ -201,7 +318,8 @@ def run(args,manifest):
         with np.load(folder/case["target_archive"]) as data:
             target=torch.from_numpy(data["vertices"])
         evidence=Evidence(fixed,moving,torch.eye(2,dtype=torch.float64),
-                          torch.zeros(2,dtype=torch.float64),args.loss,args.strain_weight,1.)
+                          torch.zeros(2,dtype=torch.float64),args.loss,args.strain_weight,1.,
+                          shape_weight=args.shape_weight)
         truth_total,truth_parts=evidence(target)
         initial=image_metrics(fixed,moving,reference)
         for method in args.methods:
@@ -216,26 +334,47 @@ def run(args,manifest):
                 cycles=args.cycles*(2 if method in ("f1","f2") else 1),
                 learning_rate=args.learning_rate,lr_calibration="edge",
                 strain_weight=args.strain_weight,oob_weight=1.,minimum_jacobian=args.minimum_jacobian,
-                precision="float64",image_precision="float64",shape_weight=0.,
+                precision="float64",image_precision="float64",shape_weight=args.shape_weight,
                 image_levels=args.image_levels,device=args.device,threads=args.threads)
-            report=optimize(opt)
+            snapshots=[]
+            def observe_stage(vertices,stage,elapsed):
+                # No truth/queries are consulted here. Image-only acceptance
+                # already occurred in the shared optimizer; copy its observer clone.
+                snapshots.append((vertices.cpu(),stage,elapsed))
+            report=(optimize(opt,accepted_stage_callback=observe_stage)
+                    if args.record_stages else optimize(opt))
+            query_history=[dict(stage=stage,optimizer_seconds=elapsed,
+                                held_out=held_out_map_metrics(vertices,target,args.image_side),
+                                actual_minimum_normalized_corner=generic_corner_ratio(vertices,reference))
+                           for vertices,stage,elapsed in snapshots]
+            initial_query=held_out_map_metrics(reference,target,args.image_side)
+            times={str(threshold):(0. if initial_query["euclidean_query_rmse_canvas_pixels"]<=threshold
+                   else next((item["optimizer_seconds"] for item in query_history
+                              if item["held_out"]["euclidean_query_rmse_canvas_pixels"]<=threshold),None))
+                   for threshold in args.query_thresholds}
             with np.load(output) as data:
                 estimated=torch.from_numpy(data["vertices"])
             row=dict(target=case["target"],method=method,target_specification=case,
                 held_out=held_out_map_metrics(estimated,target,args.image_side),
-                initial_held_out=held_out_map_metrics(reference,target,args.image_side),
+                initial_held_out=initial_query,
                 image_error_initial=initial,image_error_final=image_metrics(fixed,moving,estimated),
                 target_objective_total=float(truth_total),target_objective_parts={k:float(v) for k,v in truth_parts.items()},
+                target_corner_shape=float(corner_symmetric_dirichlet(target)),
+                final_corner_shape=float(corner_symmetric_dirichlet(estimated)),
                 target_raster_floor=image_metrics(fixed,moving,target),
                 actual_minimum_normalized_corner=generic_corner_ratio(estimated,reference),
                 optimize_seconds=report["optimize_seconds"],gradient_steps=report["gradient_steps"],
                 decoder_trial_evaluations=report["evaluations"],failed_trials=report["failed_trials"],
-                objective_evaluations_including_stage_anchors=report["evaluations"]+len(report["stages"])+2,
+                objective_evaluations_including_stage_anchors=objective_call_count(report),
                 median_forward_objective_seconds=report["median_forward_objective_seconds"],
                 median_vjp_seconds=report["median_vjp_seconds"],
                 peak_allocated_bytes=report["peak_allocated_bytes"],
                 initial_objective=report["initial"],final_objective=report["final"],
                 accepted_full_resolution_totals=[stage.get("accepted_full_total") for stage in report["stages"]],
+                accepted_stage_query_history=query_history,
+                posthoc_time_to_query_rmse_canvas_pixels=times if args.record_stages else None,
+                stage_snapshot_cpu_bytes=sum(v.numel()*v.element_size() for v,_,_ in snapshots),
+                observer_overhead_included_in_optimize_time=bool(args.record_stages),
                 saved_binary_certificate=report["saved_binary_certificate"],output_map=output.name,
                 landmarks_or_target_used_by_optimizer=False)
             rows.append(row)
@@ -254,6 +393,12 @@ def main():
     p.add_argument("--output",type=Path,required=True)
     p.add_argument("--inputs-from",type=Path,help="reuse exactly the previously prepared input manifest and rasters")
     p.add_argument("--prepare-only",action="store_true")
+    p.add_argument("--score-native-dhr",action="store_true",help="separate read-only posthoc mode, no image optimization")
+    p.add_argument("--native-dhr-root",type=Path)
+    p.add_argument("--record-stages",action="store_true",
+                   help="target-free accepted-map snapshots; query evaluation only after optimization; observer overhead included")
+    p.add_argument("--query-thresholds",type=float,nargs="+",default=[1.,5.,10.],
+                   help="posthoc accepted-stage query RMSE thresholds in canvas pixels, never iterate selection")
     p.add_argument("--targets",nargs="+",choices=("wide_shear","local_rotation","coarse_fine"),default=["wide_shear","local_rotation","coarse_fine"])
     p.add_argument("--methods",nargs="+",choices=("radial","analytic","f1","f2"),default=["radial","analytic","f1","f2"])
     p.add_argument("--target-scale",type=float,default=1.)
@@ -266,6 +411,8 @@ def main():
     p.add_argument("--inner-steps",type=int,default=5)
     p.add_argument("--learning-rate",type=float,default=.004)
     p.add_argument("--strain-weight",type=float,default=.05)
+    p.add_argument("--shape-weight",type=float,default=0.,
+                   help="same common corner symmetric-Dirichlet weight for truth evaluation and all optimizers")
     p.add_argument("--minimum-jacobian",type=float,default=.001)
     p.add_argument("--loss",choices=("mind","local_ncc"),default="mind")
     p.add_argument("--device",default="cpu")
@@ -273,7 +420,12 @@ def main():
     args=p.parse_args()
     if not 0 < args.target_scale <= 1:
         p.error("target scale must lie in (0,1]")
+    if not np.isfinite(args.shape_weight) or args.shape_weight<0:
+        p.error("shape weight must be finite and nonnegative")
     torch.set_num_threads(args.threads)
+    if args.score_native_dhr:
+        score_native_dhr(args)
+        return
     manifest=prepare(args)
     if args.prepare_only:
         print(json.dumps(manifest),flush=True)

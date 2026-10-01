@@ -199,3 +199,80 @@ use landmarks to select iterates. Cases are development specimens, not independe
 clinical validation. Time-to-accuracy is a joint result; no-folding alone is not
 successful registration. Forward/objective,VJP and complete optimizer time, memory,
 initialization/evidence/certification cost are distinguished.
+
+Image continuation is a sequence of different objectives E_l. Its stage acceptance
+does not imply decrease of the final-resolution E_full. The optional best_full output
+rule evaluates E_full on the initial and each accepted-stage table, retains the one
+with smallest value, and returns it after the trajectory. Those evaluations were
+already recorded for diagnostics; the rule adds a stored vertex table and conditional
+copying, not an unreported second optimization. Intermediate anchors still follow
+E_l acceptance and are not reset to the retained best map. This is an objective-only
+selection rule, not selection by map truth, anatomical landmarks or held-out errors.
+
+## 7. The actual P1 function and compatible current-mesh composition
+
+P1 mode declares one fixed source diagonal in every cell. At local query(ξ,ζ),
+diagonal ac uses
+
+    (1-ξ)a+(ξ-ζ)b+ζc, if ζ<=ξ;
+    (1-ζ)a+ξc+(ζ-ξ)d, otherwise.
+
+Diagonal bd uses
+
+    (1-ξ-ζ)a+ξb+ζd, if ξ+ζ<=1;
+    (1-ζ)b+(ξ+ζ-1)c+(1-ξ)d, otherwise.
+
+These are triangle barycentric weights (nonnegative and summing to1). Their
+values agree on shared edges and at vertices. For a nonaffine quad they generally
+DIFFER from Q1 and from one another. Archive metadata selects q1/p1_ac/p1_bd, and
+the independent scorer solves source-triangle barycentric equations rather than
+reusing the production Torch formulas. The public sampler enforces finite queries
+inside the reference rectangle. Pixel centers are constructed inside it directly.
+
+For FIXED source queries, P1 evaluation is linear in the mapped vertices. Even at
+a source diagonal, the two incident formulas give the SAME vertex derivative,
+because the opposite-vertex weights vanish. The spatial derivative with respect
+to a MOVING query can be nonunique on triangle edges. These are different gradient
+questions. Raster intensity interpolation introduces its own piecewise derivative.
+
+Let f_Y be the P1 map before a safe vertex-table update, with one fixed diagonal.
+It maps each source triangle to its current deformed triangle. Define G on that
+CURRENT triangle as the affine map sending each Y_i to the updated Y'_i. Then
+
+    f_Y' = G composed with f_Y
+
+EXACTLY on every original triangle: composition of these two compatible affine
+pieces sends each original vertex X_i to Y'_i. Adjacent pieces share edge values.
+This is not composition of unrelated regular-grid warps followed by resampling.
+There is no expanding overlay or triangle search when directly updating vertex
+tables. The current geometry used to bound the step is Y, not the original h alone.
+The final image map is A composed with f_Y'; A remains the frozen positive affine.
+This compatible P1 composition interpretation does not make a general composition
+of two Q1 maps bilinear, nor permit changing source diagonals silently mid-cascade.
+
+Why the local checks are global here: on either source triangulation, every
+triangle has positive orientation, and the boundary is the simple fixed rectangle.
+For a generic point away from mapped edges, an oriented triangle contributes1
+when the point is inside it and0 otherwise. Summing these contributions cancels
+every interior oriented edge, leaving the outer boundary's winding count:1 inside
+the rectangle,0 outside. Thus generic points have exactly one triangle-interior
+preimage. Strict nondegeneracy and shared-edge/fan continuity extend this tiling
+to edges/vertices. The map is therefore a continuous bijection; compactness of
+the closed rectangle gives continuity of its inverse. Boundary injectivity and
+strict orientation are essential hypotheses, not numerical residual claims.
+
+## 8. Coverage is not an optimization guarantee
+
+The radial formula covers the entire open SINGLE-DIRECTION feasible amplitude
+set (or its specified coarse coefficient subspace). At dense coefficient level,
+every interior amplitude can be represented. If two vertex tables are joined
+by a continuous fixed-boundary path whose four corners stay strictly positive,
+compactness gives a positive minimum slack. A sufficiently fine path partition
+can be implemented by alternating horizontal and vertical updates: the intermediate
+horizontal-only vertex table stays within the open feasible neighborhood, followed
+by the vertical increment. Each feasible increment has the stated inverse radial
+encoding. This is conditional finite-stage reachability in that path component.
+It does NOT prove that every digital embedding has such a path, that a fixed small
+depth is universal, or that image optimization finds the path quickly. No removal
+of those assumptions is claimed without a separate theorem with correct boundary
+and graph hypotheses.

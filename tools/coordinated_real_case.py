@@ -1,6 +1,6 @@
 """Shared-evidence, stage-anchored instance registration. No landmarks are read.
 
-The saved residual is Q1 on the declared grid; a positive frozen affine is
+The saved residual is declared Q1 or P1 on the grid; a positive frozen affine is
 postcomposed. Queries sample original moving evidence, not a recursively
 resampled raster. Selection uses the complete image + cumulative-strain +
 out-of-bounds objective, with a fixed foreground denominator.
@@ -20,6 +20,7 @@ from qcopt.neural_bijection.dense.coordinated_update import CoordinatedQ1Update,
 from qcopt.neural_bijection.dense.coordinated_patches import CoordinatedPatchQ1Pass
 from qcopt.neural_bijection.dense.digital_q1 import AdaptiveSoftRadialQ1Relaxation, StaggeredPatchQ1Layer, q1_corner_determinants, validate_q1_map
 from qcopt.neural_bijection.dense.q1_image_sampling import q1_map_at_pixel_centers
+from qcopt.neural_bijection.dense.coordinated_sampling import p1_map_at_pixel_centers
 from qcopt.neural_bijection.dense.q1_filtered_sign import certify_q1_binary_map
 from tools.digital_mind_objective_probe import self_similarity
 from tools.digital_mind_safe_optimize import strain_penalty
@@ -42,11 +43,14 @@ def corner_symmetric_dirichlet(vertices):
 class Evidence:
     """Fixed mask, original evidence, and explicitly penalized out-of-bounds."""
 
-    def __init__(self, fixed, moving, matrix, offset, loss, strain_weight, oob_weight, shape_weight=0., fixed_mask=None):
+    def __init__(self, fixed, moving, matrix, offset, loss, strain_weight, oob_weight, shape_weight=0., fixed_mask=None, interpolation="q1"):
         self.fixed, self.moving = fixed, moving
         self.matrix, self.offset = matrix, offset
         self.loss, self.strain_weight, self.oob_weight = loss, strain_weight, oob_weight
         self.shape_weight = shape_weight
+        if interpolation not in ("q1","p1_ac","p1_bd"):
+            raise ValueError("declare q1, p1_ac or p1_bd map interpretation")
+        self.interpolation=interpolation
         self.mask = (fixed > .04).to(fixed.dtype) if fixed_mask is None else fixed_mask.to(fixed)
         if self.mask.shape != fixed.shape or not bool(torch.isfinite(self.mask).all() and (self.mask>=0).all() and (self.mask<=1).all()):
             raise ValueError("fixed mask must match image and have finite weights in[0,1]")
@@ -60,7 +64,10 @@ class Evidence:
             self.fixed_feature, self.moving_feature = fixed, moving
 
     def __call__(self, vertices):
-        query = q1_map_at_pixel_centers(vertices, *self.fixed.shape[-2:])
+        if self.interpolation=="q1":
+            query = q1_map_at_pixel_centers(vertices,*self.fixed.shape[-2:])
+        else:
+            query = p1_map_at_pixel_centers(vertices,*self.fixed.shape[-2:],diagonal=self.interpolation[-2:])
         query = query @ self.matrix.T + self.offset
         warped = F.grid_sample(self.moving_feature, (2 * query - 1).to(self.moving_feature.dtype),
                                mode="bilinear", padding_mode="zeros", align_corners=False)
@@ -125,7 +132,8 @@ def optimize(args, accepted_stage_callback=None):
     feature_start = time.perf_counter()
     evidence = Evidence(fixed, moving, torch.from_numpy(a).to(device=device, dtype=dtype),
                         torch.from_numpy(b).to(device=device, dtype=dtype), args.loss,
-                        args.strain_weight, args.oob_weight, getattr(args,"shape_weight",0.))
+                        args.strain_weight, args.oob_weight, getattr(args,"shape_weight",0.),
+                        interpolation=getattr(args,"interpolation","q1"))
     evidence_by_resolution={args.image_side:evidence}
     for image_resolution in sorted(set(image_levels)):
         if image_resolution not in evidence_by_resolution:
@@ -133,7 +141,8 @@ def optimize(args, accepted_stage_callback=None):
             reduced_moving=F.interpolate(moving,size=(image_resolution,image_resolution),mode="area")
             reduced_mask=F.interpolate(evidence.mask,size=(image_resolution,image_resolution),mode="area")
             evidence_by_resolution[image_resolution]=Evidence(reduced_fixed,reduced_moving,evidence.matrix,
-                evidence.offset,args.loss,args.strain_weight,args.oob_weight,getattr(args,"shape_weight",0.),reduced_mask)
+                evidence.offset,args.loss,args.strain_weight,args.oob_weight,getattr(args,"shape_weight",0.),
+                reduced_mask,interpolation=getattr(args,"interpolation","q1"))
     synchronize = lambda: torch.cuda.synchronize(device) if device.type == "cuda" else None
     synchronize()
     feature_seconds = time.perf_counter()-feature_start
@@ -145,6 +154,10 @@ def optimize(args, accepted_stage_callback=None):
     initial, parts = evidence(current)
     initial_record = {key: float(value) for key, value in parts.items()}
     initial_record["total"] = float(initial)
+    output_selection = getattr(args,"output_selection","last")
+    if output_selection not in ("last","best_full"):
+        raise ValueError("output selection must be last or best_full")
+    full_best_map, full_best_loss, full_best_stage = current.detach().clone(), float(initial), None
     for cycle in range(args.cycles):
         for level_index,level in enumerate(args.levels):
             stage_evidence=evidence_by_resolution[image_levels[level_index]]
@@ -235,25 +248,32 @@ def optimize(args, accepted_stage_callback=None):
                 if not validate_q1_map(best_map, reference)["valid"]:
                     raise RuntimeError("best candidate failed independent accepted-map check")
                 current = best_map
+                accepted_full_loss = float(evidence(current)[0])
                 stages.append(dict(cycle=cycle, level=level, direction=direction,
                                    image_side=image_levels[level_index],physical_lr=physical_lr,anchor_total=anchor_loss,
-                                   accepted_total=best_loss,accepted_full_total=float(evidence(current)[0]),**best_diagnostics))
+                                   accepted_total=best_loss,accepted_full_total=accepted_full_loss,**best_diagnostics))
+                if accepted_full_loss < full_best_loss:
+                    full_best_map = current.detach().clone()
+                    full_best_loss, full_best_stage = accepted_full_loss, len(stages)-1
                 if accepted_stage_callback is not None:
                     snapshot=current.detach().clone()
                     synchronize()
                     accepted_stage_callback(snapshot,dict(stages[-1]),time.perf_counter()-start)
+    terminal_full_loss = stages[-1]["accepted_full_total"]
+    if output_selection == "best_full":
+        current = full_best_map
     synchronize(); elapsed = time.perf_counter()-start
     final, parts = evidence(current)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     serialization_start = time.perf_counter()
     np.savez(args.output, vertices=current.cpu().numpy(), boundary_reference=reference.cpu().numpy(),
-             post_affine_matrix=a, post_affine_offset=b)
+             post_affine_matrix=a, post_affine_offset=b,interpolation=np.asarray(getattr(args,"interpolation","q1")))
     serialization_seconds = time.perf_counter()-serialization_start
     certificate_start = time.perf_counter()
     certificate = certify_q1_binary_map(args.output)
     certification_seconds = time.perf_counter()-certificate_start
     report = dict(configuration={k: str(v) if isinstance(v, Path) else v for k,v in vars(args).items()},
-                  representation="Q1 residual then frozen positive affine; P1 not used for image objective",
+                  representation=evidence.interpolation+" residual then frozen positive affine; exact declared interpretation",
                   initial=initial_record, final=dict(total=float(final), **{k: float(v) for k,v in parts.items()}),
                   control_vertices=args.grid_side**2, cells=(args.grid_side-1)**2,
                   corner_constraints=4*(args.grid_side-1)**2, query_count=args.image_side**2,
@@ -270,6 +290,8 @@ def optimize(args, accepted_stage_callback=None):
                   final_corner_shape=float(corner_symmetric_dirichlet(current.double())),
                   geometry_dtype=str(dtype),evidence_dtype=str(image_dtype),
                   image_levels=image_levels,
+                  output_selection=output_selection,selected_stage=full_best_stage if output_selection=="best_full" else len(stages)-1,
+                  terminal_full_total=terminal_full_loss,best_accepted_full_total=full_best_loss,
                   acceptance_objective="complete objective at current image resolution; full-resolution trajectory may not be monotone",
                   oob="zero padding, fixed denominator, explicit quadratic excess penalty; no query dropping")
     args.output.with_suffix(".json").write_text(json.dumps(report, indent=2)+"\n", encoding="utf-8")
@@ -287,11 +309,14 @@ def main():
     p.add_argument("--regional-min-level",type=int,default=3,
                    help="Use unwindowed global updates below this coefficient level")
     p.add_argument("--loss", choices=("mind", "local_ncc"), default="mind")
+    p.add_argument("--interpolation",choices=("q1","p1_ac","p1_bd"),default="q1")
     p.add_argument("--grid-side", type=int, default=257)
     p.add_argument("--image-side", type=int, default=512)
     p.add_argument("--image-levels", type=int, nargs="+",
                    help="image continuation resolutions matching --levels, e.g.32 64 128 256 512")
     p.add_argument("--levels", type=int, nargs="+", default=[17,33,65,129,257])
+    p.add_argument("--output-selection",choices=("last","best_full"),default="last",
+                   help="Select accepted output using full-resolution complete objective only, never landmarks")
     p.add_argument("--inner-steps", type=int, default=5)
     p.add_argument("--cycles", type=int, default=2)
     p.add_argument("--learning-rate", type=float, default=.004)

@@ -77,7 +77,8 @@ improve. It is not a substitute for the exact feasible decoder or saved certific
 
 Image continuation uses32/64/128/256/512 queries, associated with17/33/65/129/257
 coefficient levels. All maps still have257² control vertices throughout. Each
-original raster is independently area-downsampled; mask area weights are conserved.
+original raster is independently area-downsampled; mask area weights are conserved
+for the power-of-two divisible raster sizes used here, not arbitrary resize ratios.
 Every stage accepts against the COMPLETE objective at that image resolution. Thus
 full512 objective can increase when changing resolution; it is separately traced.
 Pyramid and nonpyramid runs are different algorithms, not the same fixed objective.
@@ -92,3 +93,13 @@ independent patients. Target MIND objective is nonzero because descriptor transp
 does not commute with image deformation, while the raster truth error is near the
 PNG quantization floor. A true target lower than optimized full objective is useful
 evidence of convergence/capture failure, not proof that MIND's optimum is anatomical.
+
+Actual P1(ac) is now separately executed: query weights and offline scorer use the
+source-cell a--c diagonal throughout all stages,131072triangles at257² vertices.
+The exported archive declares its interpolation; old Q1 archives remain Q1 evidence.
+Public P1 query APIs reject nonfinite/out-of-domain source coordinates rather than
+silently extrapolating a certified interior function. A new OPTIONAL best_full output
+rule selects the initial/accepted-stage map with minimum COMPLETE512 objective.
+It changes no stage trajectory, never reads manual labels, and counts the existing
+per-stage full-objective evaluation rather than inventing zero-cost validation.
+The legacy last-stage rule remains explicitly selectable for paired comparison.

@@ -150,7 +150,9 @@ def test_pyramid_fixed_mask_conservation():
     assert bool(((evidence.mask>0)&(evidence.mask<1)).any())
 
 
-def test_tiny_image_continuation_stage_acceptance(tmp_path):
+@pytest.mark.parametrize("interpolation",["q1","p1_ac","p1_bd"])
+@pytest.mark.parametrize("selection",["last","best_full"])
+def test_tiny_image_continuation_stage_acceptance(tmp_path,interpolation,selection):
     import argparse
     from PIL import Image
     from tools.coordinated_real_case import optimize
@@ -162,10 +164,23 @@ def test_tiny_image_continuation_stage_acceptance(tmp_path):
         affine=tmp_path/"affine.npz",grid_side=9,image_side=16,image_levels=[8,16],levels=[5,9],
         inner_steps=1,cycles=1,learning_rate=.001,device="cpu",threads=2,precision="float64",
         image_precision="float32",loss="mind",strain_weight=.05,shape_weight=.0001,oob_weight=1.,
-        method="radial",minimum_jacobian=.001,lr_calibration="edge")
-    report=optimize(args)
+        method="radial",minimum_jacobian=.001,lr_calibration="edge",interpolation=interpolation,
+        output_selection=selection)
+    observed=[]
+    def observe(snapshot,metadata,elapsed):
+        assert not snapshot.requires_grad and elapsed>=0
+        observed.append(metadata)
+        snapshot.zero_()  # This clone must not alter the optimizer's accepted map.
+    report=optimize(args,accepted_stage_callback=observe)
     assert report["gradient_steps"]==4 and report["evaluations"]==8
     assert [s["image_side"] for s in report["stages"]]==[8,8,16,16]
     assert all(s["accepted_total"]<=s["anchor_total"] for s in report["stages"])
     assert report["saved_binary_certificate"]["valid"]
     assert report["end_to_end_seconds"]>=report["optimize_seconds"]
+    assert report["objective_evaluations"]==18 and len(observed)==4
+    if selection=="best_full":
+        expected=min([report["initial"]["total"]]+[s["accepted_full_total"] for s in report["stages"]])
+        assert report["final"]["total"]==pytest.approx(expected,abs=1e-8)
+        assert report["final"]["total"]<=report["terminal_full_total"]+1e-8
+    with np.load(args.output) as archive:
+        assert str(archive["interpolation"].item())==interpolation

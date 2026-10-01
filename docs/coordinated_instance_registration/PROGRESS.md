@@ -199,3 +199,73 @@ Correction from the actual saved native DHR config: its NCC window is7, NOT3 as 
 previous descriptive sentence claimed. Executed baseline configs/results unchanged.
 Its CLAHE/normalization, diffusion-relative regularizer and boundary freedoms still
 prevent calling it an isolated shared-objective geometry comparison.
+
+## Capture-budget discriminator and actual P1 output
+
+Known-texture image pyramid,300 nominal gradients, all else unchanged: coordinated
+query RMSE remains4--13px, better than100 steps but not accurate recovery. Analytic
+coarse/fine reaches5px at1.616s; F1/F2 need much longer for10px. These thresholds are
+computed only AFTER image-selected optimization from accepted-map snapshots. Snapshot
+clone/copy overhead is included in runtime; no target participates in iteration choice.
+Actual rotation accepted stages produce qmin about.001 despite true target qmin.991;
+analytic global scales fall to6.8e-5. A common reciprocal-stretch conditioning experiment
+is now justified by this observed failure, not another unmotivated safety-coefficient sweep.
+
+First image matrices were honestly Q1. New explicit P1(ac/bd) query support evaluates
+the SAME fixedsource triangles, not a Q1 result resampled onto another mesh. Strong four
+corner certificate and fixed boundary support BOTH diagonal interpretations. Queries,
+archive interpolation tag and independent NumPy barycentric scorer agree on the chosen
+function.28affected application/sampler tests pass, including both diagonal/batch VJPs,
+source corners, nonlinear Q1/P1 distinction and protected target-free snapshot callback.
+Real P1 comparison still pending; do not retroactively relabel the old Q1 experiments.
+
+Git milestone122004d pushed. First push encountered LFS lock-API timeout with NO new LFS
+objects; per-command lfs.locksverify=false allowed ordinary code/docs sync. No persistent
+configuration, occupied network ports, SSH aliases or other users' jobs were changed.
+
+## T+2.9h: actual P1 and image-capture comparison (2026-10-01 14:22 UTC)
+
+The real P1(ac) matrix uses257² CONTROL vertices/131072triangles,512² queries,
+float64geometry/float32evidence,shape1e-4,100gradients per method. All12 runs
+complete without rejected trials and pass the saved-binary four-corner certificate.
+Independent NumPy triangle interpolation scores every shared manual landmark.
+Means in512canvas pixels, in radial/analytic/F1/F2 order:
+
+| Development specimen | Actual P1, full512 evidence | Q1 image pyramid, shape0 | Common affine | Native DHR |
+|---|---|---|---|---|
+| HistoReg CD4/CD68 | .785/.877/.819/.834 | 3.176/4.214/1.847/1.784 | 2.332 | .943 |
+| Lung lesion HE/proSPC | 4.708/4.892/4.382/4.739 | 6.098/7.446/5.147/4.998 | 4.900 | 4.347 |
+| Rat kidney HE/PanCK | 5.634/5.753/5.520/5.322 | 4.677/5.480/3.622/3.461 | 6.117 | 3.432 |
+
+These columns differ in interpolation/continuation/conditioning and are NOT one
+isolated geometry ablation. Within each column all four methods share the setup.
+The kidney pyramid F2 result is close to native DHR; the same intervention degrades
+the other two specimens. This is not a general registration breakthrough. No required
+moving landmark lies outside the fixed affine image of the unit square (0/77,0/78,
+0/69). The necessary range lower bound is zero; this does NOT establish that the
+whole correspondence is representable with our fixed boundary.
+
+Actual P1 warm optimizer times are about1.7s coordinated,3.3--3.6sF1,7.2--7.4sF2;
+allocated peaks236/371/528MB respectively. First cold Histo coordinate jobs are2.0--2.5s.
+These times exclude input loading and final exact-sign certificate, separately recorded.
+Naive actual P1 gathering adds roughly36MB relative to Q1 here, not an unmeasured
+claim of lower memory. No graph through the instance optimizer history is retained.
+
+Known-texture300-gradient pyramid/shape1e-4 MIND recovery improves11/12final query
+errors versus shape0, but errors still3.54--17.47px. Native DHR on EXACTLY the same
+generated images and identity affine gives11.70/9.52/3.82px RMSE for shear/rotation/
+coarse-fine at2.00/1.95/2.10s. Its CLAHE/NCC7/diffusion/free boundary are different,
+and it is NOT digitally certified. Our analytic MIND errors12.22/7.82/3.54px at
+roughly5s do not establish dominance: faster native baseline and adverse shear remain.
+
+Changing only the requested raw localNCC loss in the conditioned300 matrix worsens
+ALL12query errors. Native-style NCC alone is not a rescue. Its true-warp loss around
+.49 is also found on the identical-image self-pair: stabilization and low-texture
+windows dominate that floor, not PNG quantization. A low loss floor alone does not
+prove a geometric optimizer defect; diagnose its map-dependent effects independently.
+
+Focused affected-suite verification:80tests passed before the next selection change.
+Next discriminators: cross-resolution output selection by the common full objective
+(without changing optimizer trajectory), and fewer resets/longer stage solves under
+the SAME total gradient budget. Image landmarks remain evaluation-only. No third
+regional patch-size sweep or unrelated alternative mechanism is opened.

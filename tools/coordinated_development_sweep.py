@@ -22,6 +22,8 @@ def main():
     p.add_argument("--image-levels",type=int,nargs="+")
     p.add_argument("--inner-steps",type=int,default=5)
     p.add_argument("--budget-multiplier",type=int,default=1)
+    p.add_argument("--interpolation",choices=("q1","p1_ac","p1_bd"),default="q1")
+    p.add_argument("--output-selection",choices=("last","best_full"),default="last")
     args=p.parse_args()
     args.output.mkdir(parents=True,exist_ok=True)
     results=[]
@@ -36,6 +38,8 @@ def main():
                 regional_cells=32,regional_min_level=args.regional_min_level,
                 strain_weight=args.strain_weight,oob_weight=1.,minimum_jacobian=.001,precision=args.precision,
                 image_precision=args.image_precision,shape_weight=args.shape_weight,
+                interpolation=args.interpolation,
+                output_selection=args.output_selection,
                 device=args.device,threads=2)
             try:
                 report=optimize(config)
