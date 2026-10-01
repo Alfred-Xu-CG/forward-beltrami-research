@@ -5,6 +5,11 @@ The first real experiments optimize each image pair's own coefficients. They do
 not yet deliver a trained image-to-map network. Operator gradients are tested
 locally; stages intentionally detach accepted anchors in instance optimization.
 
+A homeomorphism is a continuous bijection with a continuous inverse. A P1 map
+is continuous and affine on each triangle of a declared source triangulation.
+A Q1 map is continuous and bilinear on each declared source quadrilateral.
+These definitions concern the actual interpolated map, not only its vertex table.
+
 ## 1. Coordinates and the actual map
 
 Let the reference domain be [0,1]². For R rows and C columns, node (i,j) is
@@ -109,6 +114,13 @@ separate decision. A branch-guarded equivalent computesα fromg without
 differentiating a huge inactive reciprocal; this fixed an actual near-zero VJP
 overflow. The safety scale remains in autograd; it is not detached.
 
+For decoder output D(c) and an upstream array v, the vector-Jacobian product
+(VJP) is (D_c D)^T v: reverse-mode differentiation without storing a dense
+Jacobian. The gradient includes the safety scale. If the anchor is itself a
+learnable input, C_Y and the slack s also depend on it and must be differentiated.
+The current instance optimizer intentionally detaches accepted stage history;
+that is different from end-to-end training through an entire decoder cascade.
+
 ## 5. Multiscale variables and accepted stages
 
 At coefficient levelℓ, learn interior c∈R^(ℓ−2)×(ℓ−2) (two components for F1/F2).
@@ -126,6 +138,18 @@ inside a stage are not cumulatively compounded. Directions alternatex/y for
 coordinated operators. Fixed image evidence is always queried through the full
 map, not through recursively warped rasters.
 
+Optional image continuation associates coefficient level ell with image side W_ell.
+Each reduced fixed/moving image is an area average of its ORIGINAL full raster.
+The reduced fixed mask is the area average of the original fixed mask, not a mask
+computed from current overlap; fractional tissue weights are retained. With powers
+of two, mask sum times pixel area is conserved exactly by this averaging.
+Each stage accepts against its own complete E_ell, including the same physical
+strain, optional shape and OOB weights. Changing W_ell can increase the full-resolution
+objective. The latter is recorded after each stage and reported finally; no global
+monotonicity claim is made for continuation. The current budget includes initial,
+stage-anchor, decoder-trial, accepted full-resolution and final objective calls;
+decoder trials alone are not all objective evaluations.
+
 ## 6. Objective and metrics
 
 Let m(x) be fixed foreground mask and N=Σ_x m(x)>0. Descriptor or local-NCC
@@ -142,6 +166,31 @@ fixed offset descriptors; NCC squares normalized cross-correlation, so positive
 and negative correlation are treated equally. The actual preprocessing and
 window size are documented in CASE_PROTOCOL.md. LowerE does not imply lower
 anatomical error or correct matching of missing tissue.
+
+More precisely, the eight-channel MIND-like descriptor uses offsets
+{(2,0),(-2,0),(0,2),(0,-2),(2,2),(2,-2),(-2,2),(-2,-2)} pixels.
+For offset r, D_r is the3-by3 local mean of (I(x)-I(x+r))², with replicated
+padding for shifted images. Let v be the channel mean of D_r and m their minimum.
+The descriptor is exp(-(D_r-m)/(v+1e-4)); mean absolute channel difference gives
+the image error after sampling ORIGINAL moving descriptors. This implementation
+is called MIND-like, not asserted identical to every published MIND variant.
+
+An optional corner-shape regularizer is
+
+    R(Y)=mean over cells/corners [||J||_F²(1+det(J)^(-2))-4],
+
+where J has the normalized Q1 derivative columns at that corner. For a positive
+2-by2 J the expression equals ||J||_F²+||J^(-1)||_F²-4. It is zero on rotations,
+diverges at singular compression, and is a four-corner QUADRATURE, not the exact
+Q1 integral. When enabled, E includes the same declared weight of R for every
+method. This conventional distortion regularizer is not the topology guarantee.
+
+Geometry and evidence precisions are separately selectable. With float64 geometry
+and float32 evidence, Q1 and affine coordinates are evaluated in float64, then
+cast to float32 only for raster grid sampling. The original double vertex table
+is retained and certified. Casting sampling queries neither changes the exported
+map nor extends its certificate to a newly rounded vertex table. Gradients pass
+through the cast; finite-precision numerical errors are still measured separately.
 
 For independent evaluation landmark pairs (p_f,p_m), convert native pixel centers
 to saved canvas coordinates and compute TRE=||512 F_Y(p_f)−512 p_m||_2. Report

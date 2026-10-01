@@ -15,6 +15,13 @@ def main():
     p.add_argument("--device",default="cuda")
     p.add_argument("--f2-accepted-gain",type=float,default=1.)
     p.add_argument("--strain-weight",type=float,default=.05)
+    p.add_argument("--regional-min-level",type=int,default=3)
+    p.add_argument("--precision",choices=("float32","float64"),default="float32")
+    p.add_argument("--image-precision",choices=("same","float32","float64"),default="same")
+    p.add_argument("--shape-weight",type=float,default=0.)
+    p.add_argument("--image-levels",type=int,nargs="+")
+    p.add_argument("--inner-steps",type=int,default=5)
+    p.add_argument("--budget-multiplier",type=int,default=1)
     args=p.parse_args()
     args.output.mkdir(parents=True,exist_ok=True)
     results=[]
@@ -23,13 +30,22 @@ def main():
             config=argparse.Namespace(fixed=args.data/(case+"_fixed512.png"),
                 moving=args.data/(case+"_moving512.png"),affine=args.data/(case+"_initial_affine.npz"),
                 output=args.output/(case+"_"+method+"_"+args.loss+"_edge257.npz"),method=method,
-                loss=args.loss,grid_side=257,image_side=512,levels=[17,33,65,129,257],inner_steps=5,
-                cycles=4 if method in ("f1","f2") else 2,learning_rate=.004,lr_calibration="edge",patch_cells=8,
+                loss=args.loss,grid_side=257,image_side=512,image_levels=args.image_levels,levels=[17,33,65,129,257],inner_steps=args.inner_steps,
+                cycles=(4 if method in ("f1","f2") else 2)*args.budget_multiplier,learning_rate=.004,lr_calibration="edge",patch_cells=8,
                 f2_accepted_gain=args.f2_accepted_gain,
-                strain_weight=args.strain_weight,oob_weight=1.,minimum_jacobian=.001,precision="float32",
+                regional_cells=32,regional_min_level=args.regional_min_level,
+                strain_weight=args.strain_weight,oob_weight=1.,minimum_jacobian=.001,precision=args.precision,
+                image_precision=args.image_precision,shape_weight=args.shape_weight,
                 device=args.device,threads=2)
-            report=optimize(config)
-            row=dict(case=case,method=method,loss=args.loss,final=report["final"],
+            try:
+                report=optimize(config)
+            except Exception as error:
+                row=dict(case=case,method=method,loss=args.loss,status="failed",
+                         error=type(error).__name__+": "+str(error))
+                results.append(row)
+                print(json.dumps(row),flush=True)
+                continue
+            row=dict(case=case,method=method,loss=args.loss,status="complete",final=report["final"],
                      failed_trials=report["failed_trials"],gradient_steps=report["gradient_steps"],
                      seconds=report["optimize_seconds"],peak_bytes=report["peak_allocated_bytes"])
             results.append(row)

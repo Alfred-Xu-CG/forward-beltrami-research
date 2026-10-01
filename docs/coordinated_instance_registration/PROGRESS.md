@@ -143,3 +143,59 @@ without losing any corner constraint. It proves isolation of the worst-cell bott
 not anatomical improvement. Regional module author34affectedtests; coordinator adds
 independent full-grid determinant/reconstruction tests:9rootchecks passed. Actual257
 registration benefit remains NOT TESTED. No alternative research branch has been opened.
+
+## Second-hour discriminating questions
+
+129/257 oracle fits now distinguish local-step attenuation from topology rejection.
+At257, radial/analytic RMSE stays around .00045--.00253 across the three targets;
+F1/F2 at the same120-trial budget is around .008--.016. Correcting F2 accepted gain
+to .75 eliminates its float64 rejections but not its257 error. This is a finite-budget
+comparison, NOT a theorem that F1/F2 cannot approximate the targets. An independently
+checked finite-amplitude proposal loses increasing motion with resolution under F1/F2,
+despite exactly calibrated identity derivatives. Coordinated transfer remains stable.
+
+Real-image F2 float64/gain.75 now completes100 gradients on all3 specimens, whereas
+float32/gain.75 still rejects floor-contact trials. Its anatomy has yet to be scored.
+The geometry builder independently verified that gain1 only protects a CLOSED floor;
+gain gamma<1 retains at least(1-gamma) slack per pass in exact arithmetic. Four passes
+retain at least(1-gamma)^4, which is NOT a floating-point sign certificate.
+
+Question: can geometry float64 and evidence float32 remove rounded-floor rejection
+without doubling all descriptor/sampling storage? Smallest test: finite decoder and
+image VJP, same saved-map certificate, then matched3-case precision comparison. Falsifier:
+nonfinite/incorrect gradient or continuing floor rejection. This is a precision change,
+not a new geometric mechanism; output and raster sampling precisions must be disclosed.
+
+Question: mean membrane strain is cheap for a very small region to collapse. Does an
+optional local reciprocal-stretch energy prevent thin-cell trapping under the SAME
+objective for all methods? At each actual Q1 corner let J have normalized derivative
+columns and define D(J)=||J||_F^2+||J^{-1}||_F^2-4. In2D this equals
+||J||_F^2(1+det(J)^(-2))-4 for positive det(J). Average over all four cell corners,
+using a common small weight; retain the existing exact feasible decoder. This is a
+corner quadrature regularizer, NOT exact integrated Q1 energy and NOT a new topology
+certificate. Prior work: [SLIM](https://igl.ethz.ch/projects/slim/SLIM2017.pdf), symmetric
+Dirichlet distortion. Smallest test: independent matrix inverse comparison, identity,
+rotation, compression and FD. Then one common-weight matrix, not endless weight tuning.
+Falsifier: it merely biases maps or spends time without reducing observed thin-cell
+failure/optimization stalls. Do not choose the weight or iterates using landmarks.
+
+The first shape-weight1e-4 matrix removes all17 prior mixed-precision F1 rounded-floor
+rejections (all100 gradients), but does NOT improve anatomy consistently: kidney
+radial/analytic/F1/F2 meanTRE5.776/5.794/5.522/5.386 versus5.642/5.916/5.582/5.227
+without shape. Analytic image optimization improves, but not general competitiveness.
+Keep this as a conditioning intervention, not claim a registration breakthrough.
+
+Two global/regional support interventions do not show a consistent anatomical gain:
+all-level windows and global-coarse/regional-fine both remain worse than DHR on kidney.
+Diagnosis now moves to image capture/convergence, not a third nearby patch-size sweep.
+Known independently legal image warps have37--61px peak movement. True complete MIND
+objective .058--.074 is below all current .113--.144 outputs, yet held-out map RMSE
+remains12--23px. This establishes a feasible better-objective solution was not reached;
+it does NOT prove the correspondence signal is impossible. The matched original-image
+pyramid is the next discriminator. Acceptance is monotone WITHIN each scale's complete
+objective; changing scales can increase the full512 objective, explicitly recorded.
+
+Correction from the actual saved native DHR config: its NCC window is7, NOT3 as a
+previous descriptive sentence claimed. Executed baseline configs/results unchanged.
+Its CLAHE/normalization, diffusion-relative regularizer and boundary freedoms still
+prevent calling it an isolated shared-objective geometry comparison.

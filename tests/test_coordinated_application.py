@@ -5,7 +5,7 @@ import torch
 
 from qcopt.neural_bijection.dense.coordinated_update import CoordinatedQ1Update, single_direction_corner_change
 from qcopt.neural_bijection.dense.coordinated_patches import CoordinatedPatchQ1Pass
-from tools.coordinated_real_case import Evidence
+from tools.coordinated_real_case import Evidence,corner_symmetric_dirichlet
 
 
 def triangles_numpy(vertices):
@@ -98,3 +98,74 @@ def test_regional_separate_reconstruction(mode):
     torch.testing.assert_close(actual,result.amplitude,rtol=0,atol=8e-17)
     result.vertices.square().sum().backward()
     assert bool(torch.isfinite(raw.grad).all())
+
+
+@pytest.mark.parametrize("matrix", [[[1.,0.],[0.,1.]],[[0.,-1.],[1.,0.]],
+                                    [[.02,0.],[0.,1.]],[[1.2,.3],[.1,.8]]])
+def test_corner_shape_independent_inverse(matrix):
+    a=np.asarray(matrix,dtype=np.float64)
+    y,x=torch.meshgrid(torch.linspace(0,1,7,dtype=torch.float64),
+                       torch.linspace(0,1,9,dtype=torch.float64),indexing="ij")
+    vertices=torch.stack((x,y),-1)[None]@torch.from_numpy(a).T
+    expected=np.linalg.norm(a,"fro")**2+np.linalg.norm(np.linalg.inv(a),"fro")**2-4
+    assert float(corner_symmetric_dirichlet(vertices))==pytest.approx(expected,abs=2e-10)
+
+
+def test_corner_shape_directional_derivative():
+    torch.manual_seed(631)
+    y,x=torch.meshgrid(torch.linspace(0,1,9,dtype=torch.float64),
+                       torch.linspace(0,1,9,dtype=torch.float64),indexing="ij")
+    vertices=(torch.stack((x,y),-1)[None]+.003*torch.randn(1,9,9,2,dtype=torch.float64)).requires_grad_()
+    direction=torch.randn_like(vertices)*.01
+    grad,=torch.autograd.grad(corner_symmetric_dirichlet(vertices),vertices)
+    step=1e-6
+    finite=(corner_symmetric_dirichlet(vertices+step*direction)-corner_symmetric_dirichlet(vertices-step*direction))/(2*step)
+    torch.testing.assert_close((grad*direction).sum(),finite,rtol=1e-6,atol=2e-9)
+
+
+def test_mixed_evidence_keeps_double_geometry_gradient():
+    torch.manual_seed(919)
+    image=torch.rand(1,1,32,32,dtype=torch.float64)
+    y,x=torch.meshgrid(torch.linspace(0,1,9,dtype=torch.float64),
+                       torch.linspace(0,1,9,dtype=torch.float64),indexing="ij")
+    vertices=(torch.stack((x,y),-1)[None]+.001*torch.randn(1,9,9,2,dtype=torch.float64)).requires_grad_()
+    matrix,offset=torch.eye(2,dtype=torch.float64),torch.zeros(2,dtype=torch.float64)
+    full=Evidence(image,image,matrix,offset,"mind",.05,1.,1e-4)
+    mixed=Evidence(image.float(),image.float(),matrix,offset,"mind",.05,1.,1e-4)
+    full_value=full(vertices)[0];mixed_value=mixed(vertices)[0]
+    g_full,=torch.autograd.grad(full_value,vertices)
+    g_mixed,=torch.autograd.grad(mixed_value,vertices)
+    assert g_mixed.dtype==torch.float64 and bool(torch.isfinite(g_mixed).all())
+    torch.testing.assert_close(mixed_value,full_value,rtol=2e-5,atol=1e-6)
+    torch.testing.assert_close(g_mixed,g_full,rtol=2e-3,atol=1e-5)
+
+
+def test_pyramid_fixed_mask_conservation():
+    image=torch.full((1,1,32,32),.5)
+    mask=torch.zeros_like(image);mask[...,3:29,6:27]=1
+    reduced=torch.nn.functional.interpolate(mask,size=(8,8),mode="area")
+    evidence=Evidence(torch.full((1,1,8,8),.5),torch.full((1,1,8,8),.5),
+                      torch.eye(2),torch.zeros(2),"mind",.05,1.,fixed_mask=reduced)
+    assert float(evidence.denominator)*16==float(mask.sum())
+    assert bool(((evidence.mask>0)&(evidence.mask<1)).any())
+
+
+def test_tiny_image_continuation_stage_acceptance(tmp_path):
+    import argparse
+    from PIL import Image
+    from tools.coordinated_real_case import optimize
+    image=(np.random.default_rng(418).uniform(30,210,(16,16))).astype(np.uint8)
+    Image.fromarray(image).save(tmp_path/"fixed.png")
+    Image.fromarray(np.roll(image,1,axis=1)).save(tmp_path/"moving.png")
+    np.savez(tmp_path/"affine.npz",post_affine_matrix=np.eye(2),post_affine_offset=np.zeros(2))
+    args=argparse.Namespace(output=tmp_path/"map.npz",fixed=tmp_path/"fixed.png",moving=tmp_path/"moving.png",
+        affine=tmp_path/"affine.npz",grid_side=9,image_side=16,image_levels=[8,16],levels=[5,9],
+        inner_steps=1,cycles=1,learning_rate=.001,device="cpu",threads=2,precision="float64",
+        image_precision="float32",loss="mind",strain_weight=.05,shape_weight=.0001,oob_weight=1.,
+        method="radial",minimum_jacobian=.001,lr_calibration="edge")
+    report=optimize(args)
+    assert report["gradient_steps"]==4 and report["evaluations"]==8
+    assert [s["image_side"] for s in report["stages"]]==[8,8,16,16]
+    assert all(s["accepted_total"]<=s["anchor_total"] for s in report["stages"])
+    assert report["saved_binary_certificate"]["valid"]
+    assert report["end_to_end_seconds"]>=report["optimize_seconds"]

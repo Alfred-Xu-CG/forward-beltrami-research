@@ -51,8 +51,11 @@ must be distinguished; a repeated Histo radial run already differs in TRE (.798/
 Native DHR baseline has TWO variants: newly estimated native affine (application
 pipeline only), and exact supplied common affine before native nonrigid optimization.
 The common-affine conversion is independently verified over512² centers. Native
-preprocessing,3×3 NCC/defaultregularizer andfive-level optimizer differ from the
-shared seven-window/MIND objective; do not call this an isolated geometry comparison.
+preprocessing,7×7 NCC/diffusion-relative regularizer andfive-level optimizer differ
+from the shared masked MIND/NCC objective; do not call this an isolated geometry comparison.
+Correction: direct inspection of the saved executable config shows win_size=7,
+not3. The earlier descriptive three-window statement was wrong; the run itself
+used7. CLAHE/normalization, masking, boundary class and regularizer still differ.
 No post-hoc safe repair or DHR target distillation is included in the main methods.
 
 Data availability checks: [BIRL](https://github.com/Borda/BIRL) exposes the reused lesion
@@ -61,3 +64,31 @@ documents annotation conventions and the previously viewed lung-lesion3 sample.
 The ANHIR download page returned403 and its linked older CIMA dataset page404 during
 this run. No authentication bypass was attempted. Independent new labelled-specimen
 confirmation remains required; these failures do not block existing-data development.
+
+## Precision, conditioning and continuation diagnostics
+
+The mixed option uses float64 exported geometry and float32 original image evidence.
+Coordinates are cast only at raster sampling, not in the stored map. Full-float64
+F2 removes float32 floor contacts at gain.75 but uses about513MB allocated peak;
+mixed F2 uses about464--465MB here. Neither result establishes an anatomical gain.
+An optional shared symmetric-Dirichlet corner weight1e-4 conditions thin cells;
+first12-case matrix completes all100 gradients, but anatomy does not consistently
+improve. It is not a substitute for the exact feasible decoder or saved certificate.
+
+Image continuation uses32/64/128/256/512 queries, associated with17/33/65/129/257
+coefficient levels. All maps still have257² control vertices throughout. Each
+original raster is independently area-downsampled; mask area weights are conserved.
+Every stage accepts against the COMPLETE objective at that image resolution. Thus
+full512 objective can increase when changing resolution; it is separately traced.
+Pyramid and nonpyramid runs are different algorithms, not the same fixed objective.
+
+Known-map texture control: fixed image is generated from the ORIGINAL histology
+moving raster through an independently analytic, actually digital-valid257 Q1 target.
+Identity initializer, three targets with peak37--61px movement; shared image-only
+optimization never reads the target. The PNG intensity quantization floor is reported.
+Off-raster query seed20261001/count4096 is used ONLY after the selected final output.
+These are synthetic deformations of real texture, not biological registration or
+independent patients. Target MIND objective is nonzero because descriptor transport
+does not commute with image deformation, while the raster truth error is near the
+PNG quantization floor. A true target lower than optimized full objective is useful
+evidence of convergence/capture failure, not proof that MIND's optimum is anatomical.
