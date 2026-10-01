@@ -1017,3 +1017,71 @@ Prior art: this is the established ARAP distortion measure, not a novel energy
 or the local/global SLIM solver; see [SLIM2017, equations1--2](https://igl.ethz.ch/projects/slim/SLIM2017.pdf).
 Its use here is motivated by a measured registration-objective conflict and
 does not itself establish better anatomical correspondence or convergence.
+
+## 26. Descriptor transport versus recomputation after image warping
+
+Let If,Im be the immutable fixed/moving raster arrays at the current pyramid
+resolution. Pixel centers in an H-by-W raster are x_ij=((j+.5)/W,(i+.5)/H).
+For the actual declared P1 map and frozen affine, F_Y(x)=A I_hY(x)+b. Define
+W_Y I as bilinear sampling of the ORIGINAL array I at F_Y(x_ij), with zero
+padding outside its raster and align_corners=False. No image from a previous
+stage is recursively warped. The geometry remains f64 when image arithmetic
+is f32; query conversion changes raster precision, not the stored nodal map.
+
+The EXISTING eight-channel self-similarity operator Phi is defined here to
+avoid confusion with a faithful implementation of published MIND. For pixel p
+and offset r in {(2,0),(-2,0),(0,2),(0,-2),(2,2),(2,-2),(-2,2),(-2,-2)}, let
+
+\[
+D_r(I,p)=\operatorname{mean}_{s\in\{-1,0,1\}^2\,:,p+s\text{ in raster}}
+ [I(p+s)-I_{\rm replicate}(p+s+r)]^2,
+\quad V(I,p)=\tfrac18\sum_r D_r(I,p),
+\]
+\[
+\Phi_r(I,p)=\exp\!\left[-\frac{D_r(I,p)-\min_vD_v(I,p)}{V(I,p)+10^{-4}}\right].
+\]
+
+Replicate extension applies to shifted intensities. The patch average excludes
+out-of-raster patch locations, matching count_include_pad=False. The stabilizer
+is fixed, not an adaptive function of the map. For fixed nonnegative tissue
+mask m with denominator sum_p m_p (unchanged across iterates), compare
+
+\[
+E_{\rm transport}(Y)=\frac{\sum_p m_p\,\tfrac18\sum_r
+ |\Phi_r(If,p)-(W_Y\Phi_r(Im))_p|}{\sum_p m_p},
+\]
+\[
+E_{\rm after}(Y)=\frac{\sum_p m_p\,\tfrac18\sum_r
+ |\Phi_r(If,p)-\Phi_r(W_YIm,p)|}{\sum_p m_p}.
+\]
+
+These are different objectives; their numerical values or iteration decreases
+must not be compared as if they were the same functional. Initialization,
+frozen machine matches, mask, explicit OOB penalty, ARAP3, shape1e-4 and geometry
+are otherwise fixed in the bounded ablation. after_warp caches only Phi(If)
+and the original moving raster, NEVER the candidate's Phi(W_YIm).
+
+For pixel offset r define normalized offset r_n=(r_x/W,r_y/H).
+Noncommutation follows from the neighborhoods: F_Y(x+r_n) generally differs
+from F_Y(x)+r_n, so sampling a descriptor built in moving-image coordinates is
+not the same as building one in fixed-image coordinates after deformation.
+Even a rotation changes the ordered offset directions. If, in a noiseless
+same-texture discrete model, If=W_Ytrue Im exactly, E_after(Ytrue)=0 by the
+operator definition. This is a consistency property, not uniqueness of the
+optimizer, anatomical validity, multimodal invariance or a general accuracy
+theorem. Quantization, interpolation, different stains and tissue differences
+break that equality. Resampling/texture loss can also create spurious minima.
+
+For an image-term upstream derivative v at the candidate descriptor, the
+chain is (D_YF)^T (D_FW_YIm)^T (D_Phi(W_YIm))^T v. Ordinary AD includes
+descriptor normalization/minimum, pooling, exponential and sampling; no factor
+is detached. Absolute values, channel minima and bilinear knots make the
+objective piecewise smooth, so central finite differences are compared only
+away from those knots. Safety remains the separate exact coordinated operator.
+Recomputation costs additional local raster operations and their graph memory;
+forward/VJP time and peak memory must be measured rather than inferred.
+
+Prior art for neighborhood self-similarity:
+[Heinrich et al., MIND2012](https://pubmed.ncbi.nlm.nih.gov/22722056/).
+This experiment uses our existing MIND-like descriptor and makes no novelty
+claim for feature recomputation or image registration by itself.

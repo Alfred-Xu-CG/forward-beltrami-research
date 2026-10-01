@@ -333,6 +333,7 @@ def run(args,manifest):
     rows=[]
     interpolation=getattr(args,"interpolation","q1")
     strain_model=getattr(args,"strain_model","displacement_gradient")
+    mind_order=getattr(args,"mind_order","transport")
     folder=args.inputs_from.parent if args.inputs_from is not None else args.output.parent
     fixed_moving,_ = _read_gray_thumbnail(folder/manifest["moving"],args.image_side)
     moving=fixed_moving.double()
@@ -361,7 +362,7 @@ def run(args,manifest):
         evidence=Evidence(evidence_fixed,evidence_moving,torch.eye(2,dtype=torch.float64),
                           torch.zeros(2,dtype=torch.float64),args.loss,args.strain_weight,1.,
                           shape_weight=args.shape_weight,fixed_mask=evidence_mask,matches=matches,match_weight=getattr(args,"match_weight",0.),
-                          interpolation=interpolation if strain_model=="p1_arap" else "q1",strain_model=strain_model)
+                          interpolation=interpolation if strain_model=="p1_arap" else "q1",strain_model=strain_model,mind_order=mind_order)
         truth_total,truth_parts=evidence(target)
         declared_truth_evidence=copy.copy(evidence)
         declared_truth_evidence.interpolation=interpolation
@@ -389,6 +390,7 @@ def run(args,manifest):
             opt.geometry_backend=getattr(args,"geometry_backend","existing")
             opt.output_selection=getattr(args,"output_selection","last")
             opt.strain_model=strain_model
+            opt.mind_order=mind_order
             opt.matches=match_path;opt.match_weight=getattr(args,"match_weight",0.)
             opt.match_robust_scale=getattr(args,"match_robust_scale",8.)
             snapshots=[]
@@ -421,6 +423,7 @@ def run(args,manifest):
                 target_declared_objective_total=float(declared_truth_total),
                 target_declared_objective_parts={k:float(v) for k,v in declared_truth_parts.items()},
                 target_declared_objective_interpolation=interpolation,strain_model=strain_model,
+                mind_order=mind_order if args.loss=="mind" else None,
                 target_corner_shape=float(corner_symmetric_dirichlet(target)),
                 final_corner_shape=float(corner_symmetric_dirichlet(estimated)),
                 target_raster_floor=image_metrics(fixed,moving,target),
@@ -486,6 +489,7 @@ def main():
     p.add_argument("--match-robust-scale",type=float,default=8.)
     p.add_argument("--minimum-jacobian",type=float,default=.001)
     p.add_argument("--loss",choices=("mind","local_ncc"),default="mind")
+    p.add_argument("--mind-order",choices=("transport","after_warp"),default="transport")
     p.add_argument("--preprocessing",choices=("raw_inverted","native_dhr"),default="raw_inverted")
     p.add_argument("--interpolation",choices=("q1","p1_ac","p1_bd"),default="q1",
                    help="Estimated function only; prepared known-image truth remains original Q1")

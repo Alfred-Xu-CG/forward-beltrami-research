@@ -1100,3 +1100,39 @@ https://pubmed.ncbi.nlm.nih.gov/22722056/); our eight-offset implementation is
 MIND-LIKE, not a faithful new reference implementation or novelty claim.
 Noncommutation is an operator fact; it does NOT prove this revised objective
 will perform better on different stains/noncorresponding tissue.
+
+Both descriptor-order matrices completed: all24runs,300gradients each,
+zero failed trials and valid actual exported maps. Independent checker45tests
+and coordinator60affected tests passed. After-warp analytic known queryRMSE
+shear/rotation/coarse-fine .622750/1.417840/.549527 improves transport-ARAP
+.685480/3.392633/.595647. But real analytic means .906167/3.730921/2.472741
+are ALL WORSE than transport-ARAP .793449/3.657262/2.351586. All four methods
+have worse meanTRE in every real case. After-warp analytic single-run7.68/7.05/
+7.09s,296--299MB versus transport3.85/4.35/3.94s,225--229MB; concurrent jobs
+and non-ABBA timing preclude precise speed claims. Decision: retain transport
+ARAP as the current main objective; retain this negative real result, do not
+continue descriptor tuning merely because the synthetic rotation improved.
+
+### T+9.4h original-image resolution research card
+
+Question: can actual original-image detail, rather than a512-thumbnail ceiling,
+improve registration? Candidate: render1024 canvases directly from original
+JPEGs at EXACTLY twice the stored512 resized dimensions and padding. With
+u=((x+.5)*scale+padding)/side, doubling scale/padding/side preserves every
+normalized source coordinate. Copy positive affine arrays and frozen normalized
+machine matches unchanged. Label match prediction resolution512 honestly; no
+new matcher or manual landmarks enter preparation or optimization.
+Assumptions: integer scale factor; source dimensions agree with layout; target
+resized dimensions do not exceed native source dimensions; same RGB/BILINEAR
+renderer as before. Histo and kidney satisfy these; lesions' local originals
+would need upsampling and are excluded from native-detail1024 validation.
+Falsifier: normalized frame invariance, affine/match bit identity or provenance
+fails; actual1024 evidence produces no useful time/accuracy tradeoff. Smallest
+test: synthetic non-square padded source and source-mismatch guards, then kidney
+and histo with257controls/1024queries, same300gradient budget, ARAP3 transport.
+Point robust scale doubles8->16canvaspixels to preserve normalized penalty.
+Report native-moving-pixel errors and512-equivalent canvas error, not raw1024
+pixel numbers as comparable512 errors. Descriptor pixel footprint and image
+continuation levels change; this is NOT a pure same-functional timing test.
+Prior work: conventional image pyramid and pixel-center coordinate conversion;
+this is an evidence-resolution experiment, not a novel geometry construction.

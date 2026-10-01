@@ -142,6 +142,7 @@ def test_common_shape_weight_and_target_free_optimizer_interface(tmp_path,monkey
         image_levels=None,device="cpu",threads=2,record_stages=False,query_thresholds=[1.,5.,10.])
     args.interpolation=interpolation
     args.strain_model=strain_model
+    args.mind_order="after_warp"
     args.coordinate_mode=coordinate_mode;args.joint_backend="cached_manual"
     args.geometry_backend="existing";args.output_selection="best_full"
     args.p1_sampling="existing" if interpolation=="q1" else "frozen"
@@ -151,6 +152,7 @@ def test_common_shape_weight_and_target_free_optimizer_interface(tmp_path,monkey
         assert opt.coordinate_mode==coordinate_mode and opt.joint_backend=="cached_manual"
         assert opt.geometry_backend=="existing" and opt.output_selection=="best_full"
         assert opt.strain_model==strain_model
+        assert opt.mind_order=="after_warp"
         assert not any(word in key for key in vars(opt) for word in ("target","landmark","truth"))
         assert opt.fixed.name=="fixed.png" and opt.moving.name=="moving.png"
         assert opt.affine.name=="identity.npz"
@@ -165,10 +167,12 @@ def test_common_shape_weight_and_target_free_optimizer_interface(tmp_path,monkey
     fixed,_=_read_gray_thumbnail(tmp_path/"fixed.png",16)
     baseline=app.Evidence(fixed.double(),fixed.double(),torch.eye(2,dtype=torch.float64),
                           torch.zeros(2,dtype=torch.float64),"mind",.05,1.,
-                          interpolation=interpolation if strain_model=="p1_arap" else "q1",strain_model=strain_model)(target)[0]
+                          interpolation=interpolation if strain_model=="p1_arap" else "q1",strain_model=strain_model,
+                          mind_order="after_warp")(target)[0]
     assert row["target_objective_total"]==pytest.approx(float(baseline)+1e-4*row["target_corner_shape"])
     assert row["target_objective_parts"]["shape"]==pytest.approx(row["target_corner_shape"])
     assert row["strain_model"]==strain_model and row["target_declared_objective_interpolation"]==interpolation
+    assert row["mind_order"]=="after_warp"
 
 
 def test_native_posthoc_constant_translation_matches_physical_units():

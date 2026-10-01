@@ -53,7 +53,7 @@ def require_nested_fine_margin(vertices,reference_corners,minimum_jacobian,conte
 class Evidence:
     """Fixed mask, original evidence, and explicitly penalized out-of-bounds."""
 
-    def __init__(self, fixed, moving, matrix, offset, loss, strain_weight, oob_weight, shape_weight=0., fixed_mask=None, interpolation="q1", matches=None, match_weight=0., strain_model="displacement_gradient"):
+    def __init__(self, fixed, moving, matrix, offset, loss, strain_weight, oob_weight, shape_weight=0., fixed_mask=None, interpolation="q1", matches=None, match_weight=0., strain_model="displacement_gradient", mind_order="transport"):
         self.fixed, self.moving = fixed, moving
         self.matrix, self.offset = matrix, offset
         self.loss, self.strain_weight, self.oob_weight = loss, strain_weight, oob_weight
@@ -67,6 +67,9 @@ class Evidence:
         if strain_model not in ("displacement_gradient","p1_arap") or (strain_model=="p1_arap" and interpolation=="q1"):
             raise ValueError("declare displacement_gradient or actual P1 p1_arap strain model")
         self.strain_model=strain_model
+        if mind_order not in ("transport","after_warp") or (mind_order=="after_warp" and loss!="mind"):
+            raise ValueError("after_warp descriptor order requires MIND; otherwise use transport")
+        self.mind_order=mind_order
         self.fixed_p1_evaluator=None
         self.nested_priors=None
         self.mask = (fixed > .04).to(fixed.dtype) if fixed_mask is None else fixed_mask.to(fixed)
@@ -77,7 +80,7 @@ class Evidence:
         self.denominator = self.mask.sum()
         if loss == "mind":
             self.fixed_feature, _ = self_similarity(fixed)
-            self.moving_feature, _ = self_similarity(moving)
+            self.moving_feature = moving if mind_order=="after_warp" else self_similarity(moving)[0]
         else:
             self.fixed_feature, self.moving_feature = fixed, moving
 
@@ -121,6 +124,8 @@ class Evidence:
         warped = F.grid_sample(self.moving_feature, (2 * query - 1).to(self.moving_feature.dtype),
                                mode="bilinear", padding_mode="zeros", align_corners=False)
         if self.loss == "mind":
+            if self.mind_order=="after_warp":
+                warped=self_similarity(warped)[0]
             errors = (self.fixed_feature - warped).abs().mean(1, keepdim=True)
         else:
             count = 49
@@ -262,6 +267,9 @@ def optimize(args, accepted_stage_callback=None):
     if nested_evaluation=="coarse_exact" and not nested:
         raise ValueError("coarse_exact evaluation requires nested_p1 control hierarchy")
     strain_model=getattr(args,"strain_model","displacement_gradient")
+    mind_order=getattr(args,"mind_order","transport")
+    if mind_order not in ("transport","after_warp") or (mind_order=="after_warp" and args.loss!="mind"):
+        raise ValueError("after_warp descriptor order requires MIND")
     if strain_model not in ("displacement_gradient","p1_arap") or (strain_model=="p1_arap" and
             (getattr(args,"interpolation","q1")=="q1" or nested_evaluation=="coarse_exact")):
         raise ValueError("p1_arap needs declared P1 and ordinary fine prior evaluation")
@@ -301,7 +309,7 @@ def optimize(args, accepted_stage_callback=None):
     evidence = Evidence(fixed, moving, torch.from_numpy(a).to(device=device, dtype=dtype),
                         torch.from_numpy(b).to(device=device, dtype=dtype), args.loss,
                         args.strain_weight, args.oob_weight, getattr(args,"shape_weight",0.),
-                        fixed_mask=fixed_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model)
+                        fixed_mask=fixed_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model,mind_order=mind_order)
     evidence_by_resolution={args.image_side:evidence}
     for image_resolution in sorted(set(image_levels)):
         if image_resolution not in evidence_by_resolution:
@@ -310,7 +318,7 @@ def optimize(args, accepted_stage_callback=None):
             reduced_mask=F.interpolate(evidence.mask,size=(image_resolution,image_resolution),mode="area")
             evidence_by_resolution[image_resolution]=Evidence(reduced_fixed,reduced_moving,evidence.matrix,
                 evidence.offset,args.loss,args.strain_weight,args.oob_weight,getattr(args,"shape_weight",0.),
-                reduced_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model)
+                reduced_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model,mind_order=mind_order)
     p1_sampling=getattr(args,"p1_sampling","existing")
     if p1_sampling not in ("existing","frozen"):
         raise ValueError("P1 sampling must be existing or frozen")
@@ -571,6 +579,7 @@ def optimize(args, accepted_stage_callback=None):
                   final_corner_shape=float(corner_symmetric_dirichlet(current.double())),
                   geometry_dtype=str(dtype),evidence_dtype=str(image_dtype),
                   strain_model=strain_model,
+                  mind_order=mind_order if args.loss=="mind" else None,
                   image_levels=image_levels,
                   continuation_scope=continuation_scope,
                   output_selection=output_selection,selected_stage=full_best_stage if output_selection=="best_full" else len(stages)-1,
@@ -610,6 +619,7 @@ def main():
     p.add_argument("--regional-min-level",type=int,default=3,
                    help="Use unwindowed global updates below this coefficient level")
     p.add_argument("--loss", choices=("mind", "local_ncc"), default="mind")
+    p.add_argument("--mind-order",choices=("transport","after_warp"),default="transport")
     p.add_argument("--preprocessing",choices=("raw_inverted","native_dhr"),default="raw_inverted",
                    help="Frozen native PIL/normalization/grayscale/CLAHE option; mask stays original, not native optimizer equivalence")
     p.add_argument("--interpolation",choices=("q1","p1_ac","p1_bd"),default="q1")

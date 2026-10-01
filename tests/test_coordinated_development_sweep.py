@@ -63,9 +63,10 @@ def test_filter_configuration_reaches_application_without_changing_calibration(t
     monkeypatch.setattr(sys,"argv",["sweep","--data",str(tmp_path),"--output",str(tmp_path/"filter"),
         "--cases","histo","--methods","analytic","--loss","mind","--lr-calibration","physical",
         "--proposal-filter-steps","4","--proposal-filter-min-level","129",
-        "--strain-model","p1_arap","--interpolation","p1_ac"])
+        "--strain-model","p1_arap","--interpolation","p1_ac","--mind-order","after_warp"])
     sweep.main()
     assert len(captured)==1
     assert captured[0].proposal_filter_steps==4 and captured[0].proposal_filter_min_level==129
     assert captured[0].lr_calibration=="physical"
     assert captured[0].strain_model=="p1_arap"
+    assert captured[0].mind_order=="after_warp"
