@@ -222,3 +222,23 @@ def test_default_frozen_preprocessing_is_old_evidence(tmp_path):
     torch.testing.assert_close(f,_read_gray_thumbnail(fixed,16)[0],rtol=0,atol=0)
     torch.testing.assert_close(m,_read_gray_thumbnail(moving,16)[0],rtol=0,atol=0)
     assert torch.equal(mask,(f>.04).float()) and metadata["name"]=="raw_inverted"
+
+
+@pytest.mark.parametrize("diagonal",["ac","bd"])
+def test_prepared_p1_evidence_same_loss_and_vertex_gradient(diagonal):
+    torch.manual_seed(614)
+    image=torch.rand(1,1,32,32)
+    y,x=torch.meshgrid(torch.linspace(0,1,9,dtype=torch.float64),
+                       torch.linspace(0,1,9,dtype=torch.float64),indexing="ij")
+    vertices=(torch.stack((x,y),-1)[None]+.002*torch.randn(1,9,9,2,dtype=torch.float64)).requires_grad_()
+    evidence=Evidence(image,image,torch.eye(2,dtype=torch.float64),torch.zeros(2,dtype=torch.float64),
+        "mind",3.,1.,1e-4,interpolation="p1_"+diagonal)
+    old=evidence(vertices)[0];g_old,=torch.autograd.grad(old,vertices)
+    evidence.prepare_fixed_p1_sampling(9,9,dtype=vertices.dtype,device=vertices.device)
+    new=evidence(vertices)[0];g_new,=torch.autograd.grad(new,vertices)
+    torch.testing.assert_close(old,new,rtol=0,atol=1e-14)
+    torch.testing.assert_close(g_old,g_new,rtol=1e-12,atol=1e-12)
+    assert sum(b.numel()*b.element_size() for b in evidence.fixed_p1_evaluator.buffers())==32*32*48
+    q1=Evidence(image,image,torch.eye(2),torch.zeros(2),"mind",.05,1.)
+    with pytest.raises(ValueError,match="P1"):
+        q1.prepare_fixed_p1_sampling(9,9,dtype=torch.float32,device="cpu")

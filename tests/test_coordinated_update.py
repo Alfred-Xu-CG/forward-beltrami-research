@@ -210,3 +210,36 @@ def test_coarse_boundary_mask_gives_coarse_width_transition():
     dense.sum().backward()
     assert coarse.grad[0, 0].count_nonzero() == 0
     assert coarse.grad[0, :, 0].count_nonzero() == 0
+
+
+@pytest.mark.parametrize("mode",["radial","analytic"])
+@pytest.mark.parametrize("boundary",["fixed","sliding"])
+def test_output_slack_reuses_qref_without_changing_all_input_gradients(mode,boundary):
+    assert hasattr(CoordinatedQ1Update,"_output_slack"),"slack-only output helper not implemented"
+    class OldOutputCheck(CoordinatedQ1Update):
+        def _output_slack(self,vertices,reference,qref):
+            return self._constraints(vertices,torch.zeros_like(vertices[...,0]),reference)[0]
+    generator=torch.Generator().manual_seed(543)
+    base=grid(4,7).expand(2,-1,-1,-1).clone()
+    base[:,1:-1,1:-1]+=torch.randn(2,2,5,2,generator=generator,dtype=base.dtype)*.006
+    reference=grid(4,7).clone()
+    reference[:,1:-1,1:-1]+=torch.randn(1,2,5,2,generator=generator,dtype=base.dtype)*.003
+    raw=torch.randn(2,4,7,generator=generator,dtype=base.dtype)*.3
+    options=dict(mode=mode,boundary=boundary,minimum_jacobian=.02,minimum_boundary_gap=.1)
+    direction=(1.,0.) if boundary=="sliding" else (.6,.8)
+    newer,older=CoordinatedQ1Update(direction,**options),OldOutputCheck(direction,**options)
+    variables=[t.requires_grad_() for t in (base,raw,reference)]
+    result=newer(base,raw,reference=reference)
+    old=older(base,raw,reference=reference)
+    assert torch.isfinite(result.alpha_max).all()
+    names=("vertices","amplitude","scale","gauge","alpha_max","normalized_margin_min")
+    for name in names:
+        torch.testing.assert_close(getattr(result,name),getattr(old,name),rtol=0,atol=0)
+    # Include every public differentiable auxiliary, not candidate alone.
+    weights={name:torch.randn(getattr(result,name).shape,generator=generator,dtype=base.dtype) for name in names}
+    newloss=sum((getattr(result,name)*weights[name]).sum() for name in names)
+    oldloss=sum((getattr(old,name)*weights[name]).sum() for name in names)
+    newgrads=torch.autograd.grad(newloss,variables)
+    oldgrads=torch.autograd.grad(oldloss,variables)
+    for actual,expected in zip(newgrads,oldgrads):
+        torch.testing.assert_close(actual,expected,rtol=2e-13,atol=2e-13)

@@ -384,3 +384,138 @@ float64 refinement. Therefore every exported fine map still receives fresh
 actual-corner/boundary checks; the real-arithmetic theorem is not a floating-
 point certificate. General257maps cannot be exactly coarsened to129nodes;
 our same-function scaling benchmark starts at257 and refines to513/1025.
+
+## 12. Frozen source-query P1 evaluation and its transpose
+
+Let N be the number of mapped vertices and Q the number of FIXED reference
+queries. For each query q_k, locate its reference triangle ONCE, with vertex
+indices i_k1,i_k2,i_k3 and barycentric weights w_k1,w_k2,w_k3. Define the
+Q-by-N matrix B implicitly by B[k,i_kj]=w_kj (summing coincident indices if
+needed) and all other entries zero. Then the evaluated map is simply
+
+    V_k=sum_{j=1}^3 w_kj Y_{i_kj}, or V=B Y.
+
+Given the upstream derivative G=dL/dV, the vertex derivative is B^T G:
+each query scatters w_kj G_k into vertex i_kj. No dense matrix is assembled;
+three indices/weights per query suffice. Deforming Y does not change this
+ORIGINAL source-triangle assignment. Compatible vertex-table composition
+and exact P1 refinement do not permit unrelated moving-query composition.
+At fixed diagonal/edge queries, zero opposite weights preserve the same
+vertex derivative. This cache supports arbitrary vertex batches sharing one
+query table, but DOES NOT support query gradients: requires_grad queries
+are explicitly rejected. Module dtype casts round stored weights rather
+than reconstructing differently rounded query coordinates.
+
+The optional application cache is prepared once for EVERY image-pyramid
+resolution, before trial timing. Its setup time is charged to feature setup,
+and its resident buffers count in allocated peak memory. It leaves the original
+foreground mask, affine, moving-image sampling, point term and actual topology
+checks unchanged. The same differentiable graph reaches map vertices and
+latent coefficients. Raster float32 casts use ordinary floating-point autodiff
+conventions, not a claim of differentiating the bitwise rounding operation.
+
+## 13. Native baseline field units and localized topology comparison
+
+Native DHR's internal displacement tensor uses[-1,1]sampling coordinates.
+Its saver multiplies the x/y components by width/2,height/2. The executed
+MHA files therefore contain PIXEL displacements d, not normalized values.
+For the zero-padding/unit-resampling512 cases, the actual center-vertex map is
+
+    Y_ij=((j+.5+d^x_ij)/512,(i+.5+d^y_ij)/512).
+
+This defines an interpolant on the TRIMMED square[1/1024,1023/1024]^2.
+It is not an endpoint grid on[0,1]^2; no padding/extrapolation is invented.
+Our audit promotes savedfloat32 displacements tofloat64 before adding the
+exact dyadic center reference, then tests those constructed stored coordinates.
+Normalize four corner determinants by(1/512)^2. BothAC andBD P1 faces
+are reported separately; four-corner failures also rule out everywhere-positive
+Q1 Jacobians on a failing cell. Global boundary tests use exact dyadic integer
+segment predicates after exact-comparison bounding-box pruning. A negative
+minimum is separately recomputed using Fraction homogeneous triangle areas.
+
+Localization uses ONLY the static original fixed grayscale mask, not current
+overlap. An AND tissue cell has allfour mask-positive nodes; an OR tissue cell
+has at leastone. Counts are separately reported for source boundary exclusion
+bands0/1/4/16/32 and bothdiagonals. Failure of these native interpolants does
+not imply inaccurate anatomical landmarks, and good TRE does not imply global
+topology. Native timing/accuracy remain useful practical baselines, with these
+geometric limitations stated; no post-hoc repair is used as our topology claim.
+
+## 14. Candidate-only first-order adjoint without a constraint trajectory
+
+Research card (2026-10-01, approximately T+5h):
+Question: can the SAME coordinated candidate retain derivatives with respect to
+both the current mapped vertices and the proposed scalar amplitudes, without
+retaining an autograd graph for every corner constraint?
+Exact claim: the formulas below reproduce first-order autodiff for the existing
+fixed-boundary decoder, including its selected maximum subgradient and analytic
+branch. This is an engineering adjoint, not a new deformation family.
+Assumptions: reference vertices, direction and trial scale are constants; the
+reference is valid; input/output checks still inspect actual rounded coordinates.
+Only the candidate is the differentiable output. Auxiliary margin derivatives,
+sliding boundaries and higher derivatives are NOT claimed by this new API.
+Falsifiers: disagreement in current-vertex or latent gradients, finite differences
+away from nondifferentiable ties, different forward rounding or tie selection,
+or absence of a meaningful memory/performance benefit at the application scale.
+Smallest decisive tests: a non-square batch, unique active constraints, positive
+maximum ties, zero proposals, inactive analytic bounds and explicit invalid-input
+rejection. Follow with GPU dense-grid and complete-registration measurements.
+Prior work: ordinary reverse-mode differentiation of a scalar maximum and the
+local determinant differential; Sections 2--4 specify the decoder itself. An
+independent checker verified local formulas and current-Y derivatives before
+implementation; this does not replace numerical checks of the implementation.
+
+Let M zero the fixed boundary scalar entries, r=M z, and let e be the fixed unit
+direction. Write the candidate as T=Y+sigma(g) r e. For each of the four corner
+constraints k, use precisely the existing normalized forward quantities
+
+    s_k=q_k(Y)/qref_k-eta,
+    delta_k=Dq_k(Y)[r e]/qref_k,
+    a_k=max(-delta_k,0),
+    g=max_k a_k/s_k.
+
+All s_k are strictly positive. For radial decoding sigma=1/(1+g).
+For analytic decoding sigma=theta/g only when g*alpha_trial>theta;
+otherwise sigma=alpha_trial. Equality selects the constant-trial branch, as in
+the existing implementation, rather than an averaged minimum subgradient.
+The radial derivative is sigma'=-sigma^2. The active analytic derivative is
+-theta/g^2; on its constant branch it is zero.
+
+Given upstream vertex derivatives G=dL/dT, define W_i=G_i dot e and
+beta=sum_i W_i r_i. The direct derivatives are G with respect to Y and
+sigma W with respect to r. The remaining scalar derivative is c=beta sigma'.
+If I is the set of EXACT forward maximum ties and K=|I|, the implemented
+amax convention distributes c/K to each tied row. For k in I its local
+constraint derivatives are
+
+    dL/ddelta_k=-(c/K)/s_k * 1_{delta_k<=0},
+    dL/ds_k=-(c/K)*a_k/s_k^2.
+
+The equality in the indicator matches torch.clamp_min's derivative at zero.
+At g=0 all maximum rows are tied; one may not silently introduce an additional
+zero row or divide by only a subset. If beta=0 the entire gauge adjoint is zero
+and can be skipped, avoiding an unnecessary all-zero-proposal tie table.
+An inactive analytic branch likewise needs no gauge adjoint.
+
+Each q_k and delta_k uses only its corner's local mapped vertices and scalar
+amplitudes. Their local derivatives are accumulated into Y and r, then the
+boundary mask applies to the latter:
+
+    dL/dY=G+sum_k [(dL/ds_k) Ds_k+(dL/ddelta_k) D_Y delta_k],
+    dL/dz=M [sigma W+sum_k (dL/ddelta_k) D_r delta_k].
+
+For interpretation, an oriented triangle with E=Y_b-Y_a, F=Y_c-Y_a,
+p=r_b-r_a and v=r_c-r_a has q=det(E,F) and unnormalized change
+delta=p det(e,F)+v det(E,e). With R(x,y)=(-y,x),
+
+    D_Y q=(R(F-E),-R F,R E),
+    D_Y delta=((v-p)R e,-v R e,p R e),
+    D_r delta=(-det(e,F)-det(E,e),det(e,F),det(E,e)).
+
+These expressions explain locality, but implementation must preserve the actual
+four-corner arithmetic and normalization ORDER before selecting ties. Cancelling
+qref algebraically or replacing a corner by an algebraically equivalent triangle
+can change floating-point ties. A compact active-row table with bounded chunked
+local recomputation is permitted; dropping tied rows is not. Input tensors need
+not be copied, but their saved storage still counts toward resident memory.
+Default rounded-output checks remain independent of this derivative computation.

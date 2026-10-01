@@ -42,7 +42,8 @@ specimen mean, per-pair p90 and max, worse-than-affine cases and failed/time-out
 Do not treat individual landmarks or several stain directions as independent patients.
 These are NOT official ANHIR rTRE or ACROBAT micrometre leaderboard scores.
 
-Timing: full staged optimizer includes setup/trials/Adam and geometry/objective/VJP.
+Timing: staged optimizer time includes per-stage decoder/Adam setup, trials and
+geometry/objective/VJP, but excludes global loading and evidence extraction.
 Loading, evidence extraction, common affine initialization and saved exact-sign
 certificate are separate components. Record allocated peak, not GPU capacity as
 memory usage. Cold/warm runs and nondeterministic CUDA sampling-backward variation
@@ -103,3 +104,23 @@ rule selects the initial/accepted-stage map with minimum COMPLETE512 objective.
 It changes no stage trajectory, never reads manual labels, and counts the existing
 per-stage full-objective evaluation rather than inventing zero-cost validation.
 The legacy last-stage rule remains explicitly selectable for paired comparison.
+
+## Independent cohort availability and timing scope update
+
+Targeted public-data reconnaissance found no new usable paired-landmark specimen
+in this run. ACROBAT training cases provide no paired evaluation landmarks and
+validation/test targets are hidden; official micrometre leaderboard performance
+has NOT been evaluated. HyReCo publishes very large login-mediated archives and
+Warpy publishes a public QuPath archive, but a capped ordinary range probe of
+the latter returned403. No bypass, external submission or giant download occurred.
+The three reused specimens remain development evidence, not an independent cohort.
+
+Warm AB/BA performance replays load no anatomical labels and preserve the complete
+optimization configuration apart from output filename and source-query cache.
+Both variants warm up in one process. Allocated peak resets after feature setup:
+resident cache counts, setup temporaries do not. Historical end_to_end_seconds
+includes loading/extraction/export/certificate, but not the final shape diagnostic
+or report JSON write. The new complete-call timer includes these latter operations.
+Offline time-to-native-error curves are descriptive, not evaluation-label-based
+stopping rules. More than one repeated run and comparable objective/failed-step
+counts are required before attributing a timing difference to engineering changes.

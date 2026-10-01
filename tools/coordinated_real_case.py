@@ -55,6 +55,7 @@ class Evidence:
         if interpolation not in ("q1","p1_ac","p1_bd"):
             raise ValueError("declare q1, p1_ac or p1_bd map interpretation")
         self.interpolation=interpolation
+        self.fixed_p1_evaluator=None
         self.mask = (fixed > .04).to(fixed.dtype) if fixed_mask is None else fixed_mask.to(fixed)
         if self.mask.shape != fixed.shape or not bool(torch.isfinite(self.mask).all() and (self.mask>=0).all() and (self.mask<=1).all()):
             raise ValueError("fixed mask must match image and have finite weights in[0,1]")
@@ -67,11 +68,22 @@ class Evidence:
         else:
             self.fixed_feature, self.moving_feature = fixed, moving
 
+    def prepare_fixed_p1_sampling(self,rows,columns,*,dtype,device):
+        """Cache ONLY immutable source pixel-query geometry, before timing trials."""
+        if self.interpolation not in ("p1_ac","p1_bd"):
+            raise ValueError("frozen P1 sampling requires declared P1 interpolation")
+        from qcopt.neural_bijection.dense.coordinated_fixed_sampling import FrozenP1Evaluator
+        from qcopt.neural_bijection.dense.q1_image_sampling import fixed_pixel_centers
+        queries=fixed_pixel_centers(*self.fixed.shape[-2:],dtype=dtype,device=device)
+        self.fixed_p1_evaluator=FrozenP1Evaluator(rows,columns,queries,self.interpolation[-2:])
+
     def __call__(self, vertices):
         if self.interpolation=="q1":
             query = q1_map_at_pixel_centers(vertices,*self.fixed.shape[-2:])
-        else:
+        elif self.fixed_p1_evaluator is None:
             query = p1_map_at_pixel_centers(vertices,*self.fixed.shape[-2:],diagonal=self.interpolation[-2:])
+        else:
+            query = self.fixed_p1_evaluator(vertices)
         query = query @ self.matrix.T + self.offset
         warped = F.grid_sample(self.moving_feature, (2 * query - 1).to(self.moving_feature.dtype),
                                mode="bilinear", padding_mode="zeros", align_corners=False)
@@ -217,6 +229,12 @@ def optimize(args, accepted_stage_callback=None):
             evidence_by_resolution[image_resolution]=Evidence(reduced_fixed,reduced_moving,evidence.matrix,
                 evidence.offset,args.loss,args.strain_weight,args.oob_weight,getattr(args,"shape_weight",0.),
                 reduced_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight)
+    p1_sampling=getattr(args,"p1_sampling","existing")
+    if p1_sampling not in ("existing","frozen"):
+        raise ValueError("P1 sampling must be existing or frozen")
+    if p1_sampling=="frozen":
+        for item in evidence_by_resolution.values():
+            item.prepare_fixed_p1_sampling(args.grid_side,args.grid_side,dtype=dtype,device=device)
     synchronize = lambda: torch.cuda.synchronize(device) if device.type == "cuda" else None
     synchronize()
     feature_seconds = time.perf_counter()-feature_start
@@ -367,6 +385,10 @@ def optimize(args, accepted_stage_callback=None):
                   output_selection=output_selection,selected_stage=full_best_stage if output_selection=="best_full" else len(stages)-1,
                   image_match_evidence=match_metadata,
                   image_preprocessing=preprocessing_metadata,
+                  p1_sampling=p1_sampling,
+                  fixed_p1_cache_bytes=sum(buffer.numel()*buffer.element_size()
+                    for item in evidence_by_resolution.values() if item.fixed_p1_evaluator is not None
+                    for buffer in item.fixed_p1_evaluator.buffers()),
                   terminal_full_total=terminal_full_loss,best_accepted_full_total=full_best_loss,
                   acceptance_objective="complete objective at current image resolution; full-resolution trajectory may not be monotone",
                   oob="zero padding, fixed denominator, explicit quadratic excess penalty; no query dropping")
@@ -388,6 +410,8 @@ def main():
     p.add_argument("--preprocessing",choices=("raw_inverted","native_dhr"),default="raw_inverted",
                    help="Frozen native PIL/normalization/grayscale/CLAHE option; mask stays original, not native optimizer equivalence")
     p.add_argument("--interpolation",choices=("q1","p1_ac","p1_bd"),default="q1")
+    p.add_argument("--p1-sampling",choices=("existing","frozen"),default="existing",
+                   help="Optional immutable fixed-source query cache; no moving-query gradients")
     p.add_argument("--grid-side", type=int, default=257)
     p.add_argument("--image-side", type=int, default=512)
     p.add_argument("--image-levels", type=int, nargs="+",

@@ -152,6 +152,18 @@ class CoordinatedQ1Update(torch.nn.Module):
                                    (raw[:, 1:] - raw[:, :-1]) / gaps_ref), dim=1)
         return slack, delta, qref
 
+    def _output_slack(self, vertices, reference, qref):
+        """Actual output margins only; reuse input qref WITH its autograd graph."""
+        slack=(q1_corner_determinants(vertices)/qref-self.minimum_jacobian).flatten(1)
+        if self.boundary=="sliding":
+            edges=(vertices[:,0],vertices[:,-1],vertices[:,:,0],vertices[:,:,-1])
+            refs=(reference[:,0],reference[:,-1],reference[:,:,0],reference[:,:,-1])
+            for edge,ref,axis in zip(edges,refs,(0,0,1,1)):
+                gaps_ref=ref[:,1:,axis]-ref[:,:-1,axis]
+                gaps=edge[:,1:,axis]-edge[:,:-1,axis]
+                slack=torch.cat((slack,gaps/gaps_ref-self.minimum_boundary_gap),dim=1)
+        return slack
+
     def forward(self, vertices: torch.Tensor, proposal: torch.Tensor, *,
                 reference: torch.Tensor | None = None,
                 alpha_trial: float | torch.Tensor = 1.0,
@@ -212,7 +224,7 @@ class CoordinatedQ1Update(torch.nn.Module):
         candidate = (current + amplitude64[..., None] * e).to(vertices.dtype)
         # Evaluate the actual rounded coordinates; do not use linear prediction
         # as a substitute for a saved-output topology check.
-        output_slack, _, _ = self._constraints(candidate.to(torch.float64), torch.zeros_like(raw), reference64)
+        output_slack = self._output_slack(candidate.to(torch.float64), reference64, qref)
         margin = output_slack.amin(dim=1)
         if validate and not bool(torch.isfinite(candidate).all() and (margin > 0).all()):
             raise RuntimeError("rounded candidate failed strict margins; reject this proposal")

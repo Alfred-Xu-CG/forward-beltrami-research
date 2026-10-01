@@ -426,3 +426,148 @@ not inability to decode a legal rotation. All12knownmaps remain legal/300gradien
 Keep both objectives; don't select a different lambda for each evaluated target.
 Next isolated native-preprocessing MIND matrix uses lambda3 for allmethods/cases;
 only frozen features change, ORIGINALmask and rawSG stay unchanged.
+
+## T+4.5h: evidence isolation, dense layer scaling, native topology
+
+Observed: calibrated residual prior helps real development, but biases legal
+rotation; frozen native preprocessing makes little difference under MIND.
+Two causes: native raster contrast versus descriptor/prior mismatch.
+Smallest test: native-preprocessed NCC7 versus native-preprocessed MIND under
+the SAME lambda3/point.1/stage30/geometry/mask; known-texture test also retained.
+Decision: no new safety formula; separate the image objective from geometry.
+
+Real analytic meanTRE: rawMIND .801/3.689/2.450; native-preprocessed MIND
+.808/3.713/2.468; native-preprocessed NCC .794/3.936/2.945. NCC is not a
+consistent improvement and costs6.36--6.94s with215--218MB allocated peak.
+All12NCC maps complete300gradients/zero failures and actualvalidcertificates.
+Native-pipeline masks, recursive pyramid, affine prewarp and free boundary
+are STILL different; this is an isolated evidence comparison, not exact DHR.
+
+Same-function actualP1 dense geometry benchmark, one nonregular real257anchor
+with qmin.00983719, uniformintegerrefinement to513/1025, float64, batch1,
+RTX A6000, warmup1/three repeats. The proposed .02sin^2(pi x)sin^2(pi y)
+horizontal field has identical physical units and boundary0. Query agreement
+afterrefinement<=2.22e-16. Proposal-only VJP uses same random upstream pergrid;
+coordinatedscalar vsF1/F2two-component parameter counts differ. Times include
+decode/interpolation/geometry constraints, exclude images/setup/refinement.
+
+| Nodes | Method | Forward/VJP milliseconds | Motion/request RMS | Total peak allocated MiB |
+|---|---|---|---|---|
+|257^2|Radial|3.918/2.098|.3860|46.07|
+|257^2|Analytic|4.070/2.379|.5972|46.08|
+|257^2|F1|4.570/11.661|.2434|97.85|
+|257^2|F2|7.663/24.662|.2488|176.86|
+|513^2|Radial|4.359/2.450|.3860|184.18|
+|513^2|Analytic|4.235/2.406|.5972|184.18|
+|513^2|F1|7.536/14.528|.1554|384.23|
+|513^2|F2|13.893/29.131|.1856|718.33|
+|1025^2|Radial|12.434/4.182|.3860|736.26|
+|1025^2|Analytic|12.608/4.033|.5971|736.26|
+|1025^2|F1|13.114/44.031|.0934|1542.33|
+|1025^2|F2|27.010/93.397|.1218|2837.27|
+
+All12outputs actualqmin>.001/finiteVJP. At1025 coordinatedresident72.08MiB,
+increment664.18; F1resident96.04/increment1446.29; F2resident184.90/increment2652.37.
+F2coldconstructor2.124s excluded. Identity infinitesimal calibration is NOT equal
+finite motion, and kernel timing is NOT full-registration runtime. No new neural
+training or low-memory million-query image claim follows from these numbers.
+
+Independent native audit corrected a tempting frame error: MHA stores PIXEL
+displacements, although native internal tensors use[-1,1]displacements. Native
+actual512center table usesY=((j+.5+d_x)/512,(i+.5+d_y)/512), trimdomain
+[1/1024,1023/1024]^2, no endpoint padding. All6native maps have negative AC AND
+BD faces; some background zeros are exact. Static original-mask AND-tissue
+negativecorner counts real25/54/1191; known17/28/34. Excluding32outercellbands
+stillleaves25/46/22 and17/28/26. Histo boundary has37exact nonadjacent intersections;
+otherssimple. Sixnegative minima independently recomputed by coordinator's
+Fraction homogeneous3x3 area formula AND exactsavedpixel-frame reconstruction.
+These results qualify topology, NOT anatomicalTREfailure. No repair is used.
+Native remains an accuracy/runtime baseline, not a guaranteed-layer output.
+
+## T+5h: fixed-query caching, objective tradeoffs and first-order adjoint
+
+The authorized window is still 2026-10-01 11:26:23 UTC through
+2026-10-02 11:26:23 UTC. About nineteen hours remain; the improvements below
+do not constitute completion, independent anatomical confirmation or CNN training.
+
+Research question: reduce repeated work while keeping the SAME actual P1 function
+and complete objective. Frozen source-triangle indices and barycentric weights
+replace repeated source-query lookup, not moving-query composition. Thirteen
+independent value/transpose/finite-difference tests pass, including batch,
+non-square grids, edge queries and rejection of query gradients. Application
+integration keeps original masks, affine, frozen matches and geometry checks.
+An independent review found no changed evidence term; affected clean-env suites
+passed61tests. The new output-slack-only calculation reuses reference determinants
+WITH their graph, eliminating zero-proposal change calculations. Coordinator
+independently reran38update/patch tests; all six public output fields and
+current/proposal/reference gradients match the original helper in new regressions.
+
+| Scope | Existing -> frozen | Qualification |
+|---|---|---|
+|512^2 fixed queries,257^2 vertices,B1,float64,A6000|forward .6394->.1874ms; VJP .7829->.2134ms|sampler ONLY, warm3/repeat10|
+|Same query table,B4|forward1.6728->.4583ms; VJP1.2428->.5020ms|not complete registration|
+|Large B1 total allocated peak|74->48.017MiB|resident increases11.025->20.017MiB|
+|Complete analytic development runs, three cases|6.21/5.66/5.56s; peaks217.94/216.89/218.99MiB|one paired run each; not a robust speed claim|
+
+Cache setup is counted separately, all pyramid caches occupy16,760,832 bytes,
+and their storage counts in total allocated peak. Small4096-query cache increases
+peak slightly; it is not a universal memory reduction. Complete cached meanTRE
+.800718/3.689299/2.450187px matches prior uncached results up to numerical
+optimizer/CUDA differences. All twelve cached runs complete300gradients,
+zero failures, and valid actual exported-map certificates. A four-pair same-
+process AB/BA registration timing replay is now running without evaluation labels.
+
+Known-texture native-preprocessed NCC under the SAME strong prior improves
+analytic queryRMSE to .54/1.33/.50px for shear/rotation/coarse-fine; MIND gives
+.51/7.62/.66px. In real specimens NCC is NOT consistently better than MIND
+(.794/3.936/2.945 versus .808/3.713/2.468 meanTRE). Therefore an image-objective
+and deformation-prior mismatch explains some errors independently of decoder
+expressivity; no per-evaluation-target coefficient selection is introduced.
+
+Target-free recording saved accepted maps for all twelve lambda3 development
+runs; manual landmarks were read only by a separate offline scorer. At every
+prefix, the selected map minimizes the COMPLETE full-resolution image objective
+among initialization and accepted maps, NOT landmark error. Offline time until
+that image-selected prefix first matches native final meanTRE is roughly
+2.2s for analytic lesions/kidney and6s for histo. These are descriptive curves,
+NOT a deployable landmark-based stopping rule, and include CPU snapshot overhead.
+F1 kidney never reaches the native threshold. Final means agree with the prior
+matrix. More accurate native timing comparisons require consistent cold/warm
+setup, not substituting these offline thresholds for an algorithm.
+
+A full512 cached MIND+point+shape trial on a real257 rat-kidney anchor has
+median decoder-forward5.719ms, evidence-forward3.147ms and combinedVJP6.514ms
+(ten warmups/ten repeats, float64 geometry/float32 evidence). Split-chain
+derivatives agree within2.08e-17; separate decoderVJP2.045ms suggests geometry
+is approximately half the cost. The split is diagnostic, not perfectly additive.
+Total allocated peak136.664MiB, resident49.273MiB. This small proposal has
+scale1 and does not stress an active safety bound. Thus geometry engineering is
+justified, but cannot alone imply twofold complete-application acceleration.
+
+FORMULATION Section14 now states the candidate-only explicit first-order adjoint,
+full current-Y and latent derivatives, exact maximum tie averaging, clamp-zero
+convention, analytic branch equality and scope limitations BEFORE implementation.
+An independent mathematical context checked signs/unique constraints/ties/zero
+proposals and finite differences. Builder implementation is isolated; it will not
+enter application benchmarks until coordinator checks pass. No sliding-boundary,
+reference-gradient or higher-derivative support is claimed by that new API.
+
+Bounded independent-cohort reconnaissance did NOT obtain a new usable labeled
+pair: ACROBAT training lacks paired evaluation landmarks; validation targets are
+hidden; HyReCo requires very large login-mediated archives; the ordinary public
+Warpy archive probe returned403. No bypass, submission, purchase or massive
+download was attempted. Existing three cases remain DEVELOPMENT evidence; this
+limitation does not stop algorithmic work or justify a generalization claim.
+
+Counterbalanced replay completed: rat-kidney analytic, SAME output-slack-optimized
+decoder on both paths, one full warmup for each cache variant, four measured AB/BA
+pairs. Median optimizer5.73448->4.99883s (12.8% reduction); reported elapsed
+including loading/features/export/certificate5.83366->5.10373s. All ten runs
+finish300gradients/zero failures/valid certificates; final complete objectives
+differ by less than4e-8. This supports a modest warmed speed benefit, not a new
+algorithm or a cold-start claim. Optimizer-phase peak allocated memory
+240,536,064->214,782,464 bytes; setup temporaries are outside that peak interval.
+Independent checker confirmed configuration preservation, no label reads and
+no surviving GPU tensor ownership. Historical end_to_end_seconds stops before
+final shape diagnostic/report writing; future timing replays additionally measure
+the complete optimize() call. Coordinator's combined affected suites102pass.

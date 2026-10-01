@@ -1,0 +1,607 @@
+{
+  "question": "Operator-only forward/VJP scaling on one exactly integer-refined real P1 map.\n\nNo image objective, optimizer, landmarks, field teacher or exact-sign certificate\nis timed. All inputs represent the same .02-unit smooth x proposal. Existing\nF1/F2 logits are calibrated by their IDENTITY infinitesimal transfer, without\ninverting tanh to pretend that finite proposals are attainable on a fine grid.\n",
+  "configuration": {
+    "anchor": "results/dense_operator_real257_anchor.npz",
+    "output": "results/dense_operator_real257_gpu7.json",
+    "sizes": [
+      257,
+      513,
+      1025
+    ],
+    "methods": [
+      "radial",
+      "analytic",
+      "f1",
+      "f2"
+    ],
+    "diagonal": "ac",
+    "device": "cuda",
+    "threads": 2,
+    "amplitude": 0.02,
+    "minimum_jacobian": 0.001,
+    "patch_cells": 8,
+    "f2_accepted_gain": 0.75,
+    "repeats": 3,
+    "warmup": 1,
+    "seed": 20261001
+  },
+  "identity_calibration": {
+    "radial": {
+      "side": 17,
+      "identity_jvp_max_error": 0.0,
+      "finite_amplitude_not_identity_jvp": "measured separately on actual current geometry"
+    },
+    "analytic": {
+      "side": 17,
+      "identity_jvp_max_error": 0.0,
+      "finite_amplitude_not_identity_jvp": "measured separately on actual current geometry"
+    },
+    "f1": {
+      "side": 17,
+      "identity_jvp_max_error": 0.0,
+      "finite_amplitude_not_identity_jvp": "measured separately on actual current geometry"
+    },
+    "f2": {
+      "side": 17,
+      "identity_jvp_max_error": 1.1102230246251565e-16,
+      "finite_amplitude_not_identity_jvp": "measured separately on actual current geometry"
+    }
+  },
+  "results": [
+    {
+      "side": 257,
+      "refinement_factor": 1,
+      "method": "radial",
+      "vertices": 66049,
+      "constraints": 262144,
+      "proposal_parameters": 65025,
+      "anchor_normalized_qmin": 0.009837191010955586,
+      "output_normalized_qmin": 0.009582410506075294,
+      "requested_peak_unit": 0.02,
+      "requested_rms_unit": 0.007470817120622569,
+      "actual_motion_rms_unit": 0.0028836122222547908,
+      "finite_amplitude_rms_ratio": 0.3859835109997298,
+      "actual_motion_peak_unit": 0.00771967021999459,
+      "gradient_rms": 9.67246244491238e-06,
+      "median_forward_seconds": 0.003918159753084183,
+      "median_vjp_seconds": 0.0020982958376407623,
+      "forward_seconds": [
+        0.004157844930887222,
+        0.003918159753084183,
+        0.003908324986696243
+      ],
+      "vjp_seconds": [
+        0.002319891005754471,
+        0.0020982958376407623,
+        0.0020840615034103394
+      ],
+      "cold_layer_setup_seconds": 0.0002437680959701538,
+      "refinement_seconds": 0.2014581337571144,
+      "refined_function_query_max_difference": 0.0,
+      "resident_allocated_bytes": [
+        4742144,
+        4742144,
+        4742144
+      ],
+      "peak_total_allocated_bytes": [
+        48312832,
+        48312832,
+        48312832
+      ],
+      "peak_increment_over_resident_bytes": [
+        43570688,
+        43570688,
+        43570688
+      ]
+    },
+    {
+      "side": 257,
+      "refinement_factor": 1,
+      "method": "analytic",
+      "vertices": 66049,
+      "constraints": 262144,
+      "proposal_parameters": 65025,
+      "anchor_normalized_qmin": 0.009837191010955586,
+      "output_normalized_qmin": 0.002620431989091898,
+      "requested_peak_unit": 0.02,
+      "requested_rms_unit": 0.007470817120622569,
+      "actual_motion_rms_unit": 0.004461495188186788,
+      "finite_amplitude_rms_ratio": 0.5971897205020857,
+      "actual_motion_peak_unit": 0.01194379441004173,
+      "gradient_rms": 2.368636784925259e-05,
+      "median_forward_seconds": 0.00406966358423233,
+      "median_vjp_seconds": 0.002378500998020172,
+      "forward_seconds": [
+        0.004070252180099487,
+        0.00406966358423233,
+        0.0040452368557453156
+      ],
+      "vjp_seconds": [
+        0.002378500998020172,
+        0.0021088235080242157,
+        0.0028670914471149445
+      ],
+      "cold_layer_setup_seconds": 0.00011269748210906982,
+      "refinement_seconds": 0.2014581337571144,
+      "refined_function_query_max_difference": 0.0,
+      "resident_allocated_bytes": [
+        4742144,
+        4742144,
+        4742144
+      ],
+      "peak_total_allocated_bytes": [
+        48314368,
+        48314368,
+        48314368
+      ],
+      "peak_increment_over_resident_bytes": [
+        43572224,
+        43572224,
+        43572224
+      ]
+    },
+    {
+      "side": 257,
+      "refinement_factor": 1,
+      "method": "f1",
+      "vertices": 66049,
+      "constraints": 262144,
+      "proposal_parameters": 130050,
+      "anchor_normalized_qmin": 0.009837191010955586,
+      "output_normalized_qmin": 0.003929889548795378,
+      "requested_peak_unit": 0.02,
+      "requested_rms_unit": 0.007470817120622569,
+      "actual_motion_rms_unit": 0.0018184606576188526,
+      "finite_amplitude_rms_ratio": 0.24340853594169015,
+      "actual_motion_peak_unit": 0.009800694126176901,
+      "gradient_rms": 4.907010281229654e-06,
+      "median_forward_seconds": 0.004569839686155319,
+      "median_vjp_seconds": 0.011661350727081299,
+      "forward_seconds": [
+        0.004569839686155319,
+        0.006872337311506271,
+        0.00414280965924263
+      ],
+      "vjp_seconds": [
+        0.010898485779762268,
+        0.016535364091396332,
+        0.011661350727081299
+      ],
+      "cold_layer_setup_seconds": 0.0010173581540584564,
+      "refinement_seconds": 0.2014581337571144,
+      "refined_function_query_max_difference": 0.0,
+      "resident_allocated_bytes": [
+        6303744,
+        6303744,
+        6303744
+      ],
+      "peak_total_allocated_bytes": [
+        102598144,
+        102598144,
+        102598144
+      ],
+      "peak_increment_over_resident_bytes": [
+        96294400,
+        96294400,
+        96294400
+      ]
+    },
+    {
+      "side": 257,
+      "refinement_factor": 1,
+      "method": "f2",
+      "vertices": 66049,
+      "constraints": 262144,
+      "proposal_parameters": 130050,
+      "anchor_normalized_qmin": 0.009837191010955586,
+      "output_normalized_qmin": 0.007776020804558567,
+      "requested_peak_unit": 0.02,
+      "requested_rms_unit": 0.007470817120622569,
+      "actual_motion_rms_unit": 0.0018589949448823521,
+      "finite_amplitude_rms_ratio": 0.24883421918477316,
+      "actual_motion_peak_unit": 0.007532305311099385,
+      "gradient_rms": 8.49698153060976e-06,
+      "median_forward_seconds": 0.007662519812583923,
+      "median_vjp_seconds": 0.024662479758262634,
+      "forward_seconds": [
+        0.013310976326465607,
+        0.007623467594385147,
+        0.007662519812583923
+      ],
+      "vjp_seconds": [
+        0.018847018480300903,
+        0.025926169008016586,
+        0.024662479758262634
+      ],
+      "cold_layer_setup_seconds": 0.20564161241054535,
+      "refinement_seconds": 0.2014581337571144,
+      "refined_function_query_max_difference": 0.0,
+      "resident_allocated_bytes": [
+        11997184,
+        11997184,
+        11997184
+      ],
+      "peak_total_allocated_bytes": [
+        185449472,
+        185449472,
+        185449472
+      ],
+      "peak_increment_over_resident_bytes": [
+        173452288,
+        173452288,
+        173452288
+      ]
+    },
+    {
+      "side": 513,
+      "refinement_factor": 2,
+      "method": "radial",
+      "vertices": 263169,
+      "constraints": 1048576,
+      "proposal_parameters": 261121,
+      "anchor_normalized_qmin": 0.009837191010951075,
+      "output_normalized_qmin": 0.009557647544664616,
+      "requested_peak_unit": 0.02,
+      "requested_rms_unit": 0.007485380116959064,
+      "actual_motion_rms_unit": 0.0028891303648711023,
+      "finite_amplitude_rms_ratio": 0.38596975968199887,
+      "actual_motion_peak_unit": 0.007719395193639955,
+      "gradient_rms": 3.260685532086111e-05,
+      "median_forward_seconds": 0.004359353333711624,
+      "median_vjp_seconds": 0.0024499744176864624,
+      "forward_seconds": [
+        0.0039258599281311035,
+        0.004359353333711624,
+        0.00456903874874115
+      ],
+      "vjp_seconds": [
+        0.0016074813902378082,
+        0.0024499744176864624,
+        0.002732090651988983
+      ],
+      "cold_layer_setup_seconds": 0.00012121349573135376,
+      "refinement_seconds": 0.09472203627228737,
+      "refined_function_query_max_difference": 2.220446049250313e-16,
+      "resident_allocated_bytes": [
+        18951168,
+        18951168,
+        18951168
+      ],
+      "peak_total_allocated_bytes": [
+        193122816,
+        193122816,
+        193122816
+      ],
+      "peak_increment_over_resident_bytes": [
+        174171648,
+        174171648,
+        174171648
+      ]
+    },
+    {
+      "side": 513,
+      "refinement_factor": 2,
+      "method": "analytic",
+      "vertices": 263169,
+      "constraints": 1048576,
+      "proposal_parameters": 261121,
+      "anchor_normalized_qmin": 0.009837191010951075,
+      "output_normalized_qmin": 0.0026015107962291673,
+      "requested_peak_unit": 0.02,
+      "requested_rms_unit": 0.007485380116959064,
+      "actual_motion_rms_unit": 0.004469932694530002,
+      "finite_amplitude_rms_ratio": 0.5971550709098675,
+      "actual_motion_peak_unit": 0.011943101418197377,
+      "gradient_rms": 8.214651385913769e-05,
+      "median_forward_seconds": 0.00423547625541687,
+      "median_vjp_seconds": 0.002405751496553421,
+      "forward_seconds": [
+        0.004292633384466171,
+        0.00423547625541687,
+        0.004193484783172607
+      ],
+      "vjp_seconds": [
+        0.002405751496553421,
+        0.002312157303094864,
+        0.0030367188155651093
+      ],
+      "cold_layer_setup_seconds": 0.00011847540736198425,
+      "refinement_seconds": 0.09472203627228737,
+      "refined_function_query_max_difference": 2.220446049250313e-16,
+      "resident_allocated_bytes": [
+        18951168,
+        18951168,
+        18951168
+      ],
+      "peak_total_allocated_bytes": [
+        193124352,
+        193124352,
+        193124352
+      ],
+      "peak_increment_over_resident_bytes": [
+        174173184,
+        174173184,
+        174173184
+      ]
+    },
+    {
+      "side": 513,
+      "refinement_factor": 2,
+      "method": "f1",
+      "vertices": 263169,
+      "constraints": 1048576,
+      "proposal_parameters": 522242,
+      "anchor_normalized_qmin": 0.009837191010951075,
+      "output_normalized_qmin": 0.00786644712005519,
+      "requested_peak_unit": 0.02,
+      "requested_rms_unit": 0.007485380116959064,
+      "actual_motion_rms_unit": 0.0011634916886579408,
+      "finite_amplitude_rms_ratio": 0.1554352177816468,
+      "actual_motion_peak_unit": 0.005950020755005943,
+      "gradient_rms": 1.1107104259774356e-06,
+      "median_forward_seconds": 0.007535528391599655,
+      "median_vjp_seconds": 0.014528084546327591,
+      "forward_seconds": [
+        0.007946174591779709,
+        0.007341127842664719,
+        0.007535528391599655
+      ],
+      "vjp_seconds": [
+        0.014528084546327591,
+        0.014423750340938568,
+        0.015013623982667923
+      ],
+      "cold_layer_setup_seconds": 0.0016244277358055115,
+      "refinement_seconds": 0.09472203627228737,
+      "refined_function_query_max_difference": 2.220446049250313e-16,
+      "resident_allocated_bytes": [
+        25219584,
+        25219584,
+        25219584
+      ],
+      "peak_total_allocated_bytes": [
+        402895872,
+        402895872,
+        402895872
+      ],
+      "peak_increment_over_resident_bytes": [
+        377676288,
+        377676288,
+        377676288
+      ]
+    },
+    {
+      "side": 513,
+      "refinement_factor": 2,
+      "method": "f2",
+      "vertices": 263169,
+      "constraints": 1048576,
+      "proposal_parameters": 522242,
+      "anchor_normalized_qmin": 0.009837191010951075,
+      "output_normalized_qmin": 0.0054726184003717464,
+      "requested_peak_unit": 0.02,
+      "requested_rms_unit": 0.007485380116959064,
+      "actual_motion_rms_unit": 0.0013892606843646106,
+      "finite_amplitude_rms_ratio": 0.18559654455183472,
+      "actual_motion_peak_unit": 0.0069736876760131405,
+      "gradient_rms": 1.6009692032587103e-06,
+      "median_forward_seconds": 0.013893160969018936,
+      "median_vjp_seconds": 0.029130510985851288,
+      "forward_seconds": [
+        0.01213819906115532,
+        0.013893160969018936,
+        0.014929939061403275
+      ],
+      "vjp_seconds": [
+        0.029077041894197464,
+        0.029130510985851288,
+        0.029845796525478363
+      ],
+      "cold_layer_setup_seconds": 0.569821260869503,
+      "refinement_seconds": 0.09472203627228737,
+      "refined_function_query_max_difference": 2.220446049250313e-16,
+      "resident_allocated_bytes": [
+        50315776,
+        50315776,
+        50315776
+      ],
+      "peak_total_allocated_bytes": [
+        753219584,
+        753219584,
+        753219584
+      ],
+      "peak_increment_over_resident_bytes": [
+        702903808,
+        702903808,
+        702903808
+      ]
+    },
+    {
+      "side": 1025,
+      "refinement_factor": 4,
+      "method": "radial",
+      "vertices": 1050625,
+      "constraints": 4194304,
+      "proposal_parameters": 1046529,
+      "anchor_normalized_qmin": 0.009837191010933784,
+      "output_normalized_qmin": 0.009545254487199367,
+      "requested_peak_unit": 0.02,
+      "requested_rms_unit": 0.007492682926829268,
+      "actual_motion_rms_unit": 0.0028919309405144207,
+      "finite_amplitude_rms_ratio": 0.3859673455764689,
+      "actual_motion_peak_unit": 0.007719346911529368,
+      "gradient_rms": 5.737642216833026e-05,
+      "median_forward_seconds": 0.012433666735887527,
+      "median_vjp_seconds": 0.004181716591119766,
+      "forward_seconds": [
+        0.012523755431175232,
+        0.012425724416971207,
+        0.012433666735887527
+      ],
+      "vjp_seconds": [
+        0.004004925489425659,
+        0.004221394658088684,
+        0.004181716591119766
+      ],
+      "cold_layer_setup_seconds": 9.424611926078796e-05,
+      "refinement_seconds": 0.4311424307525158,
+      "refined_function_query_max_difference": 2.220446049250313e-16,
+      "resident_allocated_bytes": [
+        75582464,
+        75582464,
+        75582464
+      ],
+      "peak_total_allocated_bytes": [
+        772026880,
+        772026880,
+        772026880
+      ],
+      "peak_increment_over_resident_bytes": [
+        696444416,
+        696444416,
+        696444416
+      ]
+    },
+    {
+      "side": 1025,
+      "refinement_factor": 4,
+      "method": "analytic",
+      "vertices": 1050625,
+      "constraints": 4194304,
+      "proposal_parameters": 1046529,
+      "anchor_normalized_qmin": 0.009837191010933784,
+      "output_normalized_qmin": 0.002590098299811605,
+      "requested_peak_unit": 0.02,
+      "requested_rms_unit": 0.007492682926829268,
+      "actual_motion_rms_unit": 0.0044742480284993376,
+      "finite_amplitude_rms_ratio": 0.5971489881786225,
+      "actual_motion_peak_unit": 0.011942979763572448,
+      "gradient_rms": 0.0001445681237501742,
+      "median_forward_seconds": 0.012607943266630173,
+      "median_vjp_seconds": 0.0040326230227947235,
+      "forward_seconds": [
+        0.012607943266630173,
+        0.012563962489366531,
+        0.012734085321426392
+      ],
+      "vjp_seconds": [
+        0.003998562693595886,
+        0.0040429383516311646,
+        0.0040326230227947235
+      ],
+      "cold_layer_setup_seconds": 8.99583101272583e-05,
+      "refinement_seconds": 0.4311424307525158,
+      "refined_function_query_max_difference": 2.220446049250313e-16,
+      "resident_allocated_bytes": [
+        75582464,
+        75582464,
+        75582464
+      ],
+      "peak_total_allocated_bytes": [
+        772028416,
+        772028416,
+        772028416
+      ],
+      "peak_increment_over_resident_bytes": [
+        696445952,
+        696445952,
+        696445952
+      ]
+    },
+    {
+      "side": 1025,
+      "refinement_factor": 4,
+      "method": "f1",
+      "vertices": 1050625,
+      "constraints": 4194304,
+      "proposal_parameters": 2093058,
+      "anchor_normalized_qmin": 0.009837191010933784,
+      "output_normalized_qmin": 0.0042244719133188585,
+      "requested_peak_unit": 0.02,
+      "requested_rms_unit": 0.007492682926829268,
+      "actual_motion_rms_unit": 0.0006999227519312264,
+      "finite_amplitude_rms_ratio": 0.09341416936582124,
+      "actual_motion_peak_unit": 0.004052435286311462,
+      "gradient_rms": 2.5064519568458444e-07,
+      "median_forward_seconds": 0.013114068657159805,
+      "median_vjp_seconds": 0.04403074458241463,
+      "forward_seconds": [
+        0.013210419565439224,
+        0.013104528188705444,
+        0.013114068657159805
+      ],
+      "vjp_seconds": [
+        0.044536709785461426,
+        0.04400031268596649,
+        0.04403074458241463
+      ],
+      "cold_layer_setup_seconds": 0.004568122327327728,
+      "refinement_seconds": 0.4311424307525158,
+      "refined_function_query_max_difference": 2.220446049250313e-16,
+      "resident_allocated_bytes": [
+        100700160,
+        100700160,
+        100700160
+      ],
+      "peak_total_allocated_bytes": [
+        1617246720,
+        1617246720,
+        1617246720
+      ],
+      "peak_increment_over_resident_bytes": [
+        1516546560,
+        1516546560,
+        1516546560
+      ]
+    },
+    {
+      "side": 1025,
+      "refinement_factor": 4,
+      "method": "f2",
+      "vertices": 1050625,
+      "constraints": 4194304,
+      "proposal_parameters": 2093058,
+      "anchor_normalized_qmin": 0.009837191010933784,
+      "output_normalized_qmin": 0.0031065686771497084,
+      "requested_peak_unit": 0.02,
+      "requested_rms_unit": 0.007492682926829268,
+      "actual_motion_rms_unit": 0.0009126297322735147,
+      "finite_amplitude_rms_ratio": 0.12180279629952508,
+      "actual_motion_peak_unit": 0.0038787968904564485,
+      "gradient_rms": 3.683425048406826e-07,
+      "median_forward_seconds": 0.02700953558087349,
+      "median_vjp_seconds": 0.09339671581983566,
+      "forward_seconds": [
+        0.02716991677880287,
+        0.02700953558087349,
+        0.027007855474948883
+      ],
+      "vjp_seconds": [
+        0.09339671581983566,
+        0.09353011101484299,
+        0.09315792471170425
+      ],
+      "cold_layer_setup_seconds": 2.1241060830652714,
+      "refinement_seconds": 0.4311424307525158,
+      "refined_function_query_max_difference": 2.220446049250313e-16,
+      "resident_allocated_bytes": [
+        193881088,
+        193881088,
+        193881088
+      ],
+      "peak_total_allocated_bytes": [
+        2975096320,
+        2974051840,
+        2973725696
+      ],
+      "peak_increment_over_resident_bytes": [
+        2781215232,
+        2780170752,
+        2779844608
+      ]
+    }
+  ],
+  "scope": "proposal-only VJP, fixed detached anchor; batch1 geometry float64; setup/refinement/corner checks excluded from operator timing",
+  "memory": "CUDA live allocated baseline plus graph peak; reserved caching allocator memory is not allocated memory",
+  "caution": "F1/F2 two-component vs coordinated scalar proposal; identity tangent calibration is not equal finite motion; no image runtime or registration superiority claim"
+}

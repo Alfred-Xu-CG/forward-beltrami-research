@@ -25,6 +25,7 @@ def main():
     p.add_argument("--budget-multiplier",type=int,default=1)
     p.add_argument("--base-cycles",type=int,default=2,help="coordinate cycles; joint controls use twice this count")
     p.add_argument("--interpolation",choices=("q1","p1_ac","p1_bd"),default="q1")
+    p.add_argument("--p1-sampling",choices=("existing","frozen"),default="existing")
     p.add_argument("--output-selection",choices=("last","best_full"),default="last")
     p.add_argument("--matches-dir",type=Path)
     p.add_argument("--match-weight",type=float,default=0.)
@@ -45,6 +46,7 @@ def main():
                 strain_weight=args.strain_weight,oob_weight=1.,minimum_jacobian=.001,precision=args.precision,
                 image_precision=args.image_precision,shape_weight=args.shape_weight,
                 interpolation=args.interpolation,
+                p1_sampling=args.p1_sampling,
                 output_selection=args.output_selection,
                 matches=args.matches_dir/(case+"_common_sg_raw_matches.json") if args.matches_dir else None,
                 match_weight=args.match_weight,match_robust_scale=args.match_robust_scale,
