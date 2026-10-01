@@ -5,6 +5,7 @@ import numpy as np
 
 from qcopt.neural_bijection.dense.coordinated_fiber_lbfgs import (
     solve_coordinated_fiber_lbfgs, _direction, _curvature_pair,
+    _inverse_hessian_action, _frozen_affine_rows, _project_tangent,
 )
 from qcopt.neural_bijection.dense.coordinated_update import CoordinatedQ1Update,single_direction_corner_change
 
@@ -240,3 +241,123 @@ def test_finite_extreme_direction_normalizes_robustly_not_to_zero():
     torch.testing.assert_close(ordinary.vertices,extreme.vertices,rtol=0,atol=0)
     assert extreme.counts["accepted_steps"]==1
     assert extreme.final_objective<extreme.initial_objective
+
+
+@pytest.mark.parametrize("case",["single","multiple","dependent"])
+def test_tangent_projection_independent_dense_spd_metric(case):
+    h=np.array([[2.,.2,.1,0.],[.2,1.3,0.,.1],[.1,0.,.9,.15],[0.,.1,.15,1.1]])
+    gradient=np.array([1.,.7,.5,.2])
+    p=-h@gradient
+    if case=="single":b=np.array([[1.,0.,0.,0.]])
+    elif case=="multiple":b=np.array([[1.,0.,0.,0.],[0.,1.,0.,0.]])
+    else:b=np.array([[1.,0.,0.,0.],[2.,0.,0.,0.]])
+    expected=p-h@b.T@np.linalg.pinv(b@h@b.T)@(b@p)
+    ht=torch.tensor(h,dtype=torch.float64)
+    actual,info=_project_tangent(torch.tensor(p),torch.tensor(gradient),torch.tensor(b),lambda v:ht@v)
+    np.testing.assert_allclose(actual.numpy(),expected,rtol=2e-13,atol=2e-13)
+    assert np.max(np.abs(b@actual.numpy()))<2e-13
+    assert float(actual@torch.tensor(gradient))<0
+    assert info["tangent_projected"] and info["tangent_extra_h_actions"]==len(b)
+    assert info["tangent_rank"]==(2 if case=="multiple" else 1)
+
+
+def test_pure_lbfgs_action_matches_independent_explicit_inverse_updates():
+    generator=torch.Generator().manual_seed(19)
+    h=torch.eye(4,dtype=torch.float64)*.7
+    history=[]
+    for index in range(3):
+        s=torch.randn(4,generator=generator,dtype=h.dtype)
+        y=(torch.arange(4,dtype=h.dtype)+1)*s
+        pair,_=_curvature_pair(s,y,1e-10);history.append(pair)
+        rho=pair[2];v=torch.eye(4,dtype=h.dtype)-rho*s[:,None]*y[None]
+        h=v@h@v.T+rho*s[:,None]*s[None]
+    vector=torch.randn(4,generator=generator,dtype=h.dtype)
+    torch.testing.assert_close(_inverse_hessian_action(vector,history,.7),h@vector,rtol=3e-13,atol=3e-13)
+
+
+def test_frozen_rows_independent_basis_all_corners_boundary_mask_global_reference_b2_rect():
+    reference=grid(4,6)*torch.tensor((3.,2.),dtype=torch.float64)
+    anchor=reference.repeat(2,1,1,1)
+    anchor[:,1:-1,1:-1]+=.008*torch.randn(2,2,4,2,generator=torch.Generator().manual_seed(8),dtype=anchor.dtype)
+    e=torch.tensor((.6,.8),dtype=anchor.dtype)
+    qr=torch.tensor(independent_corners(reference),dtype=anchor.dtype)
+    mask=torch.ones(anchor.shape[:-1],dtype=anchor.dtype)
+    mask[:,0]=mask[:,-1]=0;mask[:,:,0]=mask[:,:,-1]=0
+    selected=torch.tensor([0,1,2,3,24,25,26,27,60,61,62,63,116,117,118,119])
+    rows=_frozen_affine_rows(anchor,e,qr,selected,mask)
+    independent=[]
+    for column in range(mask.numel()):
+        amplitude=torch.zeros_like(mask);amplitude.flatten()[column]=mask.flatten()[column]
+        qa=independent_corners(anchor+amplitude[...,None]*e)
+        q0=independent_corners(anchor)
+        independent.append(((qa-q0)/qr.numpy()).reshape(-1)[selected.numpy()])
+    np.testing.assert_allclose(rows.numpy(),np.stack(independent,1),rtol=2e-13,atol=3e-14)
+    assert rows[:,mask.flatten()==0].count_nonzero()==0
+
+
+@pytest.mark.parametrize("case,reason",[("cap","tangent_active_row_cap"),("zero","tangent_zero_row"),
+    ("nan_inputs","tangent_nonfinite_inputs"),("nan_metric","tangent_nonfinite_metric"),
+    ("negative_metric","tangent_metric_not_psd"),("zero_rank","tangent_zero_rank"),
+    ("discarded_mode","tangent_residual_failed"),("no_descent","tangent_no_descent")])
+def test_tangent_cap_nonfinite_rank_residual_descent_failures(case,reason):
+    p=torch.tensor([-1.,-1.],dtype=torch.float64);g=-p
+    b=torch.tensor([[1.,0.]],dtype=p.dtype);action=lambda v:v.clone()
+    if case=="cap":p=-torch.ones(9,dtype=p.dtype);g=-p;b=torch.eye(9,dtype=p.dtype)
+    elif case=="zero":b.zero_()
+    elif case=="nan_inputs":b[0,0]=float("nan")
+    elif case=="nan_metric":action=lambda v:v*float("nan")
+    elif case=="negative_metric":action=lambda v:-v
+    elif case=="zero_rank":action=lambda v:v*0
+    elif case=="discarded_mode":b=torch.diag(torch.tensor([1.,1e-8],dtype=p.dtype));p=torch.tensor([0.,-1.],dtype=p.dtype);g=-p
+    elif case=="no_descent":b=torch.eye(2,dtype=p.dtype)
+    result,info=_project_tangent(p,g,b,action)
+    assert result is None and info["tangent_failure"]==reason
+
+
+def test_tangent_inward_all_near_rows_and_consistent_identity_fallback():
+    b=torch.tensor([[1.,0.,0.],[0.,1.,0.]],dtype=torch.float64)
+    inward=torch.tensor([1.,2.,-3.],dtype=b.dtype)
+    result,info=_project_tangent(inward,-inward,b,lambda v:(_ for _ in ()).throw(AssertionError("no H actions for inward")))
+    assert torch.equal(result,inward) and info["tangent_extra_h_actions"]==0
+    # One initially inward near row remains included when another is outward.
+    g=torch.tensor([1.,-2.,3.],dtype=b.dtype)
+    p=-g
+    result,info=_project_tangent(p,g,b,lambda v:v.clone())
+    torch.testing.assert_close(result,torch.tensor([0.,0.,-3.],dtype=b.dtype),rtol=0,atol=0)
+    assert info["tangent_projected"]
+
+
+def test_default_off_identical_and_no_active_enabled_no_extra_actions():
+    anchor=grid(5)
+    objective=lambda v:(v.square().sum(),{})
+    options=dict(initial_displacement_rms=.001,max_gradient_evaluations=4)
+    default=solve_coordinated_fiber_lbfgs(anchor,objective,**options)
+    off=solve_coordinated_fiber_lbfgs(anchor,objective,tangent_rescue=False,**options)
+    torch.testing.assert_close(default.vertices,off.vertices,rtol=0,atol=0)
+    assert default.trace==off.trace and default.counts==off.counts
+    enabled=solve_coordinated_fiber_lbfgs(anchor,objective,tangent_rescue=True,**options)
+    torch.testing.assert_close(default.vertices,enabled.vertices,rtol=0,atol=0)
+    assert enabled.counts["tangent_projections"]==enabled.counts["tangent_extra_h_actions"]==0
+    for field in ("objective_evaluations","gradient_evaluations","accepted_steps","rounded_geometry_checks"):
+        assert enabled.counts[field]==default.counts[field]
+    with pytest.raises(ValueError,match="bool"):
+        solve_coordinated_fiber_lbfgs(anchor,objective,tangent_rescue=1,**options)
+
+
+def test_enabled_solver_can_rescue_near_contracted_faces_without_geometry_relaxation():
+    anchor=grid(5)
+    # A strong first coordinate drive and a separate small tangential drive.
+    # Near-face rows occur dynamically; no target-dependent row filtering.
+    def objective(v):return 100*v[0,2,2,0]+v[0,1,1,0],{}
+    result=solve_coordinated_fiber_lbfgs(anchor,objective,initial_displacement_rms=.05,
+                                       tangent_rescue=True,max_gradient_evaluations=15)
+    assert result.counts["tangent_checks"]>0
+    assert result.counts["tangent_projections"]>0
+    assert result.counts["tangent_extra_h_actions"]>0
+    assert result.counts["inverse_hessian_actions"]==result.counts["affine_direction_evaluations"]+result.counts["tangent_extra_h_actions"]
+    for event in result.trace:
+        if event.get("kind")=="trial" and event["accepted"]:
+            assert event["actual_margin_min"]>0 and event["actual_contracted_margin_min"]>0
+            assert event["directional_derivative"]<0
+    qa,q0=independent_corners(result.vertices),independent_corners(anchor)
+    assert (.95*(q0/q0-.001)+(qa-q0)/q0).min()>0

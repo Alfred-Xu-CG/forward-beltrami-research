@@ -1,7 +1,7 @@
 """Bounded instance L-BFGS on one fixed physical scalar coordinate fiber.
 
 This is NOT a differentiable decoder or a new map class. Constant anchor,
-reference and direction; no AD through iterations, inverse, projection, repair,
+reference and direction; no AD through iterations, global inverse, map repair,
 resampling or geometric line search. Analytic fraction-to-boundary and actual
 rounded-map checks preserve the EXISTING analytic stage's contracted set.
 """
@@ -32,18 +32,113 @@ class CoordinatedFiberLBFGSResult:
     calibration: dict[str, float]
 
 
-def _direction(gradient, history, gamma):
-    """Standard two-loop inverse-Hessian action, with explicit descent guard."""
-    q=gradient.clone(); alphas=[]
+def _inverse_hessian_action(vector, history, gamma):
+    """Pure standard two-loop action, reused with EXACTLY the same metric."""
+    q=vector.clone(); alphas=[]
     for s,y,rho in reversed(history):
         alpha=rho*torch.sum(s*q); alphas.append(alpha); q=q-alpha*y
     r=gamma*q
     for (s,y,rho),alpha in zip(history,reversed(alphas)):
         r=r+s*(alpha-rho*torch.sum(y*r))
-    direction=-r
+    return r
+
+
+def _direction(gradient, history, gamma):
+    """Standard two-loop inverse-Hessian action, with explicit descent guard."""
+    direction=-_inverse_hessian_action(gradient,history,gamma)
     fallback=not bool(torch.isfinite(direction).all() and torch.sum(direction*gradient)<0)
     if fallback:direction=-gradient
     return direction,fallback
+
+
+def _frozen_affine_rows(base,e,qref,selected,mask):
+    """Exact selected A rows from ORIGINAL corner triangles and global qref.
+
+    Row ordering agrees with single_direction_corner_change. Boundary variables
+    are absent (zero coefficients), not subsequently projected/updated.
+    """
+    batch,rows,columns,_=base.shape
+    per_batch=4*(rows-1)*(columns-1)
+    owner=selected//per_batch;local=(selected%per_batch)//4;corner=selected%4
+    row=local//(columns-1);column=local%(columns-1)
+    a=owner*(rows*columns)+row*columns+column
+    ids=torch.stack((a,a+1,a+columns,a+columns+1),1)  # a,b,d,c
+    p=(corner==2).long()*2;q=1+(corner==3).long()*2
+    r=2+((corner==1)|(corner==2)).long()
+    local_y=base.reshape(-1,2)[ids]
+    fetch=lambda i:local_y.gather(1,i[:,None,None].expand(-1,1,2))[:,0]
+    edge_e=fetch(q)-fetch(p);edge_f=fetch(r)-fetch(p)
+    cq=e[0]*edge_f[:,1]-e[1]*edge_f[:,0]
+    cr=edge_e[:,0]*e[1]-edge_e[:,1]*e[0]
+    reference=qref.expand(batch,-1,-1,-1).reshape(-1)[selected]
+    coefficients=torch.stack((-cq-cr,cq,cr),1)/reference[:,None]
+    triangle=torch.stack((p,q,r),1)
+    indices=ids.gather(1,triangle)
+    output=base.new_zeros((selected.numel(),mask.numel()))
+    output.scatter_add_(1,indices,coefficients)
+    return output*mask.flatten()[None]
+
+
+def _project_tangent(p,gradient,rows,h_action):
+    """Small equality-tangent H-metric correction, NEVER a feasibility repair.
+
+    Requires p=-H*g from the SAME H. All supplied near rows are included if
+    any Bp<0. Cap8 is hard. Rank tolerance/residual checks only validate this
+    algebra; ALL actual affine bounds and strict rounded checks remain required.
+    """
+    k=rows.shape[0]
+    info=dict(tangent_active_rows=k,tangent_extra_h_actions=0,tangent_gram_eigensolves=0,
+              tangent_projected=False,tangent_rank=0,tangent_residual_relative=0.)
+    def fail(reason):info["tangent_failure"]=reason;return None,info
+    if k>8:return fail("tangent_active_row_cap")
+    if not bool(torch.isfinite(p).all() and torch.isfinite(gradient).all()
+                and torch.isfinite(rows).all()):return fail("tangent_nonfinite_inputs")
+    if k==0:return p,info
+    row_size=rows.abs().amax(1)
+    if not bool((row_size>0).all()):return fail("tangent_zero_row")
+    bp=rows@p.flatten()
+    if not bool(torch.isfinite(bp).all()):return fail("tangent_nonfinite_row_action")
+    if not bool((bp<0).any()):return p,info
+    info["tangent_outward"]=True
+    actions=[]
+    for row in rows:
+        action=h_action(row.reshape_as(p)).flatten()
+        info["tangent_extra_h_actions"]+=1
+        if not bool(torch.isfinite(action).all()):return fail("tangent_nonfinite_metric")
+        actions.append(action)
+    hb=torch.stack(actions)
+    gram=rows@hb.T
+    if not bool(torch.isfinite(gram).all()):return fail("tangent_nonfinite_gram")
+    gram=.5*(gram+gram.T)
+    info["tangent_gram_eigensolves"]+=1
+    try:eigenvalues,eigenvectors=torch.linalg.eigh(gram)
+    except RuntimeError:return fail("tangent_eigensolve_failed")
+    if not bool(torch.isfinite(eigenvalues).all() and torch.isfinite(eigenvectors).all()):
+        return fail("tangent_nonfinite_eigensolve")
+    cutoff=64*torch.finfo(gram.dtype).eps*k*float(eigenvalues.abs().max())
+    if bool((eigenvalues < -cutoff).any()):return fail("tangent_metric_not_psd")
+    retained=eigenvalues>cutoff
+    rank=int(retained.sum());info["tangent_rank"]=rank
+    if rank==0:return fail("tangent_zero_rank")
+    # No reciprocal in discarded modes, including duplicate/zero eigenvalues.
+    v=eigenvectors[:,retained]
+    coefficients=v@((v.T@bp)/eigenvalues[retained])
+    d=(p.flatten()-coefficients@hb).reshape_as(p)
+    if not bool(torch.isfinite(d).all()):return fail("tangent_nonfinite_direction")
+    residual=rows@d.flatten()
+    # LOCAL row cancellation scale, not an unrelated million-node ||d|| norm.
+    local_scale=(rows*d.flatten()[None]).abs().sum(1).amax()
+    scale=torch.maximum(bp.abs().amax(),local_scale).clamp_min(torch.finfo(rows.dtype).tiny)
+    if not bool(torch.isfinite(residual).all() and torch.isfinite(scale)):
+        return fail("tangent_nonfinite_residual")
+    relative=float(residual.abs().amax()/scale)
+    info["tangent_residual_relative"]=relative
+    if relative>1e-10:return fail("tangent_residual_failed")
+    slope=torch.sum(gradient*d)
+    info["tangent_directional_derivative"]=float(slope)
+    if not bool(torch.isfinite(slope) and slope<0):return fail("tangent_no_descent")
+    info["tangent_projected"]=True
+    return d,info
 
 
 def _curvature_pair(s,y,tolerance):
@@ -85,7 +180,7 @@ def solve_coordinated_fiber_lbfgs(anchor: torch.Tensor,
         fraction_to_boundary: float=.99, max_gradient_evaluations: int=30,
         history_size: int=5, max_backtracks: int=6, armijo: float=1e-4,
         minimum_step: float=1e-12, gradient_tolerance: float=0.,
-        curvature_tolerance: float=1e-10) -> CoordinatedFiberLBFGSResult:
+        curvature_tolerance: float=1e-10, tangent_rescue: bool=False) -> CoordinatedFiberLBFGSResult:
     """Optimize boundary-zero physical u in Y=anchor+u*unit(direction).
 
     All four normalized corner changes A*u are linear at the constant anchor.
@@ -108,6 +203,14 @@ def solve_coordinated_fiber_lbfgs(anchor: torch.Tensor,
     Nonpositive/unreliable curvature is skipped; non-descent direction falls
     back to -g. No stationarity/global-convergence claim on early termination.
     Solver arithmetic is float64; output coordinates retain anchor dtype.
+
+    Optional default-OFF tangent_rescue collects ALL rows with contracted slack
+    divided by theta*s0 <=1e-6, cap8. If any row is outward, the SAME H-metric
+    projects p=-H*g onto their equality tangents using a small Gram pseudoinverse.
+    Rank/residual/strict descent failures stop; no inward perturbation or geometry
+    tolerance exemption. If p used negative-gradient fallback, H=I consistently
+    for this rescue, recorded as identity_fallback. Equality tangents restrict
+    the feasible cone; failure is NOT a constrained-stationarity certificate.
     """
     if (not isinstance(anchor,torch.Tensor) or anchor.ndim!=4 or anchor.shape[0]<1
             or anchor.shape[-1]!=2 or min(anchor.shape[1:3])<3
@@ -136,6 +239,7 @@ def solve_coordinated_fiber_lbfgs(anchor: torch.Tensor,
         if isinstance(value,bool) or not isinstance(value,int) or value<minimum:
             raise ValueError(f"invalid integer {name}")
     if not callable(objective):raise ValueError("objective must be callable")
+    if not isinstance(tangent_rescue,bool):raise ValueError("tangent_rescue must be a Python bool")
     base=anchor.detach().clone().double()
     e=torch.as_tensor(direction,dtype=torch.float64,device=anchor.device)
     if e.shape!=(2,) or not bool(torch.isfinite(e).all() and e.abs().max()>0):
@@ -161,7 +265,9 @@ def solve_coordinated_fiber_lbfgs(anchor: torch.Tensor,
     counts=dict(objective_evaluations=0,gradient_evaluations=0,rejected_objective_evaluations=0,
         rounded_geometry_checks=0,geometry_rejections=0,anchor_geometry_checks=1,
         affine_direction_evaluations=0,accepted_steps=0,curvature_skips=0,descent_fallbacks=0,
-        nonfinite_gradient_rejections=0,armijo_halvings=0)
+        nonfinite_gradient_rejections=0,armijo_halvings=0,inverse_hessian_actions=0,
+        tangent_checks=0,tangent_attempts=0,tangent_projections=0,tangent_active_rows=0,
+        tangent_extra_h_actions=0,tangent_gram_eigensolves=0,tangent_failures=0)
     trace=[]; history=[]; calibration={"initial_displacement_rms":float(initial_displacement_rms)}
     u=torch.zeros_like(mask); contracted=theta*s0
 
@@ -223,7 +329,33 @@ def solve_coordinated_fiber_lbfgs(anchor: torch.Tensor,
     while gradient is not None and counts["gradient_evaluations"]<max_gradient_evaluations:
         if float(gradient.abs().max())<=gradient_tolerance:stop="gradient_tolerance";break
         d,fallback=_direction(gradient,history,gamma)
+        counts["inverse_hessian_actions"]+=1
         counts["descent_fallbacks"]+=int(fallback)
+        tangent_info={}
+        if tangent_rescue:
+            counts["tangent_checks"]+=1
+            relative=contracted/(theta*s0)
+            if not bool(torch.isfinite(relative).all()):
+                stop="tangent_nonfinite_slack";counts["tangent_failures"]+=1;break
+            selected=(relative.flatten()<=1e-6).nonzero(as_tuple=False).flatten()
+            k=selected.numel();counts["tangent_active_rows"]+=k
+            if k>8:
+                stop="tangent_active_row_cap";counts["tangent_failures"]+=1
+                trace.append(dict(kind="tangent",accepted=False,rejection=stop,tangent_active_rows=k))
+                break
+            rows_a=_frozen_affine_rows(base,e,qref,selected,mask)
+            action=(lambda v:v.clone()) if fallback else (lambda v:_inverse_hessian_action(v,history,gamma))
+            corrected,tangent_info=_project_tangent(d,gradient,rows_a,action)
+            tangent_info["tangent_metric"]="identity_fallback" if fallback else "lbfgs"
+            counts["tangent_attempts"]+=int(tangent_info.get("tangent_outward",False))
+            counts["tangent_extra_h_actions"]+=tangent_info["tangent_extra_h_actions"]
+            counts["inverse_hessian_actions"]+=tangent_info["tangent_extra_h_actions"]
+            counts["tangent_gram_eigensolves"]+=tangent_info["tangent_gram_eigensolves"]
+            counts["tangent_projections"]+=int(tangent_info["tangent_projected"])
+            if corrected is None:
+                stop=tangent_info["tangent_failure"];counts["tangent_failures"]+=1
+                trace.append(dict(kind="tangent",accepted=False,rejection=stop,**tangent_info));break
+            d=corrected
         slope=float(torch.sum(gradient*d))
         if not math.isfinite(slope) or slope>=0:stop="no_finite_descent";break
         ad=single_direction_corner_change(base,d,e)/qref
@@ -240,7 +372,7 @@ def solve_coordinated_fiber_lbfgs(anchor: torch.Tensor,
             trial_evaluated,trial_geometry=evaluate(trial_u)
             event=dict(kind="trial",alpha=alpha,alpha_max=alpha_max,backtrack=backtrack,
                        gradient_evaluations_before=counts["gradient_evaluations"],directional_derivative=slope,
-                       descent_fallback=fallback,h0_scale=float(gamma),**trial_geometry)
+                       descent_fallback=fallback,h0_scale=float(gamma),**trial_geometry,**tangent_info)
             if trial_evaluated is None:
                 event.update(accepted=False,rejection="rounded_geometry");trace.append(event)
                 stop="rounded_geometry_rejected";break  # NO geometric backtracking.

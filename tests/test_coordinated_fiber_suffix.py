@@ -96,6 +96,7 @@ def test_real_tiny_baseline_and_mock_suffix_share_exact_prefix(tmp_path,diagonal
     assert calls[0][1]["initial_displacement_rms"]==pytest.approx(.004*4/8)
     assert calls[0][1]["max_gradient_evaluations"]==30
     assert calls[0][1]["history_size"]==5 and calls[0][1]["max_backtracks"]==6
+    assert "tangent_rescue" not in calls[0][1]
     assert comparison["fiber_final"]["total"]<=expected_prefix_objective+1e-7
     assert comparison["shared_transition_from_exact_oldnodes"]
     assert comparison["snapshot_bitwise_equal"]
@@ -186,3 +187,105 @@ def test_nonold_snapshot_roundoff_does_not_change_actual_transition(dtype,diagon
     reference=suffix.identity_vertices(9,device="cpu").to(dtype)
     assert suffix.validate_q1_map(actual,reference)["valid"]
     suffix.require_nested_fine_margin(actual,suffix.q1_corner_determinants(reference.double()),.001,"test")
+
+
+@pytest.mark.parametrize("diagonal",["ac","bd"])
+def test_reuse_saved_prefix_never_reruns_baseline_or_uses_terminal_fiber(tmp_path,monkeypatch,diagonal):
+    args,_=tiny_report(tmp_path,diagonal)
+    original=suffix.run(args,production=False,solver=unchanged_solver([]))
+    prefix_path=Path(original["prefix_output"])
+    prefix_bytes=prefix_path.read_bytes()
+    # Terminal fiber artifacts are not inputs to replay.
+    Path(original["fiber_output"]).unlink()
+    Path(original["fiber_output"]).with_suffix(".json").unlink()
+    def forbidden(*args,**kwargs):pytest.fail("replay must not rerun baseline")
+    monkeypatch.setattr(suffix,"optimize",forbidden)
+    replay=argparse.Namespace(report=None,reuse_prefix_report=args.output,
+        output=tmp_path/"replay.json",grid_side=9,tangent_rescue=True)
+    calls=[]
+    result=suffix.run(replay,production=False,solver=unchanged_solver(calls))
+    with np.load(prefix_path,allow_pickle=False) as saved:
+        np.testing.assert_array_equal(calls[0][0].numpy(),saved["vertices"])
+        assert result["fiber_final"]["total"]<=float(saved["best_prefix_objective"])+1e-7
+    assert prefix_bytes==prefix_path.read_bytes()
+    assert all(options["tangent_rescue"] for _,options in calls)
+    assert result["baseline_executed_this_run"] is False
+    assert result["baseline_complete_call_seconds"]==0.
+    assert result["reused_prefix_load_seconds"]>=0.
+    assert result["historical_baseline_complete_call_seconds"]==original["baseline_complete_call_seconds"]
+    assert result["baseline_suffix_counts"]==original["baseline_suffix_counts"]
+    assert result["setup_complete_objective_evaluations"]==2
+    assert np.isfinite(result["reevaluated_best_prefix_objective"])
+    assert result["best_prefix_objective_difference"]==pytest.approx(
+        result["reevaluated_best_prefix_objective"]-result["stored_best_prefix_objective"])
+    assert result["source_configuration"]==original["actual_configuration"]
+    assert result["baseline_output"]==original["baseline_output"]
+    assert not (tmp_path/"replay_baseline.npz").exists()
+    assert not (tmp_path/"replay_baseline.json").exists()
+    assert result["fiber_certificate"]["valid"]
+
+
+def test_reuse_rejects_a_different_final_control_size_before_evidence(tmp_path,monkeypatch):
+    args,_=tiny_report(tmp_path)
+    suffix.run(args,production=False,solver=unchanged_solver([]))
+    def forbidden(*args,**kwargs):pytest.fail("must reject before evidence or baseline")
+    monkeypatch.setattr(suffix,"optimize",forbidden)
+    monkeypatch.setattr(suffix,"_make_evidence",forbidden)
+    replay=argparse.Namespace(report=None,reuse_prefix_report=args.output,
+        output=tmp_path/"replay.json",grid_side=17)
+    with pytest.raises(ValueError,match="same final control"):
+        suffix.run(replay,production=False,solver=unchanged_solver([]))
+
+
+@pytest.mark.parametrize("field",["coarse_vertices","boundary_reference","post_affine_matrix"])
+def test_reuse_rejects_changed_old_nodes_reference_or_affine(tmp_path,monkeypatch,field):
+    args,_=tiny_report(tmp_path)
+    original=suffix.run(args,production=False,solver=unchanged_solver([]))
+    path=Path(original["prefix_output"])
+    with np.load(path,allow_pickle=False) as saved:
+        payload={key:saved[key].copy() for key in saved.files}
+    payload[field].flat[0]+=.001
+    np.savez(path,**payload)
+    def forbidden(*args,**kwargs):pytest.fail("invalid replay must never reach optimization")
+    monkeypatch.setattr(suffix,"optimize",forbidden)
+    replay=argparse.Namespace(report=None,reuse_prefix_report=args.output,
+        output=tmp_path/"replay.json",grid_side=9)
+    with pytest.raises(ValueError,match="saved prefix"):
+        suffix.run(replay,production=False,solver=forbidden)
+
+
+@pytest.mark.parametrize("rescue",[False,True])
+def test_tiny_actual_core_replays_saved_prefix_with_optional_rescue(tmp_path,monkeypatch,rescue):
+    args,_=tiny_report(tmp_path)
+    suffix.run(args,production=False,solver=unchanged_solver([]))
+    def forbidden(*args,**kwargs):pytest.fail("replay must not rerun baseline")
+    monkeypatch.setattr(suffix,"optimize",forbidden)
+    replay=argparse.Namespace(report=None,reuse_prefix_report=args.output,
+        output=tmp_path/"replay.json",grid_side=9,tangent_rescue=rescue)
+    torch.set_num_threads(2)
+    result=suffix.run(replay,production=False)
+    assert torch.get_num_threads()==1
+    assert result["tangent_rescue"] is rescue
+    assert result["fiber_certificate"]["valid"]
+    assert result["fiber_final"]["total"]<=min(result["reevaluated_best_prefix_objective"],
+        result["reevaluated_initial_objective"])+1e-7
+    assert 1<=result["fiber_suffix_counts"]["gradient_evaluations"]<=60
+    assert result["setup_complete_objective_evaluations"]==2
+
+
+@pytest.mark.parametrize("threads",[0,True,1.5])
+def test_replay_rejects_nonpositive_or_noninteger_threads(tmp_path,monkeypatch,threads):
+    args,_=tiny_report(tmp_path)
+    original=suffix.run(args,production=False,solver=unchanged_solver([]))
+    baseline_path=Path(original["baseline_output"]).with_suffix(".json")
+    baseline=json.loads(baseline_path.read_text())
+    baseline["configuration"]["threads"]=threads
+    baseline_path.write_text(json.dumps(baseline))
+    original["actual_configuration"]["threads"]=threads
+    args.output.write_text(json.dumps(original))
+    def forbidden(*args,**kwargs):pytest.fail("invalid threads must be rejected before evidence")
+    monkeypatch.setattr(suffix,"_make_evidence",forbidden)
+    replay=argparse.Namespace(report=None,reuse_prefix_report=args.output,
+        output=tmp_path/"replay.json",grid_side=9)
+    with pytest.raises(ValueError,match="threads.*positive integer"):
+        suffix.run(replay,production=False,solver=unchanged_solver([]))

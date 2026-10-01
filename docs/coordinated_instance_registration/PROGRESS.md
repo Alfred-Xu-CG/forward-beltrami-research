@@ -1440,3 +1440,98 @@ Do not attribute it to the original eta bound or repair/relax it silently.
 Do not claim stationarity: the direction may point out of an active face while
 tangential descent remains possible. A focusedAstra adjudication is inspecting
 thisactualtrace before any nextimplementation; no LR/rho/backtrack sweep.
+
+### T+11.1h research card: bounded inverse-Hessian-metric tangent rescue
+
+Question: can tangential descent bypass the ONE nearly active contracted row
+observed independently in each of the four failed 1025 coordinate stages?
+Keep the SAME frozen scalar fiber, theta=.95, objective, boundary and budgets.
+With positive-definite L-BFGS inverse action H, gradient g and p=-H g, collect
+rows B of A with contracted slack/(theta*s0)<=1e-6. Cap count at8; exceeding
+the cap stops this diagnostic rather than spawning a general active-set QP.
+For outward p, use d=p-H B^T (B H B^T)^+ B p. With independent exact rows,
+B d=0 and g^T d<=0; a rank-deficient Gram requires explicit numerical rank,
+tangent residual and descent checks. No unconstrained Euclidean projection
+of an arbitrary quasi-Newton direction is claimed to preserve descent.
+Recompute ALL exact affine bounds after correction; retain fraction .99,
+ordinary Armijo and strict actual rounded geometry checks. Count extra H
+actions, projection work and objective evaluations. No geometry tolerance
+relaxation, post-hoc repair, neural-decoder or global convergence claim.
+
+Smallest decisive tests: independent small dense SPD action/constraints;
+single/multiple/dependent active rows; inward, outward, nonfinite, cap and
+rounded-feasibility fixtures. Then ONLY H/K1025 from already SAVED129 prefixes,
+same final x/y30-gradient budget and label-free best-full-objective selection.
+Labels are read after output export. Falsifiers: no objective/anatomical gain,
+still collapsing steps, many active rows, excessive work or adverse tails.
+Failure is not a stationarity certificate; equality tangents restrict the
+feasible cone. This is standard constrained-optimization geometry applied
+to our exact scalar fiber, not a novelty claim. Independent Astra review
+precedes medium/large experiments; no new parameter sweep or QP framework.
+
+Root separately loaded the exact native1024 fixed rasters through the SAME
+raw-inverted preprocessing. Limiting material cells Hx(783,381), Hy(178,640),
+Kx(506,808), Ky(183,856) all have fixed foreground weight1; their9x9 foreground
+fractions are1/1/1/.9876543. Thus these observed limits are not simply excluded
+white-background cells. This checks only source support, NOT correctness of
+cross-stain evidence or biological correspondence. No masks/objective changed.
+
+### T+11.3h actual bounded tangent result: bypassing faces is not enough
+
+Finalized root129affectedtests pass11.59s; wrapper45pass, geometry45pass,
+independentAstra16targetedtests pass4.42s. Separate Cholesky-whitened nullspace
+projection agrees to2.14e-14 including dependent rows. Replay threads were
+explicitly restored from saved config; a new red/green regression caught the
+bypassed optimize() setup, not a geometry error. No constraint tolerance changed.
+
+After checking GPU6/7idle, ran ONLY H/K1025 suffixes from already SAVED129prefixes.
+No baseline/upstream rerun or manual-label inference. All actual prefix/output
+certificates valid; source bestprefix/initial E re-evaluated (2setupcalls).
+
+| Case | Original baseline E | Plain fiber E | Tangent fiber E | Baseline mean512eqTRE | Plain fiber mean | Tangent fiber mean |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| H | .1757646105 | .1769391025 | .1766470683 | .7817015492 | .7955191786 | .7934268002 |
+| K | .2281917408 | .2308170920 | .2305527743 | 2.2878981413 | 2.2994992191 | 2.2992546663 |
+
+All77H/69K scored after maps saved. Tangent p90 H1.58647909 versusbaseline
+1.59435009, plainfiber1.57644553; K4.27138231 versusbaseline4.25500827,
+plainfiber4.27122036. Thus small mean changes do not imply improved tails.
+H26+30gradients,54acceptedmoves,65solverforwards+3selection/report=68completeE;
+K30+30gradients,58moves,61solverforwards+3=64. Plus2setupE calls each.
+H x stopsobjective_backtrack_limit, ybudget; Kbothbudget. Zero geometry
+rejections/tangent failures/curvature skips/descent fallbacks. H15rescues/15
+extraHactions/15Gram solves; K29rescues/50extraHactions/29Gram solves. Near-face
+row cap never hit. Cold suffix2.7133/2.9093s, peaks1909636608/1884417536bytes;
+historicalbaseline suffix2.7467/2.7574s has DIFFERENT timer scope, no speedwin.
+
+Decision: this fixes one specific outward-direction stopping mechanism but
+does NOT produce competitive dense optimization at this budget. Retire the
+physical-fiber extension as a performance candidate for now; keep its module,
+counterexamples and evidence. Do not expand to a general QP, threshold sweep
+or larger active set. Continue mainline diagnostics rather than proclaiming
+the entire coordinated map class infeasible. Independent saved-map check pending.
+
+Independent saved-map review now confirms every source/replayed prefix array
+BITIDENTICAL, including actual129oldnodes;16,777,216actualfourcorners across
+fourprefix/final maps have0nonpositive/nonfinite and exactfixedboundaries.
+Final minnormalizedJ H.01583257/K.01141455. LiteralindependentP1AC/manualIDs
+reproduce allscores. Including2setupcalls totalcompleteE70H/66K. The genuine
+conclusion is bypassed contracted-face stops, NOT superior registration.
+
+### T+11.3h research card: source-query conditioning, not a new optimizer
+
+Question: does the declared source-grid interpolation weaken observation of
+fine nodal modes when image side=control side-1? For AC triangles with one
+pixelcenter per cell, query map is exactly .5*(Y_a+Y_c). A boundary-zero diagonal
+chain of L interior nodes has sampling Gram .5diag+.25offdiag. Its eigenvalues
+are .5+.5cos(k*pi/(L+1)); no exactnullmode, but condition=cot²(pi/[2(L+1)]).
+For L1023 this is424971.18. IndependentAstra derives the same spectrum.
+Smallest decisive test: compare actual FrozenP1Evaluator to literal midpoint,
+explicit SMALL boundary-eliminated matrix eigenvalues, and two samples/axis
+percell at quarter/threequarter points. Main sizes257/1025 use closed chain
+formula plus actual evaluator weights, NOT a giant eigenproblem.
+Falsifier: actual query weights or boundary chain disagree. Limits: this is
+UNWEIGHTED source evaluation, NOT full raster/MIND/mask/ARAP/shape/SG Hessian;
+positive regularizers and image gradients change it. Do not infer anatomical
+bottleneck, exact latent nullmode, or benefit of denser image quadrature from
+this diagnostic alone. No registration objective or output safety changed.

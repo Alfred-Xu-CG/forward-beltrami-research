@@ -1448,3 +1448,215 @@ Those unconstrained/smooth convergence results are NOT asserted for this
 piecewise-smooth, geometry-restricted pathology objective with finite searches.
 The experimental contribution under examination is practical convergence and
 cost on the already-defined exact scalar fiber, not inventing L-BFGS or Armijo.
+
+## 32. A bounded tangent-direction diagnostic at a contracted face
+
+This section states the bounded experiment precisely; its actual negative
+application outcome is recorded at the end, not hidden by a successful toy.
+It keeps the scalar-fiber problem in Section31 unchanged. In particular, it
+does not enlarge the feasible map class or silently reset its fixed anchor.
+
+### 32.1 Why an unconstrained descent direction can stop prematurely
+
+Let n be the number of interior control vertices and m the number of corner
+constraints. Boundary amplitudes are identically zero and are not independent
+variables. Write u in R^n for actual scalar displacement, g=grad F(u), and
+c=theta*s0+A*u>0 for contracted slack. A maps amplitudes to ALL normalized
+corner changes; each row has at most three nonzero nodal coefficients before
+boundary elimination. For the triangle (i,j,k), those coefficients follow from
+
+    (A*u)_t = [(u_j-u_i)det(e,Ybar_k-Ybar_i)
+              +(u_k-u_i)det(Ybar_j-Ybar_i,e)] / q_ref,t.
+
+The same formula is applied to each of the four declared cell triangles with
+its correct orientation. Neither the material spacing nor an assumed identity
+geometry may replace the actual frozen Ybar edges in this expression.
+
+An unconstrained direction p=-H*g can satisfy g^T*p<0 while (A*p)_j<0 at a
+row with tiny c_j. The exact alpha_max then becomes tiny. This is not evidence
+that F is minimized over feasible directions. Other directions may move along
+that face without decreasing its slack. In the actual failed1025 suffixes,
+independent reconstruction found exactly one row per coordinate stage with
+c_j/(theta*s0_j)<1e-6. The ordinary, uncontracted triangle slacks were still
+positive. That observation motivates a deliberately small active-row test.
+
+### 32.2 Constrained local quadratic model, not a map projection
+
+H denotes the symmetric positive-definite inverse-Hessian APPROXIMATION from
+the current reliable L-BFGS pairs. It is an operator: applying it to a vector
+uses the two-loop recursion, not an n-by-n stored inverse. The positive scalar
+initial metric and retained positive-curvature secants give a positive-definite
+H in exact arithmetic. Actual finite arithmetic is checked separately.
+
+Collect near-face rows of A into B, of size k-by-n. The intended direction is
+the solution of the small-equality-constrained quadratic model
+
+    minimize_d  g^T*d + (1/2)d^T*H^{-1}*d
+    subject to B*d=0.
+
+This equation defines a SEARCH DIRECTION. It does not project an illegal
+output map into the feasible set and does not differentiate an optimization
+layer. H^{-1} is used only in the mathematical definition, not computed.
+Introducing an equality multiplier lambda gives the first-order equations
+
+    H^{-1}*d + g + B^T*lambda = 0,
+    B*d=0.
+
+With p=-H*g, define the k-by-k Gram matrix G=B*H*B^T. Then
+
+    G*lambda=B*p,
+    d=p-H*B^T*lambda.
+
+For independent rows, G is positive definite. For dependent rows, use its
+Moore-Penrose pseudoinverse G^+: the unique symmetric matrix obtained by
+inverting positive eigenvalues and retaining zero on its nullspace. In exact
+arithmetic B*p is in range(G), so d=p-H*B^T*G^+*B*p satisfies B*d=0.
+An eigenvalue cutoff in floating point is a numerical rank decision, not a
+proof that an omitted physical constraint is irrelevant. Every original
+corner constraint remains in the subsequent FULL feasibility check.
+
+Because B*d=0, multiply the first-order equation by d^T to obtain
+
+    g^T*d = -d^T*H^{-1}*d <= 0,
+
+with strict inequality for a nonzero d. Thus the correction preserves descent
+in exact arithmetic. For ONE active row a, it reduces to
+
+    d=p-(H*a^T)*(a*p)/(a*H*a^T).
+
+This needs one additional H action. With k rows it needs k such actions and
+a k-by-k eigensolve. It still touches n-vectors; its work is not independent
+of control-grid size. If the usual direction guard instead falls back to
+p=-g, this derivation must use H=I consistently. Projecting -g using an old,
+unrelated H would not justify the same identity. An arbitrary Euclidean
+projection of an L-BFGS direction does not supply this proof either.
+
+### 32.3 The bounded experimental rule and its limitations
+
+The implementation under review uses an optional default-OFF tangent rescue.
+Near faces satisfy c_j/(theta*s0_j)<=1e-6; this single threshold is declared
+before runs and is not tuned using labels. If any near-face row decreases
+along p, correction includes ALL near-face rows, not just the outward ones.
+Otherwise correction is unnecessary. More than eight near-face rows stops
+this bounded diagnostic. It does not automatically expand into a large QP.
+
+The code must report nonfinite rows or H actions, rank decisions, tangent
+residuals, finite descent failures and the eight-row limit. Its residual
+threshold is only a check on the computed direction: it is NOT permission
+to violate a triangle constraint. The corrected direction is passed through
+the unchanged ALL-row algebraic alpha_max computation, fraction-to-boundary
+.99, finite-budget Armijo test and strict ACTUAL rounded-map checks from
+Section31. There is no inward repair or relaxed area threshold.
+
+Equality tangents deliberately examine only a subset of the feasible cone.
+They may freeze a row that should move inward, or discard a useful direction
+when several rows are nearly active. Failure therefore is not constrained
+stationarity, nor an impossibility theorem for dense registration. No smooth
+global-convergence result is asserted for the piecewise-smooth image objective.
+
+The decisive application uses ONLY the two failed H/K1025 cases. It reloads
+their already saved129-control prefixes; no upstream stages are rerun. The
+native1024 rasters, frozen affine, machine matches, regularization, fixed
+boundary, P1(ac) interpolation and30-gradient-per-coordinate budgets remain
+unchanged. Selection is by the SAME complete objective over initial/prefix
+and accepted suffix candidates. Evaluation labels are loaded only after map
+export. Counts include extra H actions, Gram solves, all objective/gradient
+evaluations and rejected trials. Inherited baseline timing is historical,
+not a newly measured warmed comparison; early stops are not speed wins.
+
+The direction construction belongs to classical constrained quasi-Newton
+methods. Relevant modern primary prior art includes
+[Brust, Marcia, Petra and Saunders2022, linear-equality constrained limited-memory optimization](https://epubs.siam.org/doi/10.1137/21M1393819).
+Their reduced compact representations and trust-region algorithms are not
+implemented or benchmarked here; the citation prevents attributing the general
+idea of equality-constrained limited-memory directions as our invention.
+
+Actual two-case result: H/K1025 mean512-equivalent landmark errors .793427/
+2.299255 remain worse than original analytic-Adam .781702/2.287898. The rescue
+does reduce the previous early stopping: K finishes both30-gradient stages;
+H completes26/30 and still exhausts objective backtracking in x. No geometry
+rejections occur. Complete E also remains worse for both. This intervention
+is retained as a diagnosis, not the recommended performance candidate.
+
+## 33. Pixel-center observations can weakly see fine AC nodal modes
+
+This is an observation about the LINEAR SOURCE MAP EVALUATOR, not a theorem
+about the complete registration objective or anatomical accuracy. The same
+P1 map still has to satisfy every digital corner and boundary condition.
+
+Let the source grid have N+1 vertices per axis and let the raster have N
+pixels per axis. Source vertices are at (j/N,i/N), while pixel centers are
+at ((j+.5)/N,(i+.5)/N). In every source cell the pixel center has local
+coordinates (xi,zeta)=(.5,.5). For the a--c diagonal, it lies on that shared
+triangle edge, so BOTH one-sided P1 formulas yield exactly
+
+    f_Y(pixel_center)=(Y_a+Y_c)/2.
+
+This is not an interpolation ambiguity: the query is FIXED in the source
+domain, and its derivative with respect to the vertex values is the same
+linear average. Only the derivative with respect to a moving source query
+could differ across the triangle edge; that is not the present derivative.
+
+Consider one scalar boundary-zero nodal perturbation. The source sampling
+operator splits into independent a--c diagonal chains. A chain with L
+interior unknown amplitudes x_1,...,x_L has fixed endpoints x_0=x_(L+1)=0
+and observations (x_i+x_(i+1))/2 for i=0,...,L. Its matrix S has two adjacent
+1/2 entries per observation, with endpoint boundary columns eliminated.
+Consequently S^T*S has diagonal1/2 and adjacent off-diagonal1/4. Its normalized
+sine eigenvectors have eigenvalues
+
+    lambda_k=1/2+(1/2)cos(k*pi/(L+1)),       k=1,...,L.
+
+Every eigenvalue is positive, so there is NO exact unobserved mode under
+these boundary conditions. The smallest is sin²(pi/[2(L+1)]), and the
+largest is cos²(pi/[2(L+1)]). Their ratio is cot²(pi/[2(L+1)]), growing
+quadratically with L. The weakest mode alternates in sign along the chain
+with a slowly varying sine envelope; adjacent amplitudes nearly cancel.
+The condition number of S itself is the SQUARE ROOT of this Gram ratio.
+At1025 controls/1024 pixels the longest chain has L1023: Gram condition
+424971.1792, sampling condition651.8981. These are dimensionless operator
+quantities, not image errors or measured iteration counts.
+
+For comparison only, evaluate FOUR source queries per cell at quarter and
+three-quarter positions in each axis. In vertex order(a,b,c,d), their local
+P1 evaluation matrix is
+
+    M = [.75  0   .25  0 ;
+         .25 .50  .25  0 ;
+         .25  0   .75  0 ;
+         .25  0   .25 .50].
+
+M is invertible. The eigenvalues of M^T*M are .1909830056,.25,.25,1.3090169944.
+Assemble all such cell observations into S2. Each INTERIOR node belongs to
+four cells, boundary amplitudes remain zero, and every cell is included with
+the same weight. If mu_min and mu_max are those local eigenvalue bounds,
+
+    4*mu_min*||u||² <= ||S2*u||² <= 4*mu_max*||u||².
+
+Thus this UNWEIGHTED source Gram has condition at most6.854101967, uniformly
+in source-grid size. Averaging four samples per cell rescales both bounds
+equally and does not change the ratio. This does not invent extra image
+information: intensities/features at these queries would still be interpolated
+from the original raster. It is an evaluation/quadrature change, not refinement
+of observed tissue detail and not a topology construction.
+
+Actual evaluator probes at17/65/257/1025 controls agree with the midpoint
+formula exactly in the stated float64 dyadic fixtures. Independently assembled
+small boundary-eliminated matrices agree with the chain spectrum. Quarter
+sampling gives small-grid Gram ratios2.5494/3.8413 at5/9controls, versus
+5.8284/25.2741 for midpoint observations. No giant matrix is assembled at1025.
+
+Limitations are essential: the actual image objective multiplies source map
+derivatives by moving feature gradients, includes a nonuniform foreground mask,
+uses absolute descriptor differences, and adds ARAP, shape and machine points.
+Flat image regions can have zero gradient; masks can remove observations;
+regularizers can eliminate weak modes. None of the bounds above automatically
+applies to that full Hessian. This observation alone does not explain real TRE
+or justify replacing the main optimizer. A separate controlled image experiment
+would be needed before claiming any practical benefit.
+
+Numerical quadrature for finite-element image correspondence is established
+prior art, not a new registration principle; see
+[Pierre et al.2016, finite-element digital image correlation and quadrature](https://doi.org/10.1016/j.optlaseng.2015.07.008).
+Our current diagnostic concerns a specific source-grid/pixel-center alignment,
+not a reproduction or performance comparison with that paper.

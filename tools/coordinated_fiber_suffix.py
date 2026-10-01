@@ -1,7 +1,7 @@
 """Diagnostic: replace only the last x/y Adam stages by physical-fiber L-BFGS.
 
-The baseline is rerun once, and both suffixes start from its exact accepted
-penultimate-control prefix. This is an instance optimizer comparison, not a
+By default the baseline is rerun once; --reuse-prefix-report instead loads its
+saved incoming prefix without rerunning it. This is an instance optimizer comparison, not a
 new neural decoder. No anatomical evaluation data enter this executable.
 """
 from __future__ import annotations
@@ -176,7 +176,7 @@ def _baseline_suffix_counts(report, final_side, inner_steps):
 
 
 def _stop_status(reason):
-    if reason.startswith("nonfinite") or reason in ("rounded_geometry_rejected","no_finite_descent"):
+    if reason.startswith(("nonfinite","tangent_")) or reason in ("rounded_geometry_rejected","no_finite_descent"):
         return "solver_failure_valid_best_retained"
     if reason in ("minimum_step","objective_backtrack_limit"):
         return "early_numerical_stop_valid_best_retained"
@@ -185,8 +185,57 @@ def _stop_status(reason):
     return "other_stop_see_reason"
 
 
+def _load_reused_prefix(path, grid_side):
+    """Load the comparison's sibling artifacts, never its terminal fiber map."""
+    previous=json.loads(path.read_text(encoding="utf-8"))
+    def artifact(key):
+        recorded=Path(previous[key])
+        sibling=path.parent/recorded.name
+        return sibling if sibling.exists() else recorded
+    baseline_path=artifact("baseline_output")
+    prefix_path=artifact("prefix_output")
+    baseline=json.loads(baseline_path.with_suffix(".json").read_text(encoding="utf-8"))
+    configuration=baseline["configuration"]
+    if configuration["grid_side"]!=grid_side:
+        raise ValueError("reused prefix requires the same final control size")
+    if configuration!=previous["actual_configuration"]:
+        raise ValueError("saved baseline and comparison configurations differ")
+    capture=PrefixCapture(configuration["levels"][-2],grid_side)
+    with np.load(prefix_path,allow_pickle=False) as saved:
+        payload={key:np.array(saved[key],copy=True) for key in saved.files}
+    expected=(1,grid_side,grid_side,2)
+    precision={"float32":np.float32,"float64":np.float64}[configuration["precision"]]
+    for key in ("vertices","best_prefix_vertices","boundary_reference"):
+        if payload[key].shape!=expected or payload[key].dtype!=precision or not np.isfinite(payload[key]).all():
+            raise ValueError(f"invalid saved prefix {key}")
+    if (int(payload["prefix_control_side"])!=capture.prefix_side or
+            str(payload["interpolation"])!=configuration["interpolation"]):
+        raise ValueError("saved prefix control/interpolation mismatch")
+    stride=(grid_side-1)//(capture.prefix_side-1)
+    if not np.array_equal(payload["coarse_vertices"],payload["vertices"][:,::stride,::stride]):
+        raise ValueError("saved prefix old nodes differ from coarse vertices")
+    capture.prefix=torch.from_numpy(payload["vertices"])
+    capture.best_prefix=torch.from_numpy(payload["best_prefix_vertices"])
+    capture.best_prefix_objective=float(payload["best_prefix_objective"])
+    best_value=float(baseline["initial"]["total"])
+    for index,stage in enumerate(baseline["stages"]):
+        if stage["control_side"]<=capture.prefix_side and stage["accepted_full_total"]<best_value:
+            best_value=stage["accepted_full_total"]
+            capture.best_prefix_stage=index
+    if not np.isfinite(capture.best_prefix_objective) or capture.best_prefix_objective!=best_value:
+        raise ValueError("saved best-prefix objective disagrees with baseline prefix selection")
+    prefix_stages=[row for row in baseline["stages"] if row["control_side"]==capture.prefix_side]
+    if not prefix_stages or tuple(prefix_stages[-1]["direction"])!=(0.,1.):
+        raise ValueError("baseline lacks incoming final-stage y prefix")
+    capture.prefix_elapsed=previous["baseline_prefix_elapsed_seconds"]
+    capture.last_elapsed=capture.prefix_elapsed+previous["baseline_suffix_callback_elapsed_seconds"]
+    capture.callback_seconds=previous["baseline_callback_seconds"]
+    capture.prefix_callback_seconds=previous["baseline_prefix_callback_seconds"]
+    return baseline,baseline_path,prefix_path,capture,payload,previous
+
+
 def run(args, *, production=True, solver=None):
-    """Run a fresh baseline once, then the matched physical-coordinate suffix."""
+    """Run a fresh baseline or reuse its saved prefix, then only the suffix."""
     if args.output.suffix!=".json":raise ValueError("comparison output must be a .json path")
     stem=args.output.with_suffix("")
     baseline_path=stem.with_name(stem.name+"_baseline.npz")
@@ -196,15 +245,29 @@ def run(args, *, production=True, solver=None):
         direct_path,direct_path.with_suffix(".json")]
     for path in paths:
         if path.exists():raise FileExistsError(path)
-    source=json.loads(args.report.read_text(encoding="utf-8"))
+    reuse=getattr(args,"reuse_prefix_report",None)
+    if reuse:
+        if getattr(args,"report",None) is not None:raise ValueError("choose report or reuse-prefix-report")
+        load_tick=time.perf_counter()
+        baseline,baseline_path,reused_prefix_path,capture,payload,previous=_load_reused_prefix(reuse,args.grid_side)
+        reused_prefix_load_seconds=time.perf_counter()-load_tick
+        source=baseline
+    else:
+        source=json.loads(args.report.read_text(encoding="utf-8"))
     config=prepare_configuration(source,baseline_path,args.grid_side,production=production)
+    if reuse:
+        if isinstance(config.threads,bool) or not isinstance(config.threads,int) or config.threads<=0:
+            raise ValueError("replay threads must be a positive integer")
+        torch.set_num_threads(config.threads)
     if solver is None:
         from qcopt.neural_bijection.dense.coordinated_fiber_lbfgs import solve_coordinated_fiber_lbfgs
         solver=solve_coordinated_fiber_lbfgs
-    capture=PrefixCapture(config.levels[-2],config.grid_side)
-    baseline_tick=time.perf_counter()
-    baseline=optimize(config,accepted_stage_callback=capture)
-    baseline_call_seconds=time.perf_counter()-baseline_tick
+    baseline_call_seconds=0.
+    if not reuse:
+        capture=PrefixCapture(config.levels[-2],config.grid_side)
+        baseline_tick=time.perf_counter()
+        baseline=optimize(config,accepted_stage_callback=capture)
+        baseline_call_seconds=time.perf_counter()-baseline_tick
     if capture.prefix is None or capture.prefix_elapsed is None or capture.last_elapsed is None:
         raise RuntimeError("baseline did not supply its final penultimate-control y prefix")
     if not baseline["saved_binary_certificate"]["valid"]:
@@ -216,6 +279,10 @@ def run(args, *, production=True, solver=None):
     prepare_tick=time.perf_counter()
     evidence,matrix,offset,metadata=_make_evidence(config,device,dtype)
     reference=identity_vertices(config.grid_side,device=device).to(dtype)
+    if reuse:
+        for key,actual in (("post_affine_matrix",matrix),("post_affine_offset",offset),
+                ("boundary_reference",reference.cpu().numpy())):
+            if not np.array_equal(payload[key],actual):raise ValueError(f"saved prefix {key} differs from current evidence")
     reference_corners=q1_corner_determinants(reference.double())
     current,coarse,transition=reconstruct_transition(capture.prefix,config.levels[-2],
         device=device,dtype=dtype,diagonal=config.interpolation[-2:])
@@ -230,6 +297,30 @@ def run(args, *, production=True, solver=None):
         best=reference.clone()
         best_objective=initial_objective
         selected=dict(kind="initial",stage=None)
+    setup_evaluations=0
+    reuse_metadata={}
+    if reuse:
+        # The archive already stores the initial-vs-prefix winner. Re-evaluate
+        # both it and the initial map on the freshly reconstructed complete E.
+        best=capture.best_prefix.to(device=device,dtype=dtype).clone()
+        if not validate_q1_map(best,reference)["valid"]:raise RuntimeError("invalid saved best prefix")
+        require_nested_fine_margin(best,reference_corners,config.minimum_jacobian,"saved best prefix")
+        with torch.no_grad():
+            best_objective=float(evidence(best)[0])
+            refreshed_initial=float(evidence(reference)[0])
+        if not np.isfinite([best_objective,refreshed_initial]).all():
+            raise RuntimeError("nonfinite reused-prefix setup objective")
+        setup_evaluations=2
+        selected=dict(kind="prefix" if capture.best_prefix_stage is not None else "initial",
+            stage=capture.best_prefix_stage)
+        reuse_metadata=dict(reused_prefix_report=str(reuse),reused_prefix_source=str(reused_prefix_path),
+            reused_prefix_load_seconds=reused_prefix_load_seconds,
+            stored_best_prefix_objective=capture.best_prefix_objective,
+            reevaluated_best_prefix_objective=best_objective,reevaluated_initial_objective=refreshed_initial,
+            best_prefix_objective_difference=best_objective-capture.best_prefix_objective)
+        if refreshed_initial<best_objective:
+            best=reference.clone();best_objective=refreshed_initial
+            selected=dict(kind="initial",stage=None)
     prefix_certificate=_save_map(prefix_path,current,reference,matrix,offset,config.interpolation,
         coarse_vertices=coarse.cpu().numpy(),best_prefix_vertices=best.cpu().numpy(),
         best_prefix_objective=np.asarray(best_objective),
@@ -241,10 +332,11 @@ def run(args, *, production=True, solver=None):
     records=[]
     for direction in ((1.,0.),(0.,1.)):
         stage_tick=time.perf_counter()
+        rescue_options={"tangent_rescue":True} if getattr(args,"tangent_rescue",False) else {}
         result=solver(current,evidence,initial_displacement_rms=_physical_initial_rms(config),
             reference=reference,direction=direction,minimum_jacobian=config.minimum_jacobian,
             theta=.95,fraction_to_boundary=.99,max_gradient_evaluations=30,
-            history_size=5,max_backtracks=6)
+            history_size=5,max_backtracks=6,**rescue_options)
         synchronize()
         stage_seconds=time.perf_counter()-stage_tick
         current=result.best_vertices.detach()
@@ -287,6 +379,8 @@ def run(args, *, production=True, solver=None):
         stop_reasons=[row["stop_reason"] for row in records],
         solver_status=pair_status,objective_evaluation_counts=evaluation_counts,
         initial_displacement_rms=_physical_initial_rms(config),
+        tangent_rescue=getattr(args,"tangent_rescue",False),
+        setup_complete_objective_evaluations=setup_evaluations,**reuse_metadata,
         budget="each coordinate: at most30 gradients including initial; at most6 halvings plus first trial per search; counts are actual",
         selection="minimum complete full-resolution objective over initial, accepted prefix and accepted fiber stages",
         landmarks_used=False,**metadata)
@@ -295,7 +389,7 @@ def run(args, *, production=True, solver=None):
     actual=_plain_configuration(config)
     changes={key:dict(source=source["configuration"].get(key),actual=value)
         for key,value in actual.items() if source["configuration"].get(key)!=value}
-    comparison=dict(source_report=str(args.report),source_configuration=source["configuration"],
+    comparison=dict(source_report=str(baseline_path.with_suffix(".json") if reuse else args.report),source_configuration=source["configuration"],
         actual_configuration=actual,configuration_changes=changes,
         baseline_output=str(baseline_path),fiber_output=str(direct_path),prefix_output=str(prefix_path),
         prefix_control_side=config.levels[-2],final_control_side=config.grid_side,
@@ -309,13 +403,19 @@ def run(args, *, production=True, solver=None):
         baseline_prefix_elapsed_seconds=capture.prefix_elapsed,
         baseline_suffix_callback_elapsed_seconds=capture.last_elapsed-capture.prefix_elapsed,
         baseline_complete_call_seconds=baseline_call_seconds,
+        baseline_executed_this_run=not bool(reuse),
+        historical_baseline_complete_call_seconds=((previous.get("historical_baseline_complete_call_seconds") or
+            previous["baseline_complete_call_seconds"]) if reuse else None),
+        baseline_counts_scope="historical baseline run" if reuse else "baseline executed this run",
+        setup_complete_objective_evaluations=setup_evaluations,
+        tangent_rescue=getattr(args,"tangent_rescue",False),**reuse_metadata,
         baseline_callback_seconds=capture.callback_seconds,
         baseline_prefix_callback_seconds=capture.prefix_callback_seconds,
         fiber_preparation_seconds=preparation_seconds,fiber_suffix_seconds=suffix_seconds,
         baseline_peak_allocated_bytes=baseline["peak_allocated_bytes"],fiber_peak_allocated_bytes=peak,
         baseline_certificate=baseline["saved_binary_certificate"],fiber_certificate=certificate,
         scope="diagnostic optimizer/parameterization comparison, not a neural decoder or generalization test; prefix shared only within this grid",
-        timing_scope="baseline suffix is last callback timestamp minus prefix timestamp, includes intervening callback/cloning overhead and final-grid refinement; direct suffix includes solver, actual-map checks and stage selection; fresh evidence/prefix export setup and final export/certificate are separately excluded; peaks reset after feature setup, baseline peak spans all controls",
+        timing_scope=("baseline prefix/suffix/callback times and peak memory are historical, baseline_complete_call_seconds is zero (no rerun); " if reuse else "")+"baseline suffix is last callback timestamp minus prefix timestamp, includes intervening callback/cloning overhead and final-grid refinement; direct suffix includes solver, actual-map checks and stage selection; fresh evidence/prefix export setup and final export/certificate are separately excluded; peaks reset after feature setup, baseline peak spans all controls",
         gradient_budget="baseline30 Adam gradients plus final trial per coordinate; fiber30 includes initial gradient and forward-only Armijo trials; no claim of equal work",
         landmarks_used=False)
     args.output.write_text(json.dumps(comparison,indent=2)+"\n",encoding="utf-8")
@@ -324,7 +424,11 @@ def run(args, *, production=True, solver=None):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--report",type=Path,required=True)
+    source=parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--report",type=Path)
+    source.add_argument("--reuse-prefix-report",type=Path,
+        help="Existing comparison JSON; load its sibling prefix and baseline artifacts without rerunning baseline")
+    parser.add_argument("--tangent-rescue",action="store_true",help="Enable bounded core-solver tangent rescue")
     parser.add_argument("--output",type=Path,required=True)
     parser.add_argument("--grid-side",type=int,choices=(257,1025),required=True)
     result=run(parser.parse_args())
