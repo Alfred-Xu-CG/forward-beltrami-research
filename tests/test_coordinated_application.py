@@ -184,3 +184,41 @@ def test_tiny_image_continuation_stage_acceptance(tmp_path,interpolation,selecti
         assert report["final"]["total"]<=report["terminal_full_total"]+1e-8
     with np.load(args.output) as archive:
         assert str(archive["interpolation"].item())==interpolation
+
+
+def test_frozen_preprocessing_preserves_original_foreground(tmp_path,monkeypatch):
+    from PIL import Image
+    from tools.coordinated_real_case import load_registration_evidence
+    import tools.coordinated_native_evidence as native
+    image=np.full((16,16),255,dtype=np.uint8)
+    image[3:11,5:13]=100
+    fixed,moving=tmp_path/"fixed.png",tmp_path/"moving.png"
+    Image.fromarray(image).save(fixed);Image.fromarray(image).save(moving)
+    original,_,mask,_=load_registration_evidence(fixed,moving,16,dtype=torch.float64)
+    assert float(mask.sum())==64 and torch.equal(mask,(original>.04).double())
+    calls=[]
+    def frozen(f,m,**kwargs):
+        calls.append((f,m,kwargs))
+        return torch.ones(1,1,16,16),torch.zeros(1,1,16,16),{"test_capture":True}
+    monkeypatch.setattr(native,"load_native_preprocessed_pair",frozen)
+    f,m,native_mask,metadata=load_registration_evidence(fixed,moving,16,
+        preprocessing="native_dhr",dtype=torch.float64)
+    assert torch.equal(native_mask,mask) and f.dtype==m.dtype==torch.float64
+    assert not f.requires_grad and not m.requires_grad
+    assert metadata["native_capture"]["test_capture"] and len(calls)==1
+    assert calls[0][2]==dict(expected_side=16,device="cpu")
+    with pytest.raises(ValueError,match="declare"):
+        load_registration_evidence(fixed,moving,16,preprocessing="undeclared")
+
+
+def test_default_frozen_preprocessing_is_old_evidence(tmp_path):
+    from PIL import Image
+    from tools.coordinated_real_case import load_registration_evidence
+    from tools.digital_q1_real_optimize import _read_gray_thumbnail
+    image=np.random.default_rng(463).integers(20,240,(16,16),dtype=np.uint8)
+    fixed,moving=tmp_path/"fixed.png",tmp_path/"moving.png"
+    Image.fromarray(image).save(fixed);Image.fromarray(image[::-1]).save(moving)
+    f,m,mask,metadata=load_registration_evidence(fixed,moving,16)
+    torch.testing.assert_close(f,_read_gray_thumbnail(fixed,16)[0],rtol=0,atol=0)
+    torch.testing.assert_close(m,_read_gray_thumbnail(moving,16)[0],rtol=0,atol=0)
+    assert torch.equal(mask,(f>.04).float()) and metadata["name"]=="raw_inverted"

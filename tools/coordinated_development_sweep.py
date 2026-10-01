@@ -12,6 +12,7 @@ def main():
     p.add_argument("--cases",nargs="+",default=["histo","lesions","rat_kidney"])
     p.add_argument("--methods",nargs="+",default=["radial","analytic","f1"])
     p.add_argument("--loss",choices=["mind","local_ncc"],required=True)
+    p.add_argument("--preprocessing",choices=("raw_inverted","native_dhr"),default="raw_inverted")
     p.add_argument("--device",default="cuda")
     p.add_argument("--f2-accepted-gain",type=float,default=1.)
     p.add_argument("--strain-weight",type=float,default=.05)
@@ -37,6 +38,7 @@ def main():
                 moving=args.data/(case+"_moving512.png"),affine=args.data/(case+"_initial_affine.npz"),
                 output=args.output/(case+"_"+method+"_"+args.loss+"_edge257.npz"),method=method,
                 loss=args.loss,grid_side=257,image_side=512,image_levels=args.image_levels,levels=[17,33,65,129,257],inner_steps=args.inner_steps,
+                preprocessing=args.preprocessing,
                 cycles=args.base_cycles*(2 if method in ("f1","f2") else 1)*args.budget_multiplier,learning_rate=.004,lr_calibration="edge",patch_cells=8,
                 f2_accepted_gain=args.f2_accepted_gain,
                 regional_cells=32,regional_min_level=args.regional_min_level,

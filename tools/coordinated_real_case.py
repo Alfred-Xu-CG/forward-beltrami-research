@@ -143,6 +143,27 @@ def load_image_matches(path,matrix,offset,*,fixed_path,moving_path,image_side,de
     return matches,metadata
 
 
+def load_registration_evidence(fixed_path,moving_path,image_side,*,preprocessing="raw_inverted",device="cpu",dtype=torch.float32):
+    """Frozen image preprocessing with an ORIGINAL-raster foreground mask.
+
+    Native CLAHE does not redefine the foreground, change coordinates, prewarp
+    the moving image, or access matches/labels. The default is the old evidence.
+    """
+    fixed,_=_read_gray_thumbnail(fixed_path,image_side)
+    moving,_=_read_gray_thumbnail(moving_path,image_side)
+    mask=(fixed>.04).to(dtype=dtype,device=device)
+    metadata=dict(name=preprocessing,mask_source="original inverted grayscale >.04",
+                  original_moving_features_no_affine_prewarp=True)
+    if preprocessing=="native_dhr":
+        from tools.coordinated_native_evidence import load_native_preprocessed_pair
+        fixed,moving,native=load_native_preprocessed_pair(fixed_path,moving_path,
+                                                        expected_side=image_side,device="cpu")
+        metadata["native_capture"]=native
+    elif preprocessing!="raw_inverted":
+        raise ValueError("declare raw_inverted or native_dhr frozen evidence")
+    return fixed.to(device=device,dtype=dtype),moving.to(device=device,dtype=dtype),mask,metadata
+
+
 def optimize(args, accepted_stage_callback=None):
     overall_start = time.perf_counter()
     if args.output.exists() or args.output.with_suffix(".json").exists():
@@ -166,9 +187,9 @@ def optimize(args, accepted_stage_callback=None):
         b = np.asarray(data["post_affine_offset"], dtype=np.float32)
     if a.shape != (2, 2) or b.shape != (2,) or not np.isfinite(a).all() or not np.isfinite(b).all() or np.linalg.det(a.astype(np.float64)) <= 0:
         raise ValueError("finite positive affine required")
-    fixed, _ = _read_gray_thumbnail(args.fixed, args.image_side)
-    moving, _ = _read_gray_thumbnail(args.moving, args.image_side)
-    fixed, moving = fixed.to(device=device, dtype=image_dtype), moving.to(device=device, dtype=image_dtype)
+    fixed,moving,fixed_mask,preprocessing_metadata=load_registration_evidence(
+        args.fixed,args.moving,args.image_side,preprocessing=getattr(args,"preprocessing","raw_inverted"),
+        device=device,dtype=image_dtype)
     reference = identity_vertices(args.grid_side, device=device).to(dtype)
     reference_corners = q1_corner_determinants(reference.double())
     current = reference.clone()
@@ -186,7 +207,7 @@ def optimize(args, accepted_stage_callback=None):
     evidence = Evidence(fixed, moving, torch.from_numpy(a).to(device=device, dtype=dtype),
                         torch.from_numpy(b).to(device=device, dtype=dtype), args.loss,
                         args.strain_weight, args.oob_weight, getattr(args,"shape_weight",0.),
-                        interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight)
+                        fixed_mask=fixed_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight)
     evidence_by_resolution={args.image_side:evidence}
     for image_resolution in sorted(set(image_levels)):
         if image_resolution not in evidence_by_resolution:
@@ -345,6 +366,7 @@ def optimize(args, accepted_stage_callback=None):
                   image_levels=image_levels,
                   output_selection=output_selection,selected_stage=full_best_stage if output_selection=="best_full" else len(stages)-1,
                   image_match_evidence=match_metadata,
+                  image_preprocessing=preprocessing_metadata,
                   terminal_full_total=terminal_full_loss,best_accepted_full_total=full_best_loss,
                   acceptance_objective="complete objective at current image resolution; full-resolution trajectory may not be monotone",
                   oob="zero padding, fixed denominator, explicit quadratic excess penalty; no query dropping")
@@ -363,6 +385,8 @@ def main():
     p.add_argument("--regional-min-level",type=int,default=3,
                    help="Use unwindowed global updates below this coefficient level")
     p.add_argument("--loss", choices=("mind", "local_ncc"), default="mind")
+    p.add_argument("--preprocessing",choices=("raw_inverted","native_dhr"),default="raw_inverted",
+                   help="Frozen native PIL/normalization/grayscale/CLAHE option; mask stays original, not native optimizer equivalence")
     p.add_argument("--interpolation",choices=("q1","p1_ac","p1_bd"),default="q1")
     p.add_argument("--grid-side", type=int, default=257)
     p.add_argument("--image-side", type=int, default=512)

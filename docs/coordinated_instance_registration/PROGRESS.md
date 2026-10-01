@@ -369,3 +369,60 @@ real-data success. Next examine EXACTnative preprocessing/pyramid versus raw-NCC
 approximation, and source-compatible P1 layer scaling. No more adjacent patch-size
 or safety-coefficient trials. Focused affected milestone suite103tests passed; existing
 legacy test archive is not repeatedly rerun. Goal remains active until real24h window.
+
+## T+4h: native residual regularization and isolated frozen preprocessing
+
+Research question: does weak residual regularization or raster preprocessing
+explain the real/known transfer gap? Native installed source was traced independently:
+affine-prewarp source, optimize ZERO-initialized residual at each pyramid level,
+regularize that residual, then compose with frozen affine AFTER optimization.
+It does NOT regularize the total affine-composed field. For the SAME physical
+affine residual r(q)=Cq+t, native diffusion(2r)=||C||_F^2, our nodal strain
+=.5||C||_F^2. Thus native alpha1.5 corresponds to lambda3 on this fixture.
+An earlier factor2*(S/(S-1))^2 compared the same ARRAY reinterpreted on
+different coordinate grids; it is NOT the same physical-field calibration.
+The independent nontrivial-affine fixture records .0046 residual, .00498853
+A-metric increment, and .09014053 total-field diffusion, distinguishing them.
+One paired lambda.05->3 intervention is running on known and real matrices.
+Different quadrature/boundary and image objectives still preclude equivalence.
+
+Frozen native PIL/normalization/grayscale/CLAHE extraction now calls the actual
+installed loader and preprocessing function. Independent pipeline capture is
+bit-exact on L/RGB fixtures and a real RGB512 pair; focused helper tests6pass.
+Sigma.1 gives kernel1 at ratio1: this is EXACT identity, not a meaningful blur.
+Undefined constant-channel normalization and unsupported RGBA are reported,
+not repaired. A separate preprocessing option preserves the ORIGINAL inverted
+grayscale foreground mask and original moving coordinates. Default evidence is
+unchanged. Fixed matches, raw posthoc raster errors and all manual landmarks
+remain unchanged. It does not claim native NCC/pyramid/free-boundary equivalence.
+Falsifier: preprocessing/regularization yields worse or unchanged held-out
+correspondence despite decreasing its own objective; save that negative result.
+Native raster variant will not be combined silently with new geometry or masks.
+
+### First calibrated-prior results (development, not independent confirmation)
+
+All settings are the previous stage30/300-gradient MIND+rawSG .1 matrix, changing
+ONLY strain weight .05->3. Actual P1(ac) real outputs, mixed precision, best-full
+image-only selection, fixed boundary and ALL evaluation landmarks are retained.
+
+| Specimen | Radial mean .05->3 | Analytic mean .05->3 | F1 mean .05->3 | F2 mean .05->3 | Native DHR mean |
+|---|---|---|---|---|---|
+| HistoReg | 1.849->.878 | 1.587->.801 | 1.179->.815 | 1.182->.796 | .943 |
+| Lung lesion | 5.423->3.769 | 5.082->3.689 | 4.453->4.000 | 4.518->3.704 | 4.347 |
+| Rat kidney | 4.990->2.506 | 5.259->2.450 | 3.698->4.073 | 3.388->2.574 | 3.432 |
+
+Analytic p90=1.585/7.133/5.007px, optimizer6.39/6.68/6.54s, peak239--243MB.
+All12real runs300gradients/zero failures, allactual exported certificates valid.
+Native takes about2s and is a DIFFERENTobjective/nohardcertificate. This is a
+promising DEVELOPMENT result, not patient generalization or speed superiority.
+F1 kidney becomes worse; don't turn a method-dependent prior effect into a
+universal statement. The coefficient was derived BEFORE these labels were scored.
+
+Known-texture Q1 query RMSE exposes bias: analytic shear .824->.533px,
+rotation1.209->7.719px, coarse-fine .717->.769px. Radial2.886->.915,
+1.989->7.853,.983->1.354. At truth the strong-prior rotation objective is
+GREATER than the fitted wrong map; this is an explicit accuracy/prior conflict,
+not inability to decode a legal rotation. All12knownmaps remain legal/300gradients.
+Keep both objectives; don't select a different lambda for each evaluated target.
+Next isolated native-preprocessing MIND matrix uses lambda3 for allmethods/cases;
+only frozen features change, ORIGINALmask and rawSG stay unchanged.

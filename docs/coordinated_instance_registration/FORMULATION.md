@@ -317,3 +317,70 @@ matches are accurate even where their motion disagrees with one global similarit
 The prior filtered probe remains a distinct comparison, not silently overwritten.
 Original affine metadata, raster names/size and static-domain counts are recorded;
 basename comparisons permit relocation but are not a proof of image-content identity.
+
+## 10. Physically calibrated residual smoothness, not total-field smoothness
+
+Write the residual map as g(q)=q+r(q). The complete sampling map is A g(q)+b.
+Our square nodal grid has endpoint spacing h=1/(N-1). Define
+
+    E_strain(r)=.5[mean_edges ||(r_{i,j+1}-r_{i,j})/h||^2
+                      + mean_edges ||(r_{i+1,j}-r_{i,j})/h||^2].
+
+This expression penalizes the DISPLACEMENT gradient, not the map gradient.
+Translations have zero energy, rotations generally do not. Native DHR's
+executed optimizer first bicubic-prewarps the source with the frozen affine,
+optimizes a zero-initialized residual field, regularizes that residual at every
+image level, and only afterward composes it with the affine. Its normalized
+sampling coordinates are [-1,1], so its displacement is d=2r. At pixel-center
+spacing1/S its diffusion expression is
+
+    D_S(d)=.25[mean ||S(d_{i,j+1}-d_{i,j})||^2
+                    +mean ||S(d_{i+1,j}-d_{i,j})||^2].
+
+For the SAME physical affine residual r(q)=Cq+t on their respective grids,
+E_strain=.5||C||_F^2 and D_S(2r)=||C||_F^2, exactly and independently of
+translation or grid size. Thus its coefficient1.5 motivates ONE test of our
+coefficient3, rather than the previous.05. Nonaffine fields have different
+finite-difference quadratures, image-level grids and boundary families; this
+is a units-calibration test, NOT equality of the full optimizers/objectives.
+Reinterpreting the same array on an endpoint grid versus a pixel-center grid
+would introduce an S/(S-1) factor, but that compares DIFFERENT physical fields.
+Neither A nor b enters this residual regularizer. Replacing r by A r or
+(A-I)q+A r+b changes the energy and would not reproduce the native code path.
+Large coefficients can bias away from a known legal target; numerical image
+loss improvement cannot override that observed correspondence degradation.
+
+## 11. Exact nested P1 refinement
+
+Fix one global source diagonal, ac or bd, on every rectangular cell. Uniformly
+divide each old horizontal and vertical interval into m equal pieces, with
+positive integer m, and keep the SAME diagonal choice in each new cell. Set
+each new mapped vertex to the OLD P1 value at its source location, keeping old
+vertices unchanged. The fine triangulation refines every old triangle, so its
+P1 map is EXACTLY the old function in real arithmetic, not a resampled
+approximation. This statement is false for general Q1 interpolation or an
+unrelated changed diagonal. For ac, the midpoint of a cell is (a+c)/2; for bd
+it is (b+d)/2, generally NOT (a+b+c+d)/4.
+
+The stronger four-corner digital condition is also inherited in real arithmetic.
+Use local source coordinates in[0,1]^2. A fine cell wholly inside an old triangle
+is mapped by its affine Jacobian, so all four normalized determinants equal that
+parent face's positive determinant. A cell straddling ac starts at(s,s), has
+width1/m, and its mapped vertices in order are
+
+    T+(a,b,c,d)/m,  T=(1-s-1/m)a+s c.
+
+A cell straddling bd starts at(u,v), u+v=1-1/m, and has the same form with
+T=u b+v d. Such a cell is a translated homothetic copy of the old mapped quad:
+its four determinants are old determinants/m^2; its reference determinants
+are also divided by m^2. Consequently the minimum normalized four-corner
+determinant is preserved (each old cell has a straddling fine cell).
+Global homeomorphism additionally needs the old map's valid boundary/global
+hypotheses, which refinement preserves by representing the same function.
+
+Rounded coordinates are a separate issue. A positive one-ULP-height quad near
+ordinate.5 has an unrepresentable midpoint and can become degenerate after
+float64 refinement. Therefore every exported fine map still receives fresh
+actual-corner/boundary checks; the real-arithmetic theorem is not a floating-
+point certificate. General257maps cannot be exactly coarsened to129nodes;
+our same-function scaling benchmark starts at257 and refines to513/1025.

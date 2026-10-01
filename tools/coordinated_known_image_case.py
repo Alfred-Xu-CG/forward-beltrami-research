@@ -298,7 +298,7 @@ def annotate_ncc_truth_floor(path):
 
 
 def run(args,manifest):
-    from tools.coordinated_real_case import Evidence,optimize,corner_symmetric_dirichlet,load_image_matches
+    from tools.coordinated_real_case import Evidence,optimize,corner_symmetric_dirichlet,load_image_matches,load_registration_evidence
     from tools.digital_q1_real_optimize import _read_gray_thumbnail
     if args.output.exists():
         raise FileExistsError(args.output)
@@ -317,6 +317,9 @@ def run(args,manifest):
         fixed=fixed.double()
         with np.load(folder/case["target_archive"]) as data:
             target=torch.from_numpy(data["vertices"])
+        evidence_fixed,evidence_moving,evidence_mask,preprocessing_metadata=load_registration_evidence(
+            folder/case["fixed"],folder/manifest["moving"],args.image_side,
+            preprocessing=getattr(args,"preprocessing","raw_inverted"),dtype=torch.float64)
         matches,match_path=None,None
         if getattr(args,"match_weight",0.):
             if getattr(args,"matches_dir",None) is None:
@@ -325,9 +328,9 @@ def run(args,manifest):
             matches,_=load_image_matches(match_path,np.eye(2,dtype=np.float32),np.zeros(2,dtype=np.float32),
                 fixed_path=folder/case["fixed"],moving_path=folder/manifest["moving"],image_side=args.image_side,
                 device=torch.device("cpu"),dtype=torch.float64,robust_scale=args.match_robust_scale)
-        evidence=Evidence(fixed,moving,torch.eye(2,dtype=torch.float64),
+        evidence=Evidence(evidence_fixed,evidence_moving,torch.eye(2,dtype=torch.float64),
                           torch.zeros(2,dtype=torch.float64),args.loss,args.strain_weight,1.,
-                          shape_weight=args.shape_weight,matches=matches,match_weight=getattr(args,"match_weight",0.))
+                          shape_weight=args.shape_weight,fixed_mask=evidence_mask,matches=matches,match_weight=getattr(args,"match_weight",0.))
         truth_total,truth_parts=evidence(target)
         initial=image_metrics(fixed,moving,reference)
         for method in args.methods:
@@ -344,6 +347,7 @@ def run(args,manifest):
                 strain_weight=args.strain_weight,oob_weight=1.,minimum_jacobian=args.minimum_jacobian,
                 precision="float64",image_precision="float64",shape_weight=args.shape_weight,
                 image_levels=args.image_levels,device=args.device,threads=args.threads)
+            opt.preprocessing=getattr(args,"preprocessing","raw_inverted")
             opt.matches=match_path;opt.match_weight=getattr(args,"match_weight",0.)
             opt.match_robust_scale=getattr(args,"match_robust_scale",8.)
             snapshots=[]
@@ -387,6 +391,7 @@ def run(args,manifest):
                 observer_overhead_included_in_optimize_time=bool(args.record_stages),
                 saved_binary_certificate=report["saved_binary_certificate"],output_map=output.name,
                 landmarks_or_target_used_by_optimizer=False)
+            row["image_preprocessing"]=preprocessing_metadata
             rows.append(row)
             print(json.dumps(row),flush=True)
     payload=dict(question=__doc__,configuration={k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()},
@@ -428,6 +433,7 @@ def main():
     p.add_argument("--match-robust-scale",type=float,default=8.)
     p.add_argument("--minimum-jacobian",type=float,default=.001)
     p.add_argument("--loss",choices=("mind","local_ncc"),default="mind")
+    p.add_argument("--preprocessing",choices=("raw_inverted","native_dhr"),default="raw_inverted")
     p.add_argument("--device",default="cpu")
     p.add_argument("--threads",type=int,default=2)
     args=p.parse_args()
