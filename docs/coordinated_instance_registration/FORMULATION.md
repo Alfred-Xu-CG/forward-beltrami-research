@@ -1660,3 +1660,155 @@ prior art, not a new registration principle; see
 [Pierre et al.2016, finite-element digital image correlation and quadrature](https://doi.org/10.1016/j.optlaseng.2015.07.008).
 Our current diagnostic concerns a specific source-grid/pixel-center alignment,
 not a reproduction or performance comparison with that paper.
+
+## 34. Controlled image-term quadrature experiment
+
+This experiment is proposed after the negative physical-fiber result. It does
+not combine that optimizer with a new loss. It uses the original analytic
+scalar latent decoder and Adam, changing only how its IMAGE discrepancy is
+sampled at the final dense stage. Its purpose is to test practical relevance
+of Section33, not assume that source-operator conditioning determines anatomy.
+
+### 34.1 Original observations and proposed observations
+
+Let the original fixed and moving rasters have W columns and H rows. Their
+descriptor tensors Phi_f and Phi_m are computed ONCE by the same eight-offset
+MIND-like procedure on those rasters. Each tensor entry is a vector in R^8
+defined at its original pixel center. Write tilde-Phi for the bilinear
+interpolant of that tensor with zero padding. This is not a descriptor
+recomputed from an enlarged image, nor a learned replacement feature.
+
+Pixel p=(i,j) has its original fixed tissue weight m_p in[0,1]. That weight is
+constant throughout optimization. D=sum_p m_p>0. The original source query is
+x_p=((j+.5)/W,(i+.5)/H). The full fixed-to-moving map is
+F_Y(x)=A*f_Y(x)+b, with the same frozen positive affine and P1(ac) residual.
+If ell(v,w)=(1/8)sum_(k=1)^8 |v_k-w_k|, the original image term is
+
+    E_image,1(Y)=sum_p m_p*ell(Phi_f[p],tilde-Phi_m(F_Y(x_p))) / D.
+
+The proposed source queries are x_(p,a,b)=((j+a)/W,(i+b)/H), where
+a,b are each1/4 or3/4. The image term becomes
+
+    E_image,4(Y)=sum_p m_p*sum_(a,b) ell(tilde-Phi_f(x_(p,a,b)),
+                    tilde-Phi_m(F_Y(x_(p,a,b)))) / (4*D).
+
+Each of a pixel's four observations gets the SAME original m_p; masks are not
+interpolated or changed according to overlap. Zero padding is used for BOTH
+descriptor interpolants, so identical feature tensors queried at identity
+give zero discrepancy, including canvas edges. PyTorch sampling uses
+align_corners=False and grid coordinate2*x-1: its stored entries are pixel
+centers, not mesh endpoint samples. Vertex-to-source-query interpolation is
+the separate FrozenP1Evaluator on the declared material triangles.
+
+This is a composite SUBCELL MIDPOINT rule, not an asserted exact integral or
+a Gauss quadrature theorem. It introduces no new observed tissue information.
+Its descriptor interpolation changes the objective's discretization, and can
+also change bias or smoothness. More queries alone are not better evidence.
+
+### 34.2 Exactly what stays unchanged
+
+Let P(Y) denote the unchanged ARAP, shape and machine-point regularization.
+The two complete functionals in the comparison are
+
+    E1(Y)=E_image,1(Y)+E_oob,center(Y)+P(Y),
+    E4(Y)=E_image,4(Y)+E_oob,center(Y)+P(Y).
+
+In particular, the ORIGINAL CENTER-based out-of-bounds penalty stays identical.
+It is not moved to quarter queries in this ablation. Quarter-query outside
+fractions can be diagnostic only. The regularity weights remain ARAP3 and
+corner symmetric-Dirichlet1e-4; machine-match weight.1 uses the same frozen
+points/confidences and pseudo-Huber16native pixels. Boundary, affine, four
+digital corner constraints, margin.001 and analytic theta.95 are unchanged.
+No latent Hessian preconditioner or new inverse solve is introduced.
+
+Each arm starts from the identical saved129-control prefix and optimizes
+only final1025-control x/y stages. Each stage starts zero scalar interior
+coefficients, fixes its accepted anchor and uses original Adam30updates plus
+the last evaluated candidate. Nominal physical coefficient rate is
+.004*16/1024=6.25e-5. The two loss arms therefore change neither the map
+decoder nor the optimizer/nominal gradient budget. Four image samples versus
+one still cost different forward/backward work; this is reported explicitly.
+
+The common pre-suffix candidate family is identity, the stored E1-best prefix
+and the incoming129 prefix. Missing older prefix states are not invented as
+E4-optimal candidates. Each arm adds its own accepted x/y candidates and
+selects by its OWN complete functional over that declared family, never by
+evaluation landmarks. After export, evaluate BOTH final maps under BOTH E1
+and E4. Only within-functional differences are interpretable as loss gains;
+an E4 value must not be compared numerically to an E1 value as one objective.
+
+### 34.3 Evidence required before conclusions
+
+Tiny checks must independently reproduce the four-point sum, verify full-Y
+derivatives away from interpolation/absolute-value knots, and show unchanged
+center-based OOB, priors and machine-point terms. Same-feature identity,
+fixed denominators, invalid configurations and actual output failures remain
+explicit. The first real comparison is ONLY H/K1025 from the saved prefixes,
+with all77/69 manual IDs evaluated after outputs exist. No upstream rerun,
+new network, GT deformation, evaluation-point fit or enlarged input image.
+
+Record setup and resident caches, image interpolation counts, actual objective
+and gradient counts, topology checks, cross-objective values, elapsed suffix
+time and allocated peak. Cold single-run timings cannot establish a precise
+speed ratio. If accuracy, tails or time-to-accuracy are adverse, preserve the
+negative result and stop this variant; the source-Gram theorem is not a reason
+to keep tuning it. An improvement on these viewed specimens would remain
+development evidence, not independent patient generalization or official SOTA.
+
+### 34.4 Actual paired dense result and decision
+
+Both original1024raster/1025control cases completed. Each arm made60gradient
+updates and73complete-objective evaluations; two additional cross evaluations
+per arm give150completeE evaluations per case. There were no failed trials.
+Both selected the accepted y-stage map, never a landmark-selected iterate.
+All saved prefix/center/quarter maps have exactfixedboundaries and positive
+four-corner certificates; independent actual-array review is recorded separately.
+
+| Case | E1 map mean512eqTRE | E4 map mean512eqTRE | E1 map p90 | E4 map p90 | E1 suffix s | E4 suffix s |
+|---|---:|---:|---:|---:|---:|---:|
+| H, all77IDs | .7817015492 | .7831290582 | 1.5943500880 | 1.5796892244 | 3.3747 | 4.2300 |
+| K, all69IDs | 2.2878981413 | 2.2926002741 | 4.2550082692 | 4.2702678071 | 3.4154 | 4.2860 |
+
+TRE is Euclidean landmark error, measured first on1024canvas then multiplied
+by512/1024. These are not officialmicrometre/rTRE scores. K fixed-only IDs70/71
+remain disclosed; neither shared-ID denominator is reduced. Means worsen in
+both cases; H p90 improves and K p90 worsens. Tail and mean are not interchangeable.
+
+The 2x2 cross-functional comparisons are essential:
+
+| Case | E1(center map) | E1(quarter map) | E4(center map) | E4(quarter map) |
+|---|---:|---:|---:|---:|
+| H | .1757646105 | .1763116963 | .1675794921 | .1672776439 |
+| K | .2281917408 | .2293928716 | .2162816450 | .2158488187 |
+
+Thus E4 improves its OWN functional and worsens E1. One cannot compare the
+smaller E4 numerical scale with E1 as if the losses were the same. The new maps
+have less corner symmetric-Dirichlet distortion (.0298623->.0213853 H,
+.0733454->.0506143 K); minimum trial scaling increases (.1131->.1724 H,
+.0806->.1229 K). Even these better optimization/geometry diagnostics do not
+establish improved anatomy.
+
+Independent actual-map minimum q/q_ref is.006902->.016084 for H and
+.003750->.009489 for K. Bothcenter outputs reproduce the previous center
+baseline BITWISE; bothsourceprefixes preserve all129oldnodes exactly. Literal
+independent AC/frame calculations reproduce every landmark error within
+1.14e-13pixel512. More positive area clearance still does not imply anatomy.
+
+Additional quarter-cache storage is671088640bytes (640MiB), shared by neither
+trial nor selection: two intentionally separate wrapper roles each own four
+immutable quarter caches. Both are resident before BOTH arms for this paired
+experiment. Absolute CUDA allocated peaks are2752487424bytes for E1 and
+3020957696/3020924416bytes for E4 H/K; incremental peaks over reported resident
+memory are1850296832bytes versus2101727744/2101694464bytes. These are NOT peaks
+of an isolated old center-only application, nor total physical GPU consumption.
+Setup/cross/export are excluded from suffix times and reported separately;
+the center arm runs first, so no exact warmed speed ratio is claimed.
+
+Each arm has75evaluations including its two cross calls. Moving descriptor
+interpolation equivalents are75for E1 and300for E4; quarterfixed setup uses
+eight interpolations. CenterOOB map queries do not sample moving descriptors.
+The extra queries add arithmetic, not observed tissue information.
+
+Decision: retain the original center functional as the mainline. End this
+quadrature variant without a parameter/feature/preconditioner sweep. Section33
+remains a valid SOURCE-OPERATOR result, but is not a practical anatomy theorem.

@@ -1535,3 +1535,131 @@ UNWEIGHTED source evaluation, NOT full raster/MIND/mask/ARAP/shape/SG Hessian;
 positive regularizers and image gradients change it. Do not infer anatomical
 bottleneck, exact latent nullmode, or benefit of denser image quadrature from
 this diagnostic alone. No registration objective or output safety changed.
+
+Diagnostic8focusedtests pass4.16s; actualdyadic17/65/257/1025 evaluator probes
+have0midpointerror. IndependentAstra verifies quarterlocalGram eigenvalues
+((3-sqrt5)/4,1/4,1/4,(3+sqrt5)/4), and globalfixedboundary condition<=
+(7+3sqrt5)/2=6.854101966 independentgrid. Masks/imagegradients/priors remain
+outside this bound. Code+compactresults and tangentnegative milestone pushed
+as d568668; no giant Gram was constructed atmain resolution.
+
+### T+11.5h research card: one image quadrature ablation, original rasters
+
+Question: does weak source observation atcenterqueries materially limit the
+existing dense analytic-Adam suffix? Retirephysicalfiberperformance extension;
+do not combine its chart/Hmetric with this next intervention. Use original
+analyticlatentAdam, same saved129H/K prefixes, final1025control/1024raster,
+same30gradients+lasttrial percoordinate and nominaledgephysicalLR6.25e-5.
+ONLY change MIND-transport IMAGE term to4quarter-position sourcequeries in
+eachoriginalpixel; descriptorfields computedonce on ORIGINAL1024rasters,
+fixed/movingdescriptorvalues bothbilinearlysampled withzero padding and
+align_corners=False. Eachfourquery inherits the ORIGINAL pixel's fixedmask
+weight, denominator4*sum(mask). No maskinterpolation/adaptiveoverlap/dropped
+points; no fabricatedextraimageinformation or descriptor recomputation.
+
+Keep ORIGINAL CENTER-based OOB penalty exactly unchanged, plus ARAP3,
+shape1e-4,frozenmachinepoints. Additionalquarteroutsidefraction may be a
+diagnostic only. Bothobjectivearms share candidateprefixfamily(initial,
+storedE1-bestprefix,incoming129prefix) and acceptedx/y. Selection uses each
+arm's OWNcompleteobjective, never landmarks. Cross-evaluate BOTHoutputs
+under E1 and E4; rawtotals across objectives cannot establish improvement.
+No claim that the sourceGram bounds transfer to fullE4Hessian.
+
+Smallestdecisive tests: tiny literal4quadrature reference/full-Y VJP FD away
+fromknots; identitysamefeatures, oldcenterOOB/priors/matches exactlyretained,
+staticmaskdenominator/nonfinite/inputguards. Then pairedH/K dense suffixes
+from SAMEsavedprefixes, no upstream rerun, all77/69labels scoredONLYafter
+exports. Count imageinterpolations4vs1 (pluscenterOOB mapquery), setupmemory,
+grads/forwards/checks/crossE/timing/certs. No new feature/kernelparameters.
+Falsifiers: excessivecost/peak, no objective/anatomygain, adverse tails or
+actualtopologyfailure. A negative result ends this quadraturevariant; no
+newfeaturesearch/preconditioner based solelyonsourceGram. Primarypriorart:
+Pierré etal2016FE-DIC quadrature DOI10.1016/j.optlaseng.2015.07.008;
+finiteelementquadrature is established, not a proposed novelty.
+
+Independent Astra review and root42focusedtests passed before the real jobs.
+The first two GPU starts stopped BEFORE optimization/export: the new input
+guard compared unindexed cuda to the actual cuda:0 tensor device as unequal.
+Device-only normalization now resolves current CUDA index and still rejects
+explicit mismatched indices; finite/immutable/dtype guards are unchanged.
+Root rerun43pass/1CUDAfixture skip8.89s; Astra separately approves the fix.
+Failure logs t117 are retained. Standalone arm reports now explicitly identify
+E1/E4, rather than inheriting an ambiguous configuration.loss='mind'.
+
+### T+11.8h research card: predeclared all20 known-specimen direction coverage
+
+Question: do current coordinated-instance gains survive stain/direction changes,
+or do the selected three development pairs hide adverse tails? This is a broader
+DEVELOPMENT stress test, not an independent-patient confirmation. One existing
+lung-lesion3 specimen has five stains and exactly20 ordered distinct pairs;
+all20 labels were viewed in earlier work. Keep every pair/failure in the cohort.
+Existing original512canvases, image-only positive affines (det.838--1.184), and
+native frame layouts are available. Do not call these20patients or blind tests.
+
+Exact intervention: NO new geometry/optimizer/loss. Freeze current257control,
+P1ac/MINDtransport/ARAP3/shape1e-4/match.1/edgeLR.004/300gradient recipe,
+identity residual plus the SAME saved image-only affine for analytic/F2/nativeDHR.
+Analytic1cycle30steps per scalar direction, F2two vectorcycles30steps, same
+five17..257coefficient levels and32..512imagecontinuation, mixedprecision.
+F2/nativeDHR are controls, not relabelled same-runtime/functional algorithms.
+NativeDHR keeps its existing nativeobjective/preprocessing; export is not repaired.
+
+Existing all20 aligned-match archives contain selected RANSAC inliers WITHOUT
+confidence or raw assignments. Therefore they cannot silently stand in for the
+current raw-confidence evidence. Use20passes of the ALREADY existing frozen
+image matcher and its current raw-record provenance, with no matcher training,
+new filtering, invented confidence or anatomical labels. Preparation/setup cost
+is separate and counted. Existing positive affines are reused, not refitted.
+
+Smallest decisive test: tiny wrapper/case-count/shared-affine/provenance guards,
+known independent P1/native-field/frame scoring fixtures; then exactly20pairs
+on idle remoteGPU, nominal15--30minute budget, no nearby parameter sweeps.
+All80sharedIDs/direction scored ONLY after prediction exports, using original
+annotation scale conversion. Report equal-direction mean, p90/max, worse-than-
+affine directions, failures/topology, per-direction time/allocatedpeak and setup.
+Never pool1600landmarks as1600independent subjects. Failure counts remain explicit;
+successful-only summaries, if shown, cannot replace denominator20 disclosure.
+Decisionchanged: robustness of currentinstance gains, not architecture selection
+by labels or a formalSOTA claim. No second algorithmic alternative is opened.
+
+### T+11.9h actual quadrature result: no practical transfer
+
+GPU6tinydevicecheckpassed (same losses, maxfullYgrad atomic-scatter difference
+1.39e-17, NaNfieldsstillrejected); remotevenvlacks pytest, no install attempted.
+RootCPU43pass/1CUDA skip; separateAstrafixreviewapproved. Afterfreshidle6/7
+inventory, pairedH/K1025 jobs t118finished. Allarms60gradients/73completeE,
+zero failedtrials, y-stage selectedby OWNfullE;150E/case includingcross4.
+
+| Case | Center mean512eqTRE | Quarter mean | Center p90 | Quarter p90 | Center suffix s | Quarter suffix s |
+|---|---:|---:|---:|---:|---:|---:|
+| H77 | .7817015492 | .7831290582 | 1.5943500880 | 1.5796892244 | 3.3747 | 4.2300 |
+| K69 | 2.2878981413 | 2.2926002741 | 4.2550082692 | 4.2702678071 | 3.4154 | 4.2860 |
+
+Quartermaps improveE4(.1675794921->.1672776439 H,
+.2162816450->.2158488187 K) and worsenE1(.1757646105->.1763116963 H,
+.2281917408->.2293928716 K). Thus smaller rawE4 is NOT an E1 improvement.
+Meansadverseboth/tailsmixed; moregradientsampling is not bettercorrespondence.
+Shapeandminscale improve, but anatomydoesnot. Addedquartercaches640MiB;
+allpairedcachesresidentbeforeBOTHarms. Absolutepeakscenter2752487424bytes,
+quarter3020957696H/3020924416K; incremental1850296832versus~2101727744bytes.
+No historical/isolation/warmratio claim. Eacharm75E inclcross ⇒75vs300moving
+descriptorinterpolationequivalents,8fixedsetupinterpolations. Binaryactual
+certsvalid; independentarray/IDreviewpending. FORMULATION34 containsfullscope.
+
+Decision: STOPquadraturevariant, keeporiginalcenterfunctional. Do not turn
+sourceGram theorem into fullimage/anatomyclaim or rescuewithnearbyparameters.
+All20fixedrecipe DEVELOPMENT coverage is now the next executable test; no new
+geometry/optimizer/matchertraining and no independentpatient claim.
+
+Independent Astra actual-array review completes:6prefix/center/quarter maps,
+4,194,304cornerrows EACH (25,165,824total),0nonpositive/nonfinite, allnormalized
+corners>.001, exactboundary andpositivecorrectaffines. BothprefixesBITIDENTICAL
+t109prefixes and129oldnodes; bothcentermapsBITIDENTICALt109originalbaseline.
+SeparateCSV/frame+literalAC calculations (no productionmap/scorer calls) agree
+with ALL77/69ID scores within1.14e-13pixel512. Thus the negativeanatomyresult
+is not a sampler/frame/export comparison bug. Criticalclaims checked separately.
+
+Root finalaffected quadrature/sampler/nestedpriors/stagecache suite:
+108passed/1localCUDAfixture skip9.21s. GPUalias smoke was separately executed
+on the actual remoteA6000. Code,pairedcomplete reports andall-IDscores form
+the milestone; largeactualnpz/maps andfailure/processlogs remain preservedonD.
