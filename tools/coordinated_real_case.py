@@ -255,6 +255,16 @@ def optimize(args, accepted_stage_callback=None):
     if coordinate_mode not in ("alternating","joint") or joint_backend not in ("ordinary","cached_manual"):
         raise ValueError("declare alternating/joint coordinates and ordinary/cached_manual joint backend")
     joint=coordinate_mode=="joint"
+    fine_patch_cells=getattr(args,"fine_patch_cells",0)
+    fine_patch_backend=getattr(args,"fine_patch_backend","ordinary")
+    if fine_patch_backend not in ("ordinary","manual"):
+        raise ValueError("fine_patch_backend must be ordinary or manual")
+    if fine_patch_backend=="manual" and not fine_patch_cells:
+        raise ValueError("manual fine_patch_backend requires active fine_patch_cells")
+    if (isinstance(fine_patch_cells,bool) or not isinstance(fine_patch_cells,int) or fine_patch_cells<0 or
+            (fine_patch_cells and (fine_patch_cells<2 or fine_patch_cells%2 or
+             args.grid_side-1<2*fine_patch_cells or args.method not in ("radial","analytic") or joint))):
+        raise ValueError("fine_patch_cells needs even P>=2, at least2P gridcells, and alternating global radial/analytic")
     filter_steps=getattr(args,"proposal_filter_steps",0)
     filter_min_level=getattr(args,"proposal_filter_min_level",129)
     if (isinstance(filter_steps,bool) or not isinstance(filter_steps,int) or filter_steps<0 or
@@ -348,6 +358,7 @@ def optimize(args, accepted_stage_callback=None):
         torch.cuda.reset_peak_memory_stats(device)
     stages, trace, failures, forward_seconds, backward_seconds = [], [], [], [], []
     evaluations, gradient_steps, failed_trials = 0, 0, 0
+    coordinated_substeps=0
     start = time.perf_counter()
     if nested:
         require_nested_fine_margin(materialize(current),reference_corners,args.minimum_jacobian,"initial anchor")
@@ -404,7 +415,13 @@ def optimize(args, accepted_stage_callback=None):
                         coverage = f2_coverage(layer,args.grid_side,dtype)
                 else:
                     mode = "analytic" if "analytic" in args.method else "radial"
-                    if geometry_backend=="stage_cache":
+                    fine_patch_active=bool(fine_patch_cells and level==args.levels[-1])
+                    if fine_patch_active:
+                        from qcopt.neural_bijection.dense.coordinated_patch_cascade import CoordinatedPatchCascade
+                        layer=CoordinatedPatchCascade(control_side,patch_cells=fine_patch_cells,
+                            direction=direction,mode=mode,minimum_jacobian=args.minimum_jacobian,theta=.95,
+                            backward_backend=fine_patch_backend).to(device)
+                    elif geometry_backend=="stage_cache":
                         from qcopt.neural_bijection.dense.coordinated_stage_cache import FrozenAnchorCoordinatedUpdate
                         layer=FrozenAnchorCoordinatedUpdate(anchor,direction=direction,mode=mode,
                             minimum_jacobian=args.minimum_jacobian,theta=.95)
@@ -454,7 +471,10 @@ def optimize(args, accepted_stage_callback=None):
                         diagnostics = dict(margin=float(margin.detach()))
                     else:
                         proposal = interpolate_proposal(coarse[:, 0], (control_side, control_side))
-                        if regional_active and args.method.startswith("regional_"):
+                        if fine_patch_active:
+                            result=layer(anchor,proposal,reference=control_reference,validate=False)
+                            scales,gauges=result.patch_scales,result.patch_gauges
+                        elif regional_active and args.method.startswith("regional_"):
                             result=regional(anchor,proposal,reference=reference,validate=False)
                             scales,gauges=result.patch_scales,result.patch_gauges
                         else:
@@ -467,6 +487,10 @@ def optimize(args, accepted_stage_callback=None):
                         diagnostics = dict(scale=float(scales.detach().min()),mean_scale=float(scales.detach().mean()),
                                            gauge=float(gauges.detach().max()),
                                            margin=float(result.normalized_margin_min.detach().min()))
+                        if fine_patch_active:
+                            diagnostics.update(intermediate_margin=float(result.pass_margin_min.detach().min()),
+                                intermediate_margins_finite=bool(torch.isfinite(result.pass_margin_min).all()),
+                                geometry_pass_count=result.geometry_pass_count)
                     if args.method in ("radial","analytic"):
                         with torch.no_grad():
                             diagnostics.update(proposal_filter_steps=applied_filter_steps,
@@ -482,11 +506,14 @@ def optimize(args, accepted_stage_callback=None):
                                     else stage_evidence(fine_candidate))
                     synchronize(); forward_seconds.append(time.perf_counter()-tick)
                     evaluations += 1
+                    if args.method in ("radial","analytic"):
+                        coordinated_substeps+=2 if joint else (4 if fine_patch_cells and level==args.levels[-1] else 1)
                     value = float(total.detach())
                     legal = bool(torch.isfinite(fine_candidate).all())
-                    legal = legal and diagnostics["margin"] > 0
-                    if joint:
-                        legal=legal and diagnostics["intermediate_margin"]>0
+                    legal = legal and np.isfinite(diagnostics["margin"]) and diagnostics["margin"] > 0
+                    if joint or (fine_patch_cells and level==args.levels[-1]):
+                        legal=legal and np.isfinite(diagnostics["intermediate_margin"]) and diagnostics["intermediate_margin"]>0
+                        legal=legal and diagnostics.get("intermediate_margins_finite",True)
                     if not np.isfinite(value) or not legal:
                         failed_trials += 1
                         failures.append(dict(cycle=cycle,level=level,direction=direction,step=step,
@@ -590,9 +617,13 @@ def optimize(args, accepted_stage_callback=None):
                   image_preprocessing=preprocessing_metadata,
                   p1_sampling=p1_sampling,
                   geometry_backend=geometry_backend,
+                  geometry_backend_scope=("configured global-stage backend; final patch cascade uses connected "+
+                    ("first-order full-Y/proposal manual VJP; auxiliary geometry diagnostics are non-differentiable" if fine_patch_backend=="manual" else "ordinary AD")) if fine_patch_cells else "configured global-stage backend",
                   coordinate_mode=coordinate_mode,joint_backend=joint_backend if joint else None,
                   proposal_filter_steps=filter_steps,proposal_filter_min_level=filter_min_level,
-                  coordinated_substep_evaluations=evaluations*(2 if joint else 1) if args.method in ("radial","analytic") else None,
+                  fine_patch_cells=fine_patch_cells,
+                  fine_patch_backend=fine_patch_backend if fine_patch_cells else None,
+                  coordinated_substep_evaluations=coordinated_substeps if args.method in ("radial","analytic") else None,
                   extra_joint_diagnostic_passes=evaluations if joint and joint_backend=="cached_manual" else 0,
                   control_hierarchy=control_hierarchy,
                   nested_evaluation=nested_evaluation,
@@ -617,6 +648,10 @@ def main():
         p.add_argument("--"+name, type=Path, required=True)
     p.add_argument("--method", choices=("radial", "analytic", "f1", "f2", "regional_radial", "regional_analytic", "tapered_global_radial", "tapered_global_analytic"), default="radial")
     p.add_argument("--patch-cells",type=int,default=8)
+    p.add_argument("--fine-patch-cells",type=int,default=0,
+                   help="Optional final-level four-pass coordinated patch support; zero preserves global updates")
+    p.add_argument("--fine-patch-backend",choices=("ordinary","manual"),default="ordinary",
+                   help="Final patch cascade only: ordinary AD or connected first-order full-Y/proposal VJP; manual diagnostics are non-differentiable")
     p.add_argument("--f2-accepted-gain",type=float,default=1.)
     p.add_argument("--regional-cells",type=int,default=32)
     p.add_argument("--regional-min-level",type=int,default=3,

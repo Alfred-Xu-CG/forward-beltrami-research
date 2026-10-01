@@ -13,7 +13,8 @@ from dataclasses import dataclass
 
 import torch
 
-from .coordinated_update import CoordinatedQ1Update
+from .coordinated_update import CoordinatedQ1Update, CoordinatedUpdateResult
+from .coordinated_explicit_vjp import explicit_coordinated_candidate_with_diagnostics
 from .digital_q1 import q1_corner_determinants
 
 
@@ -47,12 +48,20 @@ class CoordinatedPatchQ1Pass(torch.nn.Module):
     The anchor is assumed to be a global homeomorphism with the declared
     fixed boundary. ``validate`` checks finite coordinates and all actual
     corner margins, not global boundary injectivity or saved binary signs.
+
+    ``backward_backend='manual'`` uses the existing compact first-order FULL-Y
+    and proposal adjoint on the gathered patches, in one forward. Reference and
+    trial must be constant. Candidate/intermediate geometry stays connected;
+    amplitude/scales/gauges/alpha_max/margins are numerical diagnostics ONLY
+    (no auxiliary derivatives or higher-order derivative support). Default
+    ``'ordinary'`` retains the original public differentiable diagnostic path.
     """
 
     def __init__(self, rows: int, columns: int | None = None, patch_cells: int = 8, *,
                  direction: tuple[float, float] = (1., 0.), mode: str = "radial",
                  offset_row: int = 0, offset_column: int = 0,
-                 minimum_jacobian: float = .001, theta: float = .95) -> None:
+                 minimum_jacobian: float = .001, theta: float = .95,
+                 backward_backend: str = "ordinary") -> None:
         super().__init__()
         columns = rows if columns is None else columns
         if not all(isinstance(value, int) for value in (rows, columns, patch_cells, offset_row, offset_column)):
@@ -66,6 +75,9 @@ class CoordinatedPatchQ1Pass(torch.nn.Module):
         if not starts:
             raise ValueError("layout contains no complete patch")
         self.rows, self.columns, self.patch_cells = rows, columns, patch_cells
+        if backward_backend not in ("ordinary","manual"):
+            raise ValueError("backward_backend must be ordinary or manual")
+        self.backward_backend=backward_backend
         self.offset_row, self.offset_column = offset_row, offset_column
         self.operator = CoordinatedQ1Update(direction, mode=mode, boundary="fixed",
                                              minimum_jacobian=minimum_jacobian, theta=theta)
@@ -126,6 +138,11 @@ class CoordinatedPatchQ1Pass(torch.nn.Module):
             raise ValueError("vertices must have declared (B,R,C,2) shape")
         if proposal.shape!=vertices.shape[:-1] or proposal.dtype!=vertices.dtype or proposal.device!=vertices.device:
             raise ValueError("proposal must have matching shape, dtype and device")
+        if self.backward_backend=="manual":
+            if reference is not None and reference.requires_grad:
+                raise ValueError("manual patch reference must be constant, not require gradients")
+            if isinstance(alpha_trial,torch.Tensor) and alpha_trial.requires_grad:
+                raise ValueError("manual patch alpha_trial must be constant, not require gradients")
         batch = vertices.shape[0]
         reference64 = self._reference(vertices,reference)
         qref = q1_corner_determinants(reference64)
@@ -146,16 +163,35 @@ class CoordinatedPatchQ1Pass(torch.nn.Module):
             trial = trial.flatten()
         elif trial.ndim!=0:
             raise ValueError("alpha_trial must be scalar, (B,), or (B,patch_count)")
-        result = self.operator(patch.reshape(-1,width,width,2),raw.reshape(-1,width,width),
-                               reference=source_patch.reshape(-1,width,width,2),
-                               alpha_trial=trial,validate=validate)
+        if self.backward_backend=="ordinary":
+            result = self.operator(patch.reshape(-1,width,width,2),raw.reshape(-1,width,width),
+                                   reference=source_patch.reshape(-1,width,width,2),
+                                   alpha_trial=trial,validate=validate)
+        else:
+            candidate_patch,scale,gauge,patch_margin=explicit_coordinated_candidate_with_diagnostics(
+                patch.reshape(-1,width,width,2),raw.reshape(-1,width,width),
+                reference=source_patch.reshape(-1,width,width,2),direction=self.operator.direction,
+                mode=self.operator.mode,minimum_jacobian=self.operator.minimum_jacobian,
+                theta=self.operator.theta,alpha_trial=trial,validate=validate,backward_backend="torch_manual")
+            with torch.no_grad():
+                amplitude=(raw.reshape(-1,width,width).double()*scale[:,None,None]).to(raw.dtype)
+                nonzero=gauge>0
+                alpha_max=torch.where(nonzero,1/torch.where(nonzero,gauge,torch.ones_like(gauge)),
+                                      torch.full_like(gauge,float("inf")))
+            result=CoordinatedUpdateResult(candidate_patch,amplitude,scale,gauge,alpha_max,patch_margin)
         updated = result.vertices.reshape(batch,self.patch_count,width,width,2)[:,:,1:-1,1:-1]
         candidate = vertices.reshape(batch,-1,2).index_copy(1,self.interior_ids,updated.reshape(batch,-1,2))
         candidate = candidate.reshape_as(vertices)
         amplitude = torch.zeros_like(proposal).flatten(1).index_copy(
             1,self.interior_ids,result.amplitude.reshape(batch,self.patch_count,width,width)[:,:,1:-1,1:-1].flatten(1),
         ).reshape_as(proposal)
-        margins = q1_corner_determinants(candidate.double())/qref-self.operator.minimum_jacobian
+        if self.backward_backend=="manual":
+            # Numerical diagnostics only; do not retain another full corner AD
+            # trajectory after the compact candidate adjoint. Includes tails.
+            with torch.no_grad():
+                margins = q1_corner_determinants(candidate.double())/qref-self.operator.minimum_jacobian
+        else:
+            margins = q1_corner_determinants(candidate.double())/qref-self.operator.minimum_jacobian
         margin_min = margins.flatten(1).amin(1)
         if validate and not bool(torch.isfinite(candidate).all() and (margin_min>0).all()):
             raise RuntimeError("actual regional output failed full-grid corner margins")

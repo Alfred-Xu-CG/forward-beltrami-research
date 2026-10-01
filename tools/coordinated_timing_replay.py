@@ -27,7 +27,14 @@ def replay_configuration(report, output, sampling,comparison="sampling",grid_sid
     elif comparison=="nested_evidence":
         config["control_hierarchy"]="nested_p1"
         config["nested_evaluation"]=sampling
-    else:raise ValueError("declare sampling, geometry, hierarchy or nested_evidence comparison")
+    elif comparison=="fine_patch_backend":
+        cells=config.get("fine_patch_cells",0)
+        if isinstance(cells,bool) or not isinstance(cells,int) or cells<=0:
+            raise ValueError("fine_patch_backend comparison requires active fine_patch_cells>0")
+        if sampling not in ("ordinary","manual"):
+            raise ValueError("fine_patch_backend variant must be ordinary or manual")
+        config["fine_patch_backend"]=sampling
+    else:raise ValueError("declare sampling, geometry, hierarchy, nested_evidence or fine_patch_backend comparison")
     if config.get("interpolation") not in ("p1_ac","p1_bd"):
         raise ValueError("timing comparison requires a declared actual P1 output")
     return argparse.Namespace(**config)
@@ -47,7 +54,8 @@ def run(args):
     rows=[]
     comparison=getattr(args,"comparison","sampling")
     variants={"sampling":("existing","frozen"),"geometry":("existing","stage_cache"),
-              "hierarchy":("fixed","nested_p1"),"nested_evidence":("full_fine","coarse_exact")}[comparison]
+              "hierarchy":("fixed","nested_p1"),"nested_evidence":("full_fine","coarse_exact"),
+              "fine_patch_backend":("ordinary","manual")}[comparison]
     # Both full configurations warm up in the SAME process before any timed pair.
     for repeat in range(-1,args.repeats):
         for sampling in sampling_order(max(repeat,0),variants):
@@ -80,7 +88,7 @@ def run(args):
         actual_configuration={key:str(value) if isinstance(value,Path) else value for key,value in vars(config).items()},
         grid_side_override=getattr(args,"grid_side",None),rows=rows,medians=medians,
         scope="warmed steady-state same-process AB/BA registrations; no anatomical labels loaded; complete_call_seconds includes final diagnostic/report serialization; historical end_to_end_seconds stops before these; peak_allocated_bytes is optimizer-phase peak after feature setup, includes resident cache but not setup temporaries",
-        precision_caution="CUDA reduction/optimizer branches may differ slightly; caches do not change the deformation family; hierarchy changes the feasible subspace trajectory while preserving the fine-grid objective")
+        precision_caution="CUDA reduction/optimizer branches may differ slightly; caches do not change the deformation family; hierarchy changes the feasible subspace trajectory while preserving the fine-grid objective; fine_patch_backend compares ordinary AD and manual first-order VJP of the same configured patch geometry, not global versus patch updates")
     args.output.write_text(json.dumps(payload,indent=2)+"\n")
     return payload
 
@@ -90,7 +98,7 @@ def main():
     parser.add_argument("--report",type=Path,required=True)
     parser.add_argument("--output",type=Path,required=True)
     parser.add_argument("--repeats",type=int,default=4)
-    parser.add_argument("--comparison",choices=("sampling","geometry","hierarchy","nested_evidence"),default="sampling")
+    parser.add_argument("--comparison",choices=("sampling","geometry","hierarchy","nested_evidence","fine_patch_backend"),default="sampling")
     parser.add_argument("--grid-side",type=int,help="Optional larger actual final CONTROL size, replacing final coefficient level; image/query resolution unchanged")
     run(parser.parse_args())
 

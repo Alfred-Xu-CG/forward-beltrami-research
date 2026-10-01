@@ -1188,3 +1188,160 @@ The first matrix has257^2 CONTROLS and1024^2 image QUERIES; neither number may b
 substituted for the other. Analytic/radial updates and F1/F2 share these inputs,
 affine, point evidence, ARAP3, shape1e-4 and300-gradient budget. Their geometry
 pass counts differ and optimizer-only timing excludes image/matcher setup.
+
+## 29. Four-pass fine-level coordinated patch support
+
+This variant changes only the support of the final scalar-coordinate update;
+global coarse stages and the complete image/prior/point objective remain fixed.
+It is not a projection onto a repaired map and does not solve a linear system.
+
+Let P>=2 be an even integer number of material grid cells. In one pass, complete
+P-by-P cell patches start at (offset_row+kP,offset_column+lP). Each patch has
+(P+1)^2 vertices. Only its (P-1)^2 strictly interior vertices move. For local
+vertex indices r,c in{0,...,P}, define
+
+    w(r,c)=sin^2(pi*r/P) sin^2(pi*c/P),
+
+with perimeter entries set EXACTLY to zero in floating point. A raw physical
+scalar proposal p_i is supplied for every vertex, with one common direction e.
+The patch applies the existing exact common-direction operator to w_i p_i.
+For its CURRENT mapped geometry Y, unchanged material reference determinants
+q_ref, and normalized slack s=q(Y)/q_ref-eta, define
+
+    g_patch=max(0, max_t [-(C_Y(w*p))_t/q_ref,t]/s_t).
+    sigma_radial=1/(1+g_patch),
+    sigma_analytic=min(1,theta/g_patch), with sigma=1 when g_patch=0.
+
+Here t includes all four corner constraints of every patch cell, and theta=.95
+in the current instance experiment. C_Y is the exact area derivative along e,
+not a linearization that drops quadratic terms: they vanish because every
+vertex in the substep moves parallel to e. Different patches use different
+sigma. Patch boundaries and all vertices outside complete patches stay fixed.
+Within a pass, affected cells and moved interiors are disjoint, so the separate
+patch constraints are sufficient without an omitted cross-patch triangle.
+
+Set Y^(0)=Y. The four sequential passes use offsets
+
+    (0,0), (P/2,0), (0,P/2), (P/2,P/2).
+
+Each pass uses the SAME raw p and direction e, but its gauge and scale are
+recomputed from Y^(k-1). The output is Y^(4). There is no interpolation between
+accepted vertex tables. Equivalently, each intermediate change is affine on
+the CURRENT mapped triangles and its composition with the old map remains P1
+on the SAME original material triangles. This is not arbitrary composition on
+unrelated control grids followed by vertex resampling.
+
+Starting from a fixed-boundary homeomorphism, unchanged patch perimeters plus
+positive triangle orientations preserve the global P1 homeomorphism at each
+pass. All four cell corners preserve either declared diagonal and the separate
+Q1 interpretation, but these functions are not identical. In code, every
+rounded intermediate margin is recorded as pass_margin_min[b,k]. The instance
+application rejects a trial if ANY of these is nonpositive or nonfinite,
+even when the final map would be positive. Actual fine-map checking, complete
+fine-objective acceptance and saved binary-sign certification remain separate.
+
+Complete-patch coverage is not universal. For N cells along an axis, the union
+of interior vertex indices reached by offsets0,P/2 is1,...,E-1, where
+E=(P/2)*floor(N/(P/2)). Full global interior coverage holds exactly when N is
+divisible byP/2; otherwise trailing indices E,...,N-1 stay frozen. The1025
+experiment has N=1024,P=32, so all interior vertices are reached. At least2P
+cells along both axes are required by this implementation.
+
+Complementary half-shifted sin-squared windows add to one where both offset
+families exist. Thus the sum of all four 2D window weights is one in the
+untruncated interior and at most one near boundaries. For the default trial1,
+every sigma<=1, and the total displacement at i is
+
+    Y_i^(4)-Y_i = p_i e sum_k sigma_patch(i,k) w_i^(k).
+
+Its magnitude is at most |p_i|; no divide-by-four amplitude correction is
+needed. The MINIMUM patch sigma is not a uniform multiplier for the whole
+map. Distant patches may move freely while the worst patch barely moves.
+Near boundaries, missing windows attenuate the proposal. Window gradients
+scale like |p|/(P*h); keeping P fixed shrinks physical support on refined
+grids and can reintroduce local amplitude limitations.
+
+Ordinary AD differentiates through all intermediate geometries and through
+each direct reuse of p. For a terminal loss, the proposal VJP includes the
+sum of four direct-use contributions plus their subsequent geometry chains;
+detaching Y^(k) would omit terms. Maxima/ties and analytic clipping retain
+piecewise differentiability/subgradient limitations, as in the base operator.
+The full-Y and proposal gradients are separately finite-differenced at unique
+active constraints. This is a local decoder derivative, not AD through every
+historical Adam iteration of instance optimization.
+
+With five coefficient levels and30steps per coordinate, the original run uses
+310 candidate evaluations/300 objective gradients/310 coordinated substeps.
+Replacing only the two final-level stages by this four-pass operator retains
+310 candidate evaluations/300gradients but uses496 coordinated substeps.
+Increased gathered patch storage, setup and connected-geometry graphs must be
+measured. The thin-region example establishes reduced distant coupling only;
+it does not prove better anatomy, universal expressivity or a speed advantage.
+
+## 30. Candidate-only manual adjoint for the four-pass update
+
+This is an implementation of the SAME map in Section29, not a new geometric
+family or an approximate inverse. For a patch, write its windowed proposal as
+v=W p, where W is the fixed diagonal window, and let q_j(Y) denote each actual
+corner determinant. Its constant material reference determinant is q_ref,j.
+Put s_j=q_j(Y)/q_ref,j-eta>0, delta_j=C_Y(v)_j/q_ref,j,
+a_j=max(-delta_j,0), and g=max_j a_j/s_j. The forward map is
+
+    T(Y,p)=Y+sigma(g) v e,
+    sigma(g)=1/(1+g)                         [radial],
+    sigma(g)=min(alpha_trial,theta/g)        [analytic; g=0 uses alpha_trial].
+
+Here delta_j is exactly affine in the scalar displacement, not a first-order
+approximation of a general two-coordinate deformation. At a unique active row
+j, dg=da_j/s_j-a_j ds_j/s_j^2. For an exact maximum tie, the implementation
+uses the same equally shared subgradient as torch.amax. The adjoint of s_j
+uses the actual local edge determinant differential and the adjoint of delta_j
+uses its actual three-vertex common-direction stencil. Rows with inactive
+analytic clipping have zero scale derivative. Radial dsigma/dg=-sigma^2;
+active analytic dsigma/dg=-sigma/g. Clamp and tie conventions match the ordinary
+operator; the layer is piecewise differentiable, not everywhere smooth.
+
+For an incoming coordinate covector ell_i in R^2, define beta=sum_i
+ell_i dot (v_i e). Its gauge adjoint is beta dsigma/dg. Direct coordinate
+adjoints start with ell_i for Y_i and sigma(ell_i dot e) for v_i, followed by
+the active-row contributions above. The raw proposal receives W times the
+v-adjoint. Both Y AND p derivatives are required: a latent-only derivative
+would be insufficient for composing four changing geometries.
+
+Let T_k be one complete gathered/scattered patch pass, with Jacobians A_k
+=partial T_k/partial Y and B_k=partial T_k/partial p, and Y_k=T_k(Y_(k-1),p).
+For a terminal loss L(Y_4), the exact first-order reverse recurrence is
+
+    lambda_4=grad L(Y_4),
+    grad_p L=sum_(k=1)^4 B_k^T lambda_k,
+    lambda_(k-1)=A_k^T lambda_k,             k=4,3,2,1.
+
+Ordinary torch gather/index_copy operations propagate the identity derivatives
+at untouched vertices and accumulate contributions at shared perimeter copies.
+No intermediate Y_k or direct reuse of p is detached. Each patch retains its
+actual GLOBAL material-reference subarray, not a rescaled local unit square.
+
+The optional public diagnostics API returns candidate, scale, gauge and actual
+rounded patch margin from ONE decoder invocation. Only candidate supports the
+custom first-order VJP. Scale, gauge, amplitude, alpha_max and reported margins
+are numerical diagnostics, explicitly non-differentiable in manual mode.
+Reference and alpha_trial must be constant; trainable versions are rejected.
+Higher derivatives are unsupported. A loss that differentiates any auxiliary
+diagnostic must use the ordinary backend. The original Tensor-only seven-input
+API and the ordinary default remain available and unchanged.
+
+This eliminates the ordinary graph through all corner rows, saving active-row
+state in bounded local-stencil chunks for reverse evaluation. It does NOT imply
+constant memory: exact ties may activate many rows, and patch coordinate gathers
+and the four changing coordinate tables remain resident. Numerical whole-grid
+margin diagnostics include uncovered tails and every intermediate pass; the
+instance caller still rejects any nonfinite/nonpositive intermediate margin,
+checks actual final fine geometry, and evaluates its unchanged full objective.
+No safety condition is relaxed to obtain a lower memory measurement.
+
+Independent focused checking covered139 cases; the root affected application
+suite covered95. The preserved float32 seed297, radial amplitude.3 fixture has
+a negative rounded fourth-pass margin even though preceding passes are valid:
+ordinary and manual candidates agree and BOTH reject. Successful float32 VJP
+comparisons use a separately stated amplitude.1, not a relaxed area tolerance.
+Tests establish local derivative consistency, not real-data acceleration.

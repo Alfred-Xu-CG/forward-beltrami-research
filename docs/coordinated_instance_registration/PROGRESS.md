@@ -1237,3 +1237,157 @@ objective/registration benefit. This is a main-line support variant prompted
 by actualdense conditioning, not a third257patch-size sweep after prior failures.
 Prior work: existing disjoint-support coordinated primitive and sequential
 domain-decomposition-style updates; no universal approximation/newnovelty claim.
+
+Cascade author67 and independentchecker83focused tests pass; root97affected
+tests pass. Deliberate invalid intermediate margin with valid final map is
+rejected, and all4passes are counted. All-interior support requires per-axis
+cellcount divisibleP/2; otherwise tails remain frozen. Complementary sin-squared
+windows sum1 away from truncated edges and at most1 elsewhere, so there is no
+automatic4x amplitude; defaulttrial1scales<=1. Pfixed has physicalsupportP*h,
+not resolution-independent macro support.
+First1025pilot configuration inspection caught an unintended CLI difference:
+directcase defaults lr_calibration=physical whereas the comparison record used
+edge. That pilot is retained but NOT a matched-support comparison. All300gradients
+complete,496coordinatedpasses,valid output; finalE.182906 vsglobal.175765 cannot
+be attributed to patch supports. Rerun uses explicit edge calibration .004.
+
+Matched edge rerun differs from original1025 record only support flag/output:
+300gradients,496passes,zero failures,allintermediate/final margins positive.
+Hmean512eq .781702->.767542,p90 1.594350->1.576050; stillWORSE mean than257A
+.756767. Objective .175765->.175117 improves, but corner shape .02986->.45425
+and minimum normalized determinant .00100138 is very close to configuredfloor.
+Final patch MINscale .001357 is NOT global multiplier: meanpatchscale .998969,
+displacementRMS8.55e-5 vs global2.26e-5. Decoupling works, not uniformly good
+conditioning. Cost is adverse: optimizer17.72s/end-to-end18.94s, peak6418621952
+bytes (~5.98GiB) vsglobal~7.85s/2.14GiB. Do not promote ordinary patch backend
+as a fast winner. Defaultmain stays global; no patch-size/rate sweep follows.
+
+### T+10.2h patch-adjoint engineering card
+
+Question: is the four-geometry ordinaryAD graph causing the measured6.4GB peak,
+and can the EXISTING exact first-order ALL-Y/proposal stencil VJP remove it?
+Candidate: reuse coordinated_explicit_vjp's active-row adjoint on each gathered
+patch; scatter derivatives normally and keep changing intermediateY connected.
+Expose candidate plus NONDIFFERENTIABLE numerical diagnostics from the SAME
+forward invocation to avoid recomputing a second decoder for scales/margins.
+Preserve old candidate-only API/default behavior. Optional patch/cascade backend
+manual supports first derivatives of vertices/proposal only; no auxiliary
+diagnostic gradients, trainable reference/trial or second-derivative claim.
+No new safety formula, no map approximation or Krylov history is introduced.
+Falsifier: candidatevalues/active-tie/full-Y+proposal VJPs/FD disagree; actual
+intermediate check is lost; paired unchanged-config realcost/memory is no better.
+Smallest test: ordinary/manual all4passes B2/non-square/bothmodes, uniqueactive
+and ties, boundary/sourcepatchnormalization, guardunsupported derivatives; then
+one matched1025 nativeH case before any ABBA. Geometry work remains496passes,
+not silently doubled for diagnostic reconstruction. Prior work: already checked
+local-stencil adjoint in Section17; this is memory engineering, not a new decoder.
+
+### T+10.4h manual patch candidate implementation and first actual pilot
+
+Builder135 focused tests pass; independentchecker139 pass8.92s with no blocking
+defect; root application/operator/joint/ARAP affected95 pass13.33s. Old API and
+ordinary default preserved. All-Y/proposal gradients stay connected through
+four passes; diagnostics are explicitly nondifferentiable; trainable reference/
+trial and second derivatives unsupported. One forward provides candidate and
+numerical diagnostics, no second ordinary decode. A real float32 rounded floor
+contact is retained as matched strict rejection, not tuned away.
+
+After checking GPU6 was idle and shared GPUs/processes untouched, ran ONE
+matched1025control/native1024H pilot: P32, same edge LR.004, same frozen evidence,
+ARAP3/shape1e-4,300gradients/496geometrypasses,0failedtrials, saved certificatevalid.
+Manual optimizer16.9306s versus priorordinary17.7181s; end-to-end18.1841s versus
+18.9364s. Peak2146297344 versus6418621952 bytes (~66.6%lower). This is an UNWARMED
+singlepilot; no time superiority claim. Objective .1751168185 versus .1751168524,
+shape .45425377 versus .45425381: the adverse thin-conditioning result persists.
+Candidate-based manual backend is optional, not selected globally by default.
+Next: exact-config warm AB/BA ordinary/manual and independent all-ID scoring;
+memory improvement must not be advertised as an anatomical improvement.
+
+Independent saved-map scoring of all77H IDs gives mean512equivalentTRE
+manual .76754214040 versus ordinary .76754214028; p90manual1.57604957963 versus
+ordinary1.57604958024. No anatomy change from differentiation engineering.
+
+### T+10.4h second native-detail specimen, fixed-support transfer question
+
+Question: does the modest Histo1025 patch-support gain recur on the OTHER
+available native-detail specimen, kidney, or is it a single-case benefit?
+Compare global versus finalP32/manual on identical17/33/65/129/1025 controls,
+native1024 rasters, frozen affine/machine points, same ARAP3/shape1e-4 objective,
+300gradient budget, edge LR.004 and best_full image-objective selection.
+No patch-size/rate/weight change and no manual-landmark input to optimization.
+The pre-existing257control result is context, not an extra tuned candidate.
+Falsifier: patch worsens all-ID anatomy/tails or merely improves proxy while
+approaching floor and raising distortion; keep all eligible cases and failures.
+Smallest test: one full global and one full manual-patch kidney registration,
+actual saved certificate, independent all69-ID scoring. Single cold calls do
+not establish timing superiority. This extends the already implemented main
+support variant; it is not a second active alternative mechanism or blind test.
+
+### T+10.5h actual dense results and focused mathematical decision
+
+Warm SAMEPROCESS4 AB/BA pairs (two initial whole-run warmups excluded) give
+ordinary/manual medians completecall18.72699/15.98874s, optimizer18.00509/15.25910s,
+peak6412377088/2148538368bytes. Manual is ~14.62%faster in completecall and
+~66.49%lower optimizer-phase allocated peak. All10runs300gradients/0failures,
+actual saved certificatesvalid. Still slower than global1025~8.61scompletecall
+and no evidence of anatomical change from changing adjoint implementation.
+
+Second native-detail specimen: all69kidney-ID mean512equivalentTRE global1025
+2.28789809 versus fineP32/manual2.28180269, p904.25500850/4.25459788; essentially
+no gain. Global257mean2.28704418,p904.15319765 remains a cheaper competitive
+reference. Patchshape2.90937 versusglobal.0733454 is adverse; global/patch cold
+optimizer9.0222/16.9307s, both300gradients,0failures,validsavedmaps. Fixed-affine
+range lower bound0 for all69IDs: this necessary bound does not explain error.
+
+Decision: stop support-size/safety-rate tuning. A real GPT-6 Astra high context
+read the actual application/formulation and identified an EXACT degeneracy:
+when analytic clipping is active, g(tp)=tg(p) and T(tp)=T(p) along that ray.
+Changing Adam to L-BFGS on the same raw latent would keep this radial null mode.
+Investigate physical scalar-fiber optimization instead, preserving map class.
+
+### T+10.5h research card: fixed-fiber feasible L-BFGS diagnostic
+
+Question: is final-stage dense convergence constrained by the existing latent
+chart/Adam combination, rather than inadequate resolution or unavailable anatomy?
+Exact variable u is actual scalar nodal displacement along ONE fixed coordinate
+direction e from a frozen incoming map Ybar; boundaries0. Y(u)=Ybar+u*e.
+For allfour actualcornerrows, s(Y(u))=s0+A*u EXACTLY, with A fixed atYbar.
+Preserve the analytic decoder's CLOSED reachable stage set A*u>=-theta*s0,
+theta=.95, not merely the larger positivity domain. Starting0, keep strict
+contracted slack theta*s0+A*u>0 by fraction-to-boundary. This is a constrained
+instance optimizer diagnostic, NOT a new differentiable neural decoder or
+claim of gradient through solver iterations. Existing decoder remains intact.
+
+Use first-order compact L-BFGS history5 on physical u, skip unreliable curvature
+pairs, descent fallback. For direction d use exact alpha_max=min_(A*d<0)
+(theta*s0+A*u)/(-A*d), and alpha=min(initial_physical_trial,.99*alpha_max).
+Image-objective Armijo backtracking is separate, finite-budget, evaluates the
+UNCHANGED complete objective; no geometric line search/projection/foldrepair.
+All rounded intermediate maps still checked. Fixedanchor/reference/e remain
+constant within the coordinate solve; history reset at stage/direction changes.
+
+Smallest decisive test: focused quadratic/fiber/curvature/float32-rounded tests;
+then saved129-prefix finalx/y replacement on H/K at257 and1025, baselineanalytic
+Adam versusphysical-fiber L-BFGS,30gradient evaluations/coordinate, capforward
+trials and reporttotalcounts/time/memory. Same savedprefix WITHIN eachgrid;
+crossgrid bitidentity is not assumed. Same image evidence/affine/prior/boundary
+and best_fullobjective selection; no evaluationlabels until saved-map scoring.
+This comparison changes chart AND optimizer and cannot isolate the two causes.
+Physical-fiber gradient control may follow only if the combined intervention
+shows useful improvement and that attribution matters. No learningrate sweep.
+
+Falsifiers: tinyfeasible steps despite usefuldescent; excessiveArmijo/curvature
+failure; noobjective gain; objectivegain withoutanatomygain; adverse distortion
+or actualtopologyfailure. A failedmethod does not prove constrainedstationarity
+(no tangentcone/QP solver). No guarantee of global nonconvex convergence. Prior
+work is standard L-BFGS/Armijo applied to the existing exact scalar feasible
+fiber, not a newtopologytheorem. IndependentAstra review will check implementation.
+
+Independent saved-map checker additionally examined12actual1025maps: allfinite,
+exactfixedboundary,50331648cornerdeterminants,0nonpositive/nonfinite; minnormalized
+determinant .0010001746655. WarmH pairs agree in77-landmarkmean to5.54e-9pixels,
+but wholemaps are NOT bitwise equal: maximum pairednodal vectordifferences are
+.04001/.04404/.04087/.03915 native1024canvaspixels. Do not equate sparse landmark
+agreement with entire-map equality. All69K landmarks independently reproduce
+scoring within2.2e-13canvaspixels. This strengthens the measured engineering
+conclusion only; no anatomical breakthrough or adjoint proof from savedscores.

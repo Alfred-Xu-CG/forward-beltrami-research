@@ -47,7 +47,7 @@ def _direct_stencil_vjp(local_y,local_raw,corner,adj_q,adj_delta,e):
 
 class _Candidate(torch.autograd.Function):
     @staticmethod
-    def forward(ctx,vertices,proposal,reference,layer,trial,validate,backward_backend):
+    def forward(ctx,vertices,proposal,reference,layer,trial,validate,backward_backend,return_diagnostics=False):
         current=vertices.double();raw=layer._mask(proposal.double())
         batch,rows,columns,_=current.shape
         if reference is None:
@@ -74,8 +74,9 @@ class _Candidate(torch.autograd.Function):
             scale=torch.where(potential,layer.theta/denominator,trial)
         e=current.new_tensor(layer.direction)
         candidate=(current+raw[...,None]*scale[:,None,None,None]*e).to(vertices.dtype)
-        if validate:
+        if validate or return_diagnostics:
             margin=layer._output_slack(candidate.double(),reference,qref).amin(1)
+        if validate:
             if not bool(torch.isfinite(candidate).all() and (margin>0).all()):
                 raise RuntimeError("rounded candidate failed strict margins; reject this proposal")
         # Zero raw / inactive analytic batches cannot contribute a gauge VJP.
@@ -88,11 +89,15 @@ class _Candidate(torch.autograd.Function):
             scale,gauge,counts,potential)
         ctx.layer=layer
         ctx.backward_backend=backward_backend
+        ctx.input_count=len(ctx.needs_input_grad)
+        if return_diagnostics:
+            ctx.mark_non_differentiable(scale,gauge,margin)
+            return candidate,scale,gauge,margin
         return candidate
 
     @staticmethod
     @once_differentiable
-    def backward(ctx,upstream):
+    def backward(ctx,upstream,*aux_upstream):
         vertices,proposal,active,slack,adverse,qref,clamp_active,scale,gauge,counts,potential=ctx.saved_tensors
         layer=ctx.layer
         current=vertices.double();raw=layer._mask(proposal.double())
@@ -147,12 +152,13 @@ class _Candidate(torch.autograd.Function):
             gradient_raw.index_add_(0,ids.flatten(),gu.reshape(-1))
         gradient_y=gradient_y.reshape_as(vertices).to(vertices.dtype)
         gradient_z=layer._mask(gradient_raw.reshape_as(proposal)).to(proposal.dtype)
-        return gradient_y,gradient_z,None,None,None,None,None
+        return (gradient_y,gradient_z,None,None,None,None,None,None)[:ctx.input_count]
 
 
-def explicit_coordinated_candidate(vertices: torch.Tensor,proposal: torch.Tensor,*,
+def _explicit_coordinated_candidate(vertices: torch.Tensor,proposal: torch.Tensor,*,
         reference: torch.Tensor|None=None,direction=(1.,0.),mode="radial",boundary="fixed",
-        minimum_jacobian=.001,theta=.95,alpha_trial=1.,validate=True,backward_backend="autograd") -> torch.Tensor:
+        minimum_jacobian=.001,theta=.95,alpha_trial=1.,validate=True,backward_backend="autograd",
+        return_diagnostics=False):
     """Candidate Tensor only. Default input/rounded-margin checks match the layer.
 
     validate=False is for trusted inner trials; callers must retain a separate
@@ -164,6 +170,7 @@ def explicit_coordinated_candidate(vertices: torch.Tensor,proposal: torch.Tensor
     local reverse-mode graph. Both work on CPU/CUDA without optional compilers.
     """
     if boundary!="fixed":raise ValueError("candidate-only adjoint supports fixed boundary only")
+    if not isinstance(validate,bool):raise ValueError("validate must be a Python bool")
     if backward_backend not in ("autograd","torch_manual"):
         raise ValueError("backward_backend must be autograd or torch_manual")
     if reference is not None and reference.requires_grad:
@@ -180,4 +187,39 @@ def explicit_coordinated_candidate(vertices: torch.Tensor,proposal: torch.Tensor
     if trial.ndim>1 or (trial.ndim==1 and trial.shape!=(vertices.shape[0],)) or not bool(torch.isfinite(trial).all() and (trial>=0).all()):
         raise ValueError("trial must be finite nonnegative constant scalar or shape(B,)")
     layer=CoordinatedQ1Update(direction,mode=mode,boundary=boundary,minimum_jacobian=minimum_jacobian,theta=theta)
-    return _Candidate.apply(vertices,proposal,reference,layer,trial,validate,backward_backend)
+    arguments=(vertices,proposal,reference,layer,trial,validate,backward_backend)
+    # Preserve the original seven-input Function path, including its backward
+    # input arity, for the Tensor-only API.
+    return _Candidate.apply(*arguments,True) if return_diagnostics else _Candidate.apply(*arguments)
+
+
+def explicit_coordinated_candidate(vertices: torch.Tensor,proposal: torch.Tensor,*,
+        reference: torch.Tensor|None=None,direction=(1.,0.),mode="radial",boundary="fixed",
+        minimum_jacobian=.001,theta=.95,alpha_trial=1.,validate=True,backward_backend="autograd") -> torch.Tensor:
+    """Original Tensor-only first-order API; reference/trial constants required.
+
+    Both current-Y and proposal VJPs are supported. Default strict rounded-map
+    validation is retained. No auxiliary gradients or higher derivatives.
+    """
+    return _explicit_coordinated_candidate(vertices,proposal,reference=reference,direction=direction,
+        mode=mode,boundary=boundary,minimum_jacobian=minimum_jacobian,theta=theta,
+        alpha_trial=alpha_trial,validate=validate,backward_backend=backward_backend)
+
+
+def explicit_coordinated_candidate_with_diagnostics(vertices: torch.Tensor,proposal: torch.Tensor,*,
+        reference: torch.Tensor|None=None,direction=(1.,0.),mode="radial",boundary="fixed",
+        minimum_jacobian=.001,theta=.95,alpha_trial=1.,validate=True,backward_backend="autograd"
+        ) -> tuple[torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor]:
+    """ONE forward returns candidate, scale, gauge, actual rounded margin.
+
+    Candidate supports the same first-order full-Y/proposal VJP as the original
+    API. All three auxiliary tensors are explicitly NONDIFFERENTIABLE; using
+    them as a differentiable objective is unsupported. Margin is evaluated even
+    with validate=False so trusted callers can reject rounded floor contacts.
+    Constant reference/trial, fixed boundary, and once-differentiable restrictions
+    are unchanged. No second operator evaluation or detached intermediate map.
+    """
+    return _explicit_coordinated_candidate(vertices,proposal,reference=reference,direction=direction,
+        mode=mode,boundary=boundary,minimum_jacobian=minimum_jacobian,theta=theta,
+        alpha_trial=alpha_trial,validate=validate,backward_backend=backward_backend,
+        return_diagnostics=True)
