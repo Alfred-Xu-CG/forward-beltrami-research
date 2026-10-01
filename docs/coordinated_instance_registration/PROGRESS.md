@@ -642,3 +642,96 @@ benchmarks exercise its nontrivial derivative. Do not attribute remaining
 development error solely to conservative step scaling or claim a guard-free
 network would always be legal. Independent-cohort and image-to-neural training
 evidence remains absent; the approved phase's main results are instance optimization.
+
+## T+6.5h: repeated three-case acceleration and full latent cascade
+
+Two additional same-process four-pair AB/BA comparisons complete the declared
+three development specimens. Frozen P1 queries and stage budget remain unchanged;
+constructor costs are inside optimization. Complete optimize() calls include
+loading, setup, final diagnostics and serialization, but not process startup.
+
+| Development specimen | Existing complete call, median s | Stage cache complete call, median s | Existing/cache optimizer-phase peak MiB |
+|---|---:|---:|---:|
+|Histo CD4/CD68|4.45033|3.65558|206.83/208.00|
+|Lung lesions|5.48506|3.82141|204.85/212.85|
+|Rat kidney|4.99664|3.66890|206.86/208.87|
+
+Each specimen has two warmups plus eight measured runs; all thirty full runs
+complete300gradient steps with zero failed trials and valid saved certificates.
+Warm complete-call savings17.9/30.3/26.6percent are engineering observations,
+not independent-cohort anatomical evidence. Stage caching slightly increases
+resident/peak memory; no memory-reduction claim. All maps/reports are preserved
+on D, selected compact timing records versioned. Anatomical equivalence requires
+separate scoring/map comparison rather than lower objective values alone.
+
+Multilevel decoder now accepts one(B,2,L-2,L-2)latent tensor at EVERY level and
+an initial(B,N,N,2)map, returning a final vertex table on that same material mesh.
+Levels17,33,65,129,257 (plus513,1025 for1025controls), bounded raw proposals,
+horizontal then vertical updates; no intermediate geometry detachment. Finest
+latent equals control size:172,618 and2,787,918 scalar parameters, respectively.
+Full initial-map and ALL latent first derivatives agree across ordinary/manual/
+checkpointed paths. Coordinator independently read implementation and timing;
+tiny finite differences, non-square batch2, zero and float32-chain tests pass.
+
+| Float64,B1,A6000 geometry-only cascade | Ordinary AD | Explicit manual | Checkpointed manual |
+|---|---:|---:|---:|
+|257controls,10stages, forward+VJP ms|73.09|44.29|69.76|
+|257controls, total peak MiB|300.60|42.09|34.69|
+|1025controls,14stages, forward+VJP ms|366.70|163.16|309.39|
+|1025controls, total peak MiB|6488.76|736.84|555.15|
+
+Warm3/repeat10, same calibrated real anchor with initial qmin=.20129084,
+deterministic synthetic smooth/noisy latents, actual rounded checks at EVERY
+stage. Values bit-identical; maximum full-variable relative gradient error
+4.40e-15. All six detached saved-storage probes release handles and return
+allocated memory to resident baseline. Setup/reference clone~.53-.79ms,
+input leaf copies, CPU exact refinement and transfer separately recorded.
+Active analytic constraints0/10 at257 and2/14 at1025; final normalized qmin
+.09576993/.00110285. The latter is close to extra eta=.001, so this is not a
+uniformly comfortable distortion margin. Independent boundaries/corners pass.
+Checkpoint saves~25percent of manual peak at1025 but takes~1.90times manual
+forward+VJP time. No claim of checkpoint speedup, encoder training, registration
+quality or fixed-depth universality follows from this geometry benchmark.
+
+New actual-control coarse-to-fine variant is under verification (FORMULATION18).
+Its objective ALWAYS materializes the final fine P1 map before ALL evidence and
+priors. Independent review found a rounding edge case: a float32 coarse normalized
+minimum.5000000596 can refine to exactly.5. With eta=.5 this is still positive
+and homeomorphic but violates the additional STRICT margin. New initial/refined/
+accepted-fallback margin checks reject it; no repair or tolerance loosening.
+A deterministic mock-objective fixture also forces an earlier coarse-stage best
+iterate and confirms exact final-size export. These are protocol tests, not image
+accuracy experiments. Fine materialization/check costs may erase coarse savings;
+the forthcoming full comparisons will decide.
+
+Full actual-control comparisons are now complete: three specimens, two warmups
+and four AB/BA pairs EACH, stage_cache and frozen P1 sampling on BOTH, same300
+gradients and fine-grid objective. All30runs have zero failed trials and valid
+saved certificates. Complete-call fixed/nested medians in seconds:
+Histo3.56257/4.00583, lesions3.75995/4.05491, kidney4.07104/4.24504.
+Optimizer-phase peak fixed/nested MiB208.00/236.34,210.88/235.86,210.98/235.83.
+Thus this first fully materialized nested implementation is SLOWER and uses
+MORE peak memory at257. This is retained as a negative result, not erased by
+the positive geometry benchmark or by the exact-refinement theorem.
+
+Separate saved-map manual scoring keeps ALL77/78/69shared landmark IDs. One
+predeclared measured run (repeat0, not selected by labels) gives fixed/nested
+mean canvas TRE px .800718/.807616,3.689299/3.700581,2.450187/2.450550;
+p90 1.584832/1.585150,7.133147/7.209355,5.006613/4.994422. All ten saved maps
+per specimen were scored, not only this displayed run. Means are slightly worse,
+while kidney p90 is slightly better; no consistent accuracy benefit. For the
+preceding stage-cache-equivalent comparison, separate scoring of all30 maps
+confirms means effectively unchanged (.800718/3.689299/2.450187), including
+small CUDA differences rather than an exact-bit anatomical-equivalence claim.
+These repeated runs are not independent specimens/statistical replications.
+
+Independent nested integration review:59tests passed, including the new strict
+floor and forced earlier-stage-winner fixtures; coordinator's combined cascade/
+nested/application/timing subset75tests passed. Cached refinement values match
+dynamic diagonal-aware P1 evaluation exactly in fixtures; adjoints have normal
+scatter summation differences up to~4.8e-7(f32)/1.1e-15(f64), independently
+checked by finite differences, not incorrectly required to be bit-identical.
+No default fixed-control behavior is changed. Next decision is based on a
+component profile of actual refinement/fine-prior/check costs, not another nearby
+coarse-grid safety-factor sweep. All present remote jobs completed; a bounded
+new diagnostic profile is delegated on idleGPU7. Goal remains active.

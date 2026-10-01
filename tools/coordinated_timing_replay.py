@@ -18,7 +18,8 @@ def replay_configuration(report, output, sampling,comparison="sampling"):
     config["output"]=Path(output)
     if comparison=="sampling":config["p1_sampling"]=sampling
     elif comparison=="geometry":config["geometry_backend"]=sampling
-    else:raise ValueError("declare sampling or geometry comparison")
+    elif comparison=="hierarchy":config["control_hierarchy"]=sampling
+    else:raise ValueError("declare sampling, geometry or hierarchy comparison")
     if config.get("interpolation") not in ("p1_ac","p1_bd"):
         raise ValueError("timing comparison requires a declared actual P1 output")
     return argparse.Namespace(**config)
@@ -37,7 +38,8 @@ def run(args):
     report=json.loads(args.report.read_text())
     rows=[]
     comparison=getattr(args,"comparison","sampling")
-    variants=("existing","frozen") if comparison=="sampling" else ("existing","stage_cache")
+    variants={"sampling":("existing","frozen"),"geometry":("existing","stage_cache"),
+              "hierarchy":("fixed","nested_p1")}[comparison]
     # Both full configurations warm up in the SAME process before any timed pair.
     for repeat in range(-1,args.repeats):
         for sampling in sampling_order(max(repeat,0),variants):
@@ -68,7 +70,7 @@ def run(args):
             if selected[0][name] is not None}
     payload=dict(template=str(args.report),comparison=comparison,configuration=report["configuration"],rows=rows,medians=medians,
         scope="warmed steady-state same-process AB/BA registrations; no anatomical labels loaded; complete_call_seconds includes final diagnostic/report serialization; historical end_to_end_seconds stops before these; peak_allocated_bytes is optimizer-phase peak after feature setup, includes resident cache but not setup temporaries",
-        precision_caution="CUDA reduction/optimizer branches may differ slightly; cache is not a different deformation family")
+        precision_caution="CUDA reduction/optimizer branches may differ slightly; caches do not change the deformation family; hierarchy changes the feasible subspace trajectory while preserving the fine-grid objective")
     args.output.write_text(json.dumps(payload,indent=2)+"\n")
     return payload
 
@@ -78,7 +80,7 @@ def main():
     parser.add_argument("--report",type=Path,required=True)
     parser.add_argument("--output",type=Path,required=True)
     parser.add_argument("--repeats",type=int,default=4)
-    parser.add_argument("--comparison",choices=("sampling","geometry"),default="sampling")
+    parser.add_argument("--comparison",choices=("sampling","geometry","hierarchy"),default="sampling")
     run(parser.parse_args())
 
 

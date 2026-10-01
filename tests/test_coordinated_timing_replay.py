@@ -29,3 +29,13 @@ def test_geometry_comparison_preserves_frozen_sampler_and_all_evidence():
     assert config.geometry_backend=="stage_cache" and config.p1_sampling=="frozen"
     assert config.strain_weight==3. and config.matches==Path("raw.json")
     assert "geometry_backend" not in report["configuration"]
+
+
+def test_hierarchy_comparison_preserves_geometry_and_all_fine_evidence():
+    report={"configuration":dict(p1_sampling="frozen",geometry_backend="stage_cache",
+        interpolation="p1_ac",strain_weight=3.,method="analytic",levels=[17,33,65,129,257],
+        cycles=1,grid_side=257,matches="image.json")}
+    config=replay_configuration(report,Path("nested.npz"),"nested_p1","hierarchy")
+    assert config.control_hierarchy=="nested_p1" and config.geometry_backend=="stage_cache"
+    assert config.p1_sampling=="frozen" and config.grid_side==257 and config.strain_weight==3.
+    assert "control_hierarchy" not in report["configuration"]

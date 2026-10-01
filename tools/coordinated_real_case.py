@@ -41,6 +41,14 @@ def corner_symmetric_dirichlet(vertices):
     return (frobenius*(1+determinant.reciprocal().square())-4).mean()
 
 
+def require_nested_fine_margin(vertices,reference_corners,minimum_jacobian,context):
+    """Extra configured margin, not merely positivity/topological validity."""
+    margin=(q1_corner_determinants(vertices.double())/reference_corners-minimum_jacobian).amin()
+    if not bool(torch.isfinite(margin) and margin>0):
+        raise RuntimeError(f"{context}: rounded nested fine-grid margin is not strictly positive")
+    return margin
+
+
 class Evidence:
     """Fixed mask, original evidence, and explicitly penalized out-of-bounds."""
 
@@ -194,6 +202,15 @@ def optimize(args, accepted_stage_callback=None):
         raise ValueError("declare existing or fixed-anchor stage_cache geometry backend")
     if geometry_backend=="stage_cache" and args.method not in ("radial","analytic"):
         raise ValueError("stage_cache currently supports global radial/analytic instance stages only")
+    control_hierarchy=getattr(args,"control_hierarchy","fixed")
+    if control_hierarchy not in ("fixed","nested_p1"):
+        raise ValueError("control hierarchy must be fixed or nested_p1")
+    nested=control_hierarchy=="nested_p1"
+    if nested and (args.method not in ("radial","analytic") or args.cycles!=1 or
+            getattr(args,"interpolation","q1") not in ("p1_ac","p1_bd") or
+            args.levels[-1]!=args.grid_side or
+            any(b<=a or (b-1)%(a-1) for a,b in zip(args.levels,args.levels[1:]))):
+        raise ValueError("nested_p1 needs one increasing nested global P1 cycle ending at grid_side")
     device = torch.device(args.device)
     torch.set_num_threads(args.threads)
     dtype = torch.float64 if args.precision == "float64" else torch.float32
@@ -209,7 +226,8 @@ def optimize(args, accepted_stage_callback=None):
         device=device,dtype=image_dtype)
     reference = identity_vertices(args.grid_side, device=device).to(dtype)
     reference_corners = q1_corner_determinants(reference.double())
-    current = reference.clone()
+    current = (identity_vertices(args.levels[0],device=device).to(dtype)
+               if nested else reference.clone())
     if device.type == "cuda":
         torch.cuda.synchronize(device)
     loading_seconds = time.perf_counter()-overall_start
@@ -240,6 +258,14 @@ def optimize(args, accepted_stage_callback=None):
     if p1_sampling=="frozen":
         for item in evidence_by_resolution.values():
             item.prepare_fixed_p1_sampling(args.grid_side,args.grid_side,dtype=dtype,device=device)
+    materializers={}
+    if nested:
+        from qcopt.neural_bijection.dense.coordinated_nested_refinement import FrozenNestedP1Refinement
+        for level in args.levels:
+            materializers[level]=FrozenNestedP1Refinement(level,args.grid_side,
+                diagonal=args.interpolation[-2:],dtype=dtype,device=device)
+    def materialize(vertices):
+        return materializers[vertices.shape[1]](vertices) if nested else vertices
     synchronize = lambda: torch.cuda.synchronize(device) if device.type == "cuda" else None
     synchronize()
     feature_seconds = time.perf_counter()-feature_start
@@ -248,15 +274,28 @@ def optimize(args, accepted_stage_callback=None):
     stages, trace, failures, forward_seconds, backward_seconds = [], [], [], [], []
     evaluations, gradient_steps, failed_trials = 0, 0, 0
     start = time.perf_counter()
-    initial, parts = evidence(current)
+    if nested:
+        require_nested_fine_margin(materialize(current),reference_corners,args.minimum_jacobian,"initial anchor")
+    initial, parts = evidence(materialize(current))
     initial_record = {key: float(value) for key, value in parts.items()}
     initial_record["total"] = float(initial)
     output_selection = getattr(args,"output_selection","last")
     if output_selection not in ("last","best_full"):
         raise ValueError("output selection must be last or best_full")
-    full_best_map, full_best_loss, full_best_stage = current.detach().clone(), float(initial), None
+    full_best_map, full_best_loss, full_best_stage = materialize(current).detach().clone(), float(initial), None
     for cycle in range(args.cycles):
         for level_index,level in enumerate(args.levels):
+            if nested and current.shape[1]!=level:
+                from qcopt.neural_bijection.dense.coordinated_refinement import refine_p1_vertices
+                factor=(level-1)//(current.shape[1]-1)
+                current=refine_p1_vertices(current,factor,args.interpolation[-2:]).detach()
+            control_side=current.shape[1]
+            control_reference=(identity_vertices(control_side,device=device).to(dtype)
+                               if nested else reference)
+            if nested and not validate_q1_map(current,control_reference)["valid"]:
+                raise RuntimeError("rounded nested control refinement failed actual map check")
+            if nested:
+                require_nested_fine_margin(materialize(current),reference_corners,args.minimum_jacobian,"refined anchor")
             stage_evidence=evidence_by_resolution[image_levels[level_index]]
             directions = ((1., 0.), (0., 1.)) if args.method not in ("f1","f2") else (None,)
             for direction in directions:
@@ -293,7 +332,7 @@ def optimize(args, accepted_stage_callback=None):
                         regional=CoordinatedPatchQ1Pass(args.grid_side,patch_cells=args.regional_cells,
                             direction=direction,mode=mode,offset_row=offset[0],offset_column=offset[1],
                             minimum_jacobian=args.minimum_jacobian,theta=.95).to(device)
-                best_map, best_loss = anchor, float(stage_evidence(anchor)[0])
+                best_map, best_loss = anchor, float(stage_evidence(materialize(anchor))[0])
                 anchor_loss = best_loss
                 best_diagnostics = {}
                 # Include the last optimizer step as an evaluated trial.
@@ -307,7 +346,7 @@ def optimize(args, accepted_stage_callback=None):
                         margin = (q1_corner_determinants(candidate.double())/reference_corners-args.minimum_jacobian).amin()
                         diagnostics = dict(margin=float(margin.detach()))
                     else:
-                        proposal = interpolate_proposal(coarse[:, 0], (args.grid_side, args.grid_side))
+                        proposal = interpolate_proposal(coarse[:, 0], (control_side, control_side))
                         if regional_active and args.method.startswith("regional_"):
                             result=regional(anchor,proposal,reference=reference,validate=False)
                             scales,gauges=result.patch_scales,result.patch_gauges
@@ -321,11 +360,16 @@ def optimize(args, accepted_stage_callback=None):
                         diagnostics = dict(scale=float(scales.detach().min()),mean_scale=float(scales.detach().mean()),
                                            gauge=float(gauges.detach().max()),
                                            margin=float(result.normalized_margin_min.detach().min()))
-                    total, parts = stage_evidence(candidate)
+                    fine_candidate=materialize(candidate)
+                    if nested:
+                        fine_margin=(q1_corner_determinants(fine_candidate.double())/reference_corners-args.minimum_jacobian).amin()
+                        diagnostics["coarse_margin"]=diagnostics["margin"]
+                        diagnostics["margin"]=float(fine_margin.detach())
+                    total, parts = stage_evidence(fine_candidate)
                     synchronize(); forward_seconds.append(time.perf_counter()-tick)
                     evaluations += 1
                     value = float(total.detach())
-                    legal = bool(torch.isfinite(candidate).all())
+                    legal = bool(torch.isfinite(fine_candidate).all())
                     legal = legal and diagnostics["margin"] > 0
                     if not np.isfinite(value) or not legal:
                         failed_trials += 1
@@ -335,7 +379,7 @@ def optimize(args, accepted_stage_callback=None):
                     if value < best_loss:
                         best_loss, best_map = value, candidate.detach().clone()
                         best_diagnostics = diagnostics
-                    trace.append(dict(cycle=cycle, level=level, image_side=image_levels[level_index], direction=direction, step=step,
+                    trace.append(dict(cycle=cycle, level=level, control_side=control_side, image_side=image_levels[level_index], direction=direction, step=step,
                                       total=value, **{k: float(v.detach()) for k, v in parts.items()},
                                       **diagnostics))
                     if step < args.inner_steps:
@@ -348,23 +392,30 @@ def optimize(args, accepted_stage_callback=None):
                             break
                         gradient_steps += 1
                         optimizer.step()
-                if not validate_q1_map(best_map, reference)["valid"]:
+                if not validate_q1_map(best_map, control_reference)["valid"]:
                     raise RuntimeError("best candidate failed independent accepted-map check")
                 current = best_map
-                accepted_full_loss = float(evidence(current)[0])
+                accepted_fine=materialize(current)
+                if nested and not validate_q1_map(accepted_fine,reference)["valid"]:
+                    raise RuntimeError("accepted nested map failed actual fine-grid check")
+                if nested:
+                    require_nested_fine_margin(accepted_fine,reference_corners,args.minimum_jacobian,"accepted anchor/fallback")
+                accepted_full_loss = float(evidence(accepted_fine)[0])
                 stages.append(dict(cycle=cycle, level=level, direction=direction,
-                                   image_side=image_levels[level_index],physical_lr=physical_lr,anchor_total=anchor_loss,
+                                   control_side=control_side,image_side=image_levels[level_index],physical_lr=physical_lr,anchor_total=anchor_loss,
                                    accepted_total=best_loss,accepted_full_total=accepted_full_loss,**best_diagnostics))
                 if accepted_full_loss < full_best_loss:
-                    full_best_map = current.detach().clone()
+                    full_best_map = accepted_fine.detach().clone()
                     full_best_loss, full_best_stage = accepted_full_loss, len(stages)-1
                 if accepted_stage_callback is not None:
-                    snapshot=current.detach().clone()
+                    snapshot=accepted_fine.detach().clone()
                     synchronize()
                     accepted_stage_callback(snapshot,dict(stages[-1]),time.perf_counter()-start)
     terminal_full_loss = stages[-1]["accepted_full_total"]
     if output_selection == "best_full":
         current = full_best_map
+    elif nested:
+        current=materialize(current)
     synchronize(); elapsed = time.perf_counter()-start
     final, parts = evidence(current)
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -398,6 +449,9 @@ def optimize(args, accepted_stage_callback=None):
                   image_preprocessing=preprocessing_metadata,
                   p1_sampling=p1_sampling,
                   geometry_backend=geometry_backend,
+                  control_hierarchy=control_hierarchy,
+                  control_sizes=args.levels if nested else [args.grid_side]*len(args.levels),
+                  nested_p1_cache_bytes=sum(m.resident_bytes for m in materializers.values()),
                   fixed_p1_cache_bytes=sum(buffer.numel()*buffer.element_size()
                     for item in evidence_by_resolution.values() if item.fixed_p1_evaluator is not None
                     for buffer in item.fixed_p1_evaluator.buffers()),
@@ -426,6 +480,8 @@ def main():
                    help="Optional immutable fixed-source query cache; no moving-query gradients")
     p.add_argument("--geometry-backend",choices=("existing","stage_cache"),default="existing",
                    help="Optional constant-anchor global radial/analytic instance-stage cache; not trainable-anchor neural API")
+    p.add_argument("--control-hierarchy",choices=("fixed","nested_p1"),default="fixed",
+                   help="Actual increasing P1 control meshes; objective always uses final fine mesh, one global cycle only")
     p.add_argument("--grid-side", type=int, default=257)
     p.add_argument("--image-side", type=int, default=512)
     p.add_argument("--image-levels", type=int, nargs="+",

@@ -642,3 +642,36 @@ Checkpoint recomputation uses explicit use_reentrant=False and fixed, nonrandom
 forward blocks, passing changing tensors as inputs rather than mutable loop/global
 state. It trades computation for retained activations; see the runtime-version
 [PyTorch2.5 checkpoint documentation](https://docs.pytorch.org/docs/2.5/checkpoint.html).
+
+## 18. Actual nested control meshes with one fixed fine-grid objective
+
+Research card (T+6.4h). Question: can actual coarse-control stages reduce complete
+registration time without replacing the declared fine-grid objective? The present
+baseline maintains the final control mesh at every coefficient level. The new
+variant instead optimizes an actual n_l by n_l vertex table, then exactly refines
+its fixed-diagonal P1 function before the next level. All levels are nested:
+(n_next-1) must be divisible by (n_current-1), ending at the declared final N.
+Only one increasing cycle and global radial/analytic stages are supported first.
+
+Let P_l be exact diagonal-aware P1 prolongation from level l to the final mesh.
+The objective is J_l(Y_l)=J_final(P_l Y_l), INCLUDING image sampling, frozen
+point matches, strain, corner-shape and outside-image penalties. Hence the
+gradient is P_l^T grad J_final, not a coarse-grid surrogate or a detached fine
+map. Image-resolution continuation remains the existing declared schedule;
+within each such resolution the fine material-grid functional is unchanged.
+The geometry operator uses the current actual mesh. Actual rounded fine corners
+are also checked on every trial; accepted boundaries and exported binary maps
+retain their existing checks. Any global best iterate is stored at FINAL size,
+even when it arose at a coarse stage. Refinement never coarsens or changes the
+diagonal. This is a different feasible-subspace trajectory, not the old bilinear
+proposal family evaluated more quickly and not a classic multigrid convergence
+theorem. Section10 gives the exact-refinement argument; an independent checker
+confirmed nesting, all-four-corner inheritance, adjoint and output-selection scope.
+
+Falsifiers: function/gradient/individual objective discrepancies, rounded fine
+violations, early best-output export at the wrong size, or no complete-call
+benefit. Tiny tests precede real-data comparisons. Cache setup, all fixed buffers
+and refinement/check time count. Fine evidence and its regularizers remain
+O(N^2); reduced geometry/control work does not imply a cheaper whole algorithm.
+Prior work: nested P1 finite-element subspaces and subspace correction, with the
+additional digital four-corner feasibility and actual-rounded-output checks here.
