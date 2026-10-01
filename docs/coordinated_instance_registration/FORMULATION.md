@@ -675,3 +675,105 @@ and refinement/check time count. Fine evidence and its regularizers remain
 O(N^2); reduced geometry/control work does not imply a cheaper whole algorithm.
 Prior work: nested P1 finite-element subspaces and subspace correction, with the
 additional digital four-corner feasibility and actual-rounded-output checks here.
+
+## 19. Stage refresh versus more inner optimization at equal gradient budget
+
+Research card (T+6.7h). Question: does the remaining real-registration error
+reflect the single-cycle/30-inner-step budget, rather than conservative geometry
+scaling? In the calibrated analytic development runs every proposal had scale1.
+This observation excludes that particular guard as the active bottleneck along
+those trajectories, not on arbitrary latent inputs. Compare (a) one coordinate
+cycle with60 inner steps per stage and (b) two coordinate cycles with30 steps.
+Both have600 gradient evaluations across levels17,33,65,129,257 and x/y stages;
+the established one-cycle30-step baseline has300. Repeating the cycle returns
+to coarse proposal spaces after the fine correction, without coarsening the
+actual257 control mesh. Image continuation repeats its declared32..512 schedule.
+
+For F1/F2 joint-vector controls, use twice as many cycles to keep gradient counts
+equal (one joint stage instead of two scalar directional stages per level).
+Pass counts, accepted-anchor refresh counts, total objective evaluations and
+runtime are NOT equal merely because gradients are equal; report actual costs.
+All evidence, initialization, fine-grid priors, boundary, physical learning rates,
+best-full selection and manual evaluation denominator stay fixed. The stage cache
+is used only for its supported radial/analytic cases; it changes engineering
+cost, not the function family. No labels enter the optimization or stopping.
+
+Decision-changing outcomes: more inner steps helping but extra cycles not helping
+indicates different behavior from improved anchor refresh; neither helping means
+do not keep increasing the same budget blindly. Proxy improvement with worse
+anatomy remains an adverse outcome, not success. This is a development-only
+convergence/optimization diagnostic, not an independent-cohort experiment, and
+does not establish statistical superiority from repeated specimens.
+
+Follow-up research card: the first two-cycle experiment does NOT improve the
+best-full radial/analytic output on any development case: selection remains
+stage9 of the first cycle. Recorded first second-cycle analytic coarse stages
+increase full objective from.168639 to.176216, .308407 to.310256, and.217678
+to.222312, while optimizing their declared32-pixel continuation objective.
+All scales remain1. This motivates ONE targeted schedule intervention: keep
+the original32..512 image continuation during cycle0, but use the same FULL512
+evidence in every subsequent coefficient-level stage. Geometry remains fine257,
+and the total budget remains600. This tests coarse coefficient correction on
+the actual final objective rather than repeatedly restarting the coarse image
+surrogate. Default repeated continuation remains available and unchanged.
+Predicted falsifier: full-objective stages also fail to improve or increase
+anatomical error despite proxy gains; do not call this guaranteed convergence.
+
+## 20. Candidate exact coarse quadrature for the unchanged fine-grid priors
+
+Research card (T+7h; PROPOSED, not implemented or numerically established).
+Question: can the fine-grid prior of an EXACT uniformly refined P1 function be
+evaluated and differentiated from its coarse vertices, instead of retaining the
+entire fine-grid autograd graph? This could address the negative timing result
+of Section18 without silently substituting a different regularization functional.
+Scope: square coarse size n+1, unchanged global AC or BD diagonal, integer factor
+m, fine size N+1 with N=mn, unit rectangle, exact arithmetic, shared fixed boundary.
+Finite-precision materialization still needs fresh actual-output checks; algebraic
+quadrature equivalence is NOT bitwise equivalence of rounded fine vertices.
+
+For a mapped coarse cell a,b,c,d in row-major geometry, define four Jacobians
+J1=[n(b-a),n(d-a)], J2=[n(b-a),n(c-b)],
+J3=[n(c-d),n(c-b)], J4=[n(c-d),n(d-a)].
+Let phi(J)=||J||_F^2+||J^-1||_F^2-4. For AC refinement there are m diagonal
+fine cells, each a translated/scaled copy of the coarse mapped quad, and
+m(m-1)/2 cells lying in EACH of its two affine triangles. The proposed exact
+mean over all four fine corners WITHIN this old cell is therefore
+
+    ((m-1)/(2m)) [phi(J2)+phi(J4)]
+      + (1/(4m)) sum_{k=1}^4 phi(Jk).
+
+For BD, replace J2,J4 by J1,J3. Averaging this quantity over coarse cells gives
+the proposed same four-corner fine-grid shape prior. For m=1 it reduces to the
+original coarse four-corner average; for growing m it approaches the equal-area
+P1 two-face average. It is NOT the coarse Q1 integral or a newly chosen SLIM loss.
+
+For the fine forward-edge strain prior, let R_ij=Y_ij-X_ij on the coarse mesh.
+Define DxR=n(R_i,j+1-R_i,j) and DyR=n(R_i+1,j-R_i,j). Fine horizontal edges on
+coarse horizontal boundary lines have slope DxR; in each coarse cell, its m-1
+interior fine rows contribute m(m-1)/2 copies of each of the lower/upper slopes.
+Each coarse horizontal edge thus receives multiplicity w_i=m(m+1)/2 at the two
+outer coarse rows, and w_i=m^2 at interior coarse rows. Vertical edges use the
+same weights w_j at outer/interior columns. Proposed fine-grid strain is
+
+    [ sum_{batch,i,j} w_i ||DxR_ij||^2
+      + sum_{batch,i,j} w_j ||DyR_ij||^2 ] / [2 B N(N+1)].
+
+This formula is independent of AC versus BD after the symmetric edge counts.
+Constant affine residuals recover the same strain since the total weight in
+each orientation is N(N+1). No sparse inverse is involved. Identity/reference
+rounding must be controlled (main dyadic meshes have exactly represented source
+coordinates); non-dyadic/floating inputs do not automatically have exact bitwise
+agreement. Image/match functions can also query the ORIGINAL coarse P1 map
+directly, since exact P1 refinement preserves the function; their finite-arithmetic
+query values still need measured comparison, not an equivalence assertion.
+
+Falsifiers: independent cell counts fail, random legal AC/BD values or full
+directional derivatives disagree with explicit refined priors beyond rounding,
+or the reduced graph gives no complete-instance benefit after fresh fine checks.
+Small decisive tests: affine residual, one nonaffine convex quad, random legal
+coarse grids, factors1/2/3/4, both diagonals, gradients/FD and near-small-margin
+fixtures. No implementation is authorized by the formula alone: obtain independent
+derivation/check first, then profile bottlenecks and integrate only if justified.
+Prior work: exact integration/assembly in nested finite-element spaces; the
+particular four-corner and edge-multiplicity expressions here are proposed
+derivations for the existing discrete objective, not claims of novel general FEM.

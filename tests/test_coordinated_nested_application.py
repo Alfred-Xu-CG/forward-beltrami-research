@@ -120,3 +120,18 @@ def test_earlier_coarse_stage_winner_exports_exact_final_grid(tmp_path,monkeypat
     with np.load(args.output) as archive:
         np.testing.assert_array_equal(archive["vertices"],snapshots[0].numpy())
         assert archive["vertices"].shape==(1,9,9,2)
+
+
+@pytest.mark.parametrize("scope",["all_cycles","first_cycle"])
+def test_image_continuation_scope_is_explicit_and_full_cycle_monotone(tmp_path,scope):
+    args=configuration(tmp_path,control_hierarchy="fixed",cycles=2,continuation_scope=scope)
+    report=optimize(args)
+    expected=[8,8,16,16]+([8,8,16,16] if scope=="all_cycles" else [16]*4)
+    assert [s["image_side"] for s in report["stages"]]==expected
+    assert report["continuation_scope"]==scope and report["gradient_steps"]==16
+    assert report["saved_binary_certificate"]["valid"]
+    assert all(s["accepted_total"]<=s["anchor_total"] for s in report["stages"])
+    if scope=="first_cycle":
+        totals=[s["accepted_full_total"] for s in report["stages"][3:]]
+        assert all(b<=a+1e-12 for a,b in zip(totals,totals[1:]))
+        assert all(s["accepted_total"]==s["accepted_full_total"] for s in report["stages"][4:])

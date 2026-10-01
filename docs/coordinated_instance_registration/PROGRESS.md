@@ -735,3 +735,82 @@ No default fixed-control behavior is changed. Next decision is based on a
 component profile of actual refinement/fine-prior/check costs, not another nearby
 coarse-grid safety-factor sweep. All present remote jobs completed; a bounded
 new diagnostic profile is delegated on idleGPU7. Goal remains active.
+
+## T+7.1h: optimization budget diagnosis and exact-prior derivation
+
+Three development cases and four mechanisms complete both600-gradient schedules,
+all24runs zero failed trials/valid binary outputs. Same evidence/physical rates/
+initialization/fine257 control grid, fixed residual boundary, label-free best_full.
+One coordinate cycle with60 inner steps is compared with two cycles of30 steps;
+F1/F2 joint controls have twice the cycle count to match gradients, not geometric
+pass counts or runtime. No anatomical labels enter either optimization.
+
+| Analytic method, canvas TRE mean/p90 px | Original300 | One cycle,60steps (600) | Two cycles,30steps (600) |
+|---|---:|---:|---:|
+|Histo|.800718/1.584832|.785460/1.577051|.800718/1.584832|
+|Lesions|3.689299/7.133147|3.683485/7.154315|3.689299/7.133147|
+|Kidney|2.450187/5.006613|2.394437/4.866506|2.450187/5.006613|
+
+Thus more inner optimization gives SMALL mean improvements, not uniformly
+better tails. Repeating the image continuation fails to improve the selected
+radial/analytic output on ALL cases: best_full remains first-cycle stage9.
+All analytic scales remain1, so conservative topology scaling is not the
+observed cause. Second-cycle initial coarse-image stages increase full objective
+(.168639->.176216, .308407->.310256, .217678->.222312). This justifies the
+bounded first-cycle-only IMAGE continuation intervention of FORMULATION19,
+now running for R/A only: later coarse COEFFICIENT levels optimize full512
+evidence. Independent config review and two new actual-image tiny tests passed;
+coordinator50affected tests passed. Do not extend this schedule comparison to
+F1/F2 without accounting for their different initial-continuation exposure.
+The existing all_cycles default is unchanged. No dataset/test-label pivot.
+
+Other controls remain informative: one-cycle-equivalent longer-inner F2 is best
+Histo mean.776990 but costs25.45s versus analytic6.93s; its kidney mean2.532293
+is worse than analytic2.394437. Two-cycle-equivalent F1 improves kidney4.0727
+to3.4401 but still trails analytic2.4502 at19.72s versus7.37s. Objective rankings
+do not fully match anatomy (e.g.F2kidney lower proxy thananalytic in longer-inner
+run but worse TRE). All per-method/case results remain available, not just winners.
+
+Actual nested-trial profile: synthetic legal anchors, real frozen512 kidney
+Evidence, fullfine257 objective. It is NOT an optimizer trajectory comparison.
+Nested17/65 add exact materialization+.4msVJP and ~.6-.7ms fresh fine check;
+even nested257 duplicates the fine check. Fine Evidence forward/reverse dominates
+roughly52-69percent of whole trials. Split/full coefficient gradients agree
+relative<=1.23e-15. Separate parts-VJP medians image1.26ms,strain1.14ms,
+shape1.93ms,match1.41ms,OOB1.23ms, versus combined4.66ms. These are NOT additive
+cost attribution: shared graph paths and separate synchronization matter.
+Weighted sum of part gradients matches combined relative2.03e-16. This is
+enough to justify an isolated exact coarse-prior benchmark, not promise a full
+application speedup. Original profiles and distinct perterm probes are preserved.
+
+FORMULATION20's candidate exact quadrature is independently confirmed. Twenty-four
+CPU checks use independent integer-cell barycentric refinement, two diagonals,
+factors1..4, nonaffine convexquad/B2random grids/near-small determinants. Ordinary
+shape value/full-Y derivative discrepancies<=1.95e-16/1.34e-15, strain<=2.1e-17/
+1.25e-16. Near-det.001 shape cancellation amplifies ABSOLUTE errors (~1e-7value,
+3.1e-4gradient), relativegradient<=1.7e-13. Actual production strain creates a
+float32 reference before casting, so non-dyadic factor3 differs by up to7.44e-9
+value/7.45e-9gradient from ideal-double-reference algebra. Do NOT silently change
+the reference. Initial implementation is restricted to dyadic source/fine grids;
+keep actual rounded fine checks and numerical comparisons. Reproducible checker
+and JSON are saved. A bounded isolated prior implementation/benchmark is delegated;
+no app integration or claim of measured whole-instance benefit yet.
+
+First-cycle-only image-continuation experiment completes all six R/Acase runs:
+600gradients each, zero failed trials, valid binary maps, best_fullstage19.
+Analytic full objective is nonincreasing throughout cycle2 on all cases (it is
+now the SAME functional at every second-cycle coefficient level). Scales remain1.
+Analytic mean/p90 canvas TRE: Histo.779500/1.512891, lesions3.743505/7.071469,
+kidney2.392966/4.908347; times7.02/7.44/7.01s, peaks~211MiB.
+Radial means.779985/3.705722/2.405640, p90 1.506978/7.023034/5.120602.
+This resolves the repeated-coarse-surrogate optimization issue, but NOT the
+proxy/anatomy issue: lesions analytic objective improves.308407->.307126 while
+meanTRE worsens3.689299->3.743505, even though p90 improves. The response is
+not to silently pick schedules per case by labels. Preserve complete comparison
+and distinguish objective convergence from anatomical progress. No new blind
+cohort or clinical competitiveness evidence is obtained by these extra cycles.
+
+Coordinator's current application/sweep/nested/profile/timing affected subset
+passes68tests. The independent quadrature checker also includes directional
+finite differences (maximum reported relative discrepancy4.51e-7); its production
+reference mismatch remains restricted to the documented non-dyadic case.

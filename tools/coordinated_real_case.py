@@ -195,6 +195,9 @@ def optimize(args, accepted_stage_callback=None):
     image_levels=getattr(args,"image_levels",None) or [args.image_side]*len(args.levels)
     if len(image_levels)!=len(args.levels) or min(image_levels)<8 or max(image_levels)>args.image_side or image_levels[-1]!=args.image_side:
         raise ValueError("one image resolution per coefficient level, ending at full image_side")
+    continuation_scope=getattr(args,"continuation_scope","all_cycles")
+    if continuation_scope not in ("all_cycles","first_cycle"):
+        raise ValueError("continuation scope must be all_cycles or first_cycle")
     if min(args.strain_weight,args.oob_weight,getattr(args,"shape_weight",0.))<0:
         raise ValueError("nonnegative objective weights required")
     geometry_backend=getattr(args,"geometry_backend","existing")
@@ -296,7 +299,9 @@ def optimize(args, accepted_stage_callback=None):
                 raise RuntimeError("rounded nested control refinement failed actual map check")
             if nested:
                 require_nested_fine_margin(materialize(current),reference_corners,args.minimum_jacobian,"refined anchor")
-            stage_evidence=evidence_by_resolution[image_levels[level_index]]
+            stage_resolution=(image_levels[level_index] if cycle==0 or continuation_scope=="all_cycles"
+                              else args.image_side)
+            stage_evidence=evidence_by_resolution[stage_resolution]
             directions = ((1., 0.), (0., 1.)) if args.method not in ("f1","f2") else (None,)
             for direction in directions:
                 anchor = current.detach()
@@ -379,7 +384,7 @@ def optimize(args, accepted_stage_callback=None):
                     if value < best_loss:
                         best_loss, best_map = value, candidate.detach().clone()
                         best_diagnostics = diagnostics
-                    trace.append(dict(cycle=cycle, level=level, control_side=control_side, image_side=image_levels[level_index], direction=direction, step=step,
+                    trace.append(dict(cycle=cycle, level=level, control_side=control_side, image_side=stage_resolution, direction=direction, step=step,
                                       total=value, **{k: float(v.detach()) for k, v in parts.items()},
                                       **diagnostics))
                     if step < args.inner_steps:
@@ -402,7 +407,7 @@ def optimize(args, accepted_stage_callback=None):
                     require_nested_fine_margin(accepted_fine,reference_corners,args.minimum_jacobian,"accepted anchor/fallback")
                 accepted_full_loss = float(evidence(accepted_fine)[0])
                 stages.append(dict(cycle=cycle, level=level, direction=direction,
-                                   control_side=control_side,image_side=image_levels[level_index],physical_lr=physical_lr,anchor_total=anchor_loss,
+                                   control_side=control_side,image_side=stage_resolution,physical_lr=physical_lr,anchor_total=anchor_loss,
                                    accepted_total=best_loss,accepted_full_total=accepted_full_loss,**best_diagnostics))
                 if accepted_full_loss < full_best_loss:
                     full_best_map = accepted_fine.detach().clone()
@@ -444,6 +449,7 @@ def optimize(args, accepted_stage_callback=None):
                   final_corner_shape=float(corner_symmetric_dirichlet(current.double())),
                   geometry_dtype=str(dtype),evidence_dtype=str(image_dtype),
                   image_levels=image_levels,
+                  continuation_scope=continuation_scope,
                   output_selection=output_selection,selected_stage=full_best_stage if output_selection=="best_full" else len(stages)-1,
                   image_match_evidence=match_metadata,
                   image_preprocessing=preprocessing_metadata,
@@ -486,6 +492,8 @@ def main():
     p.add_argument("--image-side", type=int, default=512)
     p.add_argument("--image-levels", type=int, nargs="+",
                    help="image continuation resolutions matching --levels, e.g.32 64 128 256 512")
+    p.add_argument("--continuation-scope",choices=("all_cycles","first_cycle"),default="all_cycles",
+                   help="Optional full-image objective for all coefficient levels after initial continuation cycle")
     p.add_argument("--levels", type=int, nargs="+", default=[17,33,65,129,257])
     p.add_argument("--output-selection",choices=("last","best_full"),default="last",
                    help="Select accepted output using full-resolution complete objective only, never landmarks")
