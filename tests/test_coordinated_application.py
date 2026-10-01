@@ -4,6 +4,7 @@ import pytest
 import torch
 
 from qcopt.neural_bijection.dense.coordinated_update import CoordinatedQ1Update, single_direction_corner_change
+from qcopt.neural_bijection.dense.coordinated_patches import CoordinatedPatchQ1Pass
 from tools.coordinated_real_case import Evidence
 
 
@@ -61,3 +62,39 @@ def test_original_evidence_identity_and_oob_fixed_denominator(loss):
     assert float(shifted_parts["outside_fraction"]) == 1
     assert float(shifted_parts["oob"]) > 1
     assert float(worse) > float(initial)
+
+
+def test_independent_tiny_inactive_analytic_gradient():
+    y,x = torch.meshgrid(torch.linspace(0,1,4,dtype=torch.float64),
+                         torch.linspace(0,1,4,dtype=torch.float64),indexing="ij")
+    vertices = torch.stack((x,y),-1)[None].requires_grad_()
+    proposal = torch.zeros(1,4,4,dtype=torch.float64)
+    proposal[0,1,1] = 1e-305
+    proposal.requires_grad_()
+    result = CoordinatedQ1Update(mode="analytic")(vertices,proposal)
+    assert float(result.scale) == 1
+    g_vertices,g_proposal = torch.autograd.grad(result.vertices.sum(),(vertices,proposal))
+    assert bool(torch.isfinite(g_vertices).all() and torch.isfinite(g_proposal).all())
+    assert float(g_proposal[0,1,1]) == 1
+
+
+@pytest.mark.parametrize("mode",["radial","analytic"])
+def test_regional_separate_reconstruction(mode):
+    y,x = torch.meshgrid(torch.linspace(0,1,13,dtype=torch.float64),
+                         torch.linspace(0,1,18,dtype=torch.float64),indexing="ij")
+    reference = torch.stack((x,y),-1)[None]
+    current = reference.clone()
+    current[0,5,5,0] -= .997/17
+    raw = torch.full((1,13,18),.12,dtype=torch.float64,requires_grad=True)
+    layer = CoordinatedPatchQ1Pass(13,18,patch_cells=4,offset_row=1,offset_column=1,mode=mode)
+    result = layer(current,raw,reference=reference)
+    # Recompute all grid triangles, not just gathered patch subarrays.
+    q = triangles_numpy(result.vertices[0].detach().numpy())
+    assert q.min()*12*17 > .001
+    assert torch.equal(result.vertices[:,0],reference[:,0])
+    assert torch.equal(result.vertices[:,:,-1],reference[:,:,-1])
+    assert result.covered_cells + result.uncovered_cells == 12*17
+    actual = (result.vertices-current)[...,0]
+    torch.testing.assert_close(actual,result.amplitude,rtol=0,atol=8e-17)
+    result.vertices.square().sum().backward()
+    assert bool(torch.isfinite(raw.grad).all())

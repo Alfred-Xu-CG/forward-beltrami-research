@@ -17,13 +17,14 @@ import torch
 import torch.nn.functional as F
 
 from qcopt.neural_bijection.dense.coordinated_update import CoordinatedQ1Update, interpolate_proposal
-from qcopt.neural_bijection.dense.digital_q1 import AdaptiveSoftRadialQ1Relaxation, validate_q1_map
+from qcopt.neural_bijection.dense.digital_q1 import AdaptiveSoftRadialQ1Relaxation, StaggeredPatchQ1Layer, q1_corner_determinants, validate_q1_map
 from qcopt.neural_bijection.dense.q1_image_sampling import q1_map_at_pixel_centers
 from qcopt.neural_bijection.dense.q1_filtered_sign import certify_q1_binary_map
 from tools.digital_mind_objective_probe import self_similarity
 from tools.digital_mind_safe_optimize import strain_penalty
 from tools.digital_q1_dhr_distill import identity_vertices
 from tools.digital_q1_real_optimize import _read_gray_thumbnail
+from tools.coordinated_control_capacity import f2_coverage, decode as decode_control
 
 
 class Evidence:
@@ -87,6 +88,7 @@ def optimize(args):
     moving, _ = _read_gray_thumbnail(args.moving, args.image_side)
     fixed, moving = fixed.to(device=device, dtype=dtype), moving.to(device=device, dtype=dtype)
     reference = identity_vertices(args.grid_side, device=device).to(dtype)
+    reference_corners = q1_corner_determinants(reference.double())
     current = reference.clone()
     evidence = Evidence(fixed, moving, torch.from_numpy(a).to(device=device, dtype=dtype),
                         torch.from_numpy(b).to(device=device, dtype=dtype), args.loss,
@@ -102,7 +104,7 @@ def optimize(args):
     initial_record["total"] = float(initial)
     for cycle in range(args.cycles):
         for level in args.levels:
-            directions = ((1., 0.), (0., 1.)) if args.method != "f1" else (None,)
+            directions = ((1., 0.), (0., 1.)) if args.method not in ("f1","f2") else (None,)
             for direction in directions:
                 anchor = current.detach()
                 channels = 2 if direction is None else 1
@@ -111,8 +113,15 @@ def optimize(args):
                 physical_lr = args.learning_rate*(args.levels[0]-1)/(level-1) if args.lr_calibration == "edge" else args.learning_rate
                 optimizer = torch.optim.Adam([coefficients], lr=physical_lr)
                 if direction is None:
-                    layer = AdaptiveSoftRadialQ1Relaxation(args.grid_side, raw_span=8.,
-                        safety_fraction=.75, minimum_jacobian=args.minimum_jacobian).to(device)
+                    if args.method == "f1":
+                        layer = AdaptiveSoftRadialQ1Relaxation(args.grid_side, raw_span=8.,
+                            safety_fraction=.75, minimum_jacobian=args.minimum_jacobian).to(device)
+                        coverage = None
+                    else:
+                        layer = StaggeredPatchQ1Layer(args.grid_side,args.patch_cells,proposal_mode="fixed_h",
+                            raw_span=.5,safety_fraction=.75,minimum_jacobian=args.minimum_jacobian,
+                            accepted_gain=args.f2_accepted_gain).to(device)
+                        coverage = f2_coverage(layer,args.grid_side,dtype)
                 else:
                     layer = CoordinatedQ1Update(direction, mode=args.method,
                         minimum_jacobian=args.minimum_jacobian, theta=.95).to(device)
@@ -125,13 +134,10 @@ def optimize(args):
                     synchronize(); tick = time.perf_counter()
                     coarse = F.pad(coefficients, (1, 1, 1, 1))
                     if direction is None:
-                        dense = F.interpolate(coarse, size=(args.grid_side, args.grid_side),
-                                              mode="bilinear", align_corners=True)
-                        # F1's infinitesimal current-edge basis is ~8 h; calibrate
-                        # logits to the same physical coefficient displacement.
-                        logits = (dense*(args.grid_side-1)/8.).permute(0, 2, 3, 1)[:, 1:-1, 1:-1]
-                        candidate = layer(anchor, logits)
-                        diagnostics = {}
+                        physical_coefficients = coefficients/args.f2_accepted_gain if args.method=="f2" else coefficients
+                        candidate = decode_control(layer,args.method,anchor,physical_coefficients,coverage)
+                        margin = (q1_corner_determinants(candidate.double())/reference_corners-args.minimum_jacobian).amin()
+                        diagnostics = dict(margin=float(margin.detach()))
                     else:
                         proposal = interpolate_proposal(coarse[:, 0], (args.grid_side, args.grid_side))
                         result = layer(anchor, proposal, validate=False)
@@ -144,8 +150,7 @@ def optimize(args):
                     evaluations += 1
                     value = float(total.detach())
                     legal = bool(torch.isfinite(candidate).all())
-                    if direction is not None:
-                        legal = legal and diagnostics["margin"] > 0
+                    legal = legal and diagnostics["margin"] > 0
                     if not np.isfinite(value) or not legal:
                         failed_trials += 1
                         failures.append(dict(cycle=cycle,level=level,direction=direction,step=step,
@@ -198,7 +203,9 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     for name in ("fixed", "moving", "affine", "output"):
         p.add_argument("--"+name, type=Path, required=True)
-    p.add_argument("--method", choices=("radial", "analytic", "f1"), default="radial")
+    p.add_argument("--method", choices=("radial", "analytic", "f1", "f2"), default="radial")
+    p.add_argument("--patch-cells",type=int,default=8)
+    p.add_argument("--f2-accepted-gain",type=float,default=1.)
     p.add_argument("--loss", choices=("mind", "local_ncc"), default="mind")
     p.add_argument("--grid-side", type=int, default=257)
     p.add_argument("--image-side", type=int, default=512)

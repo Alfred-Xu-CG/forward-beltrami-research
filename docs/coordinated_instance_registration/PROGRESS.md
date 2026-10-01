@@ -99,3 +99,47 @@ smoke NPZ remains preserved as incomplete; only complete reports enter the table
 
 Next: matched F1/F2, NCC-versus-MIND early comparison, further specimens and independent
 score/frame checks. Do not conclude real-data competitiveness from this one specimen.
+
+## First-hour continue/change decision
+
+Common-affine native DHR is independently verified (all512² centers max2.84e-14px
+coordinate error; stored A,b exact match; no padding/resampling frame change).
+All three common-affine native runs completed ~1.97–2.04s excluding the prior initializer.
+The complete shared-evidence MIND and squared-local-NCC matrices (3methods×3specimens×2losses)
+are saved under outputs/coordinated_instance_registration/development_{edge,ncc_edge}.
+
+| Development pair | Affine | Radial MIND | Analytic MIND | F1 MIND | Native DHR/common affine |
+|---|---:|---:|---:|---:|---:|
+| HistoReg | 2.332 | .837 | .869 | .798 | .943 |
+| Lung lesion | 4.900 | 4.809 | 5.548 | 4.420 | 4.347 |
+| Rat kidney | 6.117 | 5.595 | 6.051 | 5.527 | 3.432 |
+
+Values are mean512-canvas TRE, not official scores. Strongest adverse result: kidney
+DHR p90=7.110px versus radial10.750/F1 12.378, while DHR's runtime is comparable to
+the new optimizers. The new coordinated construction has NOT demonstrated general
+real-data competitiveness. MIND generally beats localNCC means here, but tails can
+rank differently; do not declare an evidence bottleneck or tune by these labels.
+
+Repeated same-config radial Histo TRE varies .798/.837 (.837 is fresh matrix), consistent
+with a sensitivity/nondeterminism issue that needs measured reproduction, not dismissal.
+Analytic near-zero gradient fixture independently passed after the fix;7rootchecks passed.
+Remaining rejected trials are recorded as actual rounded η-margin failures, NOT NaN gradients.
+
+F2 overlap calibration independently gives the requested identity physical JVP.
+First257² F2/gain1 runs reached only32–35gradient steps;17/20 stages rejected candidates
+touching the extraηfloor. Actual saved maps remain topology-certified. Gain .75 retained
+slack and increased completedsteps to56–58, but11rejections remained. This is NOT a proof
+of F2 capacity failure. Next isolate cumulative regularization and roundoff.
+
+Independent known-target controls:48cases at33/65,120trials/100grad each, zeroillegal
+candidates. With strain0, F2 best finalRMSE on all three65targets (.000106–.000134).
+Analytic reached .001 sooner in that CPU setup. Strain.05 biases allmethods to .013–.019
+RMSE, so representation and regularized optimization must remain separate conclusions.
+
+Decision: continue explicit coordinated main line, change from one GLOBAL constraint
+scale to tested nonconflicting REGIONAL supports as a main-line variation. A thin-region
+fixture shows216–999× more distant motion under identical smooth tapered proposals,
+without losing any corner constraint. It proves isolation of the worst-cell bottleneck,
+not anatomical improvement. Regional module author34affectedtests; coordinator adds
+independent full-grid determinant/reconstruction tests:9rootchecks passed. Actual257
+registration benefit remains NOT TESTED. No alternative research branch has been opened.

@@ -11,7 +11,7 @@ from tools.digital_dhr_field_eval import _landmarks
 from tools.digital_q1_real_eval import load_effective_vertices
 
 
-def score(layout_path, fixed_path, moving_path, maps, affine, output):
+def score(layout_path, fixed_path, moving_path, maps, affine, output, dhr=None):
     if output.exists():
         raise FileExistsError(output)
     layout = json.loads(layout_path.read_text(encoding="utf-8"))
@@ -33,6 +33,16 @@ def score(layout_path, fixed_path, moving_path, maps, affine, output):
     predicted = {name:q1_at_queries(vertices,query) for name,(vertices,_) in loaded.items()}
     with np.load(affine) as data:
         predicted["common_affine"] = query @ data["post_affine_matrix"].astype(np.float64).T + data["post_affine_offset"].astype(np.float64)
+    if dhr:
+        import SimpleITK as sitk
+        import torch
+        from tools.digital_compare_appearance import dhr_map_at_unit_queries
+        for name,field_path,params_path in dhr:
+            field = sitk.GetArrayFromImage(sitk.ReadImage(str(field_path)))
+            params = json.loads(Path(params_path).read_text(encoding="utf-8"))
+            mapped = dhr_map_at_unit_queries(field,params,fixed_size=(512,512),moving_size=(512,512),
+                query=torch.tensor(query,dtype=torch.float32).reshape(1,1,-1,2))
+            predicted[name] = mapped[0,0].numpy().astype(np.float64)
     results = {}
     for name,p in predicted.items():
         canvas_error = np.linalg.norm((p-expected)*layout["side"],axis=-1)
@@ -54,10 +64,12 @@ def main():
     for key in ("layout","fixed_landmarks","moving_landmarks","affine","output"):
         parser.add_argument("--"+key.replace("_","-"),type=Path,required=True)
     parser.add_argument("--map",action="append",required=True,help="name=absolute NPZ path")
+    parser.add_argument("--dhr",action="append",nargs=3,metavar=("NAME","FIELD","PARAMS"),
+                        help="native DHR field on the SAME supplied 512 canvases; no topology certificate")
     args = parser.parse_args()
     maps = dict(item.split("=",1) for item in args.map)
     result = score(args.layout,args.fixed_landmarks,args.moving_landmarks,
-                   {name:Path(path) for name,path in maps.items()},args.affine,args.output)
+                   {name:Path(path) for name,path in maps.items()},args.affine,args.output,args.dhr)
     print(json.dumps({name:{key:value for key,value in values.items() if key != "per_landmark_canvas_px"}
                       for name,values in result["results"].items()}))
 
