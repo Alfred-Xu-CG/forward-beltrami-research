@@ -814,3 +814,97 @@ Coordinator's current application/sweep/nested/profile/timing affected subset
 passes68tests. The independent quadrature checker also includes directional
 finite differences (maximum reported relative discrepancy4.51e-7); its production
 reference mismatch remains restricted to the documented non-dyadic case.
+
+## T+7.4h: decision card — direct coarse evaluation of the SAME fine functional
+
+Question: Can nested P1 instance stages avoid a full fine differentiable map
+without changing the image evidence, fine regularizers or output topology?
+Exact claim: on dyadic nested grids with one unchanged diagonal, direct coarse
+P1 pixel/point evaluation equals fine-refinement P1 evaluation in real arithmetic.
+Section20 count-weighted priors equal the existing fine strain/shape functional.
+Assumptions: no Q1 interpretation, no diagonal changes, original fixed queries,
+same affine/features/masks/matches/weights, dyadic reference convention.
+Falsifier: a complete objective or full-coarse-Y VJP disagrees beyond explained
+floating-point accumulation, or actual rounded fine output fails its margin.
+Smallest decisive test: both diagonals, NCC/MIND, matches+OOB, nonaffine coarse
+maps, full value/gradient and directional finite differences; tiny pipeline then
+same-process warmed AB/BA registrations. Fine output is still materialized and
+freshly checked per trial without a gradient graph; accepted/full-best comparison
+continues to use the original full Evidence. Prior: exact P1 refinement and
+Section20 independently checked quadrature, not a new coarse loss or a proof
+that the earlier negative nested application result is overturned.
+
+Independent reduced-Evidence review identifies a rounding acceptance issue: choosing
+the reduced winner and merely reporting full loss is insufficient. Implemented
+comparison of original complete STAGE loss against original anchor, with fallback
+if worse/nonfinite; full-resolution best_full remains separate and label-free.
+Explicit bilinear-knot fixture explains one central-FD failure (image sampler is
+nondifferentiable there), while coarse/fine selected AD gradients agree. Smooth
+fixture passes strict full-objective FD. No production affine/features altered.
+
+Isolated priors GPU7 result: all12dyadic AC/BD cases pass. Fine257 coarse17/65
+only saves about.2ms forward+VJP (old4.03–4.20,new3.81–3.98ms); factor1 is
+slightly slower and higher peak. Fine1025 coarse17 old17.59–17.71→3.57–3.72ms,
+coarse65/257 old15.91–16.02→3.87–3.93ms. Total allocated peak old528–531MiB
+versus new.136/2.075/34.005MiB, isolated prior graph only. Maxfloat64 relative
+value9.79e-15/full-YgradientL2 2.98e-11; no bitwise equivalence. Old-then-new
+sameprocess order is NOT AB/BA. First untimed257fine-check coldoutlier13.08ms
+is retained, normalchecks~.7ms. F32thinBDshape gradient relative3.26e-5 retained.
+This motivates full reduced-Evidence comparison, not claimed registration gains.
+
+Question (next bounded optimization variant): does joint latent optimization of
+one x-then-y coordinated stage recover interactions missed by long alternating
+axis solves? Exact claim: each safe substep is legal, composition on the SAME
+source vertex table stays legal and differentiated through intermediate Y.
+Assumptions: frozen accepted stage anchor, x/ylatent jointly optimized, no detach
+between substeps, no cached geometry of a changing intermediate map. Falsifier:
+full both-latent VJP disagrees or matched objective budget has no useful benefit.
+Smallest test: ordinary full AD and an independently FD-checked cached-first/
+explicit-second decoder, then same3development cases with300gradient evaluations
+and unchanged objective/initialization. Layer passes and wall time differ and
+will be reported; this is block-coordinate versus joint parameter optimization,
+not a new universal map family, matcher or proof of anatomical improvement.
+
+Full reduced-Evidence AB/BA result (T+7.6h): three specimens, both warmups and
+four counterbalanced pairs EACH, same300 gradients, fine257CONTROL/512query,
+all30runs zero failedtrials/valid exported certificates. Whole-call full_fine→
+coarse_exact medians seconds Histo4.35672→4.00609, lesions3.94320→3.94751,
+kidney4.24468→4.04012. Thus about8percent/NOgain/5percent, not the large
+isolated-prior speed ratio. Peak bytes245826048→242474496,
+245836288→245566976,247297024→241362432, all optimizer-phase CUDAallocated.
+Original-stage comparisons included, cache/setup included in wholecall. No
+rounding fallback on inspected repeat0; acceptanceguard remains mandatory.
+
+Offline independent P1 scoring of ALLten maps per specimen retains77/78/69IDs.
+Predeclaredrepeat0 full_fine/coarse_exact meanTRE canvaspx
+.8076159940494/.8076159940499,3.7005811666926/3.7005811667569,
+2.4505503677188/2.4505503674917; p90unchanged to~1e-12. This is engineering
+equivalence evidence, not new anatomical improvement/independent patients.
+The reduced nested path is still not faster than the prior fixed-control
+stagecached baseline overall at257; retain the earlier negative comparison.
+A bounded1025CONTROL/512image replay uses the SAME five stages except last
+control level257→1025 (17,33,65,129,1025), same300gradients, dyadic refinement.
+This investigates scaling; no extra image information or accuracy conclusion
+is claimed simply by increasing control resolution. Four AB/BA pairs running
+on idleGPU6 after resource check. Coordinator80affected tests and17targeted
+latest replay/reduced tests pass; independentchecker59focused tests pass.
+
+Actual1025CONTROL scaling replay completes tenHisto runs,300gradients each,
+ALLzero failedtrials/validcertificates. Whole-call full_fine→coarse_exact median
+8.83987→7.05739s (~20percent saving), optimizer8.03113→6.23949s;
+peak1944990208→1816321024bytes (~1.811→1.692GiB). Same512image queries,
+levels17/33/65/129/1025, fullfine output has1050625vertices/2097152triangles.
+Both methods include setup, actual fine checks, originalstage acceptance and
+binarycertification (~.8s final overhead). This is ONEdevelopmentcase scaling
+result, not a speed theorem or a competitive evaluation at1025image resolution.
+
+Independent scoring ALLten maps: repeat0mean/p90full_fine.9102249745/1.68551849,
+coarse_exact.9102180978/1.68551925canvaspx. Minor CUDA/scatter/optimizer path
+differences are real: pairedmaxvertexunit discrepancy2.60e-5–4.44e-5 andRMS
+6.42e-7–6.63e-7; do NOT claim identical optimizer trajectories from arithmetic
+equivalence. More importantly both1025means are WORSE than nested257mean.807616
+under this same300gradient budget/five-stage schedule; greater control density
+does not automatically improve correspondence. No scale-up anatomical success
+claim. Same data, original evidence and manual denominator, no casewise choice.
+Coordinator's complete affected application/sweep/replay/reduced/priors subset
+111tests passed11.24s. GPU6job finished and all maps/logs copied toD.

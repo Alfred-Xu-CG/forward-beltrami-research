@@ -8,6 +8,7 @@ out-of-bounds objective, with a fixed foreground denominator.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 from pathlib import Path
 import time
@@ -64,6 +65,7 @@ class Evidence:
             raise ValueError("declare q1, p1_ac or p1_bd map interpretation")
         self.interpolation=interpolation
         self.fixed_p1_evaluator=None
+        self.nested_priors=None
         self.mask = (fixed > .04).to(fixed.dtype) if fixed_mask is None else fixed_mask.to(fixed)
         if self.mask.shape != fixed.shape or not bool(torch.isfinite(self.mask).all() and (self.mask>=0).all() and (self.mask<=1).all()):
             raise ValueError("fixed mask must match image and have finite weights in[0,1]")
@@ -84,6 +86,24 @@ class Evidence:
         from qcopt.neural_bijection.dense.q1_image_sampling import fixed_pixel_centers
         queries=fixed_pixel_centers(*self.fixed.shape[-2:],dtype=dtype,device=device)
         self.fixed_p1_evaluator=FrozenP1Evaluator(rows,columns,queries,self.interpolation[-2:])
+
+    def coarse_nested_evidence(self,coarse_side,fine_side,*,dtype,device):
+        """Share frozen inputs; evaluate exactly the nested fine P1 functional.
+
+        Real-arithmetic equivalence, not identical roundedfine evaluation. This
+        object never certifies topology. The caller must materialize/check fine
+        outputs and use ordinary full Evidence for accepted/output selection.
+        """
+        if self.interpolation not in ("p1_ac","p1_bd"):
+            raise ValueError("coarse nested evidence requires declared P1 interpolation")
+        from qcopt.neural_bijection.dense.coordinated_nested_priors import ExactNestedP1Priors
+        result=copy.copy(self)
+        result.nested_priors=ExactNestedP1Priors(coarse_side,fine_side,
+            diagonal=self.interpolation[-2:],dtype=dtype,device=device)
+        if (self.fixed_p1_evaluator is None or self.fixed_p1_evaluator.rows!=coarse_side or
+                self.fixed_p1_evaluator.columns!=coarse_side):
+            result.prepare_fixed_p1_sampling(coarse_side,coarse_side,dtype=dtype,device=device)
+        return result
 
     def __call__(self, vertices):
         if self.interpolation=="q1":
@@ -109,9 +129,13 @@ class Evidence:
         image = (errors*self.mask).sum()/self.denominator
         outside = (F.relu(-query) + F.relu(query-1)).square().sum(-1)[:, None]
         oob = (outside*self.mask).sum()/self.denominator
-        strain = strain_penalty(vertices)
+        if self.nested_priors is None:
+            strain = strain_penalty(vertices)
+            shape = corner_symmetric_dirichlet(vertices) if self.shape_weight else None
+        else:
+            strain,nested_shape = self.nested_priors(vertices)
+            shape = nested_shape if self.shape_weight else None
         total = image + self.strain_weight*strain + self.oob_weight*oob
-        shape = corner_symmetric_dirichlet(vertices) if self.shape_weight else None
         if shape is not None:
             total = total + self.shape_weight*shape
         match = self.matches(vertices,self.matrix,self.interpolation) if self.match_weight else None
@@ -209,6 +233,11 @@ def optimize(args, accepted_stage_callback=None):
     if control_hierarchy not in ("fixed","nested_p1"):
         raise ValueError("control hierarchy must be fixed or nested_p1")
     nested=control_hierarchy=="nested_p1"
+    nested_evaluation=getattr(args,"nested_evaluation","full_fine")
+    if nested_evaluation not in ("full_fine","coarse_exact"):
+        raise ValueError("nested evaluation must be full_fine or coarse_exact")
+    if nested_evaluation=="coarse_exact" and not nested:
+        raise ValueError("coarse_exact evaluation requires nested_p1 control hierarchy")
     if nested and (args.method not in ("radial","analytic") or args.cycles!=1 or
             getattr(args,"interpolation","q1") not in ("p1_ac","p1_bd") or
             args.levels[-1]!=args.grid_side or
@@ -269,6 +298,11 @@ def optimize(args, accepted_stage_callback=None):
                 diagonal=args.interpolation[-2:],dtype=dtype,device=device)
     def materialize(vertices):
         return materializers[vertices.shape[1]](vertices) if nested else vertices
+    coarse_evidence={}
+    if nested_evaluation=="coarse_exact":
+        for level,resolution in zip(args.levels,image_levels):
+            coarse_evidence[(level,resolution)]=evidence_by_resolution[resolution].coarse_nested_evidence(
+                level,args.grid_side,dtype=dtype,device=device)
     synchronize = lambda: torch.cuda.synchronize(device) if device.type == "cuda" else None
     synchronize()
     feature_seconds = time.perf_counter()-feature_start
@@ -302,6 +336,11 @@ def optimize(args, accepted_stage_callback=None):
             stage_resolution=(image_levels[level_index] if cycle==0 or continuation_scope=="all_cycles"
                               else args.image_side)
             stage_evidence=evidence_by_resolution[stage_resolution]
+            original_stage_evidence=stage_evidence
+            if nested_evaluation=="coarse_exact":
+                stage_evidence=coarse_evidence[(control_side,stage_resolution)]
+            def trial_evidence(vertices):
+                return stage_evidence(vertices if nested_evaluation=="coarse_exact" else materialize(vertices))
             directions = ((1., 0.), (0., 1.)) if args.method not in ("f1","f2") else (None,)
             for direction in directions:
                 anchor = current.detach()
@@ -337,8 +376,11 @@ def optimize(args, accepted_stage_callback=None):
                         regional=CoordinatedPatchQ1Pass(args.grid_side,patch_cells=args.regional_cells,
                             direction=direction,mode=mode,offset_row=offset[0],offset_column=offset[1],
                             minimum_jacobian=args.minimum_jacobian,theta=.95).to(device)
-                best_map, best_loss = anchor, float(stage_evidence(materialize(anchor))[0])
+                best_map, best_loss = anchor, float(trial_evidence(anchor)[0])
                 anchor_loss = best_loss
+                if nested_evaluation=="coarse_exact":
+                    with torch.no_grad():
+                        original_anchor_loss=float(original_stage_evidence(materialize(anchor))[0])
                 best_diagnostics = {}
                 # Include the last optimizer step as an evaluated trial.
                 for step in range(args.inner_steps + 1):
@@ -365,12 +407,13 @@ def optimize(args, accepted_stage_callback=None):
                         diagnostics = dict(scale=float(scales.detach().min()),mean_scale=float(scales.detach().mean()),
                                            gauge=float(gauges.detach().max()),
                                            margin=float(result.normalized_margin_min.detach().min()))
-                    fine_candidate=materialize(candidate)
+                    fine_candidate=materialize(candidate.detach() if nested_evaluation=="coarse_exact" else candidate)
                     if nested:
                         fine_margin=(q1_corner_determinants(fine_candidate.double())/reference_corners-args.minimum_jacobian).amin()
                         diagnostics["coarse_margin"]=diagnostics["margin"]
                         diagnostics["margin"]=float(fine_margin.detach())
-                    total, parts = stage_evidence(fine_candidate)
+                    total, parts = (stage_evidence(candidate) if nested_evaluation=="coarse_exact"
+                                    else stage_evidence(fine_candidate))
                     synchronize(); forward_seconds.append(time.perf_counter()-tick)
                     evaluations += 1
                     value = float(total.detach())
@@ -397,6 +440,23 @@ def optimize(args, accepted_stage_callback=None):
                             break
                         gradient_steps += 1
                         optimizer.step()
+                acceptance_details={}
+                if nested_evaluation=="coarse_exact":
+                    reduced_best_loss=best_loss
+                    with torch.no_grad():
+                        original_best_loss=float(original_stage_evidence(materialize(best_map))[0])
+                    # Rounded coarse/fine equivalence is not bitwise. Accept by
+                    # the original complete STAGE objective, never manual TRE.
+                    rejected=not np.isfinite(original_best_loss) or original_best_loss>original_anchor_loss
+                    acceptance_details=dict(anchor_reduced_total=anchor_loss,
+                        proposed_reduced_total=reduced_best_loss,proposed_original_total=original_best_loss,
+                        rounded_full_stage_fallback=rejected)
+                    if rejected:
+                        best_map,best_diagnostics=anchor,{}
+                        best_loss=original_anchor_loss
+                    else:
+                        best_loss=original_best_loss
+                    anchor_loss=original_anchor_loss
                 if not validate_q1_map(best_map, control_reference)["valid"]:
                     raise RuntimeError("best candidate failed independent accepted-map check")
                 current = best_map
@@ -408,7 +468,7 @@ def optimize(args, accepted_stage_callback=None):
                 accepted_full_loss = float(evidence(accepted_fine)[0])
                 stages.append(dict(cycle=cycle, level=level, direction=direction,
                                    control_side=control_side,image_side=stage_resolution,physical_lr=physical_lr,anchor_total=anchor_loss,
-                                   accepted_total=best_loss,accepted_full_total=accepted_full_loss,**best_diagnostics))
+                                   accepted_total=best_loss,accepted_full_total=accepted_full_loss,**best_diagnostics,**acceptance_details))
                 if accepted_full_loss < full_best_loss:
                     full_best_map = accepted_fine.detach().clone()
                     full_best_loss, full_best_stage = accepted_full_loss, len(stages)-1
@@ -431,13 +491,18 @@ def optimize(args, accepted_stage_callback=None):
     certificate_start = time.perf_counter()
     certificate = certify_q1_binary_map(args.output)
     certification_seconds = time.perf_counter()-certificate_start
+    base_query_buffers={id(buffer) for item in evidence_by_resolution.values()
+        if item.fixed_p1_evaluator is not None for buffer in item.fixed_p1_evaluator.buffers()}
+    new_query_buffers={id(buffer):buffer for item in coarse_evidence.values()
+        for buffer in item.fixed_p1_evaluator.buffers() if id(buffer) not in base_query_buffers}
+    nested_prior_bytes=sum(item.nested_priors.resident_bytes for item in coarse_evidence.values())
     report = dict(configuration={k: str(v) if isinstance(v, Path) else v for k,v in vars(args).items()},
                   representation=evidence.interpolation+" residual then frozen positive affine; exact declared interpretation",
                   initial=initial_record, final=dict(total=float(final), **{k: float(v) for k,v in parts.items()}),
                   control_vertices=args.grid_side**2, cells=(args.grid_side-1)**2,
                   corner_constraints=4*(args.grid_side-1)**2, query_count=args.image_side**2,
                   evaluations=evaluations, gradient_steps=gradient_steps, failed_trials=failed_trials,
-                  objective_evaluations=evaluations+2*len(stages)+2,
+                  objective_evaluations=evaluations+2*len(stages)+2+(2*len(stages) if nested_evaluation=="coarse_exact" else 0),
                   optimize_seconds=elapsed, median_forward_objective_seconds=float(np.median(forward_seconds)),
                   loading_seconds=loading_seconds,feature_seconds=feature_seconds,
                   serialization_seconds=serialization_seconds,certification_seconds=certification_seconds,
@@ -456,13 +521,17 @@ def optimize(args, accepted_stage_callback=None):
                   p1_sampling=p1_sampling,
                   geometry_backend=geometry_backend,
                   control_hierarchy=control_hierarchy,
+                  nested_evaluation=nested_evaluation,
+                  nested_prior_cache_bytes=nested_prior_bytes,
+                  nested_evidence_cache_bytes=nested_prior_bytes+
+                    sum(buffer.numel()*buffer.element_size() for buffer in new_query_buffers.values()),
                   control_sizes=args.levels if nested else [args.grid_side]*len(args.levels),
                   nested_p1_cache_bytes=sum(m.resident_bytes for m in materializers.values()),
                   fixed_p1_cache_bytes=sum(buffer.numel()*buffer.element_size()
                     for item in evidence_by_resolution.values() if item.fixed_p1_evaluator is not None
                     for buffer in item.fixed_p1_evaluator.buffers()),
                   terminal_full_total=terminal_full_loss,best_accepted_full_total=full_best_loss,
-                  acceptance_objective="complete objective at current image resolution; full-resolution trajectory may not be monotone",
+                  acceptance_objective="original complete objective at current image resolution; full-resolution trajectory may not be monotone",
                   oob="zero padding, fixed denominator, explicit quadratic excess penalty; no query dropping")
     args.output.with_suffix(".json").write_text(json.dumps(report, indent=2)+"\n", encoding="utf-8")
     return report
@@ -488,6 +557,8 @@ def main():
                    help="Optional constant-anchor global radial/analytic instance-stage cache; not trainable-anchor neural API")
     p.add_argument("--control-hierarchy",choices=("fixed","nested_p1"),default="fixed",
                    help="Actual increasing P1 control meshes; objective always uses final fine mesh, one global cycle only")
+    p.add_argument("--nested-evaluation",choices=("full_fine","coarse_exact"),default="full_fine",
+                   help="Optional same fine functional via direct coarse P1 queries/count quadrature; fresh rounded fine checks and original stage acceptance retained")
     p.add_argument("--grid-side", type=int, default=257)
     p.add_argument("--image-side", type=int, default=512)
     p.add_argument("--image-levels", type=int, nargs="+",

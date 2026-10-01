@@ -721,7 +721,8 @@ anatomical error despite proxy gains; do not call this guaranteed convergence.
 
 ## 20. Candidate exact coarse quadrature for the unchanged fine-grid priors
 
-Research card (T+7h; PROPOSED, not implemented or numerically established).
+Research card (T+7h proposal; independently checked and dyadic implementation
+benchmarked at T+7.4h, see PROGRESS and nested_priors_dyadic_gpu7.json).
 Question: can the fine-grid prior of an EXACT uniformly refined P1 function be
 evaluated and differentiated from its coarse vertices, instead of retaining the
 entire fine-grid autograd graph? This could address the negative timing result
@@ -777,3 +778,47 @@ derivation/check first, then profile bottlenecks and integrate only if justified
 Prior work: exact integration/assembly in nested finite-element spaces; the
 particular four-corner and edge-multiplicity expressions here are proposed
 derivations for the existing discrete objective, not claims of novel general FEM.
+
+## 21. Reduced evaluation without changing the declared fine objective
+
+Let P map coarse mapped vertices Y to their exact nested P1 fine vertex table;
+let S_c and S_f evaluate the corresponding coarse/fine P1 functions at the SAME
+fixed pixel-center or frozen image-match queries. In real arithmetic,
+
+    S_f P Y = S_c Y.
+
+This requires a nested triangulation with one unchanged AC/BD diagonal. It is
+not true for replacing P1 by bilinear Q1 or changing the source triangulation.
+The frozen affine, original moving features, interpolation of image brightness,
+foreground denominator, OOB penalty, match points/confidences/robust canvas-pixel
+scale and loss weights are unchanged. Image matches continue to use
+pixel_scale*A(mapped(q)-p)/robust_scale, with NO added affine offset and NO change
+of pixel_scale to the control-side count. The Section20 weighted quadrature then
+provides the SAME fine strain/shape priors, not ordinary coarse-grid priors.
+
+Write E_f(PY)=E_reduced(Y). Its full coarse-Y gradient is, where differentiable,
+P^T grad E_f(PY), equivalently direct AD through the reduced graph. No field
+gradient is detached; no sparse solve or inverse is introduced. The image
+sampler is only piecewise differentiable. At exact bilinear image knots central
+finite differences can average different branches, while AD selects a branch;
+the retained knot fixture checks equal selected gradients, NOT a nonexistent
+unique classical derivative. Knot-free fixtures separately check directional FD.
+
+Floating arithmetic introduces different query/scatter/reduction rounding, so
+we do NOT assert bit-identical E_f and E_reduced. Every trial materializes PY
+without retaining its gradient graph and checks ALL four actual rounded fine
+corner margins, with the SAME minimum eta. Before accepting a reduced winner,
+evaluate the ORIGINAL complete fine functional at the current STAGE image
+resolution on both anchor and candidate; retain the anchor if it worsens or is
+nonfinite. Full-resolution best_full selection remains original E_f as before.
+This costs two extra full objective calls per stage and is counted in runtime;
+it protects acceptance, not equivalence of entire optimizer trajectories.
+
+Optional --nested-evaluation coarse_exact is restricted to the existing
+single-cycle nested_p1 path and supported dyadic references. full_fine remains
+the unchanged default. Feature/mask/match objects are shared immutable inputs;
+coarse source-query/count buffers are separately constructed and counted. An
+already identical source-query cache is reused instead of duplicated. The
+ordinary full Evidence remains authoritative for accepted/final reporting.
+Actual application time/peak memory must be measured: fewer prior graph entries
+alone do not prove a faster registration, especially at fine257.

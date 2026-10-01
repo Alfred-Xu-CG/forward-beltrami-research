@@ -39,3 +39,20 @@ def test_hierarchy_comparison_preserves_geometry_and_all_fine_evidence():
     assert config.control_hierarchy=="nested_p1" and config.geometry_backend=="stage_cache"
     assert config.p1_sampling=="frozen" and config.grid_side==257 and config.strain_weight==3.
     assert "control_hierarchy" not in report["configuration"]
+def test_nested_evidence_replay_sets_only_declared_evaluation(tmp_path):
+    from tools.coordinated_timing_replay import replay_configuration
+    report={"configuration":dict(fixed="f",moving="m",affine="a",output="old",
+        interpolation="p1_ac",control_hierarchy="fixed",p1_sampling="frozen")}
+    config=replay_configuration(report,tmp_path/"new.npz","coarse_exact","nested_evidence")
+    assert config.control_hierarchy=="nested_p1" and config.nested_evaluation=="coarse_exact"
+    assert config.p1_sampling=="frozen" and report["configuration"]["control_hierarchy"]=="fixed"
+
+
+def test_larger_actual_control_grid_keeps_image_resolution_and_middle_levels():
+    report={"configuration":dict(interpolation="p1_ac",grid_side=257,image_side=512,
+        levels=[17,33,65,129,257],image_levels=[32,64,128,256,512])}
+    config=replay_configuration(report,Path("new.npz"),"full_fine","nested_evidence",1025)
+    assert config.grid_side==1025 and config.levels==[17,33,65,129,1025]
+    assert config.image_side==512 and config.image_levels==report["configuration"]["image_levels"]
+    assert report["configuration"]["levels"][-1]==257
+    with pytest.raises(ValueError):replay_configuration(report,Path("bad.npz"),"full_fine","nested_evidence",129)
