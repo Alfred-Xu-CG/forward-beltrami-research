@@ -33,3 +33,37 @@ def test_equal_gradient_budget_and_supported_cache_only(tmp_path,monkeypatch,inn
         count=config.cycles*len(config.levels)*config.inner_steps*(2 if config.method in ("radial","analytic") else 1)
         assert count==600
     assert (tmp_path/"out"/"mind_summary.json").exists()
+
+
+@pytest.mark.parametrize("calibration",["edge","physical"])
+def test_joint_sweep_has_two_fields_but_one_objective_gradient_per_stage_step(tmp_path,monkeypatch,calibration):
+    captured=[]
+    def mock(config):
+        captured.append(config)
+        count=config.cycles*len(config.levels)*config.inner_steps
+        return dict(final={},failed_trials=0,gradient_steps=count,optimize_seconds=.1,peak_allocated_bytes=None)
+    monkeypatch.setattr(sweep,"optimize",mock)
+    monkeypatch.setattr(sys,"argv",["sweep","--data",str(tmp_path),"--output",str(tmp_path/"joint"),
+        "--cases","histo","--methods","radial","analytic","--loss","mind",
+        "--coordinate-mode","joint","--joint-backend","cached_manual",
+        "--inner-steps","60","--base-cycles","1","--lr-calibration",calibration])
+    sweep.main()
+    assert len(captured)==2
+    assert all(c.coordinate_mode=="joint" and c.joint_backend=="cached_manual" and
+        c.geometry_backend=="existing" and c.inner_steps==60 and c.cycles==1 for c in captured)
+    assert all(c.lr_calibration==calibration and c.output.name.endswith(calibration+"257.npz") for c in captured)
+
+
+def test_filter_configuration_reaches_application_without_changing_calibration(tmp_path,monkeypatch):
+    captured=[]
+    def mock(config):
+        captured.append(config)
+        return dict(final={},failed_trials=0,gradient_steps=300,optimize_seconds=.1,peak_allocated_bytes=None)
+    monkeypatch.setattr(sweep,"optimize",mock)
+    monkeypatch.setattr(sys,"argv",["sweep","--data",str(tmp_path),"--output",str(tmp_path/"filter"),
+        "--cases","histo","--methods","analytic","--loss","mind","--lr-calibration","physical",
+        "--proposal-filter-steps","4","--proposal-filter-min-level","129"])
+    sweep.main()
+    assert len(captured)==1
+    assert captured[0].proposal_filter_steps==4 and captured[0].proposal_filter_min_level==129
+    assert captured[0].lr_calibration=="physical"

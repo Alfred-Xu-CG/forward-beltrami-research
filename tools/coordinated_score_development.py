@@ -17,6 +17,7 @@ def main():
     p.add_argument("--maps-dir",type=Path,required=True)
     p.add_argument("--methods",nargs="+",default=["radial","analytic","f1","f2"])
     p.add_argument("--loss",default="mind")
+    p.add_argument("--lr-calibration",choices=("edge","physical"),default="edge")
     args=p.parse_args();base=args.data_root;canvas=base/"birl_anhir_dev/canvas"
     labels={
         "histo":(base/"HistoReg_CD68_CD4/Landmarks_CD4.csv",base/"HistoReg_CD68_CD4/Landmarks_CD68.csv"),
@@ -25,7 +26,7 @@ def main():
         "rat_kidney":(base/"birl_anhir_dev/labels_eval_only/rat-kidney_/scale-5pc/Rat-Kidney_HE.csv",
                       base/"birl_anhir_dev/labels_eval_only/rat-kidney_/scale-5pc/Rat-Kidney_PanCytokeratin.csv")}
     for case,(fixed,moving) in labels.items():
-        maps={m:args.maps_dir/(case+"_"+m+"_"+args.loss+"_edge257.npz") for m in args.methods}
+        maps={m:args.maps_dir/(case+"_"+m+"_"+args.loss+"_"+args.lr_calibration+"257.npz") for m in args.methods}
         report=score(canvas/(case+"_layout.json"),fixed,moving,maps,canvas/(case+"_initial_affine.npz"),
                      args.maps_dir/(case+"_independent_score.json"))
         rows=[]

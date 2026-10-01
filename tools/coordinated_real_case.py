@@ -233,6 +233,20 @@ def optimize(args, accepted_stage_callback=None):
     if control_hierarchy not in ("fixed","nested_p1"):
         raise ValueError("control hierarchy must be fixed or nested_p1")
     nested=control_hierarchy=="nested_p1"
+    coordinate_mode=getattr(args,"coordinate_mode","alternating")
+    joint_backend=getattr(args,"joint_backend","cached_manual")
+    if coordinate_mode not in ("alternating","joint") or joint_backend not in ("ordinary","cached_manual"):
+        raise ValueError("declare alternating/joint coordinates and ordinary/cached_manual joint backend")
+    joint=coordinate_mode=="joint"
+    filter_steps=getattr(args,"proposal_filter_steps",0)
+    filter_min_level=getattr(args,"proposal_filter_min_level",129)
+    if (isinstance(filter_steps,bool) or not isinstance(filter_steps,int) or filter_steps<0 or
+            isinstance(filter_min_level,bool) or not isinstance(filter_min_level,int) or filter_min_level<3):
+        raise ValueError("proposal filter needs nonnegative integer steps and integer minimum level>=3")
+    if filter_steps and args.method not in ("radial","analytic"):
+        raise ValueError("proposal filter currently supports global radial/analytic only")
+    if joint and (args.method not in ("radial","analytic") or geometry_backend!="existing"):
+        raise ValueError("joint coordinates require global radial/analytic and geometry_backend existing; joint_backend controls joint geometry")
     nested_evaluation=getattr(args,"nested_evaluation","full_fine")
     if nested_evaluation not in ("full_fine","coarse_exact"):
         raise ValueError("nested evaluation must be full_fine or coarse_exact")
@@ -341,15 +355,20 @@ def optimize(args, accepted_stage_callback=None):
                 stage_evidence=coarse_evidence[(control_side,stage_resolution)]
             def trial_evidence(vertices):
                 return stage_evidence(vertices if nested_evaluation=="coarse_exact" else materialize(vertices))
-            directions = ((1., 0.), (0., 1.)) if args.method not in ("f1","f2") else (None,)
+            directions = (("joint_xy",) if joint else
+                (((1., 0.), (0., 1.)) if args.method not in ("f1","f2") else (None,)))
             for direction in directions:
                 anchor = current.detach()
-                channels = 2 if direction is None else 1
+                channels = 2 if joint or direction is None else 1
                 coefficients = torch.nn.Parameter(torch.zeros(1, channels, level-2, level-2,
                                                                device=device, dtype=dtype))
                 physical_lr = args.learning_rate*(args.levels[0]-1)/(level-1) if args.lr_calibration == "edge" else args.learning_rate
                 optimizer = torch.optim.Adam([coefficients], lr=physical_lr)
-                if direction is None:
+                if joint:
+                    from qcopt.neural_bijection.dense.coordinated_joint_stage import FrozenAnchorJointCoordinatedUpdate
+                    layer=FrozenAnchorJointCoordinatedUpdate(anchor,reference=control_reference,
+                        mode=args.method,minimum_jacobian=args.minimum_jacobian,theta=.95,backend=joint_backend)
+                elif direction is None:
                     if args.method == "f1":
                         layer = AdaptiveSoftRadialQ1Relaxation(args.grid_side, raw_span=8.,
                             safety_fraction=.75, minimum_jacobian=args.minimum_jacobian).to(device)
@@ -386,8 +405,25 @@ def optimize(args, accepted_stage_callback=None):
                 for step in range(args.inner_steps + 1):
                     optimizer.zero_grad(set_to_none=True)
                     synchronize(); tick = time.perf_counter()
-                    coarse = F.pad(coefficients, (1, 1, 1, 1))
-                    if direction is None:
+                    applied_filter_steps=filter_steps if level>=filter_min_level else 0
+                    if applied_filter_steps:
+                        from qcopt.neural_bijection.dense.coordinated_proposal_filter import dirichlet_lazy_proposal_filter
+                        filtered_coefficients=dirichlet_lazy_proposal_filter(coefficients,steps=applied_filter_steps)
+                    else:
+                        filtered_coefficients=coefficients
+                    coarse = F.pad(filtered_coefficients, (1, 1, 1, 1))
+                    if joint:
+                        px=interpolate_proposal(coarse[:,0],(control_side,control_side))
+                        py=interpolate_proposal(coarse[:,1],(control_side,control_side))
+                        result=layer(px,py,validate=False)
+                        candidate=result.vertices
+                        scales,gauges=result.scales,result.gauges
+                        diagnostics=dict(scale=float(scales.min()),mean_scale=float(scales.mean()),
+                            gauge=float(gauges.max()),scale_x=float(scales[:,0].min()),scale_y=float(scales[:,1].min()),
+                            gauge_x=float(gauges[:,0].max()),gauge_y=float(gauges[:,1].max()),
+                            intermediate_margin=float(result.substep_margin_min[:,0].min()),
+                            margin=float(result.normalized_margin_min.min()))
+                    elif direction is None:
                         physical_coefficients = coefficients/args.f2_accepted_gain if args.method=="f2" else coefficients
                         candidate = decode_control(layer,args.method,anchor,physical_coefficients,coverage)
                         margin = (q1_corner_determinants(candidate.double())/reference_corners-args.minimum_jacobian).amin()
@@ -407,6 +443,12 @@ def optimize(args, accepted_stage_callback=None):
                         diagnostics = dict(scale=float(scales.detach().min()),mean_scale=float(scales.detach().mean()),
                                            gauge=float(gauges.detach().max()),
                                            margin=float(result.normalized_margin_min.detach().min()))
+                    if args.method in ("radial","analytic"):
+                        with torch.no_grad():
+                            diagnostics.update(proposal_filter_steps=applied_filter_steps,
+                                raw_coefficient_rms=float(coefficients.square().mean().sqrt()),
+                                filtered_coefficient_rms=float(filtered_coefficients.square().mean().sqrt()),
+                                candidate_displacement_rms=float((candidate-anchor).square().sum(-1).mean().sqrt()))
                     fine_candidate=materialize(candidate.detach() if nested_evaluation=="coarse_exact" else candidate)
                     if nested:
                         fine_margin=(q1_corner_determinants(fine_candidate.double())/reference_corners-args.minimum_jacobian).amin()
@@ -419,6 +461,8 @@ def optimize(args, accepted_stage_callback=None):
                     value = float(total.detach())
                     legal = bool(torch.isfinite(fine_candidate).all())
                     legal = legal and diagnostics["margin"] > 0
+                    if joint:
+                        legal=legal and diagnostics["intermediate_margin"]>0
                     if not np.isfinite(value) or not legal:
                         failed_trials += 1
                         failures.append(dict(cycle=cycle,level=level,direction=direction,step=step,
@@ -507,7 +551,7 @@ def optimize(args, accepted_stage_callback=None):
                   loading_seconds=loading_seconds,feature_seconds=feature_seconds,
                   serialization_seconds=serialization_seconds,certification_seconds=certification_seconds,
                   end_to_end_seconds=time.perf_counter()-overall_start,
-                  median_vjp_seconds=float(np.median(backward_seconds)),
+                  median_vjp_seconds=float(np.median(backward_seconds)) if backward_seconds else None,
                   peak_allocated_bytes=torch.cuda.max_memory_allocated(device) if device.type == "cuda" else None,
                   stages=stages, trace=trace, failures=failures,saved_binary_certificate=certificate,
                   landmarks_used=False, mask="fixed grayscale inversion > .04, constant denominator",
@@ -520,6 +564,10 @@ def optimize(args, accepted_stage_callback=None):
                   image_preprocessing=preprocessing_metadata,
                   p1_sampling=p1_sampling,
                   geometry_backend=geometry_backend,
+                  coordinate_mode=coordinate_mode,joint_backend=joint_backend if joint else None,
+                  proposal_filter_steps=filter_steps,proposal_filter_min_level=filter_min_level,
+                  coordinated_substep_evaluations=evaluations*(2 if joint else 1) if args.method in ("radial","analytic") else None,
+                  extra_joint_diagnostic_passes=evaluations if joint and joint_backend=="cached_manual" else 0,
                   control_hierarchy=control_hierarchy,
                   nested_evaluation=nested_evaluation,
                   nested_prior_cache_bytes=nested_prior_bytes,
@@ -555,6 +603,12 @@ def main():
                    help="Optional immutable fixed-source query cache; no moving-query gradients")
     p.add_argument("--geometry-backend",choices=("existing","stage_cache"),default="existing",
                    help="Optional constant-anchor global radial/analytic instance-stage cache; not trainable-anchor neural API")
+    p.add_argument("--coordinate-mode",choices=("alternating","joint"),default="alternating",
+                   help="Optional joint x-then-y latent optimization; global radial/analytic only, geometry-backend existing")
+    p.add_argument("--joint-backend",choices=("ordinary","cached_manual"),default="cached_manual",
+                   help="Joint stage ordinary AD or cached first step/manual full-Y second adjoint plus explicitly counted no-grad diagnostics")
+    p.add_argument("--proposal-filter-steps",type=int,default=0,help="zero-ghost passes on RAW interior coefficients before safe decoding")
+    p.add_argument("--proposal-filter-min-level",type=int,default=129)
     p.add_argument("--control-hierarchy",choices=("fixed","nested_p1"),default="fixed",
                    help="Actual increasing P1 control meshes; objective always uses final fine mesh, one global cycle only")
     p.add_argument("--nested-evaluation",choices=("full_fine","coarse_exact"),default="full_fine",

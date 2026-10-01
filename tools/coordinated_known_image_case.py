@@ -378,6 +378,10 @@ def run(args,manifest):
             opt.preprocessing=getattr(args,"preprocessing","raw_inverted")
             opt.interpolation=interpolation
             opt.p1_sampling=getattr(args,"p1_sampling","existing")
+            opt.coordinate_mode=getattr(args,"coordinate_mode","alternating")
+            opt.joint_backend=getattr(args,"joint_backend","cached_manual")
+            opt.geometry_backend=getattr(args,"geometry_backend","existing")
+            opt.output_selection=getattr(args,"output_selection","last")
             opt.matches=match_path;opt.match_weight=getattr(args,"match_weight",0.)
             opt.match_robust_scale=getattr(args,"match_robust_scale",8.)
             snapshots=[]
@@ -413,6 +417,9 @@ def run(args,manifest):
                 actual_minimum_normalized_corner=generic_corner_ratio(estimated,reference),
                 optimize_seconds=report["optimize_seconds"],gradient_steps=report["gradient_steps"],
                 decoder_trial_evaluations=report["evaluations"],failed_trials=report["failed_trials"],
+                coordinate_mode=opt.coordinate_mode,
+                coordinated_substep_evaluations=report.get("coordinated_substep_evaluations"),
+                extra_joint_diagnostic_passes=report.get("extra_joint_diagnostic_passes"),
                 objective_evaluations_including_stage_anchors=objective_call_count(report),
                 median_forward_objective_seconds=report["median_forward_objective_seconds"],
                 median_vjp_seconds=report["median_vjp_seconds"],
@@ -471,9 +478,16 @@ def main():
     p.add_argument("--interpolation",choices=("q1","p1_ac","p1_bd"),default="q1",
                    help="Estimated function only; prepared known-image truth remains original Q1")
     p.add_argument("--p1-sampling",choices=("existing","frozen"),default="existing")
+    p.add_argument("--coordinate-mode",choices=("alternating","joint"),default="alternating")
+    p.add_argument("--joint-backend",choices=("ordinary","cached_manual"),default="cached_manual")
+    p.add_argument("--geometry-backend",choices=("existing","stage_cache"),default="existing")
+    p.add_argument("--output-selection",choices=("last","best_full"),default="last")
     p.add_argument("--device",default="cpu")
     p.add_argument("--threads",type=int,default=2)
     args=p.parse_args()
+    if args.coordinate_mode=="joint" and (args.geometry_backend!="existing" or
+            any(method not in ("radial","analytic") for method in args.methods)):
+        p.error("joint known-image comparison needs only radial/analytic and geometry_backend existing")
     if not 0 < args.target_scale <= 1:
         p.error("target scale must lie in (0,1]")
     if not np.isfinite(args.shape_weight) or args.shape_weight<0:

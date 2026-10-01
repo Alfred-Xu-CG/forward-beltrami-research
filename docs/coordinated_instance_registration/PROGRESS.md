@@ -908,3 +908,126 @@ does not automatically improve correspondence. No scale-up anatomical success
 claim. Same data, original evidence and manual denominator, no casewise choice.
 Coordinator's complete affected application/sweep/replay/reduced/priors subset
 111tests passed11.24s. GPU6job finished and all maps/logs copied toD.
+
+## T+8h: joint-coordinate optimization, gradient check and adverse outcomes
+
+Joint frozen-anchor x-then-y module implemented. Ordinary two-layer AD versus
+cached-first/manualFULLintermediate-Y adjoint agree on both latent gradients,
+including unique-active directions, ties/tiny fields, float32B2 and non-square
+meshes. Actual rounded margins for BOTH substeps are reported even validateFalse;
+application rejects invalid x intermediate even if final is valid. Independent
+checker41focused tests pass; author101core tests; coordinator75integration and
+68known-interface/application tests pass. A deliberately injected zero x-margin
+valid-final fixture confirms rejection/anchor retention. Zero backward calls now
+report VJP time asNA/None rather than NaN/empty-median warnings.
+
+Same three real cases, joint5levels*60steps=300gradient evaluations. TWOfields
+and610safe substeps versus alternating310, plus305EXTRA no-grad diagnostics in
+cached_manual. Thus not equalcompute. All6runs valid outputs/zero failedtrials.
+Analytic mean/p90/time: Histo.775726/1.508054/8.23s,
+lesions3.701831/7.111217/6.83s,kidney2.426533/4.899550/6.95s.
+Comparedwith alternating300(.800718/3.689299/2.450187), means improve on two
+cases, slightly worsenlesions; costs roughlytwice. Against600full-after schedule
+(.779500/3.743505/2.392966), advantage remains MIXED, not a general winner.
+Radialmeans.855653/3.731731/2.494603, time8.90/8.87/7.26s. All77/78/69manualIDs
+scored offline; no labels enter accepted/full-best selection.
+
+Untuned known-map control, original three prepared512histology targets, P1(ac)
+estimates and unchanged Q1 generating function, all300gradients/zero failures:
+analytic alternating/joint queryRMSEcanvaspx shear.53138/.52524,
+rotation7.72023/7.78397,coarse-fine.76104/.52119. Joint costs~6.8–7.0s versus
+~3.4–3.6s; no warmABBA timeclaim from these single optimization runs. Both use
+same best_full objective selection, original frozenSGpoints+MIND+strain3+shape1e-4.
+Allmaps/outputlogs onD. Rotation adverse result retained: jointlowerproxy
+.188103→.186724 but queryerror INCREASES. Extra joint freedom/optimization
+is not uniformly transferred to actual correspondences.
+
+Next diagnostic question: edge-calibrated Adam steps impose a chosenO(h) scale
+even though the coordinated decoder has no such intrinsic displacement cap.
+At final257/1025 LR=.00025/.0000625 versus existing physical=.004 option.
+Independent rank-one determinant bound (FORMULATION23) covers ALLfour corners:
+g<=rho/(rho-eta)*max current-triangle amplitude-gradient norms ifQ>=rho>eta.
+No unconditional mesh-independent depth/expressivity claim. Small discriminating
+experiment: EXISTING physical-vs-edge calibration, fixed257R/A, same300gradients/
+evidence/init/weights/boundary, logscales/gauges. Not a largerLRsweep, not aclaim
+that finer gradients alone explain1025error; Adam normalization matters. Preserve
+allcases, including iflargerproposalsactivateglobalworst-cell restrictions.
+
+### T+8.4h bounded proposal-conditioning card
+
+Question: does smoothing RAW fine-level coefficient proposals improve the
+physical-rate experiment without changing geometry or image evidence?
+Exact claim: zero-ghost stencil K=.5I+.125*(four-neighbor adjacency) is symmetric
+SPD on finite interior arrays; applying K^4 BEFORE boundary padding and safe
+decoding leaves topology controlled by the existing four-corner operator. Its
+VJP is K^4. Assumptions: fixed zero residual boundary, finite f32/f64 arrays,
+ordinary AD through the filter, unchanged acceptance objective and eta.
+Falsifier: independent dense/VJP tests fail, or the fixed three-case trial has
+no useful correspondence/time improvement. Smallest decisive test: four passes
+ONLY on coefficient levels>=129, physical rate .004, alternating R/A, fixed257
+control/512query, same300 gradients as the just-completed UNFILTERED physical
+trial. No additional rate/pass-count sweep. Compare all cases/landmarks offline.
+Prior work: standard explicit diffusion/damped Jacobi conditioning; no novelty
+or solver-free expressivity breakthrough is asserted.
+
+Independent checker: K^4 is algebraically invertible, but at interior255 its
+smallest eigenvalue is about2e-18 and condition number about5e17. Consequently
+unbounded exact range equality is NOT practical expressivity/conditioning.
+Four passes smooth approximately one coefficient cell per-axis, not a fixed
+physical width across scales; zero ghosts attenuate constants near boundaries.
+Filtering need NOT decrease the current-geometry gauge. Record raw/filtered
+proposal RMS and accepted displacement RMS to avoid confusing attenuation with
+a demonstrated incoherence mechanism. No accepted map is smoothed or repaired.
+
+Author28operator tests, coordinator80filter/integration tests and139affected
+milestone tests pass. Independent checker108filter/joint/application tests pass,
+verifies both joint gradients and original acceptance/certification remain.
+Filter finite-check GPU synchronization and diagnostic RMS scalar transfers are
+INCLUDED in forward timing, not presented as pure stencil costs.
+
+The preceding physical-rate trial is NEGATIVE in meanTRE on all three cases:
+analytic .996012/3.740509/2.601344 versus edge .800718/3.689299/2.450187.
+All300 gradients/case valid, no failed trials;120/310 analytic trial scales
+active per case, minimum .01077/.01252/.00738. These are ALL trial candidates,
+not just accepted maps. Changing rate affects optimization as well as safety;
+this does not alone establish the causal explanation of registration error.
+
+Bounded filter result: all12 fresh none/four-pass R/A runs finish300 gradients,
+zero failed trials and valid binaries. Radial meanTRE none->filter H1.02767->
+.79010,L3.79364->3.70465,K2.57130->2.44338; analytic .99601->.86401,
+3.74051->3.79752(WORSE),2.60134->2.35910. Analytic p90filtered1.60383/7.19930/
+4.52240. Single-run optimizer seconds analytic3.96/3.50/3.44->4.35/4.13/4.03,
+not warmABBA. No general advantage over existing edgebaseline is established.
+Fine-level analytic minScale .01077/.01252/.00738->.12855/1/.07756;
+maxGauge88.17/75.89/128.76->7.39/.906/12.25. Mean candidate-anchor RMS rises
+roughly3.2--4.7x while filtered coefficientRMS falls. This is consistent with
+alleviating incoherent worst-corner restriction, but coupled Adam trajectories
+and amplitude attenuation prevent a unique causal claim. Accepted winning
+diagnostics are retained separately from ALL trial extrema. No more filter
+or rate sweep: modest utility and adverse lesion outcome are both preserved.
+
+### T+8.5h decision card: rotation-aware regularization
+
+Question: is displacement-gradient regularization excluding useful rotations
+even when image/machine-point evidence supports them? Independent diagnosis on
+known rotation: truth total .224444 > estimated .188103 despite truth image
+.071159 < estimated .110828 and weighted match .000613 < .019766. Weighted
+strain truth .152651 > estimated .057501. best_full selects TERMINAL stage9,
+so an early-output-selection hypothesis is falsified. Truth diagnostic currently
+uses Q1 generating map; declared P1 comparator will be separately quantified.
+
+Exact candidate: replace ONLY the displacement-gradient penalty by
+S(Y)=.5*mean_actual_P1_faces min_{R in SO(2)} ||J_t(Y)-R||_F^2, on the same
+uniform material triangulation, retaining weight3 and existing shape/image/
+matches/boundary/geometry. For detJ>0, nearest rotation is analytic and smooth;
+no global solve/local-global ARAP iterations are used. Safety remains the
+four-corner decoder, NOT this energy (ARAP alone does not prevent flips).
+Assumptions: declared AC/BD P1, valid positive triangles, normalized rectangular
+coordinates; interpret energy in residual-affine frame as before.
+Falsifier: independent SVD/polar value or full-Y FD/VJP disagrees, or the bounded
+same three real cases and known targets do not improve useful accuracy/time.
+Smallest test: offline truth/current energy comparison first; then tiny operator
+tests and one existing300gradient matrix, no weight grid search.
+Prior work: standard ARAP/corotational distortion (SLIM2017 equations1--2,
+https://igl.ethz.ch/projects/slim/SLIM2017.pdf); this is a conventional objective
+ablation prompted by observed evidence/prior conflict, not novel geometry.

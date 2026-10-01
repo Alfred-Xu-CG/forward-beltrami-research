@@ -822,3 +822,129 @@ already identical source-query cache is reused instead of duplicated. The
 ordinary full Evidence remains authoritative for accepted/final reporting.
 Actual application time/peak memory must be measured: fewer prior graph entries
 alone do not prove a faster registration, especially at fine257.
+
+## 22. Joint optimization of two sequential feasible coordinate updates
+
+This tests the OPTIMIZATION organization, not a newly asserted representation
+class. Let U_e(Y,p) denote the earlier radial/analytic safe single-direction
+update with fixed residual boundary. During one stage the accepted anchor Y0
+is fixed, and the jointly trainable variables are two interior coefficient
+tables z_x,z_y on one source coefficient level. Let P_l pad their boundaries
+with zero and interpolate their RAW scalar amplitudes to the current material
+mesh (it does not interpolate a finished deformation). Define
+
+    Y1 = U_x(Y0,P_l z_x),
+    Y2 = U_y(Y1,P_l z_y),
+    minimize_{z_x,z_y} E(Y2).
+
+The second operator's constraints use Y1, NOT the old anchor Y0. Its geometry
+cannot be cached as a constant or detached from z_x. Each actual rounded
+substep margin and the final exported grid are checked. In exact arithmetic,
+strict feasibility of both substeps yields a valid final vertex table on the
+SAME original material triangulation. No unrelated regular-grid map is composed
+and then resampled. This remains a per-instance optimization experiment with
+frozen accepted stage anchors, NOT backpropagation through the optimizer history.
+
+If g=grad_{Y2} E, the complete first-order derivatives are
+
+    grad_{z_y} E = P_l^T (D_p U_y)^T g,
+    grad_{z_x} E = P_l^T (D_p U_x)^T (D_Y U_y)^T g.
+
+The full intermediate-Y adjoint is essential. Ordinary AD through both layers
+is the oracle. Optional cached_manual caches ONLY the first constant geometry
+and uses the existing explicit full-Y adjoint for the second layer. That API
+supports first derivatives only; diagnostics are detached and computed by an
+EXTRA no-grad second pass, whose time/pass count is explicitly reported.
+No speedup of that backend is assumed from smaller graph storage.
+
+The bounded application comparison uses joint5levels*60inner steps=300gradient
+evaluations versus alternating5levels*2axes*30inner steps=300. These are NOT
+equal layer-pass counts or equal compute: joint evaluates TWO feasible layers
+per trial and updates TWO fields per gradient. Both include the final post-Adam
+trial; joint has305trial objective evaluations versus alternating310. Report
+actual wall time/memory and substep counts, not an unsupported fair-time claim.
+Adam, physical edge-calibrated rates, original evidence/initialization, objective
+weights, accepted-map refresh POLICY and output selection are unchanged. The
+joint schedule refreshes five anchors rather than ten, an explicit part of this
+optimization organization rather than an otherwise identical iteration sequence. Improvement
+of image proxy alone cannot establish anatomical improvement.
+
+## 23. The coordinated safety bound is about gradients, not absolute grid spacing
+
+Here t ranges over ALL FOUR constrained corner triangles per quadrilateral,
+not just the two faces of the declared P1 diagonal. For t=(i,j,k), define source
+edge matrix B_t=[X_j-X_i,X_k-X_i], mapped edge matrix D_t=[Y_j-Y_i,Y_k-Y_i],
+J_t=D_t B_t^{-1}, and scalar source gradient
+w_t=B_t^{-T}[u_j-u_i,u_k-u_i]^T. Thus q_t=det D_t, qref_t=det B_t and
+Q_t=q_t/qref_t=det J_t. All are positive for the current admissible map.
+The common-unit-direction update gives exactly
+
+    J_t^+ = J_t + e w_t^T,
+    q_t^+ = q_t (1 + w_t^T J_t^{-1} e).
+
+This is the rank-one determinant identity, not inversion of a global system.
+Define v_t=J_t^{-T}w_t, the gradient of the scalar amplitude on the CURRENT
+mapped auxiliary triangle. It is a per-triangle quantity; we do not pretend
+the overlapping four auxiliary triangles define a single additional global mesh.
+With eta>=0 and Q_t>eta, the earlier gauge can be written exactly
+
+    g(u)=max_t [Q_t/(Q_t-eta)] (-v_t dot e)_+.
+
+If Q_t>=rho>eta for every constrained triangle and ||e||=1, then
+
+    g(u) <= [rho/(rho-eta)] max_t ||v_t||.
+
+No explicit h occurs. Large amplitudes coordinated over a broad current-space
+region can have small gradients; incoherent neighboring amplitudes, an O(h)-wide
+boundary transition, or compressed J_t can instead make this bound grow like
+1/h. Therefore a coherent proposal is NOT automatically safe, and fine-mesh
+resolution-independent expressivity/depth is NOT established by the inequality.
+Finite reachability along an ASSUMED strictly feasible path is a separate
+conditional assertion, not connectivity of the whole digital feasible set.
+
+The present optimizer uses Adam step .004*16/(level-1) in normalized residual
+coordinate units under lr_calibration=edge. This is a chosen optimization scale,
+not required by the above decoder. The existing physical option keeps .004
+across coefficient levels. At257/1025 these differ by16x/64x, respectively.
+Adam approximately cancels CONSTANT gradient-magnitude rescaling; it does not
+cancel its explicit learning rate, nor do momentum/epsilon/curvature/support
+variations disappear. A bounded calibration ablation can diagnose this choice.
+Inactive observed analytic scales only mean their OBSERVED proposals were not
+scaled; they do not show that larger proposals would be unrestricted. A257
+ablation alone cannot explain a1025 change that also changes the parameter space
+and image identifiability. All original geometry checks remain unchanged.
+
+## 24. Explicit conditioning of raw proposals (bounded experiment)
+
+For an M-by-N interior coefficient array z, with zero values outside that
+interior rectangle, define
+
+    (Kz)_ij = .5 z_ij + .125(z_(i-1,j)+z_(i+1,j)+z_(i,j-1)+z_(i,j+1)).
+
+The physical proposal is p=P_l K^r z, where P_l first pads a zero coefficient
+boundary then interpolates RAW amplitudes to the material vertices. The existing
+safe operator computes U_e(Y,p). Neither Y nor its accepted deformation is
+filtered. The boundary and topology argument are therefore unchanged.
+This costs r local stencil passes and requires no global solve or inverse.
+For upstream derivative v at p, the coefficient derivative is
+
+    grad_z L = K^r P_l^T v.
+
+Here K=I-L_D/8 for the unscaled Dirichlet five-point Laplacian L_D. Its sine
+eigenvalues are .5+.25*cos(k*pi/(M+1))+.25*cos(l*pi/(N+1)), k=1..M,l=1..N,
+strictly in(0,1). Thus K is symmetric SPD, and K^r is algebraically full rank.
+This does NOT imply practical range/conditioning equality: for M=N=255,
+lambda_min(K)~3.76e-5 and lambda_min(K^4)~2e-18. Bounded coefficients, floating
+arithmetic and finite optimization budgets effectively restrict high frequencies.
+With plain gradient descent, u=K^r z evolves through K^(2r)-preconditioned
+gradients; Adam further changes this relation. This is an optimization
+parameterization, not mere visualization or a map-repair operation.
+
+Away from boundaries, r=4 has approximately one coefficient-cell per-axis
+standard deviation, not scale-independent physical width. Zero ghosts attenuate
+constant fields near boundaries. It need not reduce the distorted-mesh gauge
+g(p), because J_t, slack and boundary transitions remain. The predefined test
+uses r=4 only at levels129/257, against r=0 with physical Adam rate .004,
+unchanged three development cases,300 gradients and all original objectives.
+Report raw/filtered amplitudes and accepted displacement as well as gauge,
+accuracy, time and memory; no anatomy improvement follows from this derivation.

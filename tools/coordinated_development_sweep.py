@@ -25,27 +25,38 @@ def main():
     p.add_argument("--inner-steps",type=int,default=5)
     p.add_argument("--budget-multiplier",type=int,default=1)
     p.add_argument("--base-cycles",type=int,default=2,help="coordinate cycles; joint controls use twice this count")
+    p.add_argument("--lr-calibration",choices=("edge","physical"),default="edge",
+                   help="Edge-scaled physical Adam step or unchanged physical step across coefficient levels")
     p.add_argument("--interpolation",choices=("q1","p1_ac","p1_bd"),default="q1")
     p.add_argument("--p1-sampling",choices=("existing","frozen"),default="existing")
     p.add_argument("--geometry-backend",choices=("existing","stage_cache"),default="existing",
                    help="Cache only supported global radial/analytic methods; controls retain existing decoder")
+    p.add_argument("--coordinate-mode",choices=("alternating","joint"),default="alternating")
+    p.add_argument("--joint-backend",choices=("ordinary","cached_manual"),default="cached_manual")
+    p.add_argument("--proposal-filter-steps",type=int,default=0)
+    p.add_argument("--proposal-filter-min-level",type=int,default=129)
     p.add_argument("--levels",type=int,nargs="+",default=[17,33,65,129,257])
     p.add_argument("--output-selection",choices=("last","best_full"),default="last")
     p.add_argument("--matches-dir",type=Path)
     p.add_argument("--match-weight",type=float,default=0.)
     p.add_argument("--match-robust-scale",type=float,default=8.)
     args=p.parse_args()
+    if args.proposal_filter_steps and any(method not in ("radial","analytic") for method in args.methods):
+        raise ValueError("proposal filter sweep requires only global radial/analytic methods")
+    if args.coordinate_mode=="joint" and (args.geometry_backend!="existing" or
+            any(method not in ("radial","analytic") for method in args.methods)):
+        raise ValueError("joint sweep requires only global radial/analytic methods and geometry_backend existing")
     args.output.mkdir(parents=True,exist_ok=True)
     results=[]
     for case in args.cases:
         for method in args.methods:
             config=argparse.Namespace(fixed=args.data/(case+"_fixed512.png"),
                 moving=args.data/(case+"_moving512.png"),affine=args.data/(case+"_initial_affine.npz"),
-                output=args.output/(case+"_"+method+"_"+args.loss+"_edge257.npz"),method=method,
+                output=args.output/(case+"_"+method+"_"+args.loss+"_"+args.lr_calibration+"257.npz"),method=method,
                 loss=args.loss,grid_side=257,image_side=512,image_levels=args.image_levels,levels=args.levels,inner_steps=args.inner_steps,
                 preprocessing=args.preprocessing,
                 continuation_scope=args.continuation_scope,
-                cycles=args.base_cycles*(2 if method in ("f1","f2") else 1)*args.budget_multiplier,learning_rate=.004,lr_calibration="edge",patch_cells=8,
+                cycles=args.base_cycles*(2 if method in ("f1","f2") else 1)*args.budget_multiplier,learning_rate=.004,lr_calibration=args.lr_calibration,patch_cells=8,
                 f2_accepted_gain=args.f2_accepted_gain,
                 regional_cells=32,regional_min_level=args.regional_min_level,
                 strain_weight=args.strain_weight,oob_weight=1.,minimum_jacobian=.001,precision=args.precision,
@@ -53,6 +64,8 @@ def main():
                 interpolation=args.interpolation,
                 p1_sampling=args.p1_sampling,
                 geometry_backend=args.geometry_backend if method in ("radial","analytic") else "existing",
+                coordinate_mode=args.coordinate_mode,joint_backend=args.joint_backend,
+                proposal_filter_steps=args.proposal_filter_steps,proposal_filter_min_level=args.proposal_filter_min_level,
                 output_selection=args.output_selection,
                 matches=args.matches_dir/(case+"_common_sg_raw_matches.json") if args.matches_dir else None,
                 match_weight=args.match_weight,match_robust_scale=args.match_robust_scale,

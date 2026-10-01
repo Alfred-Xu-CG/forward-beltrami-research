@@ -120,7 +120,8 @@ def test_root_p1_and_q1_are_distinct_on_non_affine_quad():
 
 
 @pytest.mark.parametrize("interpolation",["q1","p1_ac","p1_bd"])
-def test_common_shape_weight_and_target_free_optimizer_interface(tmp_path,monkeypatch,interpolation):
+@pytest.mark.parametrize("coordinate_mode",["alternating","joint"])
+def test_common_shape_weight_and_target_free_optimizer_interface(tmp_path,monkeypatch,interpolation,coordinate_mode):
     from PIL import Image
     from types import SimpleNamespace
     import tools.coordinated_real_case as app
@@ -138,10 +139,14 @@ def test_common_shape_weight_and_target_free_optimizer_interface(tmp_path,monkey
         levels=[5],inner_steps=1,cycles=1,learning_rate=.004,minimum_jacobian=.001,
         image_levels=None,device="cpu",threads=2,record_stages=False,query_thresholds=[1.,5.,10.])
     args.interpolation=interpolation
+    args.coordinate_mode=coordinate_mode;args.joint_backend="cached_manual"
+    args.geometry_backend="existing";args.output_selection="best_full"
     args.p1_sampling="existing" if interpolation=="q1" else "frozen"
     def image_only_optimizer(opt):
         assert opt.shape_weight==args.shape_weight
         assert opt.interpolation==interpolation and opt.p1_sampling==args.p1_sampling
+        assert opt.coordinate_mode==coordinate_mode and opt.joint_backend=="cached_manual"
+        assert opt.geometry_backend=="existing" and opt.output_selection=="best_full"
         assert not any(word in key for key in vars(opt) for word in ("target","landmark","truth"))
         assert opt.fixed.name=="fixed.png" and opt.moving.name=="moving.png"
         assert opt.affine.name=="identity.npz"
