@@ -89,14 +89,22 @@ def score(layout_path, fixed_path, moving_path, maps, affine, output, dhr=None):
         offset=data["post_affine_offset"].astype(np.float64)
         predicted["common_affine"] = query @ matrix.T+offset
         domain_bound=affine_domain_bound(expected,matrix,offset,layout["side"])
+    native_geometry={}
     if dhr:
         import SimpleITK as sitk
         import torch
         from tools.digital_compare_appearance import dhr_map_at_unit_queries
+        from tools.digital_dhr_field_eval import q1_corner_determinants
         for name,field_path,params_path in dhr:
             field = sitk.GetArrayFromImage(sitk.ReadImage(str(field_path)))
+            corners=q1_corner_determinants(field)
+            native_geometry[name]=dict(field_shape=list(field.shape),
+                minimum_corner_determinant=float(corners.min()),
+                nonpositive_corner_count=int((corners<=0).sum()),
+                cells_with_nonpositive_corner=int((corners<=0).any(0).sum()),
+                scope="local signs on native saved pixel-center Q1 field; no boundary/global homeomorphism certificate")
             params = json.loads(Path(params_path).read_text(encoding="utf-8"))
-            mapped = dhr_map_at_unit_queries(field,params,fixed_size=(512,512),moving_size=(512,512),
+            mapped = dhr_map_at_unit_queries(field,params,fixed_size=(layout["side"],layout["side"]),moving_size=(layout["side"],layout["side"]),
                 query=torch.tensor(query,dtype=torch.float32).reshape(1,1,-1,2))
             predicted[name] = mapped[0,0].numpy().astype(np.float64)
     results = {}
@@ -105,13 +113,18 @@ def score(layout_path, fixed_path, moving_path, maps, affine, output, dhr=None):
         native = np.linalg.norm(canvas_unit_to_original_pixel(p,layout["moving"],layout["side"])-m,axis=-1)
         results[name] = dict(mean_canvas_px=float(canvas_error.mean()),p90_canvas_px=float(np.percentile(canvas_error,90)),
                              p95_canvas_px=float(np.percentile(canvas_error,95)),max_canvas_px=float(canvas_error.max()),
+                             mean_512_equivalent_px=float(canvas_error.mean()*512/layout["side"]),
+                             p90_512_equivalent_px=float(np.percentile(canvas_error,90)*512/layout["side"]),
                              mean_native_moving_px=float(native.mean()),per_landmark_canvas_px=dict(zip(ids,canvas_error.tolist())))
     report = dict(protocol="reused public development specimen, not independent or official ACROBAT/ANHIR test",
                   interpolation=interpolation,map_direction="fixed to moving",landmark_count=len(ids),
+                  canvas_side=layout["side"],equivalent_pixel_reference_side=512,
                   fixed_only_ids=sorted(fixed.keys()-moving.keys()),moving_only_ids=sorted(moving.keys()-fixed.keys()),
                   layout=str(layout_path),fixed_landmarks=str(fixed_path),moving_landmarks=str(moving_path),
                   maps={name:str(path) for name,path in maps.items()},affine=str(affine),results=results)
     report["fixed_boundary_target_domain"]=domain_bound
+    if native_geometry:
+        report["native_dhr_geometry"]=native_geometry
     output.parent.mkdir(parents=True,exist_ok=True)
     output.write_text(json.dumps(report,indent=2)+"\n",encoding="utf-8")
     return report
@@ -123,7 +136,7 @@ def main():
         parser.add_argument("--"+key.replace("_","-"),type=Path,required=True)
     parser.add_argument("--map",action="append",required=True,help="name=absolute NPZ path")
     parser.add_argument("--dhr",action="append",nargs=3,metavar=("NAME","FIELD","PARAMS"),
-                        help="native DHR field on the SAME supplied 512 canvases; no topology certificate")
+                        help="native DHR field on the SAME supplied canvases; no topology certificate")
     args = parser.parse_args()
     maps = dict(item.split("=",1) for item in args.map)
     result = score(args.layout,args.fixed_landmarks,args.moving_landmarks,

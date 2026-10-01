@@ -15,6 +15,8 @@ def main():
     p.add_argument("--mind-order",choices=("transport","after_warp"),default="transport")
     p.add_argument("--preprocessing",choices=("raw_inverted","native_dhr"),default="raw_inverted")
     p.add_argument("--device",default="cuda")
+    p.add_argument("--grid-side",type=int,default=257)
+    p.add_argument("--image-side",type=int,default=512)
     p.add_argument("--f2-accepted-gain",type=float,default=1.)
     p.add_argument("--strain-weight",type=float,default=.05)
     p.add_argument("--strain-model",choices=("displacement_gradient","p1_arap"),default="displacement_gradient")
@@ -52,10 +54,10 @@ def main():
     results=[]
     for case in args.cases:
         for method in args.methods:
-            config=argparse.Namespace(fixed=args.data/(case+"_fixed512.png"),
-                moving=args.data/(case+"_moving512.png"),affine=args.data/(case+"_initial_affine.npz"),
-                output=args.output/(case+"_"+method+"_"+args.loss+"_"+args.lr_calibration+"257.npz"),method=method,
-                loss=args.loss,mind_order=args.mind_order,grid_side=257,image_side=512,image_levels=args.image_levels,levels=args.levels,inner_steps=args.inner_steps,
+            config=argparse.Namespace(fixed=args.data/(case+"_fixed"+str(args.image_side)+".png"),
+                moving=args.data/(case+"_moving"+str(args.image_side)+".png"),affine=args.data/(case+"_initial_affine.npz"),
+                output=args.output/(case+"_"+method+"_"+args.loss+"_"+args.lr_calibration+str(args.grid_side)+".npz"),method=method,
+                loss=args.loss,mind_order=args.mind_order,grid_side=args.grid_side,image_side=args.image_side,image_levels=args.image_levels,levels=args.levels,inner_steps=args.inner_steps,
                 preprocessing=args.preprocessing,
                 continuation_scope=args.continuation_scope,
                 cycles=args.base_cycles*(2 if method in ("f1","f2") else 1)*args.budget_multiplier,learning_rate=.004,lr_calibration=args.lr_calibration,patch_cells=8,

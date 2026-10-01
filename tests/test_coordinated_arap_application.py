@@ -38,13 +38,34 @@ def test_actual_tiny_arap_pipeline_all_geometry_methods(tmp_path,method):
     assert all(t["margin"]>0 for t in report["trace"])
 
 
-@pytest.mark.parametrize("changes",[dict(strain_model="wrong"),dict(interpolation="q1"),dict(nested_evaluation="coarse_exact")])
+@pytest.mark.parametrize("changes",[dict(strain_model="wrong"),dict(interpolation="q1")])
 def test_incompatible_prior_configuration_rejected(tmp_path,changes):
     values=dict(strain_model="p1_arap");values.update(changes)
     with pytest.raises(ValueError):optimize(configuration(tmp_path,**values))
 
 
-def test_reduced_membrane_formula_cannot_be_used_for_arap():
-    _,evidence,_=fixture("ac","mind");evidence.strain_model="p1_arap"
-    with pytest.raises(ValueError,match="does not implement ARAP"):
-        evidence.coarse_nested_evidence(5,17,dtype=torch.float64,device="cpu")
+@pytest.mark.parametrize("diagonal",["ac","bd"])
+def test_reduced_evidence_uses_current_arap_not_membrane(diagonal):
+    vertices,evidence,refine=fixture(diagonal,"mind");evidence.strain_model="p1_arap"
+    reduced=evidence.coarse_nested_evidence(5,17,dtype=torch.float64,device="cpu")
+    assert reduced.nested_priors.strain_model=="p1_arap"
+    vertices.requires_grad_()
+    fine,fine_parts=evidence(refine(vertices));coarse,coarse_parts=reduced(vertices)
+    for name in fine_parts:
+        torch.testing.assert_close(fine_parts[name],coarse_parts[name],rtol=2e-10,atol=1e-12)
+    torch.testing.assert_close(fine,coarse,rtol=2e-10,atol=1e-12)
+    fg,=torch.autograd.grad(fine,vertices);cg,=torch.autograd.grad(coarse,vertices)
+    torch.testing.assert_close(fg,cg,rtol=2e-9,atol=2e-11)
+
+
+@pytest.mark.parametrize("diagonal",["ac","bd"])
+@pytest.mark.parametrize("method",["radial","analytic"])
+def test_actual_nested_arap_pipeline_keeps_fine_validation_and_acceptance(tmp_path,diagonal,method):
+    report=optimize(configuration(tmp_path,strain_model="p1_arap",nested_evaluation="coarse_exact",
+        interpolation="p1_"+diagonal,method=method))
+    assert report["strain_model"]=="p1_arap"
+    assert report["gradient_steps"]==8 and report["failed_trials"]==0
+    assert report["saved_binary_certificate"]["valid"]
+    assert all(s["accepted_total"]<=s["anchor_total"] for s in report["stages"])
+    assert all(t["margin"]>0 for t in report["trace"])
+    assert all("rounded_full_stage_fallback" in s for s in report["stages"])

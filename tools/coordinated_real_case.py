@@ -102,12 +102,10 @@ class Evidence:
         """
         if self.interpolation not in ("p1_ac","p1_bd"):
             raise ValueError("coarse nested evidence requires declared P1 interpolation")
-        if self.strain_model!="displacement_gradient":
-            raise ValueError("exact nested membrane quadrature does not implement ARAP")
         from qcopt.neural_bijection.dense.coordinated_nested_priors import ExactNestedP1Priors
         result=copy.copy(self)
         result.nested_priors=ExactNestedP1Priors(coarse_side,fine_side,
-            diagonal=self.interpolation[-2:],dtype=dtype,device=device)
+            diagonal=self.interpolation[-2:],dtype=dtype,device=device,strain_model=self.strain_model)
         if (self.fixed_p1_evaluator is None or self.fixed_p1_evaluator.rows!=coarse_side or
                 self.fixed_p1_evaluator.columns!=coarse_side):
             result.prepare_fixed_p1_sampling(coarse_side,coarse_side,dtype=dtype,device=device)
@@ -168,7 +166,9 @@ def load_image_matches(path,matrix,offset,*,fixed_path,moving_path,image_side,de
     record=json.loads(path.read_text(encoding="utf-8"))
     if record.get("targets_manual_landmarks_or_dense_teacher_loaded") is not False:
         raise ValueError("match provenance must explicitly exclude map/manual/dense targets")
-    if record.get("image_side")!=image_side or Path(record["fixed"]).name!=fixed_path.name or Path(record["moving"]).name!=moving_path.name:
+    # Records may be prepared on Windows and evaluated on a Linux compute host.
+    recorded_basename=lambda value:Path(str(value).replace("\\","/")).name
+    if record.get("image_side")!=image_side or recorded_basename(record["fixed"])!=fixed_path.name or recorded_basename(record["moving"])!=moving_path.name:
         raise ValueError("match raster/frame does not agree with this image pair")
     recorded_matrix=np.asarray(record["post_affine_matrix"],dtype=matrix.dtype)
     recorded_offset=np.asarray(record["post_affine_offset"],dtype=offset.dtype)
@@ -198,6 +198,9 @@ def load_image_matches(path,matrix,offset,*,fixed_path,moving_path,image_side,de
         path_check="raster basenames plus side and sampling-affine values; relocated paths allowed, not content identity proof",
         sampling_affine_storage_dtype=str(matrix.dtype),
         mask="fixed target coordinate inside original moving rectangle; no adaptive query dropping")
+    for key in ("prediction_side","origin_image_side","origin_match_record","transport_method","transport_factor"):
+        if key in record:
+            metadata[key]=record[key]
     return matches,metadata
 
 
@@ -271,8 +274,8 @@ def optimize(args, accepted_stage_callback=None):
     if mind_order not in ("transport","after_warp") or (mind_order=="after_warp" and args.loss!="mind"):
         raise ValueError("after_warp descriptor order requires MIND")
     if strain_model not in ("displacement_gradient","p1_arap") or (strain_model=="p1_arap" and
-            (getattr(args,"interpolation","q1")=="q1" or nested_evaluation=="coarse_exact")):
-        raise ValueError("p1_arap needs declared P1 and ordinary fine prior evaluation")
+            getattr(args,"interpolation","q1")=="q1"):
+        raise ValueError("p1_arap needs declared P1")
     if nested and (args.method not in ("radial","analytic") or args.cycles!=1 or
             getattr(args,"interpolation","q1") not in ("p1_ac","p1_bd") or
             args.levels[-1]!=args.grid_side or

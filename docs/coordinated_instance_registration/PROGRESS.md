@@ -1136,3 +1136,104 @@ pixel numbers as comparable512 errors. Descriptor pixel footprint and image
 continuation levels change; this is NOT a pure same-functional timing test.
 Prior work: conventional image pyramid and pixel-center coordinate conversion;
 this is an evidence-resolution experiment, not a novel geometry construction.
+
+Prepared both exact1024 families from native originals after focused33tests;
+independent checker29tests plus constant-DHR-translation unit test passed.
+First remote sweep stopped before optimization: Linux Path did not strip Windows
+backslashes from transported raster basenames. Corrected cross-host basename
+parsing (still checks side and affine), retained failed log and started a new
+named sweep. Cross-host point-loss/value/VJP invariance tests pass; combined48
+focused tests pass. No input record, initialization, port or existing job changed.
+
+### T+9.6h exact nested ARAP reduction research card
+
+Question: can denser actual output controls avoid fine-grid regularizer AD while
+preserving the CURRENT useful ARAP objective? On uniform globally aligned dyadic
+AC/BD P1 refinement, each coarse source triangle subdivides into m^2 triangles
+with identical affine Jacobian and total unchanged material area. Thus actual
+face ARAP mean is identical to its coarse-face mean in real arithmetic. Shape
+remains the existing exact four-corner count quadrature, not coarse shape mean.
+Candidate: extend only ExactNestedP1Priors with explicit strain_model, default
+old membrane; ARAP branch uses actual declared coarse P1 face ARAP. Root handles
+application integration after independently checked value/full-Y gradient tests.
+Assumptions: same global diagonal, square uniform dyadic source grids, exact
+P1 refinement, positive current coarse faces, no detached changing vertices.
+Falsifier: direct fine materialization+face computation or full-Y pullback VJP
+disagrees; nonaligned/non-P1 inputs must not be silently accepted. Smallest test:
+both diagonals/non-affine valid vertex tables, batch>1, factors1/2/4/8, independent
+triangle/polar reference and finite differences. Rounded fine differences and
+actual fine topology/margin checks remain explicit; this is not a certificate.
+Decision changed: permits paired257/513/1025-control ARAP timings with identical
+functional rather than reverting to less useful membrane for scale experiments.
+Prior work: elementary P1 subdivision/integration identity; no novel solver claim.
+
+### T+9.7h native-detail outcome and matched native baseline card
+
+All8real1024runs completed300gradients,zero failed trials,valid actualP1outputs.
+Same257control mesh, now1024query/image; machine points still predicted512.
+Analytic mean512-equivalentTRE H .793449->.756767, K2.351586->2.287044;
+p90H1.544649->1.617151 WORSENS, K4.507429->4.153198 improves. Radialmeans
+.761823/2.303790, F1.739403/4.252492, F2.744972/2.406358. Native-moving-pixel
+analyticmeans14.64588/5.20260. All77/69 manual IDs retained, no labels in optimizer.
+Single-runanalytic4.22/4.72s,~520MiBpeak; query evidence dominates increased memory.
+No precise speed claim, no independent specimens, no controlled same-footprint
+descriptor comparison. Added image evidence helps modestly, not a breakthrough.
+
+Question: are these native-detail1024 results useful against an executable
+native DHR at the SAME1024 images and SAME affine? Candidate: generalize only
+coordinated_dhr_common's declared image_side (default512 unchanged), guard square
+unalteredpreprocessing/noinitialresampling/noextraDHRpadding, registration_size
+image_side, initial_resolution sufficient to retain image_side. Native fivelevel
+30iterationNCC/regularizer remains different; it is an application baseline,
+not isolated geometry ablation. No new matcher, affine estimation or teacher.
+Falsifier: supplied normalized affine/grid conversion differs at512/1024,
+preprocessing silently resizes/pads, or saved field parameters use wrong frame.
+Smallest test: mocked nativepipeline shape/affineidentity/translation, defaults
+unchanged; then actualH/kidney1024 baseline and independentall-ID scoring.
+Prior work: existing DeeperHistReg implementation, no new algorithm claim.
+
+Independent checker recomputed all77/69 required IDs with literal barycentric
+and f64 native-field interpolation: new257-control analytic512eq means.756767/
+2.287044 versus SAME1024/nativeDHR .844177/3.614272. DHR wholecall2.46/2.39s
+versus coordinated optimizer-only4.22/4.72s: no competitive-time claim. Native
+saved1024Q1 fields have4532/6507 NEGATIVE corners and0/2 ZERO corners, in2362/
+3120 cells containing negatives; neither has a hard topology guarantee. Exported
+DHR MHA is pixel-unit displacement, not its internal normalized tensor; checker
+caught and corrected that metadata distinction. Scorer tests include known
+translation at512/1024 and a deliberate all-cell fold,20tests pass.
+
+Actual1025CONTROL/1024query ARAP nestedABBA: all10maps valid,300gradients/zero
+failures. Same-process warmed complete-call median11.07981->8.61442s (22.25percent
+less), optimizer10.32498->7.85332s; allocated optimizer peaks2427569152->2294671360
+bytes (5.47percent less). AllHmean512eq .7817015--.7817018, WORSE than257A .756767.
+Paired component-wise nodal differences up to1.86e-5 normalized, despite almost
+identical landmark means; real-arithmetic equivalence is not rounded bit identity.
+Independent actualall18map sign/boundary recomputation succeeds, minimum normalized
+fourcorner .00690158>.001. Root120affected nested/operator/app tests, checker98
+operator and36app/DHR tests passed. Cost improvement is established here; denser
+anatomical superiority is not. No amortized CNN training claim in this instance phase.
+
+### T+9.8h diagnosed dense-scale locality card
+
+New failure evidence: actual1025 final vertical trial has global analytic scale
+.11307/gauge8.4016 despite edge-scaled Adam rate6.25e-5, whereas257 main stages
+had largely inactive scales. Its dense-control mean error is worse, not better.
+Question: can local independent exact AFFINE constraints help this NEW dense
+active-scale regime without erasing the useful global coarse stages?
+Candidate: preserve globalcoarse updates; only final dense-level proposal uses
+four sequential nonconflicting coordinated patch passes with offsets(0,0),
+(P/2,0),(0,P/2),(P/2,P/2), the SAME common direction and proposal. Existing
+sin-squared patch windows vanish exactly on patch perimeters. Each pass has
+independent per-patch radial/analytic scales, updates the SAME vertex table,
+and next pass uses updated geometry with all gradients connected. No blend of
+accepted maps, output resampling, geometry line-search, QP or inverse is introduced.
+Assumptions: validfixed boundary anchor, evenP>=2 and enough gridcells, correct
+material reference per level, unchanged fullobjective/margin/precision. Four
+passes must be counted explicitly, not called equal-geometry work. Smallest
+test: fullcorner recomputation, all-interior seam coverage, deliberate thinpatch
+and full-Y/proposal FD; then one fixed-config1025H run against existingglobal.
+Falsifier: connectivity/VJP/margin fails, or additional cost buys no meaningful
+objective/registration benefit. This is a main-line support variant prompted
+by actualdense conditioning, not a third257patch-size sweep after prior failures.
+Prior work: existing disjoint-support coordinated primitive and sequential
+domain-decomposition-style updates; no universal approximation/newnovelty claim.

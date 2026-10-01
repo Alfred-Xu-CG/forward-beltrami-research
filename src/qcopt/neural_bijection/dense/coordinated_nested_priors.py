@@ -1,7 +1,8 @@
 """Exact-arithmetic coarse quadrature of existing dyadic fine P1 priors.
 
-The functional is the original forward-edge strain and four-corner shape of
-uniformly refined P1 vertices, not a newly selected coarse regularizer. Rounded
+The functional uses the original forward-edge strain OR actual-face ARAP and
+four-corner shape of uniformly refined P1 vertices, not a newly selected coarse
+regularizer. Rounded
 fine materialization is a different floating-point evaluation: agreement is NOT
 bitwise, especially at thin float32 cells. Positive geometry is a caller
 assumption; no determinant clamp, fold repair or topology certificate is added.
@@ -9,6 +10,8 @@ assumption; no determinant clamp, fold repair or topology certificate is added.
 from __future__ import annotations
 
 import torch
+
+from .coordinated_arap import p1_arap_energy
 
 
 def _sizes(coarse_side, fine_side):
@@ -31,16 +34,26 @@ class ExactNestedP1Priors(torch.nn.Module):
     coordinates are represented exactly at the supported practical grid sizes.
     Inputs are square (B,coarse_side,coarse_side,2) float32/64 vertex tables;
     outputs are two scalars averaged over batch. ALL mapped vertices may train.
+    ``strain_model='displacement_gradient'`` preserves the original weighted
+    forward-edge strain. Optional ``'p1_arap'`` uses the actual coarse P1 face
+    mean: globally aligned same-diagonal refinement repeats each face Jacobian
+    exactly factor**2 times in real arithmetic. Shape ALWAYS remains the same
+    fine four-corner quadrature, independent of this strain choice. Rounded fine
+    coordinates need not produce bitwise-identical values or derivatives.
     """
     def __init__(self, coarse_side: int, fine_side: int, *, diagonal: str = "ac",
-                 dtype=torch.float64, device="cpu"):
+                 dtype=torch.float64, device="cpu",
+                 strain_model: str = "displacement_gradient"):
         super().__init__()
         self.coarse_cells, self.fine_cells, self.factor = _sizes(coarse_side, fine_side)
         if diagonal not in ("ac", "bd"):
             raise ValueError("global diagonal must be ac or bd")
         if dtype not in (torch.float32, torch.float64):
             raise ValueError("float32/float64 prior precision required")
+        if strain_model not in ("displacement_gradient", "p1_arap"):
+            raise ValueError("strain_model must be displacement_gradient or p1_arap")
         self.coarse_side, self.fine_side, self.diagonal = coarse_side, fine_side, diagonal
+        self.strain_model = strain_model
         axis = torch.arange(coarse_side, dtype=torch.float32, device=device) / self.coarse_cells
         yy, xx = torch.meshgrid(axis, axis, indexing="ij")
         self.register_buffer("source_reference", torch.stack((xx, yy), -1)[None].to(dtype))
@@ -58,12 +71,17 @@ class ExactNestedP1Priors(torch.nn.Module):
         if self.source_reference.requires_grad or self.edge_weights.requires_grad:
             raise ValueError("source reference/count buffers must remain constant")
         n, m, fine_n = self.coarse_cells, self.factor, self.fine_cells
-        residual = vertices - self.source_reference
-        dx_residual = (residual[:, :, 1:] - residual[:, :, :-1]) * n
-        dy_residual = (residual[:, 1:] - residual[:, :-1]) * n
-        numerator = (dx_residual.square().sum(-1) * self.edge_weights[None, :, None]).sum()
-        numerator = numerator + (dy_residual.square().sum(-1) * self.edge_weights[None, None, :]).sum()
-        strain = numerator / (2 * vertices.shape[0] * fine_n * (fine_n + 1))
+        if self.strain_model == "p1_arap":
+            # Positive geometry remains a caller assumption, as for shape.
+            # No detached rotation, determinant clamp or new safety check.
+            strain = p1_arap_energy(vertices, self.diagonal, validate=False)
+        else:
+            residual = vertices - self.source_reference
+            dx_residual = (residual[:, :, 1:] - residual[:, :, :-1]) * n
+            dy_residual = (residual[:, 1:] - residual[:, :-1]) * n
+            numerator = (dx_residual.square().sum(-1) * self.edge_weights[None, :, None]).sum()
+            numerator = numerator + (dy_residual.square().sum(-1) * self.edge_weights[None, None, :]).sum()
+            strain = numerator / (2 * vertices.shape[0] * fine_n * (fine_n + 1))
         # EXACT same corner columns/order and phi arithmetic as the old prior.
         a, b = vertices[:, :-1, :-1], vertices[:, :-1, 1:]
         d, c = vertices[:, 1:, :-1], vertices[:, 1:, 1:]
@@ -85,7 +103,8 @@ class ExactNestedP1Priors(torch.nn.Module):
 
 
 def exact_nested_p1_priors(coarse_vertices: torch.Tensor, fine_side: int,
-                           diagonal: str = "ac") -> tuple[torch.Tensor, torch.Tensor]:
+                           diagonal: str = "ac", *,
+                           strain_model: str = "displacement_gradient") -> tuple[torch.Tensor, torch.Tensor]:
     """Stateless API; constant-reference construction is included in this call.
 
     Use ExactNestedP1Priors to amortize that explicitly recorded construction.
@@ -94,5 +113,6 @@ def exact_nested_p1_priors(coarse_vertices: torch.Tensor, fine_side: int,
     if coarse_vertices.ndim != 4 or coarse_vertices.shape[1] != coarse_vertices.shape[2]:
         raise ValueError("square vertices(B,coarse,coarse,2) required")
     module = ExactNestedP1Priors(coarse_vertices.shape[1], fine_side, diagonal=diagonal,
-                               dtype=coarse_vertices.dtype, device=coarse_vertices.device)
+                               dtype=coarse_vertices.dtype, device=coarse_vertices.device,
+                               strain_model=strain_model)
     return module(coarse_vertices)

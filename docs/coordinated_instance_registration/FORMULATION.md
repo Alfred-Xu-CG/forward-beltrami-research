@@ -1085,3 +1085,106 @@ Prior art for neighborhood self-similarity:
 [Heinrich et al., MIND2012](https://pubmed.ncbi.nlm.nih.gov/22722056/).
 This experiment uses our existing MIND-like descriptor and makes no novelty
 claim for feature recomputation or image registration by itself.
+
+## 27. Exact ARAP reduction on nested P1 grids
+
+Let the material domain be the unit square, with n-by-n equal cells and a
+single declared global AC or BD diagonal. Let Y be the (n+1)^2 coarse mapped
+vertices, and let P_mY denote the same continuous P1 function evaluated at the
+uniformly refined (mn+1)^2 vertices, for a positive integer subdivision factor m.
+Our implementation restricts n and mn to dyadic cell counts. P_m is a fixed
+linear operator determined by material coordinates, not by mapped geometry.
+It is exact P1 refinement, not four-corner bilinear averaging.
+
+For a material triangle t with source vertices x0,x1,x2 and mapped vertices
+y0,y1,y2, its constant deformation Jacobian is
+
+    J_t=[y1-y0, y2-y0] [x1-x0, x2-x0]^{-1}.
+
+Every coarse triangle has m^2 fine child triangles. Each child lies inside its
+parent triangle and inherits exactly J_t. This includes the two triangles in
+each fine square intersected by a coarse diagonal; treating those squares as
+one affine quadrilateral would be wrong. Therefore, with B the batch size and
+T=2n^2 triangles per batch element, our actual-face ARAP energy satisfies
+
+    S_n(Y) = (1/(2BT)) sum_{b,t} min_{R in SO(2)} ||J_{bt}-R||_F^2,
+    S_mn(P_mY) = S_n(Y).
+
+Each child has 1/m^2 parent material area and all coarse source areas are equal,
+so this is also the material-area average. There is NO m-dependent ARAP weight.
+The closest-rotation definition and positive-determinant assumptions are those
+of Section25. ARAP itself is not a fold barrier or a convex functional.
+
+Differentiating on the positive-determinant domain gives the ALL-vertex identity
+
+    P_m^T grad S_mn(P_mY) = grad S_n(Y).
+
+No changing map, nearest rotation or safety scale is detached. This statement
+includes boundary derivatives as a mathematical operator test, even when the
+instance optimization fixes boundary values. It does not differentiate through
+the full sequence of instance-optimizer iterations.
+
+The shape penalty uses four corner Jacobians per quadrilateral, not just the
+two actual P1 faces. Write phi(J)=||J||_F^2+||J^{-1}||_F^2-4, and let J1--J4 be
+the four corner Jacobians defined earlier. In a coarse cell, m refined cells
+cross its diagonal and are homothetic coarse quadrilaterals. The other m(m-1)
+fine cells are affine, split equally between the two parent triangles. Thus
+the EXACT fine-cell averaged shape contribution is
+
+    ((m-1)/(2m)) [phi(Ji)+phi(Jj)] + (1/(4m)) sum_{k=1}^4 phi(Jk),
+
+with (i,j)=(2,4) for AC and (1,3) for BD. An ordinary coarse four-corner mean
+does not equal this expression unless m=1 or special affine geometry holds.
+The existing count quadrature remains in use; only its strain branch changes
+when strain_model="p1_arap" is selected explicitly.
+
+Coarse image queries are exact evaluations of the SAME nested P1 function at
+the SAME fixed image/query coordinates. Frozen matches, foreground weights,
+normalization, descriptor and out-of-bounds penalties are shared unchanged.
+Consequently the complete real-arithmetic reduced objective equals the full
+fine objective restricted to the nested coarse P1 subspace. The next finer
+level expands that subspace; it does not introduce extra image observations.
+
+Floating-point refinement/subtraction and mixed raster-coordinate casts need
+not give bitwise-equal values or optimizer trajectories. Every trial still
+materializes and checks the actual fine-grid corners. Before accepting a stage,
+the original full fine objective is recomputed and a spurious reduced winner
+is rejected. Final map selection and saved topology certification likewise use
+the actual fine representation. The reduction is an objective/VJP acceleration,
+not a replacement topology certificate or an accuracy theorem.
+
+## 28. Native-detail image scaling and comparable coordinate units
+
+Original image coordinates x=(x1,x2) locate pixel centers at integer indices.
+For a stored two-axis resize scale s, padding p and square canvas side S, the
+normalized canvas coordinate is u=((x+1/2)*s+p)/S, componentwise. Rendering an
+original JPEG at integer-multiplied resized dimensions, padding and canvas side
+gives s'=ms, p'=mp, S'=mS, hence u'=u. In canvas pixel-center indices c=Su-1/2,
+however, c'=mc+(m-1)/2; simply multiplying c by m would shift the frame.
+
+The frozen normalized positive affine F=A f_Y+b and machine source/target points
+are unchanged. The matcher is NOT rerun; records retain prediction_side=512
+and explicitly describe transport to the new raster frame. Original RGB pixels
+are directly resized using PIL BILINEAR; old512 PNGs are not enlarged. Native
+source dimensions must be at least the requested resized dimensions on both
+axes. The available lesions JPEGs fail this condition at1024 and are excluded
+from native-detail validation, not silently upsampled.
+
+For a machine-point residual delta in normalized aligned coordinates, our
+robust penalty depends on r=(S/kappa) A delta. Maintaining its physical scale
+requires kappa'=m kappa:1024/16=512/8. Foreground masking and all required manual
+evaluation landmarks are retained. Manual labels enter only separate scoring.
+
+For normalized moving-space prediction p and target v, canvas TRE is
+S||p-v||_2. Report512-equivalentTRE=512||p-v||_2 alongside the actual canvas
+number. Native-moving-pixel TRE inverts the stored moving-image two-axis scale:
+|| (S(p-v))/s_m ||_2. With exact layout scaling this native TRE is unchanged for
+the same prediction; it must not be pooled across unrelated native image scales.
+
+The1024 experiment changes original raster detail, query count, physical size of
+the fixed-pixel descriptor stencil and the32--512 versus64--1024 continuation
+rasters. It is NOT an isolated proof that detail alone caused an improvement.
+The first matrix has257^2 CONTROLS and1024^2 image QUERIES; neither number may be
+substituted for the other. Analytic/radial updates and F1/F2 share these inputs,
+affine, point evidence, ARAP3, shape1e-4 and300-gradient budget. Their geometry
+pass counts differ and optimizer-only timing excludes image/matcher setup.

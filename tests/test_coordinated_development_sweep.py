@@ -70,3 +70,24 @@ def test_filter_configuration_reaches_application_without_changing_calibration(t
     assert captured[0].lr_calibration=="physical"
     assert captured[0].strain_model=="p1_arap"
     assert captured[0].mind_order=="after_warp"
+
+
+def test_native_resolution_and_control_size_are_independent(tmp_path,monkeypatch):
+    captured=[]
+    def mock(config):
+        captured.append(config)
+        return dict(final={},failed_trials=0,gradient_steps=300,optimize_seconds=.1,peak_allocated_bytes=None)
+    monkeypatch.setattr(sweep,"optimize",mock)
+    monkeypatch.setattr(sys,"argv",["sweep","--data",str(tmp_path),"--output",str(tmp_path/"native"),
+        "--cases","rat_kidney","--methods","analytic","--loss","mind",
+        "--image-side","1024","--grid-side","513","--levels","17","33","65","129","257",
+        "--image-levels","64","128","256","512","1024","--match-robust-scale","16"])
+    sweep.main()
+    assert len(captured)==1
+    config=captured[0]
+    assert config.image_side==1024 and config.grid_side==513
+    assert config.fixed.name=="rat_kidney_fixed1024.png"
+    assert config.moving.name=="rat_kidney_moving1024.png"
+    assert config.output.name=="rat_kidney_analytic_mind_edge513.npz"
+    assert config.image_levels==[64,128,256,512,1024]
+    assert config.match_robust_scale==16

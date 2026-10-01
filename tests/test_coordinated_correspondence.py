@@ -75,6 +75,27 @@ def test_loader_static_domain_and_float_affine_cast(tmp_path):
     assert "not content identity proof" in metadata["path_check"]
 
 
+@pytest.mark.parametrize("prefix",["D:\\data\\native\\","/home/research/native/"])
+def test_cross_host_transported_record_and_robust_scale_invariance(tmp_path,prefix):
+    matrix=np.eye(2,dtype=np.float64);offset=np.zeros(2,dtype=np.float64)
+    record=match_record(matrix,offset)
+    old=tmp_path/"old.json";old.write_text(json.dumps(record))
+    base,_=load_image_matches(old,matrix,offset,fixed_path=Path("fixed.png"),moving_path=Path("moving.png"),
+        image_side=512,device="cpu",dtype=torch.float64,robust_scale=8.)
+    record.update(image_side=1024,fixed=prefix+"fixed.png",moving=prefix+"moving.png",
+        prediction_side=512,origin_image_side=512,transport_factor=2,
+        transport_method="exact integer normalized-frame transport")
+    new=tmp_path/"new.json";new.write_text(json.dumps(record))
+    transported,metadata=load_image_matches(new,matrix,offset,fixed_path=Path("fixed.png"),moving_path=Path("moving.png"),
+        image_side=1024,device="cpu",dtype=torch.float64,robust_scale=16.)
+    vertices=reference().requires_grad_()
+    before=base(vertices,torch.eye(2,dtype=torch.float64),"p1_ac")
+    after=transported(vertices,torch.eye(2,dtype=torch.float64),"p1_ac")
+    torch.testing.assert_close(before,after,rtol=0,atol=0)
+    torch.testing.assert_close(torch.autograd.grad(before,vertices)[0],torch.autograd.grad(after,vertices)[0],rtol=0,atol=0)
+    assert metadata["prediction_side"]==512 and metadata["transport_factor"]==2
+
+
 @pytest.mark.parametrize("corruption",["affine","provenance","image","confidence"])
 def test_loader_invalid_evidence_rejected(tmp_path,corruption):
     matrix=np.eye(2,dtype=np.float32);offset=np.zeros(2,dtype=np.float32)
