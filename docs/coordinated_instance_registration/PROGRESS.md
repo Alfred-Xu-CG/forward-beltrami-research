@@ -1391,3 +1391,52 @@ but wholemaps are NOT bitwise equal: maximum pairednodal vectordifferences are
 agreement with entire-map equality. All69K landmarks independently reproduce
 scoring within2.2e-13canvaspixels. This strengthens the measured engineering
 conclusion only; no anatomical breakthrough or adjoint proof from savedscores.
+
+### T+10.9h fixed-fiber implementation and actual four-case result
+
+Physical scalar-fiber L-BFGS module29focusedtests pass; independentAstra initially
+23tests plus3targetedfiniteguards pass. Root84affectedoperator/app tests and
+83suffix/core/nested tests pass. Independent dense4pair inverse-BFGS action
+agrees with two-loop recursion to5.55e-17. Derivedreciprocal/gamma overflow,
+extreme direction norm and initialRMSunderflow corrected with explicit tests;
+no constraint/margin tolerance relaxed. Wrapper34tests include realtiny solve,
+allactualfailurecounts, correct16factor edgecalibration and1ULP materialization
+differences. Exactold129nodes reconstruct the same actualbaseline transition;
+frozenfinecallback equality is informational, not a false fairness prerequisite.
+
+Checked GPU6/7idle; ran H257pilot then H1025/K257/K1025 ontheseauthorizedidle
+GPUs, no otherprocess/portchanges. Every baseline andreturnedfiber output is
+actuallycertified. All77H/69K manualIDs read ONLYafter saving, kept indenominator.
+Native1024images/query side shared throughout. Baselinehere is NESTEDcontrol
+notpreviousfixed257coarse-latent implementation; only currentwithin-row contrasts
+are claimed. Finalx/y30gradientlimit includesinitial; directhasatmost29moves
+percoordinate, whereasAdamhas30moves pluslasttrial; actualworkcounts retained.
+
+| Case/control side | Baseline mean512eqTRE | Fiber mean512eqTRE | Baseline completeE | Fiber completeE | Fiber gradients | Fiber termination |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| H/257 | .75581973 | .75454328 | .174978263 | .174495014 | 60 | both budget |
+| K/257 | 2.29071518 | 2.28292079 | .226442168 | .225166896 | 60 | both budget |
+| H/1025 | .78170155 | .79551918 | .175764610 | .176939103 | 32 | objective backtrack limit; minimum step |
+| K/1025 | 2.28789814 | 2.29949922 | .228191741 | .230817092 | 34 | minimum step; rounded contracted margin reject |
+
+257p90 H1.59524039→1.58616028,K4.21161219→4.21920088 (Ktailworse despite
+tinymeangain). 1025p90 H1.59435009→1.57644553,K4.25500827→4.27122036.
+No practical dense accuracybreakthrough. Directsuffixselection includesbest
+precedingfull-objectiveprefix; it is not forced to choose its terminaliterate.
+257fiber completeobjectivecalls64H/63K inclselection/final;1025calls43H/37K,
+NOT60gradients completed. H257oneArmijohalving;K257none. No curvature skips or
+descentfallbacks occurred. All stages/stops/rejectedobjective trials preserved.
+
+Cold suffix times baseline/fiber H2571.2060/1.1202s,K2571.3068/1.3033s;
+H10252.7467/1.4595s,K10252.7574/1.4406s. The apparently shorter dense solve is
+EARLYTERMINATION, not a speed-to-accuracy win. Baselinepeak covers fullrun,
+directpeak onlysuffix and separateevidence setup; cannotclaimmatchedpeakgain.
+
+Diagnostic: K1025xordinaryslack remains~.0244412 while fixedtheta-contracted
+slack approaches3.06e-14 andalpha~5.47e-12. K y rejectedactualcontractedslack
+-6.34e-15 despiteordinaryslack~.004540855>0. Thus this is a numerical approach
+to the ARTIFICIAL fixedstagepolytope face, NOT anactualphysicaltriangleflip.
+Do not attribute it to the original eta bound or repair/relax it silently.
+Do not claim stationarity: the direction may point out of an active face while
+tangential descent remains possible. A focusedAstra adjudication is inspecting
+thisactualtrace before any nextimplementation; no LR/rho/backtrack sweep.

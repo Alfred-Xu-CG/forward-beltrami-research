@@ -1345,3 +1345,106 @@ a negative rounded fourth-pass margin even though preceding passes are valid:
 ordinary and manual candidates agree and BOTH reject. Successful float32 VJP
 comparisons use a separately stated amplitude.1, not a relaxed area tolerance.
 Tests establish local derivative consistency, not real-data acceleration.
+
+## 31. Same-map-class physical-fiber optimization diagnostic
+
+This experiment is traditional per-instance optimization. It does not replace
+the differentiable decoder by a newly claimed neural architecture, and does
+not claim gradients through an L-BFGS solve. Its purpose is to distinguish a
+combined parameterization/optimizer limitation from lack of dense resolution.
+
+Fix one accepted incoming vertex table Ybar, one common coordinate direction
+e=(1,0) or (0,1), the material reference, and the complete image objective E.
+The independent variables are actual scalar interior nodal displacements u,
+zero at every boundary vertex. The candidate is Y(u)=Ybar+u e on the SAME
+material grid with the SAME P1 diagonal. Because all displacements are parallel,
+every corner determinant is exactly affine in u. For each of the four rows j
+per cell, define s0_j=q_j(Ybar)/q_ref,j-eta>0. There is a fixed linear operator A
+given by the existing corner-change stencil, such that
+
+    q_j(Y(u))/q_ref,j-eta = s0_j+(A u)_j.
+
+This equality is in real arithmetic; actual rounded coordinates are checked
+separately. A is applied by local stencils, not assembled or inverted.
+
+The original analytic decoder at this anchor uses
+
+    g(p)=max(0,max_j[-(A p)_j/s0_j]),
+    u(p)=min(1,theta/g(p)) p,               theta=.95,
+
+with scale1 when g=0. Positive homogeneity gives g(u(p))<=theta. Conversely,
+any u with g(u)<=theta is obtained by taking p=u, because its scale is1.
+Thus the decoder's reachable set is EXACTLY the closed convex set
+
+    K_theta={u: u_boundary=0, theta*s0+A u>=0}.
+
+At the final coefficient level, the raw interior coefficient grid equals the
+control grid, so this statement is not restricted by coarse interpolation.
+K_theta is smaller than the entire topology-feasible domain. Every point in it
+has ordinary corner slack at least (1-theta)s0>0; optimizing a larger domain
+would invalidate a claim that only the parameterization/optimizer changed.
+
+When g(p)>theta, positive scalar t remaining on that active branch satisfies
+u(tp)=theta p/g(p), independent of t. Its radial directional derivative is0.
+L-BFGS on raw p would therefore inherit an exact null mode, in addition to
+max-row switching. Physical-fiber optimization instead minimizes
+
+    F(u)=E(Ybar+u e) over K_theta.
+
+Its unconstrained gradient at any valid iterate is
+grad_u F_i=e dot grad_(Y_i) E, with boundary entries0. No derivative through
+a safety retraction is included in this objective gradient. This is correct
+for the constrained instance problem, not a substitute for the decoder VJP.
+
+Given a current strict-interior u and a proposed descent direction d, let
+c=theta*s0+A u>0 and h=A d. The exact feasibility bound is
+
+    alpha_max=min_(j:h_j<0) c_j/(-h_j),
+
+or infinity if no row decreases. A trial alpha<=rho*alpha_max, rho=.99,
+retains strict contracted feasibility. The bound is algebraic; there is no
+geometric line search or projection. Objective-only Armijo trials test the
+UNCHANGED complete F, with finite trial budgets. Every rounded candidate must
+also pass its actual contracted and ordinary corner checks. A rounded geometry
+failure is reported, not hidden by relaxing eta or repairing the map.
+
+The initial inverse-Hessian scale is calibrated ONCE so the first physical
+descent vector has the declared interior RMS. In the matched edge-rate setup,
+that value is learning_rate*(levels[0]-1)/(final_control_side-1), exactly the
+existing Adam nominal physical rate, NOT learning_rate/(final_control_side-1).
+After a reliable positive-curvature secant pair, the usual scalar initial
+metric for the two-loop L-BFGS recursion is (s dot y)/(y dot y), with
+s=u_new-u_old and y=gradF_new-gradF_old. Store at most5pairs, skip unreliable
+curvature, and fall back to a descent gradient direction when necessary.
+Objective, coordinate, anchor or mesh changes clear history.
+
+The controlled application comparison shares a saved 129-control prefix within
+each final grid, then compares only the final x/y suffix: original analytic
+latent Adam versus physical-fiber L-BFGS. Both retain the same native1024
+evidence, frozen affine/machine matches, ARAP3, shape1e-4, boundaries and
+best-full-objective output selection. Evaluation landmarks are loaded ONLY
+after outputs are saved. Prefix preparation, suffix optimizer time, all
+forward-only trials, actual gradient counts, memory and failures are reported.
+The primary limit is30gradient evaluations per coordinate, not a promise that
+each optimizer completes30successful moves. Six backtracks permit up to seven
+objective trials per search including the initial trial; counts are explicit.
+
+This two-arm experiment changes BOTH chart and optimizer. A gain does not
+uniquely identify which caused it. It supplies no nonconvex global-convergence
+theorem, and repeated tiny feasible steps do not prove constrained stationarity:
+an unconstrained quasi-Newton direction can point out of an active face.
+Moreover rho=.99 retains the STRICT INTERIOR of K_theta: a boundary optimum
+is approached but not attained in finite exact-arithmetic steps. A negative
+comparison cannot exclude such an optimum; this numerical interior restriction
+must not be silently called identical to every finite decoder output.
+Cross-grid prefixes need not be bitwise identical, and the new nested257 run
+is not identical to the earlier fixed257-control, interpolated-coefficient run.
+
+Prior-art attribution: limited-memory quasi-Newton optimization is classical;
+see [Nocedal's author-hosted L-BFGS description and original references](https://users.iems.northwestern.edu/~nocedal/lbfgs.html).
+Objective sufficient-decrease backtracking is classical;
+see [Armijo1966, publisher-hosted original paper](https://msp.org/pjm/1966/16-1/pjm-v16-n1-p01-p.pdf).
+Those unconstrained/smooth convergence results are NOT asserted for this
+piecewise-smooth, geometry-restricted pathology objective with finite searches.
+The experimental contribution under examination is practical convergence and
+cost on the already-defined exact scalar fiber, not inventing L-BFGS or Armijo.
