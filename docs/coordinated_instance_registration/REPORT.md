@@ -1,6 +1,9 @@
 # Coordinated registration: self-contained living research report
 
-This is a working synthesis, NOT the final review. The authorized window
+This report contains the completed experiments and their mathematical definitions;
+the focused final review is linked from RESTART_SYNTHESIS.md. That review does
+not claim that the original learned-neural-layer goal has been achieved.
+The authorized window
 started2026-10-01 11:26:23UTC. On 2026-10-02 the user resumed the paused goal
 and extended the deadline by five hours to 2026-10-02 16:26:23UTC. Historical
 sections retain their dated scopes; newer restart measurements are added below.
@@ -11,6 +14,11 @@ For the current result and its limits, start with
 [RESTART_SYNTHESIS.md](RESTART_SYNTHESIS.md). Sections 1--5 below define the
 current mathematical objects; sections 6--7 preserve dated development evidence
 and are not a list of all simultaneously active choices.
+
+The final source-only check of a possible dense MatchAnything feature loss is
+documented in the synthesis's final subsection. The fields are pair-conditioned,
+and their array coordinates cannot be identified blindly with decoded keypoint
+coordinates. That option has not been implemented or tested as registration.
 
 ### Final missing control: current fusion versus current fusion with F2
 

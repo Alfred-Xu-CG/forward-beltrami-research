@@ -5,6 +5,13 @@ The first real experiments optimize each image pair's own coefficients. They do
 not yet deliver a trained image-to-map network. Operator gradients are tested
 locally; stages intentionally detach accepted anchors in instance optimization.
 
+Final reading guide (2026-10-02): this is a chronological derivation archive,
+not the shortest definition of the retained recipe. For the current map, exact
+constraints, local VJP, complete objective and actual optimizer inputs/outputs,
+read REPORT.md sections 1--5. RESTART_SYNTHESIS.md gives the final current-fusion
+F2 comparison, corrected native baselines and remaining limitations. Older
+time/status statements below describe their dated experiment, not the live goal.
+
 Current restart note (2026-10-02): the numbered sections below preserve the
 chronological record. In particular, section52's rejection is the decision under
 the EARLIER all-case/mixed-harm pilot rule, not a claim that the positive aggregate

@@ -296,3 +296,49 @@ objective remain unestablished. Technical closure is not a registration breakthr
    cost and tail tradeoffs, interpret them against measured variation, and retain
    informative mixed outcomes rather than imposing a tiny-single-case veto.
    This is an option requiring next-phase approval, not an authorized new run.
+
+### What the finer-feature option actually assumes
+
+A final source-only inspection by the Astra synthesis role, independently checked
+by the protocol role, resolves one implementability question without claiming a
+new result. In the installed MatchAnything ELoFTR configuration, the feature
+pyramid constructs two dense 64-channel fields before gathering the selected
+coarse-match windows. For the accepted 512-square input pair the source-implied
+shape is `[1,64,512,512]` per field. Earlier cross-attention makes both fields
+depend on the **entire image pair**; they are not reusable independent per-image
+descriptors. Their values do not depend on which correspondences are selected,
+but the stock execution returns early if no coarse match exists, before building
+these fields. Exposing them in empty-match cases therefore requires an explicit
+extraction-path change, not just reading an already returned array.
+
+This is a more precise candidate than “use the matcher features.” It means
+freezing one pair-conditioned field pair after the existing saved-affine prewarp,
+then testing whether their spatially varying similarity supplies useful dense
+registration evidence. It does not mean differentiating through matching or
+recomputing the network after every deformation. A new dense-distance loss would
+also NOT be the released matcher's original training/inference objective. Its
+channel selection and normalization need explicit definition: the active fine
+matcher separates 56 matching channels from 8 local-regression channels.
+
+The coordinate convention is a material unresolved issue. For an unpadded
+8-pixel fixed window, a token with local index $r\in\{0,\ldots,7\}$ and coarse
+index $k$ comes from dense-array index $u=8k+r$. The released point decoder uses
+$x=8k+r-3.5$ before the moving-point subpixel correction. Our sparse-point adapter
+then uses $(x+.5)/512$, exactly as specified for released point coordinates.
+Array indices therefore cannot simply be treated as those point coordinates.
+This source relation is **not a demonstrated model bug**, does not establish the
+physical receptive-field center, and does not retroactively invalidate the
+current sparse-point experiment. A prospective extractor must reproduce existing
+point outputs and test its dense sampling convention before any registration
+claim. No feature extraction, new loss, VJP or registration run was performed
+for this source-only question.
+
+Source evidence is in the installed tree
+`D:/QC_optimization_data/digital_topology_wsi/matchanything_eloftr/source/`:
+`configs/models/eloftr_model.py` (active branch),
+`src/loftr/loftr_module/fine_preprocess.py:136,220,225,247` (early return,
+fields, unfolding, selection), `src/loftr/utils/coarse_matching.py:244` and
+`src/loftr/utils/fine_matching.py:455` (point coordinates). The local adapter is
+[`coordinated_matchanything.py`](../../tools/coordinated_matchanything.py).
+This source tree/checkpoint is an external experimental dependency, not assumed
+to be present in a data-free GitHub clone.

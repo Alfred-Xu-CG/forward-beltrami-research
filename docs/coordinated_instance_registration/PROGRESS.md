@@ -7,6 +7,26 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### Final source clarification, no new experiment — 2026-10-02 16:02 UTC
+
+The Astra xhigh synthesis role and independent Astra high protocol role checked
+the installed ELoFTR fine-feature path. Active INTER_FEAT/FPN produces two dense
+pair-conditioned64-channel512-square fields BEFORE gathering selected windows.
+The field values do not depend on selected correspondence identities, but stock
+execution skips their construction when coarse matching is empty. The proposed
+future dense sampler must also distinguish array index8k+r from released decoded
+point8k+r-3.5 before moving subpixel refinement. This is a literal source relation,
+not proof of a matcher bug or a corrected physical feature-center convention.
+Current sparse point outputs are unchanged; no inference, feature extraction,
+GPU job, loss or new optimizer was launched. Root read the relevant source too.
+The synthesis now carries these limitations instead of treating a generic frozen
+per-image feature raster as an already implemented component.
+
+The final focused review and current results have been read together with the
+report's self-contained equations. Historical formulations remain dated; a new
+front reading guide distinguishes them from the retained fusion recipe. No
+scientific success is inferred from completing this documentation.
+
 ### Current-fusion matched F2 comparison completed — 2026-10-02 15:39 UTC
 
 All50 declared fresh calls complete300gradients/310trials/332objectives with
