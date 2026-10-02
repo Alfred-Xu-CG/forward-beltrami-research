@@ -174,18 +174,10 @@ def literal_p1(vertices,query):
     return np.array(result)
 
 
-def postrun_checks(directory_name='stain_proxy_all25_t21',point_substitution=False,configuration_delta=None):
-    base=ROOT/'outputs/coordinated_instance_registration';directory=base/directory_name
-    data=Path('D:/QC_optimization_data/digital_topology_wsi')
+def original_landmark_case(name):
+    """Original CSV and pixel-center layouts shared by later independent checks."""
+    base=ROOT/'outputs/coordinated_instance_registration';data=Path('D:/QC_optimization_data/digital_topology_wsi')
     read=lambda p:json.loads(Path(p).read_text(encoding='utf-8'))
-    manifest=read(directory/'predictions.json')
-    assert manifest['prediction_complete'] and not manifest['annotations_read'] and len(manifest['rows'])==25
-    assert all(r['status']=='ok' and r['budget_complete'] for r in manifest['rows'])
-    scores={r['name']:r for r in read(directory/'miit_scores.json')['rows']+read(directory/'existing_scores.json')['rows']}
-    control_m=read(base/'miit_multiscale_control_t19/predictions.json')
-    control_e=read(base/'existing22_shared_affine_a300_t20/predictions.json')
-    controls={r['name']:(base/'miit_multiscale_control_t19'/r['methods']['analytic']['report']) for r in control_m['rows']}
-    controls.update({r['name']:base/'existing22_shared_affine_a300_t20'/r['report'] for r in control_e['rows']})
     def csv_points(path):
         with path.open(encoding='utf-8-sig') as stream:
             rows=list(csv.DictReader(stream));columns=list(rows[0]);x='x' if 'x' in columns else 'X';y='y' if 'y' in columns else 'Y'
@@ -214,6 +206,22 @@ def postrun_checks(directory_name='stain_proxy_all25_t21',point_substitution=Fal
             assert len(points['fixed'])==len(points['moving'])==80
         ids=sorted(k for k in set(points['fixed'])&set(points['moving']) if np.isfinite(points['fixed'][k]).all() and np.isfinite(points['moving'][k]).all())
         return layout,{role:np.stack([points[role][k] for k in ids]) for role in ('fixed','moving')},ids
+    return case_data(name)
+
+
+def postrun_checks(directory_name='stain_proxy_all25_t21',point_substitution=False,configuration_delta=None):
+    base=ROOT/'outputs/coordinated_instance_registration';directory=base/directory_name
+    data=Path('D:/QC_optimization_data/digital_topology_wsi')
+    read=lambda p:json.loads(Path(p).read_text(encoding='utf-8'))
+    manifest=read(directory/'predictions.json')
+    assert manifest['prediction_complete'] and not manifest['annotations_read'] and len(manifest['rows'])==25
+    assert all(r['status']=='ok' and r['budget_complete'] for r in manifest['rows'])
+    scores={r['name']:r for r in read(directory/'miit_scores.json')['rows']+read(directory/'existing_scores.json')['rows']}
+    control_m=read(base/'miit_multiscale_control_t19/predictions.json')
+    control_e=read(base/'existing22_shared_affine_a300_t20/predictions.json')
+    controls={r['name']:(base/'miit_multiscale_control_t19'/r['methods']['analytic']['report']) for r in control_m['rows']}
+    controls.update({r['name']:base/'existing22_shared_affine_a300_t20'/r['report'] for r in control_e['rows']})
+    case_data=original_landmark_case
     def image_path(name,role,configuration):
         filename=Path(configuration[role]).name
         if name.startswith('miit_'):return base/'miit_three_rotations_t153'/filename

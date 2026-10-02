@@ -7,6 +7,33 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### Terminal-detail paired production — 2026-10-02 11:19 UTC
+
+The preparation mismatch is JPEG decoding, not source identity, half-pixel
+coordinates or resize kernels. Five lung/two HistoReg sources require their
+original Pillow10.3/JPEG9 decode; kidney requires local Pillow12.3/JPEG8.
+Remote Pillow10.4/JPEG9 passes24directions then fails kidney without the bridge.
+All nine originals now have lossless full-resolution RGB caches with per-source
+decoder provenance on D and the research host. Every accepted512canvas is
+reconstructed EXACTLY remotely before either new terminal rendering is used.
+No images, layouts, labels, oldmaps or equality tolerances are changed.
+
+Independent coordinate/loss/VJP/mask/selector checks and11focused tests pass.
+Actual all25render preparation takes9.105s (historical RGB decoding costs are
+separate). The two MIIT2-to3 label-free257/1024 smoke calls take8.218/7.278s,
+519.4/517.3MB peak,300gradients each, with minimum corner ratios.32837/.34385.
+This is execution/topology evidence, not anatomical benefit.
+
+Both25-case arms started on freshly checked idle AI GPU5, PID1788887,
+`terminal_detail_all50_t25`. Full fixed300budget, original512point units,
+firstfour512-derived stages and support remain. All50terminal outcomes precede
+landmark scoring. Original failed preparation smoke outputs remain available;
+their decoder issue is resolved explicitly, not relabeled an optimizer failure.
+Execution deviation: the independent checker read one installed
+systematic-debugging skill during the actual failure. The no-skill preference
+was therefore not followed perfectly; the independent report records this
+fact, and no additional workflow/audit mechanism was added.
+
 ### Joint comparison adjudicated; terminal-detail precheck — 2026-10-02 11:04 UTC
 
 All50joint/frozen250 attempts complete before scoring in285.156s, with no

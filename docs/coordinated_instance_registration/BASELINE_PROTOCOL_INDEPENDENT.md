@@ -866,3 +866,73 @@ without a numerical rerun. No map, score or evaluation choice was changed.
 Reproduction: the independent joint-pose probe with `--postrun`; it shares the
 previous original-CSV loader and literal P1 oracle, with joint-specific saved
 affine, budget, paired selection and diagnostic checks.
+
+### Terminal detail: independent preparation and narrow-hook precheck
+
+The bounded CPU precheck passes; this is not a production accuracy result.
+All 25 directions' original-image identities and accepted layout roles were
+checked, including MIIT moving/fixed direction, Histo/kidney roles and the
+HE layout reused consistently across lung pairs. The actual non-square lung
+example is 892 by 661, resized to 512 by 379 with padding (0,66). Doubling
+resized dimensions and padding preserves unit coordinates exactly, including
+the pixel-center relation c'=2c+1/2. Direct rendering agrees exactly with an
+independent explicit RGB-resize/paste/grayscale calculation. The lift agrees
+exactly with an independently written separable half-pixel bilinear formula.
+Mask two-by-two replication and normalized mass agree exactly; altered
+accepted RGB is rejected rather than tolerated. Native dimensions,
+upsampling axes and unchanged 512-point units remain explicit.
+
+Actual-source testing first FAILED despite correct coordinates: current
+Pillow12.3/JPEG8 decoding does not reconstruct the old lung RGB canvases.
+A boundary probe passing raw full-resolution RGB from the existing
+Pillow10.3/JPEG9 environment into the current resize routine reconstructs
+both initially tested lung roles exactly. This isolates JPEG decoding, not
+the BILINEAR resize/layout. The attempted all-nine historical decoder bridge
+then FAILED on kidney. Checking every source under both existing decoders
+establishes mixed provenance: five lung and two HistoImages accepted canvases
+reconstruct exactly under Pillow10.3/JPEG9, whereas both kidney accepted
+canvases reconstruct exactly under current Pillow12.3/JPEG8. The mismatching
+decoders have maximum RGB-component differences 6--14 (lung), 1 (HistoImages)
+and 6--13 (kidney) after accepted-size rendering. These are not numerical
+tolerances or registration errors.
+
+With the parent's explicit authorization, full-resolution lossless RGB
+PNGs and one decoder metadata manifest were produced in
+`D:/QC_optimization_data/digital_topology_wsi/historical_rgb_decode_cache`.
+The initial seven historical caches passed local checks, but the parent's
+remote smoke passed 24 directions then rejected kidney: that remote environment
+uses Pillow10.4/JPEG9, not the local current JPEG8 decoder. Following explicit
+parent authorization, the cache was extended to all nine sources. The two
+kidney images are decoded by the existing local Pillow12.3/JPEG8 executable in
+a PIL-only subprocess; their rows carry explicit decoder overrides while the
+seven historical rows retain the global decoder metadata. Every one of the
+nine cached decodes was independently resized under current Pillow and shown
+to reconstruct accepted512 RGB exactly. No extra decoder version,
+annotations, accepted-image rewrite, fallback tolerance or changes to the
+original sources were introduced. Initial seven-image generation took 6.78
+seconds, and the nine-image extension/verification took 7.58 seconds; the
+earlier failed attempt and diagnostic time are separate. This bridge is
+preparation cost, not added image information. A fresh remote all-direction
+reconstruction check must still pass there. Execution note: after the actual reconstruction failure,
+the checker read `systematic-debugging/SKILL.md` once; no subsequent skill was
+invoked and no extra workflow gate was added. The cache change followed explicit
+parent authorization, not an implicit expansion of that skill.
+
+The literal static-point oracle matches point loss and vertex VJP, and using
+512/8 versus 1024/16 gives bitwise-equal values and gradients. Three tiny CPU
+optimizer runs show: the same-raster explicit override reproduces default
+objectives, updates and saved arrays bitwise; changing terminal evidence keeps
+lower-stage intensities, masks, descriptors and accepted maps exactly unchanged;
+the control grid is unchanged while terminal query count changes; and the
+full-resolution selector uses the changed terminal objective. An independent
+NumPy image/ARAP/shape/outside computation of every accepted terminal state
+agrees with its reported full objective to `1.5649e-8`. The saved tiny binary
+certificate is valid. The focused probe finishes in 7.97 seconds on CPU.
+
+Reproduction sources are
+`outputs/coordinated_instance_registration/check_sources/independent_terminal_detail_probe_20261002.py`,
+`independent_pillow_decode_probe_20261002.py`,
+`independent_decoder_all9_probe_20261002.py` and
+`produce_historical_rgb_cache_20261002.py` in that same directory. This precheck
+does not establish 50-case completion, GPU cost, terminal anatomical benefit,
+or the correctness of not-yet-reviewed production scores.

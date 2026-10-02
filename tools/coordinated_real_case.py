@@ -301,8 +301,16 @@ def load_registration_evidence(fixed_path,moving_path,image_side,*,preprocessing
     return fixed.to(device=device,dtype=dtype),moving.to(device=device,dtype=dtype),mask,metadata
 
 
-def optimize(args, accepted_stage_callback=None):
+def optimize(args, accepted_stage_callback=None, *, terminal_evidence=None):
     overall_start = time.perf_counter()
+    source_image_side=args.image_side
+    terminal_metadata=None
+    if terminal_evidence is not None:
+        if not isinstance(terminal_evidence,dict):raise ValueError('terminal evidence must be an explicit tensor mapping')
+        source_image_side=terminal_evidence.get('source_image_side')
+        if (isinstance(source_image_side,bool) or not isinstance(source_image_side,int)
+                or source_image_side<8 or args.image_side<source_image_side or args.image_side%source_image_side):
+            raise ValueError('terminal/source image sides must be a declared integer enlargement')
     if args.output.exists() or args.output.with_suffix(".json").exists():
         raise FileExistsError(args.output)
     if args.grid_side < 3 or min(args.levels) < 3 or max(args.levels) > args.grid_side:
@@ -456,6 +464,14 @@ def optimize(args, accepted_stage_callback=None):
             or getattr(args,"fixed_mask",None) is not None
             or getattr(args,"output_selection","last")!="best_full"):
         raise ValueError("coupled initializer requires fixed257/shared-affine512 analytic continuation with128 evidence, ARAP3 and original raw support")
+    if terminal_evidence is not None and (args.method!="analytic" or mind_frame!="shared_affine"
+            or args.cycles!=1 or simultaneous or nested or joint or capture_prefix!="none"
+            or seed_initializer!="identity" or fine_patch_cells or filter_steps
+            or getattr(args,"preprocessing","raw_inverted")!="raw_inverted"
+            or getattr(args,"fixed_mask",None) is not None
+            or getattr(args,"pose_mode",None) not in (None,"frozen")
+            or any(side>source_image_side for side in image_levels[:-1])):
+        raise ValueError('terminal override requires frozen analytic shared-affine continuation and unchanged source-derived prefix')
     device = torch.device(args.device)
     torch.set_num_threads(args.threads)
     dtype = torch.float64 if args.precision == "float64" else torch.float32
@@ -467,7 +483,7 @@ def optimize(args, accepted_stage_callback=None):
     if a.shape != (2, 2) or b.shape != (2,) or not np.isfinite(a).all() or not np.isfinite(b).all() or np.linalg.det(a.astype(np.float64)) <= 0:
         raise ValueError("finite positive affine required")
     fixed,moving,fixed_mask,preprocessing_metadata=load_registration_evidence(
-        args.fixed,args.moving,args.image_side,preprocessing=getattr(args,"preprocessing","raw_inverted"),
+        args.fixed,args.moving,source_image_side,preprocessing=getattr(args,"preprocessing","raw_inverted"),
         device=device,dtype=image_dtype,fixed_mask_path=getattr(args,"fixed_mask",None))
     if mind_frame=="shared_affine":
         preprocessing_metadata={**preprocessing_metadata,
@@ -494,7 +510,7 @@ def optimize(args, accepted_stage_callback=None):
         if getattr(args,"matches",None) is None:
             raise ValueError("declare --matches for a positive match weight")
         matches,match_metadata=load_image_matches(args.matches,a,b,fixed_path=args.fixed,moving_path=args.moving,
-            image_side=args.image_side,device=device,dtype=dtype,robust_scale=getattr(args,"match_robust_scale",8.))
+            image_side=source_image_side,device=device,dtype=dtype,robust_scale=getattr(args,"match_robust_scale",8.))
         if match_p1_sampling=="frozen":
             match_metadata["fixed_p1_sampling"]=matches.prepare_fixed_p1_sampling(
                 args.grid_side,args.grid_side,args.interpolation[-2:])
@@ -502,8 +518,10 @@ def optimize(args, accepted_stage_callback=None):
                         torch.from_numpy(b).to(device=device, dtype=dtype), args.loss,
                         args.strain_weight, args.oob_weight, getattr(args,"shape_weight",0.),
                         fixed_mask=fixed_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model,mind_order=mind_order,joint_prior_backend=joint_prior_backend,image_weight=image_weight,mind_frame=mind_frame)
-    evidence_by_resolution={args.image_side:evidence}
+    evidence_by_resolution={source_image_side:evidence}
     for image_resolution in sorted(set(image_levels)):
+        if terminal_evidence is not None and image_resolution==args.image_side:
+            continue
         if image_resolution not in evidence_by_resolution:
             reduced_fixed=F.interpolate(fixed,size=(image_resolution,image_resolution),mode="area")
             reduced_moving=F.interpolate(moving,size=(image_resolution,image_resolution),mode="area")
@@ -515,6 +533,21 @@ def optimize(args, accepted_stage_callback=None):
             # Share its callable, never an energy/graph tied to a current map.
             evidence_by_resolution[image_resolution].joint_prior_backend=joint_prior_backend
             evidence_by_resolution[image_resolution].joint_p1_priors=evidence.joint_p1_priors
+    if terminal_evidence is not None:
+        from tools.coordinated_terminal_detail import validate_terminal_tensors
+        terminal_fixed,terminal_moving,terminal_mask,terminal_metadata=validate_terminal_tensors(
+            terminal_evidence,args,fixed_mask,device=device,dtype=image_dtype)
+        terminal=Evidence(terminal_fixed,terminal_moving,evidence.matrix,evidence.offset,
+            args.loss,args.strain_weight,args.oob_weight,getattr(args,"shape_weight",0.),
+            terminal_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,
+            match_weight=match_weight,strain_model=strain_model,mind_order=mind_order,
+            image_weight=image_weight,mind_frame=mind_frame)
+        terminal.joint_prior_backend=joint_prior_backend
+        terminal.joint_p1_priors=evidence.joint_p1_priors
+        if source_image_side not in image_levels:
+            evidence_by_resolution.pop(source_image_side)
+        evidence=terminal
+        evidence_by_resolution[args.image_side]=terminal
     p1_sampling=getattr(args,"p1_sampling","existing")
     if p1_sampling not in ("existing","frozen"):
         raise ValueError("P1 sampling must be existing or frozen")
@@ -935,6 +968,15 @@ def optimize(args, accepted_stage_callback=None):
                   terminal_full_total=terminal_full_loss,best_accepted_full_total=full_best_loss,
                   acceptance_objective=("same complete simultaneous multiscale objective at every stage and final selection" if simultaneous else "original complete objective at current image resolution; full-resolution trajectory may not be monotone"),
                   oob="zero padding, fixed denominator, explicit quadratic excess penalty; no query dropping")
+    if terminal_evidence is not None:
+        report.update(terminal_evidence=terminal_metadata,pyramid_source_image_side=source_image_side,
+            point_pixel_scale=source_image_side,query_image_side=args.image_side)
+        report['configuration'].update(pyramid_source_image_side=source_image_side,
+            point_pixel_scale=source_image_side,terminal_evidence_bundle=terminal_metadata.get('bundle_path'),
+            terminal_evidence_arm=terminal_metadata.get('arm'))
+        report['image_preprocessing']={**report['image_preprocessing'],
+            'terminal_intensity_override':terminal_metadata,
+            'pyramid_source_image_side':source_image_side,'terminal_image_side':args.image_side}
     args.output.with_suffix(".json").write_text(json.dumps(report, indent=2)+"\n", encoding="utf-8")
     return report
 
