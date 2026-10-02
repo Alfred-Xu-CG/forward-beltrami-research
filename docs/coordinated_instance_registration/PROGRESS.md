@@ -7,6 +7,49 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### Complement result retained globally — 2026-10-02 10:03 UTC
+
+All50SG2/fusion attempts complete in222.466s, no failures. Independent
+reconstruction verifies4148landmark errors, originalaffines/boundaries,
+300/332budgets and actualminimumcorners(.00532227fusion,.00258231SG2).
+Fusion mean/p90 is MIIT3.534718/5.858170, lung4.471007/9.342538,
+Histo.842064/1.580138, kidney2.243606/4.643549. Both metrics improve in all
+four cohorts versus original.1SG AND matched-strength.2SG, although five
+individual direction means worsen and some worst errors increase. Full
+paired results remain in `match_fusion_all50_t23/comparison.json`.
+
+Decision: retain .1P_SG+.1P_MA as ONE globally chosen development recipe;
+no per-case matcher/weight selection, no coefficient sweep. This is a modest
+evidence-combination gain, not a new trained registration network or SOTA
+claim. Kidney and Histo still trail native DHR. Historical model extraction
+costs remain part of deployment accounting. The mathematical pose candidate
+will be considered on this same retained evidence, with frozen-pose controls,
+not used to replace this result before testing.
+
+### Preserve old point evidence and test its complement — 2026-10-02 09:54 UTC
+
+The read-only cross-functional/gradient diagnosis in OPTIMIZER_REDESIGN does
+not support a claim that MA overwhelmed SG by point count or gradient magnitude.
+At the same old maps the two physical33-grid point gradients are nearly
+orthogonal, and MA norms are smaller or comparable. We therefore retain the
+old SG evidence in one predeclared complement experiment: .1P_SG+.1P_MA, with
+a matched-total-strength .2P_SG control and archived .1P_SG as the reference.
+This is not a parameter sweep. Every other recipe choice remains unchanged.
+
+All25fused tables preserve every old/new row, including statically ineligible
+ones. Independent unequal-mass/value/VJP checks verify the concatenation and
+normalization; exact50configuration deltas and all50-before-scoring order pass.
+Root's focused integrated tests pass8/8. Production started09:54:28UTC on
+freshly checked idle AI GPU5, PID1644468, `match_fusion_all50_t23`.
+
+Separately, the Astra xhigh theoretical review and coordinator have recorded
+`JOINT_POSE_FORMULATION.md`: a POSSIBLE later six-variable positive affine pose
+plus current safe residual. It explicitly changes the prior/output polygon,
+handles the full-map corner floor, and requires differentiable feature
+reconstruction from the unwarped original raster during pose updates. It is
+not implemented or claimed successful; no second production mechanism is
+running in parallel with the fusion comparison.
+
 ### Cross-modality point substitution completed — 2026-10-02 09:30 UTC
 
 `matchanything_all25_t22` completes all25attempts in115.67s: all25extractions

@@ -174,7 +174,7 @@ def literal_p1(vertices,query):
     return np.array(result)
 
 
-def postrun_checks(directory_name='stain_proxy_all25_t21',point_substitution=False):
+def postrun_checks(directory_name='stain_proxy_all25_t21',point_substitution=False,configuration_delta=None):
     base=ROOT/'outputs/coordinated_instance_registration';directory=base/directory_name
     data=Path('D:/QC_optimization_data/digital_topology_wsi')
     read=lambda p:json.loads(Path(p).read_text(encoding='utf-8'))
@@ -222,7 +222,7 @@ def postrun_checks(directory_name='stain_proxy_all25_t21',point_substitution=Fal
     cache={};output=[];weak=None
     for row in manifest['rows']:
         name=row['name'];report=read(directory/row['report']);cfg=report['configuration'];original=read(controls[name])['configuration']
-        changed_keys={'matches','output'} if point_substitution else {'preprocessing','output'}
+        changed_keys=set(configuration_delta) if configuration_delta is not None else ({'matches','output'} if point_substitution else {'preprocessing','output'})
         assert set(original)==set(cfg) and {k for k in cfg if cfg[k]!=original[k]}==changed_keys
         assert report['gradient_steps']==300 and report['failed_trials']==0 and report['objective_evaluations']==332
         assert report['saved_binary_certificate']['valid'] and not report['landmarks_used']

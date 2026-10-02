@@ -963,3 +963,161 @@ point coordinates are unchanged. Exact fine-source/target unique counts and
 maximum duplicate multiplicities are now reporting-only diagnostics, with no
 deduplication or influence reweighting. The coordinator explicitly approved
 preserving the released behavior rather than imposing the mistaken description.
+
+### Proposed: preserve SG anchors and add independently normalized MA evidence
+
+Question (2026-10-02, after the completed MA25 replacement): did replacement
+lose a distinct useful SG constraint, rather than merely overweighting a denser
+MA table? This is an image-evidence question, not a topology or optimizer theorem.
+The coordinator approved writing this card; no complement production run has
+been authorized or started by this diagnostic worker.
+
+Saved-map CPU diagnosis reads only frozen image/match tables and predictions,
+not manual annotations. Reproducible source is
+`outputs/coordinated_instance_registration/check_sources/matchanything_cross_functional_diagnostic.py`;
+the per-case record is `matchanything_all25_t22/cross_functional_diagnostic.json`
+under the same outputs tree. At each SAME saved SG map, differentiate both
+weighted point terms through an additive33x33 physical-residual perturbation,
+bilinearly prolonged to257with fixed-zero boundary. This is not the production
+Adam/control gradient or a projection onto active Jacobian inequalities.
+
+| Cohort | norm(.1 SG gradient) | norm(.1 MA gradient) | SG/MA cosine | E_MA(new)-E_MA(old) | E_SG(new)-E_SG(old) |
+|---|---:|---:|---:|---:|---:|
+| MIIT3 | .078286 | .043393 | -.032395 | -.0021782 | +.0030469 |
+| Lung20 | .099194 | .096536 | +.071172 | -.0094399 | +.0145617 |
+| Histo | .055118 | .036262 | -.100110 | -.0011300 | +.0014665 |
+| Kidney | .079522 | .070858 | -.013986 | -.0052408 | +.0030173 |
+
+Full cross-functional evaluation includes the unchanged dense image, ARAP,
+shape and OOB terms.22/25MA maps beat the old SG map on the MA functional;
+all25lose on the SG functional. The three own-MA exceptions are cc10-to-ki67,
+cc10-to-prospc and prospc-to-cc10. Thus incomplete optimization remains possible,
+but it is not the main explanation for most replacement changes. MA point
+gradients do not dominate by norm, and their direction is nearly orthogonal to
+the SG gradients. Image/MA gradient cosines at the old SG map are weakly positive
+(cohort means .1634/.1023/.0129/.0460), not strong destructive opposition.
+Confidence normalization already makes each point table's total eligible mass1;
+more matches do NOT automatically increase its global coefficient.
+
+The MA evidence changes support and constraint directions, not just scalar
+strength. Fine-source exact duplicates are few (5--38 per raw table of roughly
+2000--3100); therefore an exact-duplicate fix cannot explain the whole result.
+Many8px source bins do contain multiple nearby observations with differing
+targets, but nearby sources need not represent alternative matches for the
+same anatomical point. This diagnostic does not justify a probabilistic
+mixture, deduplication, a confidence threshold or a local-consistency filter.
+Spatial density/coherence alone is not anatomical truth. Numerical gradient
+statistics are evidence for testing complementarity, not proof that either
+matcher's constraints are correct.
+
+Exact next claim/hypothesis: keeping the original SG term and adding MA as a
+separate, equally weighted evidence source can retain sparse anchors while
+testing whether semidense pretrained correspondences add useful information:
+
+    E_plus(Y) = I_shared-gray-MIND(Y) +3 ARAP(Y) +1e-4 Shape(Y)
+                +OOB(Y) +.1 P_SG(Y) +.1 P_MA(Y).
+
+For matcher h, let D_h=sum_j c_hj eligible_hj. Concatenate the existing source
+and target rows, giving each original confidence the value c_hj/D_h, and use
+the existing loader with match_weight=.2. Each matcher's eligible mass is1,
+the combined denominator is2, and therefore the existing loss is EXACTLY
+.1P_SG+.1P_MA, up to floating-point summation. Preserve each original row,
+including statically ineligible rows; report the two original counts and masses.
+There is no rematching, target change, spatial selection, new filter or clipping.
+Check finite positive D_h and combined confidence bounds explicitly; the actual
+tables have D_h>1 so rescaling preserves confidence<=1. Do not silently clamp an
+unexpected incompatible table. Coordinate/affine/raster metadata must agree.
+
+Assumptions: the two sources may provide complementary anatomical observations,
+but may also share systematic errors or impose incompatible constraints. Equal
+coefficients are one transparent default, not confidence calibration. This
+intervention increases total point influence from.1to.2; if it helps, that does
+not by itself isolate complementarity from total-weight effects. The required
+matched-strength control is therefore E_SG2=I+3ARAP+1e-4Shape+OOB+.2P_SG,
+using the ORIGINAL SG table unchanged. Compare both against the already saved
+.1SG control. This tied-strength two-arm experiment is not a coefficient sweep.
+No universal matching or anatomical guarantee is claimed. The hard geometric
+decoder is unchanged.
+
+Smallest decisive test: first verify concatenated versus two separate point
+terms on literal nontrivial-affine P1 maps, including eligibility, unequal
+confidence masses, loss values and vertex VJPs. Independently check this algebra
+and the25configuration changes. Then, only after coordinator authorization,
+construct all25combined tables from already frozen inputs and run both fusion
+and SG2arms,25cases each, using the same analytic300identity-start controls.
+Keep affine, images, dense MIND, ARAP3,
+shape1e-4, robust scale8px, grid257, continuation, optimizer settings and
+best-full selection unchanged. All50attempts terminate before ANY new ordinary
+scoring; retain failures and four-specimen cohort reporting. A fusion benefit
+over SG2supports information beyond merely doubling the SG coefficient; it
+still does not establish universal anatomical correctness. No beta sweep or
+per-case selection. Report table composition/setup separately from optimizer cost; retain
+the already measured matcher extraction cost in any end-to-end comparison.
+
+What falsifies it: no useful cohort accuracy/cost trade-off, loss/VJP algebra
+failure, or a new anatomical regression despite retaining SG. A negative result
+ends this bounded matcher-complement branch rather than prompting weight/filter
+search. Prior work for MA is the released model and paper cited in the preceding
+card; the additive loss is an ordinary evidence-combination control, not a new
+matching algorithm. Joint global-affine/residual objective redesign is a
+different possible later mechanism, not part of this intervention.
+
+### Executed: tied-strength fusion is retained as one exploratory recipe
+
+The50prediction attempts have now terminated:25/25fusion and25/25SG2succeeded,
+with zero composition failures. The saved prediction manifest records completion
+and `annotations_read=false`; ordinary scoring followed completion. Source:
+`outputs/coordinated_instance_registration/match_fusion_all50_t23/comparison.json`
+and its referenced prediction manifests. The archived SG1arm also retains all25
+successful directions. Every cohort below retains its full direction denominator;
+there are no failed cases omitted from these aggregates.
+
+The metric entries are mean of pair means / mean of pair p90s, in512moving-canvas
+pixels; they are not pooled-label percentiles or independent-patient averages.
+
+| Cohort/directions | Original SG1(.1SG) | SG2(.2SG) | Fusion(.1SG+.1MA) |
+|---|---:|---:|---:|
+| MIIT/3 |3.54875 /5.90796|3.56414 /5.95346|3.53472 /5.85817|
+| Lung/20 |4.56854 /9.59368|4.51702 /9.67054|4.47101 /9.34254|
+| Histo/1 |.85190 /1.58601|.94696 /1.71447|.84206 /1.58014|
+| Kidney/1 |2.36487 /4.75691|2.38222 /4.70210|2.24361 /4.64355|
+
+Fusion improves all four cohort mean/p90 aggregates against both controls.
+Equal-specimen deltas are -.06067mean/-.10504p90 versus SG1, and
+-.07974mean/-.15404p90 versus SG2. This supports complementary evidence in this
+development experiment beyond simply doubling the SG coefficient; it is a
+modest gain, not a large registration breakthrough or same-objective convergence
+claim. The coordinator tentatively retains fusion as ONE globally applied
+exploratory evidence recipe, subject to the independent post-run check. No case
+chooses its better arm, no coefficient sweep follows, and historical controls
+and all their results remain available.
+
+Aggregate improvement does not erase paired regressions. Versus SG1, fusion
+improves pair means on2/3MIIT,16/20lung,1/1Histo and1/1kidney; versus SG2the
+counts are3/3,12/20,1/1,1/1. Pair p90 improves on2/3MIIT and13/20lung versus
+SG1, and2/3MIIT and14/20lung versus SG2; Histo/kidney improve in both comparisons.
+The largest mean regression versus SG1is cd31-to-ki67 +.43696px (versus SG2
++.52400px). The largest p90 regression versus SG1is ki67-to-he +1.01575px;
+cd31-to-ki67 worsens p90 by.96232px versus SG1and1.16403px versus SG2.
+
+Severe tails remain: fusion's cohort worst maxima are53.02103MIIT,
+38.51869lung,4.14147Histo and8.97058kidney. The MIIT/lung maxima exceed SG2's
+52.87364/38.44655, and the kidney maximum exceeds SG1's8.93328. Only8/20lung
+pair maxima improve against SG1and7/20against SG2; he-to-cc10's maximum
+regresses2.42248px versus SG1. These are retained anatomical errors, not solver
+failures, and must not disappear behind the four improved mean/p90 rows.
+
+Cost remains part of the result: current batch wall time222.466s, including
+1.096s table composition; optimizer complete-call totals are114.162s fusion
+and106.531s SG2 (archived SG1total113.718s, not a synchronized speed trial).
+Maximum optimizer allocated memory is214255616bytes fusion and213284864bytes
+SG2. Fusion reused cached MA tables, whose required historical setup1.053s
+and25extraction calls totaling3.237s are additional end-to-end costs, not zero.
+Earlier affine/SG extraction is outside these totals, and allocated peaks from
+different stages must not be summed.
+
+All25directions come from FOUR already examined specimens. This is development
+selection, not held-out evidence,25patients, clinical validation or a general
+anatomical guarantee. The next joint-pose candidate remains a separate change
+of map/prior and awaits its fixed schedule, implementation authorization and
+independent checks; the fusion result does not establish that candidate.

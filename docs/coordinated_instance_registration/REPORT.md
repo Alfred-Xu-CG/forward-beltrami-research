@@ -8,6 +8,55 @@ The detailed derivations and experiment definitions are in FORMULATION.md;
 chronology and negative interventions are in PROGRESS.md. This report introduces
 the main objects without requiring knowledge of those earlier discussions.
 
+### Preserving sparse anchors plus pretrained points gives a modest gain
+
+The follow-up keeps the original SuperPoint/SuperGlue point term rather than
+replacing it. Write P_SG and P_MA for the independently confidence-normalized
+robust point losses. Compare the original .1P_SG, the matched-total-strength
+control .2P_SG, and the complement .1P_SG+.1P_MA. No point is rematched,
+deduplicated, manually filtered or used to refit the initializer. The same
+images, masks, priors,257-square P1-ac decoder and300-gradient optimizer remain.
+Independent unequal-mass loss/vertex-gradient tests check the exact algebra
+of concatenating the two frozen tables; more points do not implicitly set
+their relative strength.
+
+| Previously viewed specimen | .1 SG: mean / p90 | .2 SG: mean / p90 | .1 SG + .1 MA: mean / p90 |
+|---|---:|---:|---:|
+| MIIT /3 directions | 3.548752 /5.907957 | 3.564142 /5.953456 | 3.534718 /5.858170 |
+| Lung /20 directions | 4.568541 /9.593679 | 4.517025 /9.670540 | 4.471007 /9.342538 |
+| HistoReg /1 | .851903 /1.586005 | .946956 /1.714475 | .842064 /1.580138 |
+| Kidney /1 | 2.364866 /4.756907 | 2.382224 /4.702099 | 2.243606 /4.643549 |
+
+All units are512moving-canvas pixels. The complement improves all four
+specimen means and mean-pair-p90s against both controls. Mean reductions from
+.1SG are about.4%,2.1%,1.2%,5.1%, respectively. Merely doubling SG does not
+produce this pattern. This supports useful complementarity for THIS tested
+recipe, not a generally better matcher or a breakthrough in the geometry.
+We retain the complement as ONE global exploratory recipe for subsequent
+work; we do not pick the best matcher or weights separately for each case.
+
+The result is not uniform at the direction/landmark level: five of25pair means
+worsen versus .1SG, including MIIT2-to3 by.00149pixels and cd31-to-ki67 by
+about.44pixels. MIIT2-to3 p90 also worsens by.01483pixels. Kidney's worst error
+increases by.03730pixels. The complement does not yet beat full native DHR on
+HistoReg or kidney. These are repeatedly viewed DEVELOPMENT specimens, not
+independent validation or a patient-level statistical result.
+
+All50attempts finish before scoring, with300gradients/332objective calls and
+no failures each. Independent literal P1/CSV evaluation reproduces all4148
+label errors to1.14e-13canvas pixels. Original affines, identity residual
+boundaries and declared output connectivity are retained. Minimum actual
+corner ratios are.00532227(complement) and.00258231(.2SG), both above.001.
+
+Current two-arm wall time is222.47s, including1.096s of frozen-table composition.
+Complement optimization calls take4.06--6.47s, allocated peaks.210--.214GB;
+.2SG calls take4.00--4.83s, peaks.209--.213GB. These exclude the previously
+computed initialization and matching. A deployment comparison MUST add the
+already measured MA extraction3.237s for25pairs and cold setup1.053s for its
+batch; its extraction peak is about1.03GB, not the optimizer's.21GB. We do not
+call cached evidence free or infer a speedup from these single timing batches.
+Results and all paired contrasts are in `match_fusion_all50_t23`.
+
 ### Cross-modality pretrained point evidence: kidney gain, no general gain
 
 We replaced the frozen SuperPoint/SuperGlue correspondence table with the

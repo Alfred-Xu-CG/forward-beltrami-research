@@ -617,3 +617,90 @@ Download/dependency preparation is outside those inference-run numbers.
 Run the MatchAnything independent probe with `--postrun`; it reuses the prior
 saved-map/CSV checker and adds point-table and comparison checks. No optimization,
 network inference or GPU rerun was performed by the checker.
+
+### SG-preserving complement: independent preproduction check
+
+The two-arm fusion/control implementation passes the bounded algebra and
+configuration review. For each original table the denominator is the confidence
+sum over STATIC original-moving `A*p+b` eligibility, computed with the same
+float32 stored affine and float64 point coordinates as the existing loader.
+Every row, including ineligible and zero-confidence rows, is retained. Thus
+each table contributes eligible mass one; the combined loader divides by two,
+and global weight `.2` gives exactly `.1 P_SG + .1 P_MA` in real arithmetic.
+The denominators are fixed evidence, so the same identity holds for vertex VJPs.
+
+A separate literal-triangle/analytic-derivative oracle checks 116 retained rows
+with unequal eligible masses `5.8176339540` and `37.8112623064`, a nonsymmetric
+affine, nonzero offset, boundary queries and static ineligibility. The combined
+loader mass is `1.9999999999999998`; weighted value and vertex VJP errors are
+`1.78e-15` and `1.12e-16`, for both ordinary and frozen P1 sampling. Fusing two
+copies of SG also agrees with `.2 P_SG`. A valid subunit eligible mass is accepted
+when normalized confidence stays within one; an incompatible high-confidence
+ineligible row is rejected rather than clipped. Zero/nonfinite masses or data,
+coordinate/raster disagreement and changed affine are rejected.
+
+All 25 actual configurations preserve the originals except
+`matches/match_weight/output` for fusion and `match_weight/output` for SG2. The
+SG2 arm keeps its exact original point path, both arms use `.2`, and raw-gray
+MIND plus the remaining optimizer/geometry settings are unchanged. Independent
+inspection of the runner and its injected failure/order test confirms all 25
+composition attempts precede optimization; both 25-case manifests remain
+incomplete until all 50 attempts are terminal. A failed fusion composition does
+not silently become SG, but does not prevent the distinct valid SG2 control.
+All failures remain in their original arm denominator. Scorer adapters are
+created only afterward. No production correction was necessary.
+
+Source: `outputs/coordinated_instance_registration/check_sources/independent_match_fusion_probe_20261002.py`.
+This verifies the proposed functional and matched-strength control, not that
+the two matchers supply complementary anatomical truth.
+
+### SG-preserving complement: independent all-50 postrun check
+
+The completed `match_fusion_all50_t23` experiment passes the bounded independent
+postrun check. Both 25-case arms are terminal before scoring; all 50 attempts
+succeed with 300 gradients, 332 objective calls and the original best-full
+selection. Literal recomputation from the original CSV coordinates and saved
+P1 maps covers 4,148 landmark errors. Maximum discrepancy is `1.14e-13`
+512-canvas pixels and `1.82e-12` native pixels. The original affine and rectangle
+boundary, float64 257-by-257 P1 representation and stored binary certificates
+are unchanged/valid. Minimum normalized corner determinant is `0.00532227`
+for fusion and `0.00258231` for SG2, both strictly above `.001`.
+
+All 25 fused tables are independently reconstructed from their two original
+sources: exact source/target row concatenation, including static ineligibility,
+and confidence `c/D` with independently summed eligible masses. No original
+row is removed or clipped. Retained rows range from 2,180 to 3,704, and combined
+loader mass is two to rounding. SG2 uses its exact original SG table. Actual
+configuration changes have precisely the declared three/two keys; raw-gray
+image preparation and every scale's fixed-mask/frame metadata equal the
+original controls. MIIT scorer provenance points to the current arm's table.
+
+| Cohort | Fusion mean | Fusion - SG1 mean | Fusion - SG2 mean | Fusion - SG1 mean pair-p90 | Fusion - SG2 mean pair-p90 |
+|---|---:|---:|---:|---:|---:|
+| MIIT, 3 directions | 3.53471836 | -0.01403354 | -0.02942371 | -0.04978710 | -0.09528598 |
+| Lung, 20 directions | 4.47100714 | -0.09753398 | -0.04601779 | -0.25114079 | -0.32800184 |
+| Histo | 0.84206433 | -0.00983914 | -0.10489162 | -0.00586717 | -0.13433669 |
+| Kidney | 2.24360647 | -0.12125999 | -0.13861742 | -0.11335725 | -0.05855000 |
+
+Units are 512-canvas pixels. SG1 is the archived `.1 P_SG` control. All cohort
+means and mean pair-p90 values improve versus BOTH SG1 and the matched-strength
+SG2 control. This supports a modest complementary-evidence effect in this
+fixed experiment, not a pure increase in point strength. It is not uniform
+per-direction or worst-tail improvement: MIIT 2-to-3 slightly worsens in mean
+and p90 versus SG1; kidney worst error rises by `0.03730` versus SG1; fusion
+worst errors exceed SG2 by `0.14739` on MIIT and `0.07214` on lung. These are four
+previously viewed specimens, not 25 independent patients or a held-out result.
+A global decision to retain this one fused recipe is distinguishable from
+choosing the best arm separately for each direction.
+
+Every comparison row, cohort aggregate and equal-specimen delta is independently
+reproduced from the score tables. Summed complete optimizer calls are
+`114.162324s` for fusion and `106.531195s` for SG2; table composition is
+`1.095903s`, and current batch wall is `222.466018s`. The earlier MA setup
+`1.052606s` and extraction `3.237218s` remain explicit additional costs.
+These are single serial calls, not a controlled speed claim. The checker did
+not rerun optimization or matching. No production correction was needed.
+
+Reproduction: run the same independent fusion probe with `--postrun`; it reuses
+the existing literal saved-map/CSV checks with strictly declared configuration
+deltas, then adds table, comparison and cost checks.
