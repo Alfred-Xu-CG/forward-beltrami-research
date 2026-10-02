@@ -1,4 +1,4 @@
-"""Released DHR fast/standard pipeline on the three original MIIT image pairs.
+"""Released DHR fast/standard pipeline on MIIT or explicit image-only pairs.
 
 No supplied affine, matches, masks or annotations are accepted. Algorithm
 settings are preserved from the installed preset; only device and image/output
@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import importlib.metadata
 import json
 from pathlib import Path
+import re
 import time
 
 from PIL import Image
@@ -43,12 +44,51 @@ def _save(path, value):
     path.write_text(json.dumps(value, indent=2, allow_nan=False, default=str) + "\n", encoding="utf-8")
 
 
+def input_rows(args):
+    """Default MIIT rows or a small image-only manifest; no affine/label inputs."""
+    source_arg, manifest_arg = getattr(args, "source_data", None), getattr(args, "input_rows", None)
+    if (source_arg is None) == (manifest_arg is None):
+        raise ValueError("exactly one of source_data and input_rows required")
+    if source_arg is not None:
+        source = Path(source_arg).resolve()
+        rows = [dict(name=f"miit_{m}_to_{f}", moving_section=m, fixed_section=f,
+                     moving=str(source / str(m) / "images/image.tif"),
+                     fixed=str(source / str(f) / "images/image.tif"), status="pending") for m, f in PAIRS]
+        return rows, dict(source_data=str(source), input_manifest=None,
+                          scope="three development directions from one previously used prostate specimen")
+    path = Path(manifest_arg).resolve()
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    if (not isinstance(manifest, dict) or set(manifest) != {"scope", "rows"}
+            or not isinstance(manifest["scope"], str) or not manifest["scope"]
+            or not isinstance(manifest["rows"], list) or not manifest["rows"]):
+        raise ValueError("image manifest requires scope and nonempty rows only")
+    rows, names = [], set()
+    for record in manifest["rows"]:
+        if not isinstance(record, dict) or set(record) != {"name", "fixed", "moving"}:
+            raise ValueError("each image row requires name, fixed and moving only")
+        name = record["name"]
+        if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", name) or name in names:
+            raise ValueError("unique filesystem-safe case names required")
+        names.add(name)
+        row = dict(name=name, status="pending")
+        for role in ("fixed", "moving"):
+            if not isinstance(record[role], str) or not record[role]:
+                raise ValueError("nonempty image path required")
+            image = Path(record[role])
+            row[role] = str((image if image.is_absolute() else path.parent / image).resolve())
+        if row["fixed"] == row["moving"]:
+            raise ValueError("distinct fixed and moving image paths required")
+        rows.append(row)
+    return rows, dict(source_data=None, input_manifest=str(path), scope=manifest["scope"])
+
+
 def run(args, *, dhr=None):
     if args.preset not in ("fast", "standard") or args.device not in ("cpu", "cuda"):
         raise ValueError("released fast/standard preset and cpu/cuda device required")
     if isinstance(args.threads, bool) or args.threads < 1:
         raise ValueError("positive threads required")
-    output, source = Path(args.output).resolve(), Path(args.source_data).resolve()
+    output = Path(args.output).resolve()
+    rows, input_metadata = input_rows(args)
     if output.exists():
         raise FileExistsError(output)
     if args.device == "cuda" and not torch.cuda.is_available():
@@ -66,18 +106,15 @@ def run(args, *, dhr=None):
         version = "not available"
     output.mkdir(parents=True)
     _save(output / "released_preset.json", base)
-    rows = [dict(name=f"miit_{m}_to_{f}", moving_section=m, fixed_section=f,
-                 moving=str(source / str(m) / "images/image.tif"),
-                 fixed=str(source / str(f) / "images/image.tif"), status="pending") for m, f in PAIRS]
     report = dict(preset=preset_name, package_version=version,
                   package_source=str(getattr(dhr, "__file__", "unknown")),
                   config_source=str(getattr(dhr.configs, "__file__", "unknown")),
                   started_utc=datetime.now(timezone.utc).isoformat(),
-                  package_import_seconds=import_seconds, source_data=str(source),
+                  package_import_seconds=import_seconds, **input_metadata,
                   prediction_complete=False, annotations_read=False, rows=rows,
-                  scope="three development directions from one previously used prostate specimen",
                   initialization="unaltered released native initial-registration stage; no supplied affine",
-                  io_adaptation="PIL native TIFF loading ratio1; preset preprocessing resolution unchanged; no image raster exports",
+                  io_adaptation="PIL native image loading ratio1; preset preprocessing resolution unchanged; no image raster exports",
+                  execution_policy="serial cases; no algorithm timeout or reduced-resolution fallback",
                   map_direction="fixed native pixel centers to moving native pixel centers",
                   timing_scope="complete native pipeline through displacement export; no final whole-slide image rendering; import separate",
                   interpolation="saved MHA displacement sampled bilinearly for landmark evaluation; no hard topology guarantee")
@@ -94,15 +131,21 @@ def run(args, *, dhr=None):
         row["configuration"] = f"{row['name']}/config.json"
         tick = time.perf_counter()
         pipeline = None
+        peak_reset = False
         try:
             for key in ("fixed", "moving"):
                 with Image.open(row[key]) as image:
                     if image.getexif().get(274, 1) != 1 or image.mode not in ("RGB", "L"):
-                        raise ValueError("native L/RGB TIFF with identity orientation required")
+                        raise ValueError("native L/RGB image with identity orientation required")
                     row[key + "_original_wh"] = list(image.size)
+                    row[key + "_mode"] = image.mode
+                    row[key + "_file_bytes"] = Path(row[key]).stat().st_size
             if args.device == "cuda":
                 torch.cuda.synchronize()
                 torch.cuda.reset_peak_memory_stats()
+                peak_reset = True
+                free_bytes, total_bytes = torch.cuda.mem_get_info()
+                row.update(cuda_free_bytes_before_case=free_bytes, cuda_total_bytes=total_bytes)
             pipeline = dhr.direct_registration.DeeperHistReg_FullResolution(params)
             pipeline.run_registration(row["moving"], row["fixed"], str(folder))
             if args.device == "cuda":
@@ -131,22 +174,26 @@ def run(args, *, dhr=None):
             row.update(status="failed", error=f"{type(error).__name__}: {error}")
         finally:
             row["complete_call_seconds"] = time.perf_counter() - tick
+            if args.device == "cuda" and peak_reset:
+                row["peak_allocated_bytes"] = torch.cuda.max_memory_allocated()
             del pipeline
             persist()
-    report.update(prediction_complete=True, successful_pairs=sum(row["status"] == "ok" for row in rows), pair_denominator=3)
+    report.update(prediction_complete=True, successful_pairs=sum(row["status"] == "ok" for row in rows), pair_denominator=len(rows))
     persist()
     return report
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source-data", type=Path, required=True)
+    inputs = parser.add_mutually_exclusive_group(required=True)
+    inputs.add_argument("--source-data", type=Path, help="original MIIT source_data directory (unchanged three-pair default)")
+    inputs.add_argument("--input-rows", type=Path, help="JSON with scope and image-only name/fixed/moving rows")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--preset", choices=("fast", "standard"), default="fast")
     parser.add_argument("--device", choices=("cpu", "cuda"), default="cuda")
     parser.add_argument("--threads", type=int, default=2)
     result = run(parser.parse_args())
-    print(json.dumps({"preset": result["preset"], "successful_pairs": result["successful_pairs"], "pair_denominator": 3}))
+    print(json.dumps({key: result[key] for key in ("preset", "successful_pairs", "pair_denominator")}))
 
 
 if __name__ == "__main__":

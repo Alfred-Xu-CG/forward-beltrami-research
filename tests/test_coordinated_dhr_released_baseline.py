@@ -79,3 +79,30 @@ def test_native_pipeline_without_affine_and_failure_retention(tmp_path, choice):
     assert report["annotations_read"] is False and report["prediction_complete"] is True
     assert report["rows"][0]["fixed_original_wh"] == [22, 24]
     assert json.loads((args.output/"predictions.json").read_text())["rows"] == report["rows"]
+
+
+def test_explicit_rows_all22_native_jpeg_failures_retained(tmp_path):
+    from tools.coordinated_dhr_existing_inputs import existing_rows
+    rows = existing_rows(tmp_path / "images")
+    for path in {r[k] for r in rows for k in ("fixed", "moving")}:
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (31, 27)).save(target)
+    path = tmp_path / "inputs.json"
+    path.write_text(json.dumps(dict(scope="synthetic22 fixture", rows=rows)))
+    calls = []
+    class Pipeline:
+        def __init__(self, params):
+            assert params["loading_params"]["source_resample_ratio"] == 1
+        def run_registration(self, moving, fixed, output):
+            calls.append((moving, fixed))
+            raise RuntimeError("intentional per-case failure; next case must still run")
+    dhr = SimpleNamespace(configs=SimpleNamespace(default_initial_nonrigid=preset),
+                          direct_registration=SimpleNamespace(DeeperHistReg_FullResolution=Pipeline))
+    args = argparse.Namespace(source_data=None, input_rows=path, output=tmp_path/"outputs", device="cpu", threads=1, preset="standard")
+    result = run(args, dhr=dhr)
+    assert len(calls) == 22 and result["pair_denominator"] == 22
+    assert result["prediction_complete"] is True and result["successful_pairs"] == 0
+    assert all(r["status"] == "failed" for r in result["rows"])
+    assert all((args.output/r["configuration"]).is_file() for r in result["rows"])
+    assert calls[-2] == (rows[-2]["moving"], rows[-2]["fixed"])

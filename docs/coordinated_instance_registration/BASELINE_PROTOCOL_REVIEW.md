@@ -208,3 +208,138 @@ bitwise equality to rasterizing an initial displacement in float32. Three
 focused tests pass, including hand-calculated rectangular, unequal-padding,
 nonunit-loading coordinates and an independent Torch affine-grid/displacement
 path. Separate-context formula review remains the coordinator's responsibility.
+
+## Shared landmark-tail diagnosis: resolution is not the leading explanation
+
+This is a read-only diagnosis of the completed shared-affine MIND control and
+native standard DHR, not a new training or model-selection experiment. Inputs
+are `miit_multiscale_control_t19/landmark_scores.json` and
+`miit_dhr_released_standard_t19/landmark_scores_complete.json` below the common
+outputs directory. Their equal-pair A/F2/DHR mean TREs are
+3.548752/3.554327/3.672192 canvas pixels.
+
+For pairs 2→3, 7→8 and 10→11, the A-versus-native-DHR per-label Spearman
+correlations are .7864/.8977/.7642. Worst-decile label overlap is 10/13, 9/11
+and 8/10. All 13 A landmarks exceeding 10 pixels also exceed 10 pixels under
+native DHR; DHR has one additional such label. A's worst decile contributes
+29.9%/42.3%/44.6% of its pair's summed errors. This is a shared adverse tail,
+not a uniform subpixel accuracy deficit unique to the 512-pixel optimizer.
+
+The clearest example is pair 7→8, Pt121: A/native-DHR errors are
+53.0265/53.4980 pixels; Pt122 is 30.5261/30.7747. The existing historical
+`miit_7_to_8_oracle_tail_context_t17.png` shows the Pt121 discrepancy at a
+gland/boundary scale already visible in the 512 overview. That plot's predictor
+overlay predates the native-standard run and must not be relabeled as current
+DHR. The current errors above come only from the current score files.
+
+Native standard uses the available ~3k source evidence yet preserves these
+large errors. Together with the visible scale, this weakens the claim that
+512-pixel raster resolution alone causes the principal tail. It does not prove
+that a fixed-257-P1 1024/2048 image experiment cannot improve finer errors:
+different descriptors/optimizers can exploit detail differently. Nor does it
+prove annotation error, absent tissue or an impossible correspondence. These
+remain ambiguous serial-section cases. The next higher-information intervention
+is optimizer/correspondence diagnosis, given the coordinator's independently
+observed persistent update-bound hits; a resolution-only experiment is secondary.
+
+## Historical NCC ablation versus actual released DHR
+
+Installed DeeperHistReg `cost_functions.ncc_local` and released registration
+presets use squared local NCC with a 7×7 zero-padded window and denominator
+epsilon 1e-5. Our `RealProblem.image_terms` uses the same local sums and
+algebraically the same centered cross/variance expressions. Its `1-NCC` versus
+DHR's `-NCC` differs by an objective constant if aggregation is identical;
+our variance clamp can additionally alter roundoff-edge cases. The historical
+ablation therefore did **not** mistakenly compare global NCC with local NCC,
+or use a different nominal NCC window.
+
+However, it was not a DHR-faithful objective pipeline. Our NCC was averaged on
+the raw fixed-image threshold support, while the released preset supplies no
+mask and averages the whole frame. Our pyramid independently area-resizes each
+level; DHR recursively applies Gaussian smoothing and bilinear downsampling.
+The historical NCC run directly samples the original moving evidence using the
+composed affine/residual query; DHR first bicubically affine-prewarps and then
+bilinearly residual-warps the raster. Boundary conditions, priors, shape and
+machine-point terms, iteration schedule and final resolution also differ.
+In particular the historical saved NCC configuration omits `strain_model`
+and therefore uses the then/default displacement-gradient prior, not the later
+ARAP control. DHR uses `diffusion_relative`.
+
+The saved native-preprocessing NCC experiment used image512, grid257,
+32/64/128/256/512 continuation, 30 steps per coordinate/stage, strain weight3,
+shape weight1e-4 and machine-point weight.1. Its three development-case means
+(.794/3.936/2.945) versus corresponding MIND (.808/3.713/2.468) establish no
+consistent benefit under **that** matched ablation. They are not current MIIT
+results and do not reject DHR-style evidence as a class. `PROGRESS.md` already
+records the principal pipeline differences; the source audit confirms that
+qualification rather than finding a new NCC-window bug. This alone does not
+justify another parameter sweep.
+
+## Existing22 native STANDARD expansion: prepared, not executed
+
+Question: does the corrected released baseline change the comparison beyond the
+three correlated MIIT directions? Exact claim under test: full native STANDARD,
+with its own image-only initialization and unmodified algorithm preset, can be
+evaluated in the SAME existing512 moving-canvas coordinates without interpreting
+its native field as a512 field. Assumptions: original JPEGs, saved layouts and
+existing annotation conventions are correct. Falsifier: unequal native sizes,
+padding or resampling changes the coordinate fixture, or any prediction failure
+vanishes from the denominator. Smallest decisive test: rectangular padded native
+field with nonunit initial resampling, followed by one synthetic complete22
+cohort with the actual dataset readers. Prior implementation: the independently
+checked MIIT released runner and `digital_compare_appearance` native evaluator.
+
+Approved scope is exactly20 ordered lung-lesion3 stain directions, Histo fixed
+CD4→moving CD68, and kidney fixed HE→moving PanCytokeratin. The old BIRL
+`lesions_` crop is a different image/annotation frame and is NOT a23rd job.
+All are previously viewed development specimens; twenty directions do not add
+twenty patients. Lung keeps80 labels/direction, Histo77, kidney69 with fixed-only
+IDs70/71 explicitly disclosed. Lung's50pc→5pc conversion remains
+`(coordinate+.5)/10-.5`, with its existing subpixel uncertainty.
+
+`coordinated_dhr_released_baseline.py --input-rows` now accepts only name,
+fixed and moving paths plus a scope string. MIIT `--source-data` defaults are
+unchanged. Relative image paths resolve next to the manifest. Every case is
+attempted serially, with native initialization, loading ratio1, unchanged preset,
+per-case config, sizes/modes, timing, and GPU free/peak memory metadata. There is
+no reduced-resolution fallback, inherited common affine or hidden timeout.
+
+`coordinated_dhr_existing_score.py` requires all22 attempts to be terminal before
+opening labels. It uses native image dimensions with the existing saved-field
+evaluator, then the original native→512 layout conversion. It reports field
+scalar ranges and all saved-field bilinear-cell corner signs, not a global
+homeomorphism certificate. Failed cases remain failures; no complete lung20 or
+equal-specimen aggregate is emitted when its required cases fail. It never
+averages native-pixel errors across specimens.
+
+The image-only preparation is at
+`D:/QC_optimization_data/digital_topology_wsi/dhr_existing22_inputs`:
+`local_inputs.json`, `remote_inputs.json`, and `transfer_list.json`. The last is
+an ordinary copy list of9 unique JPEGs totalling93,025,647 bytes, not a new
+integrity framework. Copy the remote manifest and its listed images under
+`images/` beside it; manual CSVs are not in the transfer list. No images have
+been copied remotely and no GPU registration has been launched by this worker.
+
+Execution after coordinator approval:
+
+```text
+python -m tools.coordinated_dhr_released_baseline --input-rows <remote_inputs.json> --output <new-output> --preset standard --device cuda --threads 2
+python -m tools.coordinated_dhr_existing_score --predictions <completed-local-output> --data-root D:/QC_optimization_data/digital_topology_wsi --output <new-score.json>
+```
+
+The native lung/kidney rasters are below4096 and the released preset does not
+upsample them. Histo's native ~74M-pixel RGB images are copied to GPU before
+preprocessing; the two padded float32 inputs alone need approximately1.8GB,
+with substantial additional workspace. Check host RAM and free VRAM before
+launch and keep GPU jobs serial. A~20min reservation for22 cases is a planning
+estimate, not a measurement; native MIIT STANDARD took31–33s/pair but is not
+the same resolution. Author checks:31 focused tests pass, including existing
+MIIT regressions. The bounded independent review in
+`BASELINE_PROTOCOL_INDEPENDENT.md` passes with no production fix required.
+Its separate NumPy border-bilinear oracle uses nonuniform fields, unequal
+rectangular dimensions, asymmetric padding, nonintegral initial-resampling
+ratios and unequal loading ratios; maximum differences are7.99e-6 native and
+1.44e-5 canvas pixels. The probe is saved at
+`outputs/coordinated_instance_registration/check_sources/independent_native22_probe_20261002.py`.
+This validates coordinate implementation, not anatomical accuracy; no real22
+registration outcome exists yet.
