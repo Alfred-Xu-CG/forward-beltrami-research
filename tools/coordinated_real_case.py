@@ -141,7 +141,8 @@ class Evidence:
             result.prepare_fixed_p1_sampling(coarse_side,coarse_side,dtype=dtype,device=device)
         return result
 
-    def __call__(self, vertices):
+    def image_terms(self, vertices):
+        """Raster data/OOB terms only; no priors or machine correspondences."""
         if self.interpolation=="q1":
             query = q1_map_at_pixel_centers(vertices,*self.fixed.shape[-2:])
         elif self.fixed_p1_evaluator is None:
@@ -170,6 +171,11 @@ class Evidence:
         image = (errors*self.mask).sum()/self.denominator
         outside = (F.relu(-query) + F.relu(query-1)).square().sum(-1)[:, None]
         oob = (outside*self.mask).sum()/self.denominator
+        outside_fraction = (((query < 0) | (query > 1)).any(-1)[:, None]*self.mask).sum()/self.denominator
+        return image, oob, outside_fraction
+
+    def __call__(self, vertices):
+        image, oob, outside_fraction = self.image_terms(vertices)
         if self.nested_priors is None:
             if self.joint_p1_priors is not None:
                 strain,shape=self.joint_p1_priors(vertices)
@@ -192,7 +198,6 @@ class Evidence:
         match = self.matches(vertices,self.matrix,self.interpolation) if self.match_weight else None
         if match is not None:
             total = total + self.match_weight*match
-        outside_fraction = (((query < 0) | (query > 1)).any(-1)[:, None]*self.mask).sum()/self.denominator
         parts = dict(image=image, strain=strain, oob=oob, outside_fraction=outside_fraction)
         if shape is not None:
             parts["shape"] = shape
@@ -243,7 +248,7 @@ def load_image_matches(path,matrix,offset,*,fixed_path,moving_path,image_side,de
     return matches,metadata
 
 
-def load_registration_evidence(fixed_path,moving_path,image_side,*,preprocessing="raw_inverted",device="cpu",dtype=torch.float32):
+def load_registration_evidence(fixed_path,moving_path,image_side,*,preprocessing="raw_inverted",device="cpu",dtype=torch.float32,fixed_mask_path=None):
     """Frozen image preprocessing with an ORIGINAL-raster foreground mask.
 
     Native CLAHE does not redefine the foreground, change coordinates, prewarp
@@ -261,6 +266,12 @@ def load_registration_evidence(fixed_path,moving_path,image_side,*,preprocessing
         metadata["native_capture"]=native
     elif preprocessing!="raw_inverted":
         raise ValueError("declare raw_inverted or native_dhr frozen evidence")
+    if fixed_mask_path is not None:
+        from tools.coordinated_tissue_support import load_tissue_support
+        mask,support=load_tissue_support(fixed_mask_path,fixed_path,image_side,device=device,dtype=dtype)
+        metadata.update(mask_source="released semi-manual fixed tissue support",supplied_tissue_annotation=True,
+            evidence_scope=support["evidence_scope"],fixed_tissue_support=support,
+            fixed_tissue_support_path=str(fixed_mask_path))
     return fixed.to(device=device,dtype=dtype),moving.to(device=device,dtype=dtype),mask,metadata
 
 
@@ -294,6 +305,14 @@ def optimize(args, accepted_stage_callback=None):
     image_levels=getattr(args,"image_levels",None) or [args.image_side]*len(args.levels)
     if len(image_levels)!=len(args.levels) or min(image_levels)<8 or max(image_levels)>args.image_side or image_levels[-1]!=args.image_side:
         raise ValueError("one image resolution per coefficient level, ending at full image_side")
+    image_objective=getattr(args,"image_objective","continuation")
+    if image_objective not in ("continuation","simultaneous_multiscale"):
+        raise ValueError("image_objective must be continuation or simultaneous_multiscale")
+    simultaneous=image_objective=="simultaneous_multiscale"
+    if simultaneous and (getattr(args,"mind_frame","original")!="shared_affine"
+            or getattr(args,"control_hierarchy","fixed")!="fixed"
+            or getattr(args,"capture_prefix","none")!="none"):
+        raise ValueError("simultaneous multiscale requires fixed controls, shared-affine MIND and no capture prefix")
     continuation_scope=getattr(args,"continuation_scope","all_cycles")
     if continuation_scope not in ("all_cycles","first_cycle"):
         raise ValueError("continuation scope must be all_cycles or first_cycle")
@@ -403,7 +422,7 @@ def optimize(args, accepted_stage_callback=None):
         raise ValueError("finite positive affine required")
     fixed,moving,fixed_mask,preprocessing_metadata=load_registration_evidence(
         args.fixed,args.moving,args.image_side,preprocessing=getattr(args,"preprocessing","raw_inverted"),
-        device=device,dtype=image_dtype)
+        device=device,dtype=image_dtype,fixed_mask_path=getattr(args,"fixed_mask",None))
     if mind_frame=="shared_affine":
         preprocessing_metadata={**preprocessing_metadata,
             "original_moving_features_no_affine_prewarp":False,
@@ -464,6 +483,9 @@ def optimize(args, accepted_stage_callback=None):
         for level,resolution in zip(args.levels,image_levels):
             coarse_evidence[(level,resolution)]=evidence_by_resolution[resolution].coarse_nested_evidence(
                 level,args.grid_side,dtype=dtype,device=device)
+    if simultaneous:
+        from tools.coordinated_multiscale_evidence import SimultaneousImageEvidence
+        evidence=SimultaneousImageEvidence(evidence_by_resolution)
     synchronize = lambda: torch.cuda.synchronize(device) if device.type == "cuda" else None
     synchronize()
     feature_seconds = time.perf_counter()-feature_start
@@ -522,7 +544,8 @@ def optimize(args, accepted_stage_callback=None):
                 require_nested_fine_margin(materialize(current),reference_corners,args.minimum_jacobian,"refined anchor")
             stage_resolution=(image_levels[level_index] if cycle==0 or continuation_scope=="all_cycles"
                               else args.image_side)
-            stage_evidence=evidence_by_resolution[stage_resolution]
+            if simultaneous:stage_resolution=args.image_side
+            stage_evidence=evidence if simultaneous else evidence_by_resolution[stage_resolution]
             original_stage_evidence=stage_evidence
             if nested_evaluation=="coarse_exact":
                 stage_evidence=coarse_evidence[(control_side,stage_resolution)]
@@ -757,6 +780,7 @@ def optimize(args, accepted_stage_callback=None):
                                  "match_p1_sampling":match_p1_sampling,
                                  "inner_steps_by_level":inner_steps_by_level,
                                  "image_weight":image_weight,"capture_prefix":capture_prefix,
+                                 "image_objective":image_objective,
                                  "trial_diagnostics":trial_diagnostics,"mind_frame":mind_frame},
                   representation=evidence.interpolation+" residual then frozen positive affine; exact declared interpretation",
                   initial=initial_record, final=dict(total=float(final), **{k: float(v) for k,v in parts.items()}),
@@ -774,7 +798,10 @@ def optimize(args, accepted_stage_callback=None):
                   diagnostic_timing_scope="packed stack/copy/unpack plus coordinate-finite flag at the original decision point; included in optimize_seconds but after existing forward clock; no additional per-trial timers",
                   peak_allocated_bytes=torch.cuda.max_memory_allocated(device) if device.type == "cuda" else None,
                   stages=stages, trace=trace, failures=failures,saved_binary_certificate=certificate,
-                  landmarks_used=False, mask="fixed grayscale inversion > .04, constant denominator",
+                  landmarks_used=False,
+                  supplied_tissue_annotation=getattr(args,"fixed_mask",None) is not None,
+                  mask=("released semi-manual fixed tissue support, constant denominator" if getattr(args,"fixed_mask",None) is not None
+                        else "fixed grayscale inversion > .04, constant denominator"),
                   final_corner_shape=float(corner_symmetric_dirichlet(current.double())),
                   geometry_dtype=str(dtype),evidence_dtype=str(image_dtype),
                   strain_model=strain_model,
@@ -784,6 +811,10 @@ def optimize(args, accepted_stage_callback=None):
                   mind_frame=mind_frame,
                   mind_frame_by_resolution={str(side):item.mind_frame_metadata for side,item in evidence_by_resolution.items()} if mind_frame=="shared_affine" else None,
                   image_levels=image_levels,
+                  image_objective=image_objective,
+                  image_objective_scales=sorted(evidence_by_resolution) if simultaneous else None,
+                  image_objective_weights=evidence.weights if simultaneous else None,
+                  image_objective_scope=("equal-weight all raster scales at EVERY stage; full-resolution OOB and all priors/points once" if simultaneous else "stage raster continuation; final full-resolution selection"),
                   image_weight=image_weight,
                   capture_prefix=capture_prefix,capture_record=capture_record,
                   capture_objective_evaluations=capture_objective_evaluations,
@@ -815,7 +846,7 @@ def optimize(args, accepted_stage_callback=None):
                     for item in evidence_by_resolution.values() if item.fixed_p1_evaluator is not None
                     for buffer in item.fixed_p1_evaluator.buffers()),
                   terminal_full_total=terminal_full_loss,best_accepted_full_total=full_best_loss,
-                  acceptance_objective="original complete objective at current image resolution; full-resolution trajectory may not be monotone",
+                  acceptance_objective=("same complete simultaneous multiscale objective at every stage and final selection" if simultaneous else "original complete objective at current image resolution; full-resolution trajectory may not be monotone"),
                   oob="zero padding, fixed denominator, explicit quadratic excess penalty; no query dropping")
     args.output.with_suffix(".json").write_text(json.dumps(report, indent=2)+"\n", encoding="utf-8")
     return report
@@ -841,6 +872,8 @@ def main():
     p.add_argument("--mind-order",choices=("transport","after_warp"),default="transport")
     p.add_argument("--preprocessing",choices=("raw_inverted","native_dhr"),default="raw_inverted",
                    help="Frozen native PIL/normalization/grayscale/CLAHE option; mask stays original, not native optimizer equivalence")
+    p.add_argument("--fixed-mask",type=Path,
+                   help="optional prepared released semi-manual fixed tissue .npz support; area weights at coarse levels, all evaluation landmarks retained")
     p.add_argument("--interpolation",choices=("q1","p1_ac","p1_bd"),default="q1")
     p.add_argument("--p1-sampling",choices=("existing","frozen"),default="existing",
                    help="Optional immutable fixed-source query cache; no moving-query gradients")
@@ -860,6 +893,8 @@ def main():
     p.add_argument("--image-side", type=int, default=512)
     p.add_argument("--image-levels", type=int, nargs="+",
                    help="image continuation resolutions matching --levels, e.g.32 64 128 256 512")
+    p.add_argument("--image-objective",choices=("continuation","simultaneous_multiscale"),default="continuation",
+                   help="optional equal-weight frozen image pyramid at every stage, with finest OOB and priors once")
     p.add_argument("--continuation-scope",choices=("all_cycles","first_cycle"),default="all_cycles",
                    help="Optional full-image objective for all coefficient levels after initial continuation cycle")
     p.add_argument("--levels", type=int, nargs="+", default=[17,33,65,129,257])

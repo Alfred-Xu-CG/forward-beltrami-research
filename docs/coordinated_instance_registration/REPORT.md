@@ -21,7 +21,72 @@ standard preset uses 4096 and eight levels (seven times 100 plus 200). The old
 comparison is useful for a shared-initialization diagnostic, not evidence of
 superiority over recommended full RegWSI/DeeperHistReg. The restart adds genuine
 released-preset runs, with native preprocessing and all configuration differences
-disclosed. Those new results are not yet available here.
+disclosed. The first complete runs and the corrected MS experiment are below.
+
+### T+19h restart experiments: full baseline and one failed objective hypothesis
+
+Both released presets were actually run on AI RTX A6000, original native TIFFs,
+loading ratio1, the preset's own preprocessing/initialization/nonrigid schedule,
+and no supplied affine. All three directions terminated successfully as software
+calls. Fast nevertheless failed anatomically on2-to3 and10-to11; successful call
+status is not registration success. Every available123/107/98 annotation pair
+was scored after prediction. The same512canvas conversion as before is used
+only for the comparison units, not to reduce the native baseline's input.
+
+| Method / objective | Mean pair mean TRE | Mean pair p90 TRE | Actual complete registration call |
+|---|---:|---:|---|
+| Shared-affine coordinated A, previous continuation | 3.548752 | 5.907957 | 4.14–6.13s |
+| Shared-affine F2, previous continuation | 3.554327 | 5.942943 | 12.48–14.20s |
+| Coordinated A, simultaneous five-scale objective | 3.608180 | 6.060186 | 7.53–8.85s |
+| F2, simultaneous five-scale objective | 3.612537 | 6.062816 | 14.60–16.74s |
+| Released DHR fast, native full pipeline | 119.044162 | 173.029174 | 8.18–9.79s |
+| Released DHR standard, native full pipeline | 3.672192 | 6.432444 | 30.56–32.95s |
+
+TRE is Euclidean target-registration error in common512canvas pixels, not
+micrometers. Means weight the three pairs equally. Safe-method call times above
+exclude the already-computed shared initialization/matches; native DHR times
+include its own initializer. Therefore this table is NOT an apples-to-apples
+end-to-end speed ratio. Initial parallel control/MS calls used separate idle
+GPUs5/6; corrected MS calls were serial onGPU5. These are single-call descriptive
+timings, not repeated hardware benchmarks. Allocated peaks were approximately
+201–202MiB A-control,211–212MiB A-MS,461–462MiB F2-control and488–490MiB F2-MS.
+
+The MS hypothesis failed this fixed test: every one of six method/pair means
+became worse; aggregate mean and p90 also worsened while cost increased. It
+averages32/64/128/256/512 normalized image terms at EVERY stage, keeping priors,
+points and512OOB once, so it changes objective and continuation, not geometry.
+All twelve primary safe runs completed300gradients with no failed trials;
+actual corner floors remain strictly positive. Independent mixed-precision
+value/gradient recomputation agrees to5.55e-17/4.44e-16 on a small separate test.
+The selected MS recipe is not promoted; this is not a proof that all multiscale
+metrics fail. No neighboring weight sweep follows this negative result.
+
+One first MS run used an algebraically equivalent subtraction/addition of image
+scalars; after a mixed-precision arithmetic cleanup only MS was rerun, BEFORE
+primary scoring. The first output remains in `miit_multiscale_sum_t19`; the
+primary result is `miit_multiscale_sum_direct_t19`. Control continuation was
+unchanged and independently reproduces the earlier scores. Formula and test
+details are in OPTIMIZER_REDESIGN.md. Full332objective calls require4.5474times
+the prior continuation's raster queries; the300gradient evaluations require
+five times its image raster work. Neither count is a measured runtime ratio.
+
+Native standard has mean TRE3.087571/3.280505/4.648501 on the three pairs
+and still a roughly53.5pixel worst error on7-to8. Its actual saved bilinear
+field has nonpositive local corners in all three cases; no post-hoc repair was
+applied. The scorer checks its own pixel-center field cells and does not claim
+a global boundary theorem or an equivalent257P1 representation. Independent
+rectangular/resampling/saver fixtures verify the declared field evaluator,
+not equivalence to DHR's optional cubic landmark utility or rendered-image path.
+
+The audit also found approximately23–25% of our MIIT intensity-threshold support
+outside the provided tissue mask. That is a modeling issue worth a separate
+fixed-support test, not a demonstrated violation of DHR's mask-free preset.
+The completed mask arm uses images PLUS released semi-manual tissue masks and
+does not remove any evaluation landmark. It also shows no material improvement:
+A mean/p90=3.565586/5.933243; F2=3.556160/5.926603. All six runs complete300
+gradients with valid outputs. Thus the background-support observation is real,
+but it is not supported as the main cause of the registration plateau. Keep the
+image-only threshold baseline; do not require extra annotations without benefit.
 
 ## 1. What is implemented, and what is not
 

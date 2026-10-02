@@ -1,0 +1,702 @@
+{
+  "protocol": "ONE equal-weight simultaneous multiscale objective pilot",
+  "cohort_size": 3,
+  "prediction_complete": true,
+  "annotations_read": false,
+  "label_informed_development": true,
+  "source_predictions": "results/miit_three_rotations_t153/predictions.json",
+  "rows": [
+    {
+      "name": "miit_2_to_3",
+      "moving_section": 2,
+      "fixed_section": 3,
+      "fixed": "../miit_three_rotations_t153/miit_2_to_3_fixed512.png",
+      "moving": "../miit_three_rotations_t153/miit_2_to_3_moving512.png",
+      "affine": "../miit_three_rotations_t153/miit_2_to_3_affine.npz",
+      "layout": "../miit_three_rotations_t153/miit_2_to_3_layout.json",
+      "source_fixed": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/data_miit_t15/source_data/3/images/image.tif",
+      "source_moving": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/data_miit_t15/source_data/2/images/image.tif",
+      "map_direction": "fixed_canvas_to_moving_canvas",
+      "input_status": "ok",
+      "status": "ok",
+      "affine_estimation": {
+        "status": "ok",
+        "report": "../miit_three_rotations_t153/miit_2_to_3_affine.json",
+        "matrix": [
+          [
+            -0.5631296634674072,
+            0.8494908809661865
+          ],
+          [
+            -0.8494908809661865,
+            -0.5631296634674072
+          ]
+        ],
+        "offset": [
+          0.35808444023132324,
+          1.2022714614868164
+        ],
+        "selected_quarter_turns": 3,
+        "matcher_calls": 4,
+        "model_build_and_load_seconds": 0.8027513548731804
+      },
+      "raw_matches": {
+        "status": "ok",
+        "path": "../miit_three_rotations_t153/miit_2_to_3_raw_matches.json",
+        "validation": {
+          "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/miit_three_rotations_t153/miit_2_to_3_raw_matches.json",
+          "raw_matches": 184,
+          "eligible_matches": 183,
+          "static_original_moving_domain_excluded": 1,
+          "confidence_denominator": 141.7222999036312,
+          "robust_scale_canvas_px": 8.0,
+          "target_frame": "affine-aligned moving; loss uses image_side*A(mapped(q)-p)",
+          "path_check": "raster basenames plus side and sampling-affine values; relocated paths allowed, not content identity proof",
+          "sampling_affine_storage_dtype": "float32",
+          "mask": "fixed target coordinate inside original moving rectangle; no adaptive query dropping"
+        },
+        "raw_matches": 184,
+        "setup_seconds": 0.23515889793634415,
+        "inference_seconds": 0.04505246877670288,
+        "peak_allocated_bytes": 265952256,
+        "complete_call_seconds": 0.28372087702155113
+      },
+      "methods": {
+        "analytic": {
+          "status": "ok",
+          "output": "miit_2_to_3_analytic.npz",
+          "report": "miit_2_to_3_analytic.json",
+          "initial": {
+            "image": 0.24123719334602356,
+            "strain": 0.0,
+            "oob": 0.0004788803538810269,
+            "outside_fraction": 0.11794497817754745,
+            "shape": 0.0,
+            "match": 0.14965330973704516,
+            "image_512": 0.25759267807006836,
+            "image_32": 0.20482946932315826,
+            "image_64": 0.24631045758724213,
+            "image_128": 0.24917496740818024,
+            "image_256": 0.24827831983566284,
+            "total": 0.2566814046736091
+          },
+          "final": {
+            "total": 0.2318197444724575,
+            "image": 0.2199675440788269,
+            "strain": 0.00239329824366885,
+            "oob": 0.0005250824669087365,
+            "outside_fraction": 0.12727795541286469,
+            "shape": 0.01993711051491235,
+            "match": 0.041452294846637996,
+            "image_512": 0.22975164651870728,
+            "image_32": 0.1944359838962555,
+            "image_64": 0.22755800187587738,
+            "image_128": 0.22615699470043182,
+            "image_256": 0.22193516790866852
+          },
+          "gradient_steps": 300,
+          "evaluations": 310,
+          "objective_evaluations": 332,
+          "failed_trials": 0,
+          "saved_binary_certificate": {
+            "valid": true,
+            "corners": 262144,
+            "positive_corners": 262144,
+            "nonpositive_corners": 0,
+            "exact_fallback_corners": 0,
+            "nonfinite_coordinates": 0,
+            "boundary_exact": true,
+            "boundary_ordered_rectangle": true,
+            "dtype": "float64"
+          },
+          "peak_allocated_bytes": 219443200,
+          "feature_seconds": 0.444293487817049,
+          "loading_seconds": 0.3568457067012787,
+          "serialization_seconds": 0.007599148899316788,
+          "certification_seconds": 0.05495810508728027,
+          "optimize_seconds": 8.271916661411524,
+          "end_to_end_seconds": 9.142094530165195,
+          "mind_frame": "shared_affine",
+          "image_objective": "simultaneous_multiscale",
+          "image_objective_scales": [
+            32,
+            64,
+            128,
+            256,
+            512
+          ],
+          "image_objective_weights": {
+            "32": 0.2,
+            "64": 0.2,
+            "128": 0.2,
+            "256": 0.2,
+            "512": 0.2
+          },
+          "actual_minimum_corner_ratio": 0.284312092373238,
+          "actual_strict_floor_valid": true,
+          "budget_complete": true,
+          "expected_gradient_steps": 300,
+          "complete_call_seconds": 9.18576743453741
+        },
+        "f2": {
+          "status": "ok",
+          "output": "miit_2_to_3_f2.npz",
+          "report": "miit_2_to_3_f2.json",
+          "initial": {
+            "image": 0.24123719334602356,
+            "strain": 0.0,
+            "oob": 0.0004788803538810269,
+            "outside_fraction": 0.11794497817754745,
+            "shape": 0.0,
+            "match": 0.14965330973704516,
+            "image_512": 0.25759267807006836,
+            "image_32": 0.20482946932315826,
+            "image_64": 0.24631045758724213,
+            "image_128": 0.24917496740818024,
+            "image_256": 0.24827831983566284,
+            "total": 0.2566814046736091
+          },
+          "final": {
+            "total": 0.23175021689293387,
+            "image": 0.21998454630374908,
+            "strain": 0.0023530069795873526,
+            "oob": 0.0005249691993873733,
+            "outside_fraction": 0.12728680670261383,
+            "shape": 0.019636496731091288,
+            "match": 0.04179716801362222,
+            "image_512": 0.22969810664653778,
+            "image_32": 0.19447267055511475,
+            "image_64": 0.22757607698440552,
+            "image_128": 0.2262495905160904,
+            "image_256": 0.2219262421131134
+          },
+          "gradient_steps": 300,
+          "evaluations": 310,
+          "objective_evaluations": 332,
+          "failed_trials": 0,
+          "saved_binary_certificate": {
+            "valid": true,
+            "corners": 262144,
+            "positive_corners": 262144,
+            "nonpositive_corners": 0,
+            "exact_fallback_corners": 0,
+            "nonfinite_coordinates": 0,
+            "boundary_exact": true,
+            "boundary_ordered_rectangle": true,
+            "dtype": "float64"
+          },
+          "peak_allocated_bytes": 513522176,
+          "feature_seconds": 0.32656972110271454,
+          "loading_seconds": 0.03039523959159851,
+          "serialization_seconds": 0.0040262602269649506,
+          "certification_seconds": 0.03564563766121864,
+          "optimize_seconds": 15.017031226307154,
+          "end_to_end_seconds": 15.417844332754612,
+          "mind_frame": "shared_affine",
+          "image_objective": "simultaneous_multiscale",
+          "image_objective_scales": [
+            32,
+            64,
+            128,
+            256,
+            512
+          ],
+          "image_objective_weights": {
+            "32": 0.2,
+            "64": 0.2,
+            "128": 0.2,
+            "256": 0.2,
+            "512": 0.2
+          },
+          "actual_minimum_corner_ratio": 0.2867014826510662,
+          "actual_strict_floor_valid": true,
+          "budget_complete": true,
+          "expected_gradient_steps": 300,
+          "complete_call_seconds": 15.443520680069923
+        },
+        "dhr": {
+          "status": "ok",
+          "output_directory": "../miit_three_rotations_t153/miit_2_to_3_dhr",
+          "report": "../miit_three_rotations_t153/miit_2_to_3_dhr/runtime.json",
+          "configuration": "../miit_three_rotations_t153/miit_2_to_3_dhr/config.json",
+          "field": "../miit_three_rotations_t153/miit_2_to_3_dhr/common_affine_dhr/Results_Final/displacement_field.mha",
+          "postprocessing_params": "../miit_three_rotations_t153/miit_2_to_3_dhr/common_affine_dhr/Results_Final/postprocessing_params.json",
+          "geometry_certified": false,
+          "wrapper_observed_peak_allocated_bytes": 70539264,
+          "runtime_seconds": 0.7752831839025021,
+          "nonrigid_seconds": 0.665069580078125,
+          "preprocessing_seconds": 0.018075227737426758,
+          "complete_call_seconds": 0.7782398127019405,
+          "pilot_reference": "unchanged archived DHR; NOT rerun"
+        }
+      },
+      "input_preparation_seconds": 2.290782790631056
+    },
+    {
+      "name": "miit_7_to_8",
+      "moving_section": 7,
+      "fixed_section": 8,
+      "fixed": "../miit_three_rotations_t153/miit_7_to_8_fixed512.png",
+      "moving": "../miit_three_rotations_t153/miit_7_to_8_moving512.png",
+      "affine": "../miit_three_rotations_t153/miit_7_to_8_affine.npz",
+      "layout": "../miit_three_rotations_t153/miit_7_to_8_layout.json",
+      "source_fixed": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/data_miit_t15/source_data/8/images/image.tif",
+      "source_moving": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/data_miit_t15/source_data/7/images/image.tif",
+      "map_direction": "fixed_canvas_to_moving_canvas",
+      "input_status": "ok",
+      "status": "ok",
+      "affine_estimation": {
+        "status": "ok",
+        "report": "../miit_three_rotations_t153/miit_7_to_8_affine.json",
+        "matrix": [
+          [
+            0.7041831612586975,
+            0.7212512493133545
+          ],
+          [
+            -0.7212512493133545,
+            0.7041831612586975
+          ]
+        ],
+        "offset": [
+          -0.2110499143600464,
+          0.5032163858413696
+        ],
+        "selected_quarter_turns": 0,
+        "matcher_calls": 4,
+        "model_build_and_load_seconds": 0.32764312252402306
+      },
+      "raw_matches": {
+        "status": "ok",
+        "path": "../miit_three_rotations_t153/miit_7_to_8_raw_matches.json",
+        "validation": {
+          "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/miit_three_rotations_t153/miit_7_to_8_raw_matches.json",
+          "raw_matches": 159,
+          "eligible_matches": 159,
+          "static_original_moving_domain_excluded": 0,
+          "confidence_denominator": 129.56073480844498,
+          "robust_scale_canvas_px": 8.0,
+          "target_frame": "affine-aligned moving; loss uses image_side*A(mapped(q)-p)",
+          "path_check": "raster basenames plus side and sampling-affine values; relocated paths allowed, not content identity proof",
+          "sampling_affine_storage_dtype": "float32",
+          "mask": "fixed target coordinate inside original moving rectangle; no adaptive query dropping"
+        },
+        "raw_matches": 159,
+        "setup_seconds": 0.21751228719949722,
+        "inference_seconds": 0.0465237982571125,
+        "peak_allocated_bytes": 274450944,
+        "complete_call_seconds": 0.2673865333199501
+      },
+      "methods": {
+        "analytic": {
+          "status": "ok",
+          "output": "miit_7_to_8_analytic.npz",
+          "report": "miit_7_to_8_analytic.json",
+          "initial": {
+            "image": 0.19887427985668182,
+            "strain": 0.0,
+            "oob": 0.0007693009083770058,
+            "outside_fraction": 0.14104686677455902,
+            "shape": 0.0,
+            "match": 0.10533894659697038,
+            "image_512": 0.24307215213775635,
+            "image_32": 0.14408236742019653,
+            "image_64": 0.18408554792404175,
+            "image_128": 0.20395444333553314,
+            "image_256": 0.21917687356472015,
+            "total": 0.2101774754247559
+          },
+          "final": {
+            "total": 0.18811363451339122,
+            "image": 0.17942234873771667,
+            "strain": 0.0018359636354736844,
+            "oob": 0.0008128106000001884,
+            "outside_fraction": 0.14750409126281738,
+            "shape": 0.014988648121675672,
+            "match": 0.023690854044411312,
+            "image_512": 0.21446198225021362,
+            "image_32": 0.13709905743598938,
+            "image_64": 0.1701885461807251,
+            "image_128": 0.18264521658420563,
+            "image_256": 0.19271691143512726
+          },
+          "gradient_steps": 300,
+          "evaluations": 310,
+          "objective_evaluations": 332,
+          "failed_trials": 0,
+          "saved_binary_certificate": {
+            "valid": true,
+            "corners": 262144,
+            "positive_corners": 262144,
+            "nonpositive_corners": 0,
+            "exact_fallback_corners": 0,
+            "nonfinite_coordinates": 0,
+            "boundary_exact": true,
+            "boundary_ordered_rectangle": true,
+            "dtype": "float64"
+          },
+          "peak_allocated_bytes": 221942272,
+          "feature_seconds": 0.2463960312306881,
+          "loading_seconds": 0.020069457590579987,
+          "serialization_seconds": 0.006469201296567917,
+          "certification_seconds": 0.055265847593545914,
+          "optimize_seconds": 7.298916693776846,
+          "end_to_end_seconds": 7.633514158427715,
+          "mind_frame": "shared_affine",
+          "image_objective": "simultaneous_multiscale",
+          "image_objective_scales": [
+            32,
+            64,
+            128,
+            256,
+            512
+          ],
+          "image_objective_weights": {
+            "32": 0.2,
+            "64": 0.2,
+            "128": 0.2,
+            "256": 0.2,
+            "512": 0.2
+          },
+          "actual_minimum_corner_ratio": 0.34427507242477956,
+          "actual_strict_floor_valid": true,
+          "budget_complete": true,
+          "expected_gradient_steps": 300,
+          "complete_call_seconds": 7.674590975046158
+        },
+        "f2": {
+          "status": "ok",
+          "output": "miit_7_to_8_f2.npz",
+          "report": "miit_7_to_8_f2.json",
+          "initial": {
+            "image": 0.19887427985668182,
+            "strain": 0.0,
+            "oob": 0.0007693009083770058,
+            "outside_fraction": 0.14104686677455902,
+            "shape": 0.0,
+            "match": 0.10533894659697038,
+            "image_512": 0.24307215213775635,
+            "image_32": 0.14408236742019653,
+            "image_64": 0.18408554792404175,
+            "image_128": 0.20395444333553314,
+            "image_256": 0.21917687356472015,
+            "total": 0.2101774754247559
+          },
+          "final": {
+            "total": 0.1880396669748189,
+            "image": 0.17947249114513397,
+            "strain": 0.0017893290716267372,
+            "oob": 0.000812667788731822,
+            "outside_fraction": 0.14751246571540833,
+            "shape": 0.014656415708623263,
+            "match": 0.023850551845020256,
+            "image_512": 0.2144896239042282,
+            "image_32": 0.13713915646076202,
+            "image_64": 0.17026346921920776,
+            "image_128": 0.18271461129188538,
+            "image_256": 0.1927555948495865
+          },
+          "gradient_steps": 300,
+          "evaluations": 310,
+          "objective_evaluations": 332,
+          "failed_trials": 0,
+          "saved_binary_certificate": {
+            "valid": true,
+            "corners": 262144,
+            "positive_corners": 262144,
+            "nonpositive_corners": 0,
+            "exact_fallback_corners": 0,
+            "nonfinite_coordinates": 0,
+            "boundary_exact": true,
+            "boundary_ordered_rectangle": true,
+            "dtype": "float64"
+          },
+          "peak_allocated_bytes": 511662592,
+          "feature_seconds": 0.37695053219795227,
+          "loading_seconds": 0.03193952515721321,
+          "serialization_seconds": 0.004035208374261856,
+          "certification_seconds": 0.03424352407455444,
+          "optimize_seconds": 15.440256621688604,
+          "end_to_end_seconds": 15.89144827798009,
+          "mind_frame": "shared_affine",
+          "image_objective": "simultaneous_multiscale",
+          "image_objective_scales": [
+            32,
+            64,
+            128,
+            256,
+            512
+          ],
+          "image_objective_weights": {
+            "32": 0.2,
+            "64": 0.2,
+            "128": 0.2,
+            "256": 0.2,
+            "512": 0.2
+          },
+          "actual_minimum_corner_ratio": 0.28129843004876964,
+          "actual_strict_floor_valid": true,
+          "budget_complete": true,
+          "expected_gradient_steps": 300,
+          "complete_call_seconds": 15.918471910059452
+        },
+        "dhr": {
+          "status": "ok",
+          "output_directory": "../miit_three_rotations_t153/miit_7_to_8_dhr",
+          "report": "../miit_three_rotations_t153/miit_7_to_8_dhr/runtime.json",
+          "configuration": "../miit_three_rotations_t153/miit_7_to_8_dhr/config.json",
+          "field": "../miit_three_rotations_t153/miit_7_to_8_dhr/common_affine_dhr/Results_Final/displacement_field.mha",
+          "postprocessing_params": "../miit_three_rotations_t153/miit_7_to_8_dhr/common_affine_dhr/Results_Final/postprocessing_params.json",
+          "geometry_certified": false,
+          "wrapper_observed_peak_allocated_bytes": 70539264,
+          "runtime_seconds": 0.6330070532858372,
+          "nonrigid_seconds": 0.5577144622802734,
+          "preprocessing_seconds": 0.00537419319152832,
+          "complete_call_seconds": 0.6348796710371971,
+          "pilot_reference": "unchanged archived DHR; NOT rerun"
+        }
+      },
+      "input_preparation_seconds": 1.0135048441588879
+    },
+    {
+      "name": "miit_10_to_11",
+      "moving_section": 10,
+      "fixed_section": 11,
+      "fixed": "../miit_three_rotations_t153/miit_10_to_11_fixed512.png",
+      "moving": "../miit_three_rotations_t153/miit_10_to_11_moving512.png",
+      "affine": "../miit_three_rotations_t153/miit_10_to_11_affine.npz",
+      "layout": "../miit_three_rotations_t153/miit_10_to_11_layout.json",
+      "source_fixed": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/data_miit_t15/source_data/11/images/image.tif",
+      "source_moving": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/data_miit_t15/source_data/10/images/image.tif",
+      "map_direction": "fixed_canvas_to_moving_canvas",
+      "input_status": "ok",
+      "status": "ok",
+      "affine_estimation": {
+        "status": "ok",
+        "report": "../miit_three_rotations_t153/miit_10_to_11_affine.json",
+        "matrix": [
+          [
+            0.003985729534178972,
+            1.0479300022125244
+          ],
+          [
+            -1.0479300022125244,
+            0.003985729534178972
+          ]
+        ],
+        "offset": [
+          -0.022154103964567184,
+          1.0272384881973267
+        ],
+        "selected_quarter_turns": 3,
+        "matcher_calls": 4,
+        "model_build_and_load_seconds": 0.18037084490060806
+      },
+      "raw_matches": {
+        "status": "ok",
+        "path": "../miit_three_rotations_t153/miit_10_to_11_raw_matches.json",
+        "validation": {
+          "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/miit_three_rotations_t153/miit_10_to_11_raw_matches.json",
+          "raw_matches": 273,
+          "eligible_matches": 273,
+          "static_original_moving_domain_excluded": 0,
+          "confidence_denominator": 208.2431197166443,
+          "robust_scale_canvas_px": 8.0,
+          "target_frame": "affine-aligned moving; loss uses image_side*A(mapped(q)-p)",
+          "path_check": "raster basenames plus side and sampling-affine values; relocated paths allowed, not content identity proof",
+          "sampling_affine_storage_dtype": "float32",
+          "mask": "fixed target coordinate inside original moving rectangle; no adaptive query dropping"
+        },
+        "raw_matches": 273,
+        "setup_seconds": 0.21887067705392838,
+        "inference_seconds": 0.04672974720597267,
+        "peak_allocated_bytes": 274519040,
+        "complete_call_seconds": 0.27016378939151764
+      },
+      "methods": {
+        "analytic": {
+          "status": "ok",
+          "output": "miit_10_to_11_analytic.npz",
+          "report": "miit_10_to_11_analytic.json",
+          "initial": {
+            "image": 0.21908794343471527,
+            "strain": 0.0,
+            "oob": 0.0,
+            "outside_fraction": 0.0,
+            "shape": 0.0,
+            "match": 0.40819547448824844,
+            "image_512": 0.2555396556854248,
+            "image_32": 0.16405180096626282,
+            "image_64": 0.20379690825939178,
+            "image_128": 0.22859357297420502,
+            "image_256": 0.24345777928829193,
+            "total": 0.25990749088354015
+          },
+          "final": {
+            "total": 0.2185012295151689,
+            "image": 0.19156938791275024,
+            "strain": 0.00373677740591875,
+            "oob": 0.0,
+            "outside_fraction": 0.0,
+            "shape": 0.030156388036712462,
+            "match": 0.15718493745858741,
+            "image_512": 0.21752865612506866,
+            "image_32": 0.15820662677288055,
+            "image_64": 0.18312036991119385,
+            "image_128": 0.1951104998588562,
+            "image_256": 0.20388077199459076
+          },
+          "gradient_steps": 300,
+          "evaluations": 310,
+          "objective_evaluations": 332,
+          "failed_trials": 0,
+          "saved_binary_certificate": {
+            "valid": true,
+            "corners": 262144,
+            "positive_corners": 262144,
+            "nonpositive_corners": 0,
+            "exact_fallback_corners": 0,
+            "nonfinite_coordinates": 0,
+            "boundary_exact": true,
+            "boundary_ordered_rectangle": true,
+            "dtype": "float64"
+          },
+          "peak_allocated_bytes": 221574144,
+          "feature_seconds": 0.25190113112330437,
+          "loading_seconds": 0.01865110546350479,
+          "serialization_seconds": 0.00566466897726059,
+          "certification_seconds": 0.05275074020028114,
+          "optimize_seconds": 7.376446392387152,
+          "end_to_end_seconds": 7.711691554635763,
+          "mind_frame": "shared_affine",
+          "image_objective": "simultaneous_multiscale",
+          "image_objective_scales": [
+            32,
+            64,
+            128,
+            256,
+            512
+          ],
+          "image_objective_weights": {
+            "32": 0.2,
+            "64": 0.2,
+            "128": 0.2,
+            "256": 0.2,
+            "512": 0.2
+          },
+          "actual_minimum_corner_ratio": 0.3222918340083757,
+          "actual_strict_floor_valid": true,
+          "budget_complete": true,
+          "expected_gradient_steps": 300,
+          "complete_call_seconds": 7.746645823121071
+        },
+        "f2": {
+          "status": "ok",
+          "output": "miit_10_to_11_f2.npz",
+          "report": "miit_10_to_11_f2.json",
+          "initial": {
+            "image": 0.21908794343471527,
+            "strain": 0.0,
+            "oob": 0.0,
+            "outside_fraction": 0.0,
+            "shape": 0.0,
+            "match": 0.40819547448824844,
+            "image_512": 0.2555396556854248,
+            "image_32": 0.16405180096626282,
+            "image_64": 0.20379690825939178,
+            "image_128": 0.22859357297420502,
+            "image_256": 0.24345777928829193,
+            "total": 0.25990749088354015
+          },
+          "final": {
+            "total": 0.21859029493218876,
+            "image": 0.19191274046897888,
+            "strain": 0.0035994421206672514,
+            "oob": 0.0,
+            "outside_fraction": 0.0,
+            "shape": 0.02916374144180083,
+            "match": 0.1587631172706394,
+            "image_512": 0.21782124042510986,
+            "image_32": 0.15834197402000427,
+            "image_64": 0.183515265583992,
+            "image_128": 0.19558702409267426,
+            "image_256": 0.20429816842079163
+          },
+          "gradient_steps": 300,
+          "evaluations": 310,
+          "objective_evaluations": 332,
+          "failed_trials": 0,
+          "saved_binary_certificate": {
+            "valid": true,
+            "corners": 262144,
+            "positive_corners": 262144,
+            "nonpositive_corners": 0,
+            "exact_fallback_corners": 0,
+            "nonfinite_coordinates": 0,
+            "boundary_exact": true,
+            "boundary_ordered_rectangle": true,
+            "dtype": "float64"
+          },
+          "peak_allocated_bytes": 510881280,
+          "feature_seconds": 0.32099737972021103,
+          "loading_seconds": 0.02971850335597992,
+          "serialization_seconds": 0.004113920032978058,
+          "certification_seconds": 0.03362228721380234,
+          "optimize_seconds": 14.001361425966024,
+          "end_to_end_seconds": 14.393908020108938,
+          "mind_frame": "shared_affine",
+          "image_objective": "simultaneous_multiscale",
+          "image_objective_scales": [
+            32,
+            64,
+            128,
+            256,
+            512
+          ],
+          "image_objective_weights": {
+            "32": 0.2,
+            "64": 0.2,
+            "128": 0.2,
+            "256": 0.2,
+            "512": 0.2
+          },
+          "actual_minimum_corner_ratio": 0.2194328440375681,
+          "actual_strict_floor_valid": true,
+          "budget_complete": true,
+          "expected_gradient_steps": 300,
+          "complete_call_seconds": 14.420931126922369
+        },
+        "dhr": {
+          "status": "ok",
+          "output_directory": "../miit_three_rotations_t153/miit_10_to_11_dhr",
+          "report": "../miit_three_rotations_t153/miit_10_to_11_dhr/runtime.json",
+          "configuration": "../miit_three_rotations_t153/miit_10_to_11_dhr/config.json",
+          "field": "../miit_three_rotations_t153/miit_10_to_11_dhr/common_affine_dhr/Results_Final/displacement_field.mha",
+          "postprocessing_params": "../miit_three_rotations_t153/miit_10_to_11_dhr/common_affine_dhr/Results_Final/postprocessing_params.json",
+          "geometry_certified": false,
+          "wrapper_observed_peak_allocated_bytes": 70539264,
+          "runtime_seconds": 0.6551436334848404,
+          "nonrigid_seconds": 0.5771355628967285,
+          "preprocessing_seconds": 0.007097721099853516,
+          "complete_call_seconds": 0.6570554412901402,
+          "pilot_reference": "unchanged archived DHR; NOT rerun"
+        }
+      },
+      "input_preparation_seconds": 0.8197708874940872
+    }
+  ],
+  "image_objective": "simultaneous_multiscale",
+  "shared_frame": "shared_affine in BOTH paired arms",
+  "all_scales": [
+    32,
+    64,
+    128,
+    256,
+    512
+  ],
+  "changed_variable": "MS image sum at EVERY stage and final selection versus original raster continuation/full512 selector",
+  "unchanged": "same affine, boundary, four-corner floor, ARAP3, shape1e-4, matches.1, rates and 300 gradients",
+  "objective_caution": "different functionals/schedules; totals are not matched-energy or pure-optimizer evidence",
+  "timing": "complete serial calls include setup/export; single calls, no warm ABBA speed claim",
+  "elapsed_seconds": 70.40006459504366
+}

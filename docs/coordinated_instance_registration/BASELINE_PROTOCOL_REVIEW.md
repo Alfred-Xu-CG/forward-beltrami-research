@@ -156,3 +156,29 @@ scoring; this reviewer has not run a GPU experiment or inferred its outcome.
 Next decisions are limited to: complete native baseline/scorer verification;
 run a matched released-mask support ablation if warranted; retain development
 scope until a genuinely independent specimen/protocol exists.
+
+## Prepared fixed-support ablation, not yet an efficacy result
+
+The coordinator authorized a separate support-only experiment after the native
+baseline and simultaneous-image-scale diagnoses. `tools/coordinated_tissue_support.py`
+prepares the original fixed-section 3, 8 and 11 masks using each saved image
+layout: native binary support, nearest-neighbor resize, zero padding. Its three
+reusable arrays and ordinary provenance record are at
+`D:/QC_optimization_data/digital_topology_wsi/miit_released_fixed_tissue_support`.
+No manual correspondence coordinates or candidate deformations are read.
+
+`coordinated_real_case.py --fixed-mask <prepared.npz>` replaces only the fixed
+support; coarse levels continue using area-weighted fractions. The default
+grayscale threshold, feature construction, point evidence, priors, topology
+conditions and complete evaluation label set remain unchanged.
+`coordinated_miit_multiscale_pilot.py --fixed-supports <support.json>` applies
+the same per-pair support to both A/F2 and requires `--image-objective continuation`.
+It explicitly reports supplied tissue annotations and does not rerun DHR.
+This is images-plus-semi-manual-ROI evidence, not a pure-image-only claim or a
+new optimizer mechanism.
+
+Nine focused checks pass: native axes/padding and categorical resize, fractional
+area weights, malformed input rejection, unchanged default image tensors/mask,
+masked value/map-gradient finite difference, unchanged priors, and exclusion of
+simultaneous MS plus support changes in this pilot. The author did not run a
+real GPU support experiment; the coordinator owns the decision and execution.
