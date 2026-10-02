@@ -2523,3 +2523,52 @@ Prior work: ordinary positive Procrustes similarities/full-affine robust fitting
 new contribution, if any, would be useful integration, not a novel affine solver.
 This is the only next alternative application branch, approved by the independent
 decision agent after excluding already retired neighboring interventions.
+
+### T+18h: initializer diagnostic closes; one bounded conditional-energy question
+
+Actual label-free probe FAILS4/6 heldout improvements. All12 fits converge,
+fullrank/positive. Independent literalcoordinates, weights/splits/IDs and
+separategradient/SciPyoptimum check reproduce the result; no underconvergence
+excuse. The EXACT full-affine branch is closed without all-point refits or
+registration. INITIALIZER_STUDY records the complete equations/results.
+
+Research card — ONE landmark-preserving E1 continuation, ORACLE ONLY:
+Question: is the point-only witness's high original E1 merely unnecessary
+strain between the frozen anatomical centers, or can our current optimizer
+construct a lower-E1 realization while preserving these centers?
+Capacity is already settled; this is NOT another attainability search.
+Start ONLY the original saved t17 oracle witness, keep original A,b, all107
+mapped center VALUES, fixed boundary/P1ac/257grid/eta.001 and full original E1.
+For each scalar proposal level l let P_l prolong zero-boundary coefficients
+to the fine grid, S sample those raw scalar values at the fixed P1 query rows,
+B_l=S P_l. Form the orthogonal kernel projection
+N_l=I-B_l^T(B_l B_l^T)^dagger B_l and propose r=P_l N_l z.
+The actual implementation may use an equivalent row-space SVD projection;
+record its rank/cutoff and ||B_l N_l||. No query-dependent triangle search is
+needed because these are fixed SOURCE queries on the fixed material mesh.
+The globally scalar analytic safe factor preserves S(sigma*r)=0 in REAL
+arithmetic for x/y motion. Thus complete original-moving center values remain
+unchanged. Do not use patchwise safety scales or claim floating-point exactness.
+Implement fixed-source local interpolation stencils, not a full dense mesh
+inverse; the constraint count is107, separate from66049control vertices.
+Smallest test: compare B_l z against ordinary production prolongation+P1
+sampling, random-projection residuals, nonidentity safe-stage gradients and
+all-center drift, rank-deficient coarse rows and deliberate drift failures.
+Then ONE fixed300gradient suffix (17/33/65/129/257, x/y,30perstage), unchanged
+physical rates/theta/E1/priors, no label-loss penalty/restart/budget extension.
+Fail rather than repair if any actual center drifts more than1e-5canvaspixel
+from its incoming witness value, or actual eta/boundary/export checks fail.
+Every available center must also remain<=1canvaspixel versus its annotation.
+Report actual projected-null residuals, all107 drifts/errors, every failure,
+E1/components, gradients/trials, time and memory. Numerical equality tolerance
+is a disclosed implementation check, not an exact-arithmetic theorem.
+Decisive positive: achieved certified map preserves centers and E1 is BELOW
+the ORIGINAL IMAGE-ONLY endpoint. This supplies a constructive optimizer/path
+gap, not automatic inference. Otherwise record only this constrained upper
+bound/component changes, never global minimum or unavoidable prior conflict.
+Prior work: ordinary linear-nullspace constrained optimization and the current
+single-direction safe decoder. This is not a novel projector or neural layer.
+Cap whole branch to approximately ONE hour and stop at the fixed test/budget;
+no rank/tolerance/constraint/optimizer sweep. No oracle output becomes a
+production initializer, teacher, or image-only accuracy result. Independent
+Astra approves this ONE short diagnostic before reopening new feature pipelines.

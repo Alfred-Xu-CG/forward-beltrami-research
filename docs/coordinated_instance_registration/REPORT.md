@@ -435,3 +435,19 @@ finite speedup ratio, general F2 impossibility or automatic image registration.
 Independent recomputation confirms all nine endpoint/threshold maps, including
 exact binary-rational near-floor F2 corners. ORACLE_CAPACITY Section8 gives
 the full method, counts, timing/memory scopes and failure interpretation.
+
+### 7.4 One actual initializer-restriction check, with no downstream sweep
+
+The original 'affine' initializer is in fact a four-parameter positive
+similarity, not an unrestricted six-parameter affine. A one-shot label-free
+probe fits both model families to the SAME frozen machine correspondences,
+original confidences/world eligibility and eight-pixel pseudo-Huber loss.
+The predeclared4-by4 spatial parity split holds each parity out once on all
+three pairs. All12 fits converge and remain positive, but full affine improves
+only4/6held-out losses. The failed directions are2-to3 train-parity0
+(.173494to.188222) and10-to11 train-parity1(.390509to.399405).
+The exact branch stops, with no all-point refits or downstream registrations.
+Independent coordinates/losses/gradients and a separate optimizer confirm the
+result. It is not explained by fitting failure, and it does not establish that
+every full-affine initializer is unsuitable. See
+[INITIALIZER_STUDY.md](INITIALIZER_STUDY.md) for the complete equations/data scope.
