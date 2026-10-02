@@ -162,7 +162,7 @@ def application_checks():
     assert new['saved_binary_certificate']['valid']
     return dict(per_scale_comparison=errors,reported_objective_evaluations=new['objective_evaluations'],observed_objective_evaluations=observed,gradient_steps=new['gradient_steps'],accepted_steps=new['accepted_steps'],backtracks=new['backtracks'],selected_full_total=new['final']['total'],certificate=True)
 
-def postrun_checks():
+def postrun_checks(arms=('adam900','stiffness300')):
     import csv
     source=Path('D:/QC_optimization_data/miit_v4/extracted/test_data/test_data/source_data')
     results=[]
@@ -179,7 +179,7 @@ def postrun_checks():
             bary=np.linalg.solve(np.vstack((np.array(nodes).T,np.ones(3))),np.r_[uv,1.])
             answer.append(sum(w*v[iy+y,ix+x] for w,(x,y) in zip(bary,nodes)))
         return np.array(answer)
-    for arm in ['adam900','stiffness300']:
+    for arm in arms:
         directory=root/'outputs/coordinated_instance_registration'/f'miit_{arm}_t20'
         manifest=json.loads((directory/'predictions.json').read_text())
         score=json.loads((directory/('landmark_scores_complete.json' if arm=='stiffness300' else 'landmark_scores.json')).read_text())
@@ -192,6 +192,7 @@ def postrun_checks():
             assert all(not any(word in cfg[k].lower() for word in ['landmark','annotation','.csv']) for k in ['fixed','moving','affine','matches'])
             with np.load(directory/row['methods']['analytic']['output']) as ar:
                 v=ar['vertices'][0];ref=ar['boundary_reference'][0];A=ar['post_affine_matrix'].astype(float);b=ar['post_affine_offset'].astype(float)
+                if arm=='coupled_seed':seed=ar['initializer_vertices'][0];coefficients=ar['initializer_coefficients_128px'][0]
             assert np.isfinite(v).all() and v.dtype==np.float64
             assert all(np.array_equal(a,c) for a,c in [(v[0],ref[0]),(v[-1],ref[-1]),(v[:,0],ref[:,0]),(v[:,-1],ref[:,-1])])
             assert np.linalg.det(A)>0
@@ -212,11 +213,14 @@ def postrun_checks():
                 discrepancy=max(abs(errors[i]-recorded['per_label'][label]) for i,label in enumerate(ids))
                 assert discrepancy<1e-10
                 assert abs(errors.mean()-recorded['mean'])<1e-10
+                assert abs(np.percentile(errors,90)-recorded['p90'])<1e-10
                 discrepancies.append(discrepancy)
             expected=900 if arm=='adam900' else 300
             assert report['gradient_steps']==sum(s['inner_steps'] for s in report['stages'])==expected
             assert report['failed_trials']==0 and len(report['stages'])==10
-            assert report['final']['total']==min([report['initial']['total']]+[s['accepted_full_total'] for s in report['stages']])
+            selector=[report['initial']['total']]+[s['accepted_full_total'] for s in report['stages']]
+            if arm=='coupled_seed':selector.append(report['seed_record']['original_full_objective']['total'])
+            assert report['final']['total']==min(selector)
             extra={}
             if arm=='stiffness300':
                 trace=report['trace'];assert len(trace)==300 and report['accepted_steps']==300
@@ -232,13 +236,45 @@ def postrun_checks():
                 finest=[t for t in trace if t['level']==257]
                 ratios=[2*(t['accepted_total']-t['total']-t['accepted_alpha']*t['directional_derivative'])/(t['accepted_alpha']**2*(-t['directional_derivative'])) for t in finest]
                 extra=dict(initial_alpha_all_one=True,backtracks=backtracks,complete_objective_calls=report['objective_evaluations'],finest_median_directional_secant_ratio=float(np.median(ratios)),finest_median_alpha=float(np.median([t['accepted_alpha'] for t in finest])))
-            else:
+            elif arm=='adam900':
                 assert len(report['trace'])==910 and all(s['inner_steps']==90 for s in report['stages'])
-            rows.append(dict(name=name,landmarks=len(ids),mean_canvas=float(canvas_errors.mean()),minimum_corner=minimum,boundary_exact=True,maximum_canvas_score_difference=discrepancies[0],maximum_native_score_difference=discrepancies[1],gradient_steps=report['gradient_steps'],**extra))
+            elif arm=='coupled_seed':
+                record=report['seed_record']
+                assert len(report['trace'])==310 and report['objective_evaluations']==333
+                assert report['seed_objective_evaluations']==1 and report['selected_stage']==9
+                assert not record['original_E_seed_rejection']
+                assert record['coordinate_steps']==16 and all(s['scale']==1. for s in record['steps'])
+                assert record['raw_target_nonpositive_corner_count']==0
+                assert coefficients.shape==(65,65,2) and seed.shape==v.shape
+                assert not np.any(coefficients[0]) and not np.any(coefficients[-1]) and not np.any(coefficients[:,0]) and not np.any(coefficients[:,-1])
+                axis=np.arange(257)/256;coarse=np.arange(65)/64
+                B=np.maximum(1-np.abs(axis[:,None]-coarse[None,:])*64,0)
+                raw=np.stack([B@coefficients[...,k]@B.T for k in range(2)],axis=-1)/128
+                reconstruction=float(np.max(np.abs(seed-ref-raw)))
+                assert reconstruction<3e-16
+                assert all(np.array_equal(a,c) for a,c in [(seed[0],ref[0]),(seed[-1],ref[-1]),(seed[:,0],ref[:,0]),(seed[:,-1],ref[:,-1])])
+                seed_minimum=float(direct_corners(torch.from_numpy(seed)[None]).min());assert seed_minimum>.001
+                raised=record['original_full_objective']['total']>report['initial']['total']
+                assert raised==record['original_E_increased']
+                from tools.coordinated_real_case import Evidence,load_registration_evidence,load_image_matches
+                fp_path=(directory/row['fixed']).resolve();mp_path=(directory/row['moving']).resolve()
+                fixed_image,moving_image,mask,_=load_registration_evidence(fp_path,mp_path,512)
+                matches,_=load_image_matches((directory/row['raw_matches']['path']).resolve(),A.astype(np.float32),b.astype(np.float32),fixed_path=fp_path,moving_path=mp_path,image_side=512,device='cpu',dtype=torch.float64,robust_scale=8.)
+                totals={}
+                for side in [32,512]:
+                    reduce=lambda image:torch.nn.functional.interpolate(image,size=(side,side),mode='area')
+                    ev=Evidence(reduce(fixed_image),reduce(moving_image),torch.tensor(A),torch.tensor(b),'mind',3.,1.,1e-4,fixed_mask=reduce(mask),interpolation='p1_ac',matches=matches,match_weight=.1,strain_model='p1_arap',mind_frame='shared_affine')
+                    ev.prepare_fixed_p1_sampling(257,257,dtype=torch.float64,device='cpu')
+                    with torch.no_grad():totals[side]=float(ev(torch.from_numpy(seed)[None])[0])
+                assert abs(totals[32]-report['stages'][0]['anchor_total'])<1e-7
+                assert abs(totals[32]-report['trace'][0]['total'])<1e-7
+                assert abs(totals[512]-record['original_full_objective']['total'])<1e-7
+                extra=dict(seed_higher_E_than_identity=raised,seed_reconstruction_error=reconstruction,seed_minimum_corner=seed_minimum,all_16_construction_scales_one=True,complete_objective_calls=333,selected_stage=9,recomputed_seed_full_E_error=abs(totals[512]-record['original_full_objective']['total']),recomputed_first_stage_seed_anchor_E_error=abs(totals[32]-report['stages'][0]['anchor_total']))
+            rows.append(dict(name=name,landmarks=len(ids),mean_canvas=float(canvas_errors.mean()),p90_canvas=float(np.percentile(canvas_errors,90)),minimum_corner=minimum,boundary_exact=True,maximum_canvas_score_difference=discrepancies[0],maximum_native_score_difference=discrepancies[1],gradient_steps=report['gradient_steps'],**extra))
         assert sum(r['landmarks'] for r in rows)==328
         mean=float(np.mean([r['mean_canvas'] for r in rows]))
         assert abs(mean-score['aggregate']['analytic']['all_three']['canvas_pixels']['mean_pair_mean'])<1e-12
-        results.append(dict(arm=arm,mean_pair_mean=mean,rows=rows))
+        results.append(dict(arm=arm,mean_pair_mean=mean,mean_pair_p90=float(np.mean([r['p90_canvas'] for r in rows])),rows=rows))
     return results
 
 if __name__=='__main__':

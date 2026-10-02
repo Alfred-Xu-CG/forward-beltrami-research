@@ -1,4 +1,4 @@
-# One simultaneous multiscale image-objective experiment
+# Optimizer diagnosis and controlled registration experiments
 
 Question: does retaining coarse structural image evidence during fine optimization
 and output selection improve the actual MIIT anatomical correspondence?
@@ -372,3 +372,328 @@ experiment, explicitly distinct from the old81independent labels and their
 immediate full-E rejection. No coupling implementation is yet authorized by
 this result paragraph. Exact reports remain under `miit_adam900_t20` and
 `miit_stiffness300_t20`; predictions and the subsequent scoring are separate.
+
+## Approved card: coupled finite-displacement seed, then original refinement
+
+Question: does a spatially coupled finite-displacement search provide a useful
+alternative basin for the ORIGINAL corrected-MIND registration functional?
+This is one image-only seed followed by the original analytic300 refinement,
+not a multiseed search or another stiffness/step-size variant. Cost centers are
+the IDENTITY residual after the SAME frozen positive affine, not the Adam300
+output or any DHR field. No manual target affects labels, coupling or selection.
+
+Exact data: use the existing frozen shared-affine MIND descriptors at128-square
+resolution, still eight-channel L1 (NOT squared feature distance). On the63x63
+INTERIOR vertices q_i=(j/64,k/64) of a65-square proposal grid, use nine offsets
+xi in{-1,0,1}^2/128. The label set is L={-16,...,16}^2, zero first then fixed
+lexicographic ordering. Label k denotes residual displacement k/128: four
+512-canvas pixels per step, +/-64pixels per aligned-residual axis. Original
+moving displacement is A*k/128, so this is not a native-moving-pixel radius.
+Features are bilinear/zero sampled with align_corners=False. Let
+
+    m_ij=m128(q_i+xi_j),        w_i=sum_j(m_ij)/9,       Z=sum_i(w_i),
+    h_ij(k)=mean_channels|phi_f(q_i+xi_j)-phi_m,shared(q_i+xi_j+k/128)|
+             + ||relu(-v_ij)+relu(v_ij-1)||^2,
+    v_ij=A*(q_i+xi_j+k/128)+b,
+    C_i(k)=sum_j m_ij*h_ij(k) / sum_j m_ij.
+
+For an empty patch set C_i=0; require Z>0. All mask samples/denominators are
+fixed before label enumeration. There is no label-dependent overlap dropping,
+moving-mask gating or confidence selection. The OOB coefficient is the original1
+in normalized original-moving coordinates. Boundary labels/displacements are
+exactly zero and are not optimization variables. Empty interior patches still
+participate in UNWEIGHTED spatial coupling; only their image weight is zero.
+
+Coupling: z_i is a discrete two-component label; u_i is a continuous two-component
+shift in the SAME128-raster pixel units. Let P65 be the same zero-boundary
+bilinear RAW prolongation to257 vertices and G=P65^T*Kfine*P65 (unweighted).
+For c in the fixed schedule(.003,.01,.03,.1,.3,1), use the surrogate
+
+    J_c(z,u) = [sum_i w_i*C_i(z_i) + c*sum_i ||z_i-u_i||^2]/Z
+                + 3/(2*128^2) * sum_components u_component^T G u_component.
+
+The last term is the existing ARAP3 frozen-identity-rotation quadratic in UNIT
+displacements u/128, not an extra fitted smoothing weight. Both components use
+the same positive Galerkin stiffness. The proximity term is on ALL interior
+nodes, WITHOUT w_i; weighting it would create a variable diagonal and invalidate
+the following separable solve. Each alternating block is exact in real arithmetic:
+
+    z_i = first_argmin_{k in L} [w_i*C_i(k)+c*||k-u_i||^2],
+    [2*c*I + (3*Z/128^2)*G] u_component = 2*c*z_component.
+
+Use the already independently checked Galerkin DST-I eigenbasis for this
+screened linear solve; never call it solve-free. Initialize z by image-only
+first_argmin(w_i*C_i); obtain u by the screened solve at c=.003. Then perform
+EXACTLY TWO label/continuous alternations at each of the SIX coupling values,
+in that order, and retain the final u only. At a fixed c the exact block steps
+cannot increase J_c; different-c values are different objectives, not a common
+monotone trace. Discrete labeling makes the joint problem NONCONVEX. This is
+related to [ConvexAdam's coupled search](https://github.com/multimodallearning/convexAdam),
+whose released schedule motivates these six constants, but replaces its local
+averaging with a physically specified global quadratic solve. It is NOT a
+ConvexAdam reproduction, globally convex solver or new correspondence theorem.
+
+Always-legal construction: u is an IMAGE-DERIVED PROPOSAL, not a certified map.
+Form the frozen fine desired displacement d*=P65(u/128), with exact zero
+perimeter. Starting at identity, perform EIGHT fixed x/y construction cycles.
+At each coordinate step, the raw amplitude is the corresponding component of
+identity+d* minus the current legal map. Apply the existing global ANALYTIC
+coordinated update with eta=.001 and theta=.95, refresh geometry after that
+accepted construction step, and check every rounded intermediate corner/boundary.
+There are16safe coordinate steps, no objective gradients, map resampling,
+blending of accepted maps, DHR initialization or unsafe-map repair. The requested
+target remains fixed; there is no landmark-dependent stopping or alternate seed.
+Multiple cycles allow x/y geometry to readjust, but do NOT prove the target
+reachable. A bad local target can still limit global progress; this must be
+measured, not hidden by a topological-success claim.
+
+Report raw target corner-fold count diagnostically, every construction scale,
+raw displacement RMS/max, decoded displacement RMS/max, raw-to-decoded RMS
+distance, seed MIND/ARAP/match/OOB/full-E, and actual final seed validity. Only
+the constructed legal seed is used. Large contraction or a poor seed is retained
+as the actual outcome, not grounds for a second parameter choice or silent
+identity replacement. Construction failure is an explicit prediction failure.
+
+Acceptance change is EXPLICIT: this alternative initialization may have HIGHER
+original E512 than identity; do NOT repeat the old immediate full-E rejection of
+the seed. The surrogate selects the one initialization; it is not advertised as
+an E512-descent optimizer step. Starting there, run the unchanged300-gradient
+analytic schedule, original shared-affine MIND/ARAP3/shape1e-4/matches.1/OOB,
+and original complete-stage-E acceptance. Select the final output by ORIGINAL
+E512 over identity, the legal seed, and all accepted stage prefixes. No cost
+volume term replaces or augments the final objective. This changes finite-search
+initialization/protocol, not the final data functional, and is not an isolated
+geometry ablation. Selection does not include an extra baseline-Adam trajectory.
+
+Budget and decisive test: cost volume has3969*1089=4,322,241 entries (~33MiB
+in float64), with nine patch samples each and eight descriptor channels. Build
+in fixed16-label batches; do not allocate all label/sample/channel tensors at
+once. Coupling adds13screened solves and13label minimizations; construction
+adds16safe steps before the original300gradients. Report cost construction,
+coupling, legal construction, refinement, complete-call time, actual objective
+counts and CUDA allocated peak separately. Each of the13screened solves handles
+TWO components (26scalar systems total). No equal-compute claim follows.
+
+First tiny independent checks: literal label cost/OOB/zero-tie and empty patches;
+nonconstant fixed masks without denominator changes; dense versus spectral
+screened solve and decrease of both blocks at fixed c; exact label units under
+a rotated affine; deliberately folding raw proposals with all16 constructed
+states still legal; unchanged original Evidence and final prefix selection,
+including a seed with higher E than identity. Then run ALL THREE fixed MIIT
+cases once, analytic only. Compare existing corrected Adam300 and Adam900,
+all available labels, mean/p90/max per case and equal-pair aggregates plus cost.
+Read labels only after all three new attempts terminate; no F2 rerun yet.
+
+What redirects the work: absent useful final accuracy/cost or complete-E gains
+retires this exact recipe without range/coupling sweeps. Lower E with worse
+anatomy again identifies a remaining objective-anatomy tradeoff, not a topology
+failure. Strong raw-to-decoded contraction isolates an initialization-construction
+limitation and does not refute finite search. Only a measured useful result merits
+an independent specimen/paired-cost confirmation. The coordinator approved
+these exact details for one implementation and all-three-case test. The final
+case archive additionally retains the legal initializer vertices and raw65-grid
+pixel coefficients for inspection; only the ordinary final vertices are scored.
+
+Implementation check, 2026-10-02: the new cost/coupling/construction module,
+minimal optional initializer hook, and three-case runner passed16author tests;
+the same run including affected shared-affine/stiffness suites passed69tests.
+The independent checker used a NumPy bilinear cost and separately assembled
+FE/Galerkin matrix: costs agreed to1.11e-16(double) and1.44e-8(mixed-float32),
+the complete13solve/13label sequence to8.89e-16, and all fixed-c block energies
+to4.45e-16. A folded raw target produced16legal steps; a more extreme fixture
+triggered the declared rounded-construction failure instead of an unsafe export.
+A higher-original-E injected legal seed was still the first refinement anchor,
+with identity retained for final selection and19actual/reported calls including
+one seed evaluation. These are correctness checks, NOT anatomical results.
+
+### Actual three-case coupled result: legal, negligible accuracy benefit
+
+All three frozen predictions completed on AI GPU6 after the08:18:41UTC launch,
+before labels were scored by the coordinator. Each completed300gradients and
+333original-objective calls, selected final stage9, and passed the saved-map
+strict floor. Equal-pair mean TRE/p90 were3.54760908/5.91743723canvas pixels,
+versus original shared-affine Adam300's3.54875190/5.90795739: mean differs by
+only-.00114282pixels and the tail is worse. No useful accuracy gain is established.
+
+| Direction | A300 final E | Coupled final E | Seed E vs identity E | Final corner floor | Seed / complete seconds |
+|---|---:|---:|---:|---:|---:|
+| 2-to-3 | .239743682 | .239860450 | .276476748 / .273036889 | .342235 | .399 / 7.204 |
+| 7-to-8 | .221467899 | .221461896 | .255957573 / .254375348 | .345279 | .306 / 4.555 |
+| 10-to-11 | .241548589 | .241559266 | .292362426 / .296359203 | .305014 | .301 / 4.484 |
+
+All48construction scales were exactly1 and every raw target was already
+four-corner positive. Raw/decoded RMS displacements were identical at
+1.67227/1.59400/2.64247aligned512-pixels, with maxima5.64334/5.65480/7.70939.
+Thus this experiment was NOT limited by safety contraction. The first two
+higher-E seeds were genuinely refined, not replaced by identity. Final maps
+returned close to ordinary Adam300 (residual-map RMS differences
+.21655/.07960/.08267pixels). Adam900 has lower original E on all three cases;
+this new seed does not materially improve the final functional either.
+
+Decision: retire this exact coupled seed without radius/coupling/weight sweeps.
+Its negative outcome does not refute all discrete matching, but neither the
+global prior inverse nor this alternative seed improves the established
+accuracy/cost tradeoff. Move the next bounded hypothesis toward a demonstrably
+different anatomical evidence source; do not declare topology the bottleneck.
+Reports and the three exported maps are in `miit_coupled_seed_t20`.
+
+## Approved card: contrast-calibrated fixed hematoxylin-proxy evidence
+
+Question: does separating a biologically shared brightfield stain proxy give
+the EXISTING safe instance optimizer more useful anatomical evidence than its
+inverted RGB grayscale, across the available cohorts? This is the ONE next
+evidence mechanism proposed after the stiffness and coupled-seed failures; do
+not combine it with a new optimizer, feature model, seed, mask or parameter sweep.
+
+Adjudication: changing a descriptor's coordinate frame was helpful on the
+large-rotation MIIT sample, but worsened mean accuracy on the other three known
+specimens. Calling shared-affine MIND a universal correction is therefore false.
+Nevertheless, fixed shared-affine controls now exist for all25directions, so
+use that SAME frame for this matched evidence test; do not select a frame per
+cohort using its labels. Native DHR is a distinct pipeline: the kidney native
+initializer is already better than the common affine, while lung nonrigid
+performance is substantially worse and Histo has nearly matched initialization.
+Those facts do not isolate a universally superior native nonrigid mechanism.
+
+Why this before the other candidate mechanisms: a fixed stain proxy directly
+tests a recognizable common biological signal in HE/IHC and IHC/IHC images,
+using existing RGB inputs and a tiny deterministic transform. By contrast,
+[DINO-Reg](https://papers.miccai.org/miccai-2024/paper/2230_paper.pdf) establishes
+a frozen-feature optimizer for3Dmedical modalities, not histology; its ViT patch
+resolution, upscaling and feature reduction introduce substantial new choices.
+The [pathology deep-matching paper](https://arxiv.org/abs/2208.07655) supports
+image-derived correspondences with outlier handling, not an already validated
+drop-in dense feature functional or hard-topology guarantee. Both remain
+possible later routes, not grounds for assuming immediate transfer. Faithfully
+transplanting the DHR NCC pipeline would jointly change normalization, pyramid,
+similarity, deformation regularization and potentially initialization; it is
+useful engineering but a less isolated next test of this specific evidence gap.
+
+Exact fixed transform, applied to each existing512-square RGB canvas BEFORE
+the ordinary scalar-image pyramid or any affine prewarp: let I=uint8_RGB/255
+as stored, with channel order R,G,B. Define row-vector optical-density proxy
+d=-log(max(I,1e-6)), and
+
+    B = [[.65,.70,.29], [.07,.99,.11], [.27,.57,.78]],
+    c = d @ inverse(B),
+    c_H = max(c[...,0],0),
+    H = -expm1(-c_H) = 1-exp(-c_H),
+    s_raw = quantile_linear(H[original_gray_support],.99),
+    s = max(s_raw,1e-6),
+    H_feature = clamp(H/s,0,1).
+
+B's ROWS are H/E/DAB absorbance directions; concentrations multiply B on the
+LEFT, hence the displayed right-multiplication by its inverse. Compute the
+fixed3x3 transform in float64 and cast the resulting normalized image once to
+the original float32 image precision. Both H and H_feature are in[0,1], high
+for dark H signal, white at0. The quantile uses linear interpolation between
+sorted order statistics, EACH input's own ORIGINAL gray>.04 support, and its
+512canvas only. Empty support gives s_raw=0; the old fixed-empty-support handling
+still applies. The same formula governs every image: allzero H stays zero;
+sparse positive H with q99=0 uses s=1e-6 without a new failure or raw-gray
+fallback. Record numerical-floor activation. Freeze s before the pyramid and
+affine prewarp; never renormalize at each level. Clamp negative concentrations
+to0; do not use absolute values, stain-vector fitting, additional histogram or
+min-max matching, gamma linearization, fitted white balance, adaptive recipe
+selection or a learned model.
+The RGB lower floor prevents infinite logs on saturated zeros; count such
+samples diagnostically, never drop them. No alternative treatment is selected
+from registration scores.
+
+Prior work/source: [Ruifrok and Johnston2001](https://pubmed.ncbi.nlm.nih.gov/11531144/)
+introduced color deconvolution from stain-specific absorption, with limitations
+including saturation and stain interactions. The B values and orientation are
+the published HED convention in the
+[official scikit-image implementation](https://raw.githubusercontent.com/scikit-image/scikit-image/v0.25.2/skimage/color/colorconv.py).
+Its implementation scales logs by -log(1e-6); the formula above deliberately
+uses unscaled natural OD, then a bounded darkness transform. Thus H equals
+1-exp(-log(1e6)*rgb2hed(I)[...,0]), not raw rgb2hed output. This fixed darkness
+choice keeps an interpretable0..1 raw darkness range, not exact physical OD.
+
+Units adjudication: range0..1 by itself does NOT give comparable effective
+contrast to inverted grayscale. The descriptor's1e-4 stabilizer has squared
+intensity units; direct low-amplitude H would artificially increase its relative
+effect. Therefore the ONE predeclared robust scaling above sets each input's
+99th-percentile H signal to one before any registration, unless the numerical
+floor activates. MIND epsilon remains1e-4 in these normalized-contrast units:
+a contrast stabilizer, NOT a measured physical noise variance. Its effective
+scale is approximately1%of robust full intensity range. Scaling is image-adaptive
+through this SINGLE fixed formula, not a per-case rescue chosen after outcomes.
+It can amplify weak stain or noise and clips the high tail; no universal
+accuracy/noise improvement follows. The same q99/floor rule applies even to
+the known weak-counterstain image.
+
+Exact claim: under the IDEAL RGB absorption model I=exp(-c_true@B), nonnegative
+concentrations and no active RGB floor, the recovered H channel depends only
+on c_true,H and is invariant to E/DAB concentrations. The normalized feature
+has the same invariance only when its calibration support is held fixed; a
+gray-derived support can itself change when other stains change. That is an
+algebraic property of this model, NOT a theorem about real slides. Actual encoded sRGB,
+white illumination, stain variability, coarse pixel averaging, sequential
+sections and stain-vector mismatch violate its hypotheses. Call the output
+a hematoxylin PROXY, not measured concentration or guaranteed shared anatomy.
+No improvement of TRE, contrast invariance beyond that model, registration
+global optimum, or feature-resolution sufficiency is claimed in advance.
+
+Unchanged registration: preserve the ORIGINAL inverted-gray>.04 fixed mask
+and its per-level area averages/denominators; never threshold H to define
+support. Keep original images for the frozen raw machine matches, original
+positive affine, identity residual start, shared_affine transported8-channel
+MIND, image weight1, ARAP3, shape1e-4, matches.1, OOB1, P1ac257, exact boundary,
+eta.001, all original five levels/rates,300Adam gradients, original stage
+acceptance and best-full selection. This is a different IMAGE functional;
+its complete-E values are not comparable as same-objective convergence numbers
+to raw-gray E. Do not retain coupled initialization or add a baseline trajectory.
+
+Required diagnostics, all reporting-only: on each unwarped512input, record
+pre-clamp negative-H fraction, RGB-floor fraction, H zero fraction, raw H range,
+s_raw, s, numerical-floor activation, and H_feature saturation fraction within
+that input's original gray support. At each ordinary image-pyramid scale record
+the NORMALIZED-H MIND local variance median and the fixed-weight
+fraction at or below the unchanged1e-4 epsilon, using the corresponding static
+gray-mask area average. Moving-input diagnostics use its OWN original gray
+support only for reporting; they never gate moving overlap or the fixed loss.
+Label these as unwarped-channel diagnostics, not bounds on deformed descriptor
+support. Constant/near-flat H remains in the experiment with its diagnostics;
+there is no raw-gray fallback, mask removal or parameter rescue.
+
+Adverse pre-implementation evidence: an image-only direct calculation on the
+six MIIT canvases found H local variance medians .006625--.017541 on five, but
+the strongly pink miit7moving canvas had H zero fraction .687592 and median
+6.2185e-5, below the fixed1e-4 descriptor epsilon (its raw-gray median was
+.00381798). Its H99was.127710. These were RAW-H diagnostics before the approved
+contrast calibration. The universal normalization boosts this image by about
+7.83 before upper clipping, but its .687592 zero fraction cannot acquire
+information from scaling. This is a known risk of weak counterstain or matrix
+mismatch, not evidence for discarding the case or selecting another recipe.
+
+Smallest decisive tests before production: literal matrix orientation and
+pure-H/E/DAB plus mixed Beer--Lambert fixtures, H invariance when only E/DAB
+changes at fixed calibration support, white and saturated/zero RGB, negative
+recovered H, exact linear-quantile scale, sparse-positive q99zero/floor and
+allzero H, boundedness and finite float32 output; unchanged raw-mask values
+and pyramids; bitwise default
+raw-preprocessing Evidence/path; independent frozen-affine coordinate/order
+check; the existing complete300budget and saved-map certificate. An independent
+checker must use a separate scalar/matrix calculation, not call this transform
+as its expected answer. The known weak-H case must not acquire a fallback.
+
+Decisive real test: all25existing directions once with this ONE fixed recipe:
+20correlated lung directions, one Histo CD4/CD68 direction, one kidney
+HE/PanCytokeratin direction, and the three known MIIT directions. Compare each
+against its already computed shared-affine raw-gray analytic300 control. Keep
+per-cohort mean/p90/max and costs; twenty lung directions are ONE specimen,
+and the three MIIT directions are ONE other specimen. A per-direction pooled
+average is not a patient-level result. No new matcher, competitor field or
+manual calibration is allowed. All predictions must terminate before labels
+are scored; failures retain their original denominators.
+
+What falsifies/redirection: no meaningful accuracy/cost gain or worsening
+across cohorts retires this fixed proxy, without nearby matrix/scale/epsilon
+sweeps. An isolated win is a specimen-specific lead, not universal improvement;
+a weak/flat channel shows a proxy limitation, not a topology defect. If useful
+across cohorts, confirm with a separate specimen before any superiority claim.
+The coordinator approved this EXACT contrast-calibrated recipe before any
+H-proxy registration was run. Implementation is handed to a separate
+Astra-medium builder; this card's author does not implement it. An independent
+high-effort checker reviews the resulting transform and application protocol.

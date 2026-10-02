@@ -5,6 +5,26 @@ The first real experiments optimize each image pair's own coefficients. They do
 not yet deliver a trained image-to-map network. Operator gradients are tested
 locally; stages intentionally detach accepted anchors in instance optimization.
 
+Current restart note (2026-10-02): the numbered sections below preserve the
+chronological record. In particular, section52's rejection is the decision under
+the EARLIER all-case/mixed-harm pilot rule, not a claim that the positive aggregate
+result disappeared. The user-approved restart in PLAN.md permits explicit paired
+accuracy/cost tradeoffs instead of permanent rejection for a tiny single-case
+regression. Recent controlled experiments therefore hold the section52
+shared-affine descriptor frame common. Its completed cross-specimen confirmation
+is mixed: the MIIT benefit does not transfer to the other three cohort means.
+The actual data and adverse cases in section52 are unchanged.
+
+The archived column called "Native DHR" in these older sections means the
+shared-initializer, reduced512 custom schedule. It is NOT the released full
+STANDARD preset. Read [BASELINE_PROTOCOL_REVIEW.md](BASELINE_PROTOCOL_REVIEW.md)
+and the current [REPORT.md](REPORT.md) for the corrected native-resolution
+comparison and scoring conventions. New exact stiffness and coupled-search
+formulations are in [OPTIMIZER_REDESIGN.md](OPTIMIZER_REDESIGN.md); they do not
+silently replace the historical objectives here. The stiffness experiment has
+completed with a negative accuracy result; coupled search has also completed
+without a useful accuracy gain. Neither is a trained neural layer.
+
 Current reading guide (around T+14h; the research window is still active): the main real
 comparison outputs a257x257 CONTROL-vertex P1-ac map, evaluated on512x512 image
 pixel centers. It is a per-pair optimizer, not a newly trained image encoder.

@@ -435,6 +435,18 @@ def optimize(args, accepted_stage_callback=None):
             or getattr(args,"preprocessing","raw_inverted")!="raw_inverted"
             or getattr(args,"fixed_mask",None) is not None):
         raise ValueError("postwarp NGF pilot requires original raw intensities/support, fixed alternating analytic/F2, P1ac float64 geometry/float32 raster continuation and ARAP")
+    seed_initializer=getattr(args,"seed_initializer","identity")
+    if seed_initializer not in ("identity","coupled_mind"):
+        raise ValueError("declare identity or coupled_mind initializer")
+    if seed_initializer=="coupled_mind" and (args.method!="analytic" or args.cycles!=1
+            or args.grid_side!=257 or args.image_side!=512 or 128 not in image_levels
+            or nested or joint or fine_patch_cells or filter_steps or capture_prefix!="none"
+            or simultaneous or mind_frame!="shared_affine" or strain_model!="p1_arap"
+            or args.strain_weight!=3. or args.oob_weight!=1. or args.minimum_jacobian!=.001
+            or getattr(args,"preprocessing","raw_inverted")!="raw_inverted"
+            or getattr(args,"fixed_mask",None) is not None
+            or getattr(args,"output_selection","last")!="best_full"):
+        raise ValueError("coupled initializer requires fixed257/shared-affine512 analytic continuation with128 evidence, ARAP3 and original raw support")
     device = torch.device(args.device)
     torch.set_num_threads(args.threads)
     dtype = torch.float64 if args.precision == "float64" else torch.float32
@@ -535,6 +547,37 @@ def optimize(args, accepted_stage_callback=None):
     if output_selection not in ("last","best_full"):
         raise ValueError("output selection must be last or best_full")
     full_best_map, full_best_loss, full_best_stage = materialize(current).detach().clone(), float(initial), None
+    seed_record=None
+    seed_archive={}
+    seed_objective_evaluations=0
+    seed_elapsed_seconds=0.
+    if seed_initializer=="coupled_mind":
+        from qcopt.neural_bijection.dense.coordinated_coupled_seed import build_coupled_mind_seed
+        item=evidence_by_resolution[128]
+        synchronize(); seed_start=time.perf_counter()
+        seeded=build_coupled_mind_seed(item.fixed_feature,item.moving_feature,item.mask,
+            evidence.matrix,evidence.offset,reference)
+        current=seeded.vertices.detach()
+        if not validate_q1_map(current,reference)["valid"]:
+            raise RuntimeError("constructed image-only seed failed actual map check")
+        with torch.no_grad():
+            seed_total,seed_parts=evidence(current)
+        seed_objective_evaluations=1
+        seed_record={**seeded.diagnostics,"original_full_objective":dict(total=float(seed_total),
+            **{key:float(value) for key,value in seed_parts.items()}),
+            "original_identity_full_total":float(initial),
+            "original_E_increased":float(seed_total)>float(initial),
+            "original_E_seed_rejection":False}
+        if not math.isfinite(float(seed_total)):
+            raise RuntimeError("nonfinite complete objective at constructed seed")
+        # Always refine this ONE legal seed, even when E(seed)>E(identity).
+        # Identity remains a final full-E candidate, never a seed replacement.
+        if float(seed_total)<full_best_loss:
+            full_best_map=current.clone();full_best_loss=float(seed_total);full_best_stage=-1
+        seed_archive={"initializer_vertices":current.clone(),
+                      "initializer_coefficients_128px":seeded.coefficients_pixels.detach().clone()}
+        synchronize();seed_elapsed_seconds=time.perf_counter()-seed_start
+        seed_record["complete_initializer_seconds"]=seed_elapsed_seconds
     capture_record=None
     capture_objective_evaluations=0
     if capture_prefix=="mind_discrete":
@@ -794,7 +837,8 @@ def optimize(args, accepted_stage_callback=None):
     args.output.parent.mkdir(parents=True, exist_ok=True)
     serialization_start = time.perf_counter()
     np.savez(args.output, vertices=current.cpu().numpy(), boundary_reference=reference.cpu().numpy(),
-             post_affine_matrix=a, post_affine_offset=b,interpolation=np.asarray(getattr(args,"interpolation","q1")))
+             post_affine_matrix=a, post_affine_offset=b,interpolation=np.asarray(getattr(args,"interpolation","q1")),
+             **{key:value.cpu().numpy() for key,value in seed_archive.items()})
     serialization_seconds = time.perf_counter()-serialization_start
     certificate_start = time.perf_counter()
     certificate = certify_q1_binary_map(args.output)
@@ -817,7 +861,7 @@ def optimize(args, accepted_stage_callback=None):
                   control_vertices=args.grid_side**2, cells=(args.grid_side-1)**2,
                   corner_constraints=4*(args.grid_side-1)**2, query_count=args.image_side**2,
                   evaluations=evaluations, gradient_steps=gradient_steps, failed_trials=failed_trials,
-                  objective_evaluations=evaluations+2*len(stages)+2+(2*len(stages) if nested_evaluation=="coarse_exact" else 0)+capture_objective_evaluations,
+                  objective_evaluations=evaluations+2*len(stages)+2+(2*len(stages) if nested_evaluation=="coarse_exact" else 0)+capture_objective_evaluations+seed_objective_evaluations,
                   optimize_seconds=elapsed, median_forward_objective_seconds=float(np.median(forward_seconds)),
                   loading_seconds=loading_seconds,feature_seconds=feature_seconds,
                   serialization_seconds=serialization_seconds,certification_seconds=certification_seconds,
@@ -849,7 +893,10 @@ def optimize(args, accepted_stage_callback=None):
                   image_weight=image_weight,
                   capture_prefix=capture_prefix,capture_record=capture_record,
                   capture_objective_evaluations=capture_objective_evaluations,
-                  selected_stage_scope="None=initial identity residual, -1=accepted capture prefix, nonnegative=ordinary stage index",
+                  seed_initializer=seed_initializer,seed_record=seed_record,
+                  seed_objective_evaluations=seed_objective_evaluations,
+                  seed_elapsed_seconds=seed_elapsed_seconds,refinement_seconds=elapsed-seed_elapsed_seconds,
+                  selected_stage_scope="None=identity residual, -1=constructed coupled seed or accepted capture prefix, nonnegative=ordinary stage index",
                   inner_steps_by_level=inner_steps_by_level,
                   continuation_scope=continuation_scope,
                   output_selection=output_selection,selected_stage=full_best_stage if output_selection=="best_full" else len(stages)-1,
@@ -937,6 +984,8 @@ def main():
                    help="dense image contribution; zero still computes/reports it diagnostically")
     p.add_argument("--capture-prefix",choices=("none","mind_discrete"),default="none",
                    help="one finite-displacement existing-MIND proposal, strict analytic x/y attempts then unchanged optimizer; extra search/calls counted")
+    p.add_argument("--seed-initializer",choices=("identity","coupled_mind"),default="identity",
+                   help="one image-only coupled finite-label seed; original E may rise during legal construction, then unchanged analytic refinement")
     p.add_argument("--trial-diagnostics",choices=("existing","packed"),default="existing",
                    help="optional one detached trial logging transfer; fixed global analytic stage_cache/P1-ac only")
     p.add_argument("--mind-frame",choices=("original","shared_affine"),default="original",

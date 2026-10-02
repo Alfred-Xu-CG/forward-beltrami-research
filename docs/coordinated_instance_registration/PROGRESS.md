@@ -7,6 +7,73 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### Completed native comparison and coupled-seed result — 2026-10-02 08:32 UTC
+
+All22 native STANDARD DHR and all22 matched shared-affine A300 predictions
+completed before scoring. Shared-affine A versus native DHR mean TRE, in
+512-canvas pixels: lung4.56854 versus6.04662, Histo.85190 versus.71233,
+kidney2.36487 versus1.90816. These are three previously viewed specimens,
+not22 independent patients. Original-frame A remains separately reported;
+shared-affine processing worsens all three non-MIIT cohort means. Native
+initialization already favors kidney, while lung's native initialization is
+better yet its final result is worse. Full pipeline versus frozen-initializer
+costs have different scopes. Independent scoring checked all1746 labels per
+arm and the native initial-transform decomposition. All22 A maps retain their
+declared certificate; native fields have nonpositive bilinear corners somewhere,
+not necessarily in tissue. Full tables and limitations are in REPORT and
+BASELINE_PROTOCOL_REVIEW; raw native MHA fields remain on D and remote storage.
+
+The spatially coupled seed also completed all3 MIIT predictions. Mean/p90
+3.547609/5.917437 versus A300's3.548752/5.907957 is not a useful gain. All48
+construction scales equal1; raw targets were already legal, so safety
+contraction is not the explanation. The higher-E seeds were actually refined;
+final maps return close to the ordinary A300 solution. Independent seed,
+objective, budget, map and landmark checks passed. Retire this recipe without
+a radius/coupling sweep. Next investigate one fixed, image-only shared stain
+proxy; no new optimizer, mask, matcher, seed or landmark calibration is bundled.
+
+### Cross-specimen corrected-control confirmation — 2026-10-02 08:01 UTC
+
+Question: does the already implemented shared-affine descriptor correction help
+beyond the large-rotation MIIT specimen? Before reading the new native22 scores,
+run the corrected analytic300 control on the SAME20 lung directions, Histo and
+kidney. Reuse each original analytic case's images, affine, raw machine matches,
+coefficient/raster levels, priors, rates, boundary and export interpretation.
+Change only descriptor frame to shared_affine and fresh output paths. No new
+matching, topology mechanism, tuning or coupled initializer is included. All22
+new attempts terminate before manual scoring; retain all failures. Original
+and corrected A are separately named, not silently substituted. The decision
+this changes is whether the MIIT improvement transfers across these known
+specimens; a mixed/negative result limits that claim without a frame-parameter
+sweep. It is a confirmation of an existing correction, not a second active
+alternative research mechanism. Baseline Astra high reuses the existing runner
+and exact cohort scorers; GPU1 may be used only after checking idle capacity.
+
+### Coupled-search implementation and native comparator execution — 2026-10-02 07:58 UTC
+
+Completed stiffness evidence/code is committed as5f4cde4 and pushed. The
+independent checker corrected even-sample median reporting before that commit;
+the actual finest-level secant ratios are149.34/179.89/118.49. This does not
+change the negative result. No stiffness-parameter sweep follows.
+
+One next mechanism is approved: image-only, spatially coupled finite-label
+matching supplies an alternative initialization, followed by the unchanged
+corrected-MIND300 optimizer. The exact card in OPTIMIZER_REDESIGN specifies
+65-square proposal nodes,128-square descriptors,1089 labels, a screened
+Galerkin solve and16 existing safe coordinate construction steps. The desired
+field is only a proposal: every actual map starts from identity and remains
+legal. Unlike the old prefix, the seed may initially raise the original energy;
+final selection still uses that original energy, never evaluation landmarks.
+This is not a globally convex method, a new neural network or an exact
+ConvexAdam reproduction. Astra xhigh implements; independent Astra high checks.
+
+Native22 STANDARD DHR is running serially on previously idle AI GPU5 after
+the native-coordinate review passed. Root reran22 focused preparation/runner/
+scorer tests successfully. Input metadata and code are pushed as34f3cdb; nine
+original JPEGs were transferred without labels. All22 terminal predictions
+must precede scoring. Report per specimen, not22 independent patients, and
+keep full-pipeline DHR timings distinct from our frozen-initializer timings.
+
 ### Same-functional optimizer result — 2026-10-02 07:39 UTC
 
 All six approved predictions now complete: corrected Adam900 and exact ARAP

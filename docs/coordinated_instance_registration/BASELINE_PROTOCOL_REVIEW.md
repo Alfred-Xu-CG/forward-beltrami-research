@@ -275,7 +275,7 @@ records the principal pipeline differences; the source audit confirms that
 qualification rather than finding a new NCC-window bug. This alone does not
 justify another parameter sweep.
 
-## Existing22 native STANDARD expansion: prepared, not executed
+## Existing22 native STANDARD expansion: setup and pre-run review
 
 Question: does the corrected released baseline change the comparison beyond the
 three correlated MIIT directions? Exact claim under test: full native STANDARD,
@@ -317,8 +317,8 @@ The image-only preparation is at
 `local_inputs.json`, `remote_inputs.json`, and `transfer_list.json`. The last is
 an ordinary copy list of9 unique JPEGs totalling93,025,647 bytes, not a new
 integrity framework. Copy the remote manifest and its listed images under
-`images/` beside it; manual CSVs are not in the transfer list. No images have
-been copied remotely and no GPU registration has been launched by this worker.
+`images/` beside it; manual CSVs are not in the transfer list. At the preparation
+milestone this worker had not copied images remotely or launched registration.
 
 Execution after coordinator approval:
 
@@ -341,5 +341,97 @@ rectangular dimensions, asymmetric padding, nonintegral initial-resampling
 ratios and unequal loading ratios; maximum differences are7.99e-6 native and
 1.44e-5 canvas pixels. The probe is saved at
 `outputs/coordinated_instance_registration/check_sources/independent_native22_probe_20261002.py`.
-This validates coordinate implementation, not anatomical accuracy; no real22
-registration outcome exists yet.
+This validates coordinate implementation, not anatomical accuracy. The later
+authorized execution and observed outcomes are recorded below.
+
+## Executed22: full native comparator and shared-frame transfer control
+
+After independent review, native STANDARD ran serially on AI GPU5; all22 cases
+completed in683.392s. GPU5 was idle and host available RAM was~976GB before
+launch; before Histo, available RAM was~975GB and GPU5 had~48.2GB free. Histo
+completed at5437×4096 in77.684s, kidney at787×1164 in17.517s. Maximum native
+allocated GPU memory was7,709,164,544bytes. Native MHA exports total279,916,595
+bytes and remain local data on D, not committed code artifacts.
+
+The separately approved transfer control ran the SAME22 analytic300 recipes
+on idle AI GPU1, changing ONLY `mind_frame="shared_affine"` and output paths.
+Original images, affines and frozen raw matches were reused; no new matching,
+seed, preconditioner, support or parameter choice. Independent real-config
+comparison confirmed those are the only semantic configuration differences.
+All22 finished300 gradients with zero failed trials in99.344s. All actual saved
+P1-ac residual/boundary/positive-affine certificates pass; minimum actual corner
+ratio across the22 maps is.0069463903, above the.001 floor. Maximum allocated
+GPU memory was213,791,744bytes. These single-call timings are not an ABBA speed
+claim: native DHR estimates its initializer, while A reuses the stored affine
+and machine correspondences.
+
+Manual scoring began only after BOTH22-case prediction batches were terminal.
+Every method retains the same1746 paired queries:20×80 lung,77 Histo and69
+kidney; kidney fixed-only70/71 remain disclosed. Values below are mean / p90
+in the SAME512 moving-canvas pixels; for lung these are equal-direction mean
+of means / mean of within-direction p90s, not a pooled quantile.
+
+| Existing cohort | Original-frame A | Declared F2 | Reduced512/common-affine DHR | Shared-frame A | Native STANDARD DHR |
+|---|---:|---:|---:|---:|---:|
+| Lung20 |4.520228 /9.555206|4.551344 /9.657840|5.133593 /11.552831|4.568541 /9.593679|6.046615 /13.914145|
+| Histo77 |.793449 /1.544649|.787888 /1.532709|.942615 /2.288375|.851903 /1.586005|.712328 /1.618927|
+| Kidney69 |2.351586 /4.507429|2.394303 /5.096757|3.431687 /7.110328|2.364866 /4.756907|1.908163 /3.178382|
+
+Lung's primary F2 source is `lung_all20_f2reserve_t134/all_id_scores.json`, with
+explicit `f2_floor_safety_fraction=.95`, accepted gain1 and all20 complete300.
+The old `lung_all20_fixedrecipe_t123` F2 mean4.599464 is a DIFFERENT arm:
+HE→Ki67 completed242 steps/2 failed trials; Ki67→HE158/5. It remains historical
+evidence and is not substituted for the corrected F2. Original lung A and
+reduced DHR are unchanged archived references in the corrected cohort.
+Histo/kidney A/F2 come from `development_p1arap3_stage30_t88`; their reduced
+DHR scores come from `histo_dhr_common_score.json` and
+`rat_kidney_dhr_common_score.json`, respectively.
+
+The descriptor-frame benefit observed on rotated MIIT does NOT transfer as an
+observed mean improvement here: all three cohort means are slightly worse than
+the original A recipe, and only7/20 lung directions improve. Do not assert a
+general accuracy gain from that correction. Conversely native STANDARD is
+better on Histo mean and kidney mean/tail, but worse on lung mean/tail. The
+three-specimen mean2.595104 for shared A versus2.889035 native DHR is driven by
+lung and is not universal method superiority. All22 saved native DHR fields
+have nonpositive local bilinear-cell corners; this is a representation-specific
+local diagnostic, not a global-boundary certificate or exclusion rule.
+
+### Saved-initializer decomposition, not a rerun
+
+`coordinated_dhr_existing_score.py --initial-only` reuses the independently
+checked `map_initial_native`, plus the SAME22 dataset dispatch/IDs/layouts.
+It reads saved theta and postprocessing parameters, never a dense field. Every
+theta and its explicit normalized preprocessed target-to-source frame are
+retained in `native22_dhr_standard_t20/initial_only_scores.json`.
+
+Lung native initial mean/p90 **6.291708/11.390313** becomes
+**6.046615/13.914145** after native nonrigid. Our shared initializer is
+**6.661222/12.234678**, becoming **4.568541/9.593679** under shared-frame A.
+Thus worse native initializer MEAN does not explain the aggregate lung gap;
+native nonrigid improves mean only.245092 while its mean directional p90 worsens
+2.523832. Native nonrigid worsens7/20 direction means and14/20 direction p90s.
+Shared A beats native final mean in16/20 directions.
+
+Histo native initialization2.339111 is close to our2.332173, followed by native
+final.712328 versus shared A.851903. Kidney is different: native initialization
+4.322930 is substantially better than our6.117413, then native reaches1.908163
+and shared A2.364866. Do not attribute kidney's advantage solely to its nonrigid
+optimizer. None of these stage decompositions supplies the unrun counterfactual
+of exchanging initializers, or isolates resolution, objective and boundary class.
+
+Reproducible per-case comparison, exact source score/configuration paths,
+unchanged ID-set checks and the historical F2 version distinction are in
+`outputs/coordinated_instance_registration/native22_comparison_t20.json`.
+Its one-off read-only generator is
+`outputs/coordinated_instance_registration/check_sources/native22_comparison_t20.py`.
+New raw scores are `native22_dhr_standard_t20/landmark_scores.json` and
+`existing22_shared_affine_a300_t20/landmark_scores.json`. Nine bounded A-control
+tests pass;23 focused tests including the initializer extension pass. Independent
+integration AND actual-output checks pass in `BASELINE_PROTOCOL_INDEPENDENT.md`.
+The checker reaggregated all1746 per-label records in each arm, matched IDs and
+recomputed the corrected F2 cohort. A separate float64 NumPy border-bilinear
+oracle checked all226 labels in native HE→CC10/Histo/kidney: maximum difference
+was3.287e-5 canvas pixels (.0006362 native pixels), consistent with the scorer's
+float32 field sampling. Saved-initial-only dataset dispatch, helper/scales and
+means also pass. No GPU rerun, label-based selection or new dataset is implied.

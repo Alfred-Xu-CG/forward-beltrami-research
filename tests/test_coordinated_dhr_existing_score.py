@@ -138,3 +138,22 @@ def test_native_size_mismatch_fails_one_direction_without_dropping_it(tmp_path):
     assert result["rows"][0]["status"] == "failed"
     assert result["lung_all20"]["all_directions"] is None
     assert result["equal_specimen_canvas"] is None
+
+
+def test_initial_only_same22_dispatch_never_reads_dense_fields(tmp_path,monkeypatch):
+    import SimpleITK as sitk
+    from tools.coordinated_dhr_existing_score import score_initial
+    path,root,value=_complete_fixture(tmp_path)
+    for row in value["rows"]:
+        row.update(initial_transform=[[[1.,0.,0.],[0.,1.,0.]]],preprocessed_shape=[1,1,20,32],
+                   initial_transform_frame="preprocessed normalized [-1,1] target-to-source affine; align_corners=False")
+    path.write_text(json.dumps(value))
+    monkeypatch.setattr(sitk,"ReadImage",lambda *a,**k:pytest.fail("initial-only must not read fields"))
+    result=score_initial(path,root)
+    assert result["scored_pairs"]==22
+    assert result["equal_specimen_canvas"]["mean_pair_mean"]<1e-12
+    assert result["final_dense_fields_read"] is False
+    value["rows"][0]["initial_transform_frame"]="ambiguous"
+    path.write_text(json.dumps(value))
+    result=score_initial(path,root)
+    assert result["scored_pairs"]==21 and result["equal_specimen_canvas"] is None

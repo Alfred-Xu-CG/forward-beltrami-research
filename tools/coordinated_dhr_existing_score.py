@@ -198,14 +198,56 @@ def score(predictions, data_root):
                 predictor_annotations_read=False, scoring_is_post_prediction=True)
 
 
+def score_initial(predictions, data_root):
+    """Same22 dispatch, saved native initial theta only; never read dense fields."""
+    from tools.coordinated_dhr_initial_score import map_initial_native
+    root=Path(data_root).resolve()
+    manifest,path=_load_predictions(predictions,root)
+    rows=[]
+    declared_frame="preprocessed normalized [-1,1] target-to-source affine; align_corners=False"
+    for record in manifest["rows"]:
+        row=dict(name=record["name"],status="failed")
+        rows.append(row)
+        try:
+            if record["status"]!="ok":raise ValueError("native pipeline did not complete: "+str(record.get("error")))
+            if record.get("initial_transform_frame")!=declared_frame:
+                raise ValueError("explicit saved native initial affine frame required")
+            wh,layouts,points,ids,fixed_only,moving_only=_case_data(record,root)
+            params=json.loads((path.parent/record["postprocessing_params"]).resolve().read_text(encoding="utf-8"))
+            mapped=map_initial_native(points["fixed"],record["initial_transform"],params,record["preprocessed_shape"][-2:])
+            error=mapped-points["moving"]
+            canvas_error=error*np.asarray(layouts["moving"]["effective_original_to_canvas_scale_xy"])
+            row.update(status="ok",scored_landmarks=len(ids),available_pair_labels=ids,
+                       fixed_only_ids=fixed_only,moving_only_ids=moving_only,
+                       initial_transform=record["initial_transform"],initial_transform_frame=declared_frame,
+                       preprocessed_shape=record["preprocessed_shape"],
+                       predicted_moving_native_pixels=dict(zip(ids,mapped.tolist(),strict=True)),
+                       metrics=dict(native_moving_pixels=summary(np.linalg.norm(error,axis=1),ids),
+                                    canvas_pixels=summary(np.linalg.norm(canvas_error,axis=1),ids)))
+        except Exception as error:
+            row["error"]=f"{type(error).__name__}: {error}"
+    lung,histo,kidney=_aggregate(rows[:20]),_aggregate(rows[20:21]),_aggregate(rows[21:])
+    equal=None
+    if all(group["all_directions"] is not None for group in (lung,histo,kidney)):
+        equal={key:float(np.mean([group["all_directions"]["canvas_pixels"][key] for group in (lung,histo,kidney)]))
+               for key in ("mean_pair_mean","mean_pair_p90")}
+    return dict(prediction_manifest=str(path),preset=manifest["preset"],rows=rows,pair_denominator=22,
+                scored_pairs=sum(row["status"]=="ok" for row in rows),lung_all20=lung,histo=histo,rat_kidney=kidney,
+                equal_specimen_canvas=equal,scope="posthoc saved native initializer decomposition on same22 existing cases",
+                initial_transform_evaluation="float64 analytic evaluation of saved float32 theta in its declared preprocessed normalized frame",
+                final_dense_fields_read=False,registration_or_selection_performed=False,
+                label_policy="same80/77/69 IDs and existing native-to512 layouts; failed cases retained")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for key in ("predictions", "data-root", "output"):
         parser.add_argument("--"+key, type=Path, required=True)
+    parser.add_argument("--initial-only",action="store_true",help="score saved native initial theta only; read no dense fields")
     args = parser.parse_args()
     if args.output.exists():
         raise FileExistsError(args.output)
-    result = score(args.predictions, args.data_root)
+    result = (score_initial if args.initial_only else score)(args.predictions, args.data_root)
     args.output.write_text(json.dumps(result, indent=2, allow_nan=False)+"\n", encoding="utf-8")
     print(json.dumps(dict(scored_pairs=result["scored_pairs"], equal_specimen_canvas=result["equal_specimen_canvas"])))
 

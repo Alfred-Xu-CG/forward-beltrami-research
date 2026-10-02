@@ -321,3 +321,124 @@ accuracy exclusion. This is the declared bilinear saved-field evaluation, not
 proof of equality with DHR's optional cubic landmark/image-export path.
 Source: `outputs/coordinated_instance_registration/check_sources/independent_native22_probe_20261002.py`.
 No registration, broad duplicate test suite or real-label access was performed.
+
+The subsequent corrected-frame analytic22 control was also checked against its
+ACTUAL archived configurations: reserve-t134's original analytic references
+and the t88 Histo/kidney reports. All 22 ordered case names and fixed/moving
+canvas basenames match the intended directions. Per-key comparison confirms
+only `mind_frame=shared_affine` and output paths change, apart from equivalent
+Path conversion; identity initialization, original affine/machine matches and
+all optimizer/objective settings remain. Its scorer reuses the same native
+readers/layouts, evaluates the saved affine-composed P1ac map and retains the
+same all-terminal-before-labels policy and specimen aggregation. This check is
+included in the native22 probe, without opening real annotations or running A22.
+
+After BOTH actual 22-case prediction batches completed, the bounded postrun check
+reaggregated all 1746 per-label records per arm, verified identical 80/77/69 ID
+sets and all successful denominators, and confirmed actual A configurations
+still change only frame/output with 300 gradients and zero failed trials.
+
+|Existing specimen|Native DHR initial mean|Native DHR final mean|Shared-frame A300 mean|
+|---|---:|---:|---:|
+|Lung, equal20-direction|6.29170770|6.04661547|4.56854112|
+|Histo|2.33911053|0.71232802|0.85190347|
+|Kidney|4.32293049|1.90816268|2.36486646|
+
+Units are the existing moving 512-canvas pixels. Equal-specimen final means
+reproduce `2.88903539` for native DHR and `2.59510368` for shared-frame A, not
+22-independent-patient estimates. The correct complete lung F2 reference is
+reserve-t134: independently reaggregated `4.55134379393`, not old t123's result.
+Stored diagnostics mark all 22 A exports valid and all 22 DHR fields locally
+nonpositive somewhere; DHR accuracy rows are nevertheless retained.
+
+One ACTUAL nonuniform native field per specimen (he-to-cc10, Histo and kidney;
+226 labels total) was also sampled by the independent NumPy float64 bilinear
+oracle. Maximum discrepancy from the float32 production-coordinate evaluator
+is `0.0006362` native pixels, or `0.00003287` canvas pixels. This rules out a
+material native/512-unit mismatch for these checked cases. The new saved-native-
+initial-only scorer preserves the same dataset dispatch, ID sets and per-axis
+canvas scaling, reuses the already checked affine-frame evaluator, and reads
+no dense field or performs new registration. Its table aggregates above were
+checked separately. Run the native22 probe with `--postrun` to reproduce.
+
+### Coupled finite-displacement seed: initial independent card check
+
+The announced exact card's normalization is consistent. Differentiating its
+UNWEIGHTED coupling `c*sum||z-u||^2/Z` and its frozen-identity-rotation physical
+quadratic `3*u^T*G*u/(2*128^2)` gives
+`[2*c*I+3*Z*G/128^2]u=2*c*z` for each component. The factor two belongs to the
+unhalved coupling square. The discrete block minimizes `w_i*C_i(k)+c||k-u_i||^2`;
+putting the fixed mask on the coupling instead would invalidate that screened
+DST solve. Both components remain in 128-raster pixel units until division by128.
+`G` is the already checked raw-bilinear Galerkin stiffness, not nested-P1 transfer.
+
+The fixed node coordinates, nine patch offsets and immutable mask denominators
+define a nodal/patch surrogate, not exactly the original 128-raster image sum.
+Labels are residual displacements: their original-moving change is `A*k/128`.
+Eight fixed x/y safe-construction cycles start at identity, refresh legal geometry
+after each step and retain one frozen desired target. This guarantees neither
+target reachability nor an original-objective decrease during initialization;
+the card explicitly permits a higher-energy legal seed and retains identity in
+the final original-E512 candidate set.
+
+The upstream [coupled_convex implementation](https://github.com/multimodallearning/convexAdam/blob/main/src/convexAdam/convex_adam_utils.py#L83-L97)
+directly confirms the six borrowed constants and local-average update. The card
+correctly distinguishes its own global quadratic solve and L1 costs from that
+method; the borrowed constants do not imply identical cost normalization.
+The subsequent bounded independent production checks also pass:
+
+- A pure NumPy zero-padded bilinear sampler independently reconstructs fixed
+  vertex/patch queries, eight-channel L1, rotated-affine original OOB, fixed-mask
+  denominators, empty patches and label order. Maximum cost error is `1.11e-16`
+  with float64 features and `1.44e-8` with production-like float32 features.
+- Independently assembled fine triangle stiffness and raw hat interpolation
+  give a dense screened solve. The entire 13-solve/13-label sequence agrees to
+  `8.89e-16` in final nonzero displacement and `4.45e-16` across recorded block
+  energies. Both blocks decrease the same fixed-c objective; zero-cost ties
+  preserve zero displacement.
+- A raw one-axis checkerboard has 384 nonpositive target corners, yet all 16
+  returned construction states have exact fixed boundary and actual ratios
+  above `.001`, with minimum `.0010000000390242`; the desired target stays fixed.
+  A stronger two-axis checkerboard instead triggers the declared explicit
+  rounded-margin failure before output. Repeated `.95` steps can exhaust finite
+  precision: there is no uniform numerical-margin or unconditional-completion
+  guarantee. Such a real-case failure would concern this 16-step constructor,
+  not refute coupled matching. No floor relaxation, repair or silent fallback
+  was added.
+- The actual 257-map/512-image application hook was instrumented with one
+  injected legal seed whose full objective is HIGHER than identity. The first
+  coarse-stage evaluation sees that seed, not identity; final selection includes
+  identity, seed and accepted prefixes. The four-gradient test makes exactly
+  19 observed/reported objective calls, including one extra seed call, and saves
+  the supplied initializer separately. Core construction is tested above;
+  this injected-seed fixture specifically isolates integration/selection.
+
+Source: `outputs/coordinated_instance_registration/check_sources/independent_coupled_seed_probe_20261002.py`.
+No production correction was needed. The author subsequently confirmed READY/
+FROZEN; the only later edits were a diagnostic-key correction and an explicit
+`.001` floor guard, both inspected. No GPU or GT was used in this check.
+
+### Coupled seed: actual three-case postrun check
+
+The actual coupled exports pass the reused independent P1/landmark check on all
+123/107/98 available labels. Maximum error discrepancy is `5.69e-14` canvas pixels
+and `4.53e-13` native pixels. Equal-pair mean/p90 reproduce
+`3.54760907862033 / 5.91743722699801`; this near-neutral mean and worse p90 do not
+establish a useful improvement over the original corrected Adam300.
+
+All three final maps have exact fixed boundary and independently evaluated
+minimum corner ratios `.342235/.345279/.305014`. Saved 65-square pixel
+coefficients independently reconstructed with raw tensor-bilinear hats recover
+the archived initializer vertices to `5.73e-17`. Their minimum ratios are
+`.382466/.466193/.390679`; all 48 construction scales are one, so these actual
+seeds suffered neither folds nor construction contraction.
+
+The first two seeds have higher E512 than identity. Fresh CPU evaluations of
+their saved initializers under the original full512 and first-stage32 Evidence
+agree with the stored seed objective and first-stage anchor/step-zero objective
+within `1.49e-8` (float32 evidence arithmetic). Thus the higher-energy seeds
+actually entered refinement; they were not silently replaced with identity.
+All three runs have 300 gradients, 333 objective calls, zero failed trials and
+selected stage9. Final original-E selection agrees with the minimum over identity,
+seed and accepted prefixes. Run the coupled probe with `--postrun`; no prediction
+rerun or additional GPU experiment is involved.

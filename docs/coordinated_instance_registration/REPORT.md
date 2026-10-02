@@ -2,11 +2,91 @@
 
 This is a working synthesis, NOT the final review. The authorized window
 started2026-10-01 11:26:23UTC. On 2026-10-02 the user resumed the paused goal
-and extended the deadline by five hours to 2026-10-02 16:26:23UTC. Conclusions below
-describe evidence available around T+17h and will be revised after later checks.
+and extended the deadline by five hours to 2026-10-02 16:26:23UTC. Historical
+sections retain their dated scopes; newer restart measurements are added below.
 The detailed derivations and experiment definitions are in FORMULATION.md;
 chronology and negative interventions are in PROGRESS.md. This report introduces
 the main objects without requiring knowledge of those earlier discussions.
+
+### Additional real cohorts: benefit is dataset-dependent, not universal
+
+Full released STANDARD DeeperHistReg and the shared-affine analytic300 control
+have now both completed ALL22 predictions before evaluation:20 ordered stain
+directions of the same lung specimen, one HistoReg direction and one kidney
+direction. These are THREE previously viewed specimens, not22 patients or an
+untouched validation set. The table uses the same512 moving-canvas coordinates
+and every declared80/77/69 paired landmark; each entry is mean TRE / p90 TRE,
+with the lung entries averaging the20 separate direction statistics.
+
+| Specimen / directions | Original-frame A | Shared-affine-frame A | Released STANDARD DHR |
+|---|---:|---:|---:|
+| Lung /20 | 4.520228 /9.555206 | 4.568541 /9.593679 | 6.046615 /13.914145 |
+| HistoReg /1 | .793449 /1.544649 | .851903 /1.586005 | .712328 /1.618927 |
+| Kidney /1 | 2.351586 /4.507429 | 2.364866 /4.756907 | 1.908163 /3.178382 |
+
+The new shared-frame control changes ONLY descriptor frame and output path
+relative to each original A case: no rematching, changed rates/priors, additional
+seed or landmark-dependent choice. Its MIIT benefit does NOT transfer here:
+all three specimen means worsen, and only7/20 lung means improve. Consequently
+"feature-frame correction" should not be read as a universally better or
+mathematically equivalent replacement. The prewarp changes the image functional
+and introduces resampling; original and shared-frame outcomes remain separate.
+
+Saved native initial affines reveal an important confound. Lung native-initial
+mean/p90 is6.291708/11.390313, versus our common-initial6.661222/12.234678.
+Native nonrigid registration then only improves its mean to6.046615 and worsens
+its tail to13.914145;7/20 direction means and14/20 tails worsen. Thus our lung
+advantage is not explained by a worse aggregate native initializer. Histo native
+initial mean2.339111 is close to our2.332173. Kidney differs materially:
+native initial4.322930 is better than our6.117413. Its final advantage cannot be
+assigned solely to the nonrigid algorithm. This is an observed sequential
+decomposition, NOT the counterfactual result of exchanging initializers.
+
+All22 native calls return successfully, but success status is not anatomical
+success. Every saved native field contains some nonpositive bilinear-cell
+corner determinants. This is a full-field local diagnostic, potentially including
+background/borders, not a claim that all tissue folds or that a native continuous
+model was globally certified. Our actual257-square P1-ac outputs pass their
+declared boundary/four-corner checks. No native field is repaired or used as a
+target for our methods.
+
+Single complete calls: shared-frame A4.05--5.96s, allocated peaks200.13--203.89MiB;
+native STANDARD17.52--77.68s, observed allocated peaks1.47--7.71GB(decimal).
+The native calls include native initialization and native-resolution processing;
+A reuses frozen image-only affine/matches and512 rasters. These different scopes
+do not establish a matched end-to-end speedup. Equal-specimen means2.595104(A)
+and2.889035(DHR) are dominated by the lung difference and do not imply universal
+superiority. The exact per-case sources/configurations are in
+`outputs/coordinated_instance_registration/native22_comparison_t20.json`;
+native and A outputs live in `native22_dhr_standard_t20` and
+`existing22_shared_affine_a300_t20`. Independent coordinate/aggregate checks pass.
+
+### Coupled finite-displacement initialization: no material accuracy gain
+
+The precise surrogate and construction are defined in OPTIMIZER_REDESIGN.md.
+In short,1089 possible2D shifts at each65-square proposal-grid node are coupled
+through a quadratic spatial term. Exact screened Galerkin solves produce one
+image-only proposal;16 existing safe coordinate steps construct a legal initial
+map on the ACTUAL257-square output grid. The proposal is not a certified map.
+This seed may raise the original energy before ordinary300-gradient refinement;
+the final selector still compares identity, seed and accepted prefixes using the
+original complete512 objective, never anatomical landmarks.
+
+All three MIIT runs complete300 gradients/333 objective calls without failure.
+The first two seeds genuinely have higher E512 than identity and nevertheless
+enter refinement. The final mean/p90 is3.547609/5.917437 versus ordinary
+Adam300's3.548752/5.907957: a negligible mean difference and worse tail, not a
+breakthrough. All48 construction scales equal1; raw proposals already have no
+folds, so safety contraction cannot explain this outcome. Seed displacement RMS
+is1.672/1.594/2.642 aligned-canvas pixels. Final-map RMS differences from Adam300
+are only.217/.080/.083 pixels: refinement largely returns near the old solution.
+The new seed construction costs about.3--.4s for cost-volume preparation alone;
+complete wrapper calls take7.20/4.55/4.48s and allocated peaks202--206MiB.
+Independent P1 evaluation reproduces all328 errors to5.69e-14 canvas pixels,
+and independently reconstructed seed coefficients/energies agree with execution.
+The exact recipe supplies no useful accuracy improvement; no range/coupling sweep
+follows. The outcome does not refute all discrete matching or certify global
+optimality of the original objective. Full evidence is in `miit_coupled_seed_t20`.
 
 ### Restart correction: scope of the earlier DHR comparison
 
