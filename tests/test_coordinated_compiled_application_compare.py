@@ -46,6 +46,55 @@ def test_actual_14_tiny_applications_cold_then_abba_capture_only(tmp_path,monkey
     assert json.loads(args.output.read_text())["annotations_read"] is False
 
 
+def test_actual_14_point_sampling_applications_hold_compiled_priors_fixed(tmp_path,monkeypatch):
+    from qcopt.neural_bijection.dense.coordinated_correspondence import ImageCorrespondences
+    args=args_for(tmp_path);args.comparison_kind="frozen_points"
+    factory=capture_factory(monkeypatch)
+    original=ImageCorrespondences.prepare_fixed_p1_sampling
+    preparations=[]
+    def counted(self,rows,columns,diagonal="ac"):
+        preparations.append((rows,columns,diagonal))
+        return original(self,rows,columns,diagonal)
+    monkeypatch.setattr(ImageCorrespondences,"prepare_fixed_p1_sampling",counted)
+    report=comparison.run(args,production=False,test_backend_label="TEST MOCK: eager-backend capture, NOT Inductor performance evidence")
+    assert report["status"]=="complete" and report["comparison_kind"]=="frozen_points"
+    assert report["speed_evidence_eligible"] is False
+    assert "No hidden prior warmup" in report["cold_scope"]
+    assert "NOT a point-compiler comparison" in report["cold_scope"]
+    assert priors.make_joint_priors is factory
+    assert ImageCorrespondences.prepare_fixed_p1_sampling is counted
+    assert preparations==[(9,9,"ac")]*7
+    runs=report["runs"]
+    assert [row["backend"] for row in runs]==["existing","frozen"]+["existing","frozen","frozen","existing"]*3
+    assert all(row["joint_prior_backend"]=="inductor" and len(row["factory_calls"])==1 for row in runs)
+    assert all(row["match_p1_sampling"]==row["backend"] for row in runs)
+    assert all(len(row["point_preparation_calls"])==(row["backend"]=="frozen") for row in runs)
+    assert all(row["gradient_steps"]==4 and row["evaluations"]==8 and row["objective_evaluations"]==18 for row in runs)
+    assert all(row["saved_binary_certificate"]["valid"] and row["failed_trials"]==0 for row in runs)
+    assert all(row["map_max_abs_delta"]<1e-10 and abs(row["final_total_delta"])<1e-10 and row["counters_equal"] for row in report["comparisons"])
+    assert set(report["warm_summary"]["complete_call_medians"])=={"existing","frozen"}
+    assert "existing_over_frozen_median" in report["warm_summary"]
+    assert "eager_over_compiled_median" not in report["warm_summary"]
+    assert report["dispatch_arms"]==dict(existing=dict(joint_prior_backend="inductor",match_p1_sampling="existing"),
+                                         frozen=dict(joint_prior_backend="inductor",match_p1_sampling="frozen"))
+
+
+@pytest.mark.parametrize("field",["joint_prior_backend","match_p1_sampling"])
+def test_points_wrong_reported_dispatch_stops_comparison(tmp_path,monkeypatch,field):
+    args=args_for(tmp_path);args.comparison_kind="frozen_points"
+    capture_factory(monkeypatch)
+    original=comparison.application.optimize
+    def wrong(config):
+        result=original(config)
+        result[field]="wrong"
+        return result
+    monkeypatch.setattr(comparison.application,"optimize",wrong)
+    report=comparison.run(args,production=False,test_backend_label="TEST MOCK incorrect dispatch")
+    assert report["status"]=="incomplete_comparison_no_speed_claim"
+    assert len(report["runs"])==1 and "warm_summary" not in report
+    assert any(field in reason for reason in report["runs"][0]["invalid_reasons"])
+
+
 def test_compile_failure_preserves_first_completed_attempt_and_does_not_fallback(tmp_path,monkeypatch):
     args=args_for(tmp_path)
     def fail(backend=None):

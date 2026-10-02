@@ -246,6 +246,15 @@ def optimize(args, accepted_stage_callback=None):
         raise ValueError("coefficient levels must fit output grid")
     if args.inner_steps < 1 or args.cycles < 1 or args.learning_rate <= 0:
         raise ValueError("positive optimization budget required")
+    inner_steps_by_level=getattr(args,"inner_steps_by_level",None)
+    if inner_steps_by_level is None:
+        inner_steps_by_level=[args.inner_steps]*len(args.levels)
+    elif (not isinstance(inner_steps_by_level,(list,tuple))
+          or len(inner_steps_by_level)!=len(args.levels)
+          or any(isinstance(value,bool) or not isinstance(value,int) or value<1
+                 for value in inner_steps_by_level)):
+        raise ValueError("inner_steps_by_level must contain one positive integer per coefficient level")
+    inner_steps_by_level=list(inner_steps_by_level)
     f2_floor_safety_fraction=getattr(args,"f2_floor_safety_fraction",1.)
     if (isinstance(f2_floor_safety_fraction,bool) or
             not isinstance(f2_floor_safety_fraction,(int,float)) or
@@ -312,6 +321,13 @@ def optimize(args, accepted_stage_callback=None):
             getattr(args,"interpolation","q1")!="p1_ac" or getattr(args,"shape_weight",0.)<=0 or
             args.precision!="float64" or nested):
         raise ValueError("compiled joint priors currently require fixed P1 ac controls, ARAP, positive shape weight and float64 geometry")
+    match_p1_sampling=getattr(args,"match_p1_sampling","existing")
+    if match_p1_sampling not in ("existing","frozen"):
+        raise ValueError("match_p1_sampling must be existing or frozen")
+    if match_p1_sampling=="frozen" and (nested or
+            getattr(args,"interpolation","q1") not in ("p1_ac","p1_bd") or
+            getattr(args,"match_weight",0.)<=0 or getattr(args,"matches",None) is None):
+        raise ValueError("frozen point sampling requires fixed P1 controls and positive explicit match evidence")
     if nested and (args.method not in ("radial","analytic") or args.cycles!=1 or
             getattr(args,"interpolation","q1") not in ("p1_ac","p1_bd") or
             args.levels[-1]!=args.grid_side or
@@ -345,6 +361,9 @@ def optimize(args, accepted_stage_callback=None):
             raise ValueError("declare --matches for a positive match weight")
         matches,match_metadata=load_image_matches(args.matches,a,b,fixed_path=args.fixed,moving_path=args.moving,
             image_side=args.image_side,device=device,dtype=dtype,robust_scale=getattr(args,"match_robust_scale",8.))
+        if match_p1_sampling=="frozen":
+            match_metadata["fixed_p1_sampling"]=matches.prepare_fixed_p1_sampling(
+                args.grid_side,args.grid_side,args.interpolation[-2:])
     evidence = Evidence(fixed, moving, torch.from_numpy(a).to(device=device, dtype=dtype),
                         torch.from_numpy(b).to(device=device, dtype=dtype), args.loss,
                         args.strain_weight, args.oob_weight, getattr(args,"shape_weight",0.),
@@ -401,6 +420,7 @@ def optimize(args, accepted_stage_callback=None):
     full_best_map, full_best_loss, full_best_stage = materialize(current).detach().clone(), float(initial), None
     for cycle in range(args.cycles):
         for level_index,level in enumerate(args.levels):
+            stage_inner_steps=inner_steps_by_level[level_index]
             if nested and current.shape[1]!=level:
                 from qcopt.neural_bijection.dense.coordinated_refinement import refine_p1_vertices
                 factor=(level-1)//(current.shape[1]-1)
@@ -474,7 +494,7 @@ def optimize(args, accepted_stage_callback=None):
                         original_anchor_loss=float(original_stage_evidence(materialize(anchor))[0])
                 best_diagnostics = {}
                 # Include the last optimizer step as an evaluated trial.
-                for step in range(args.inner_steps + 1):
+                for step in range(stage_inner_steps + 1):
                     optimizer.zero_grad(set_to_none=True)
                     synchronize(); tick = time.perf_counter()
                     applied_filter_steps=filter_steps if level>=filter_min_level else 0
@@ -556,7 +576,7 @@ def optimize(args, accepted_stage_callback=None):
                     trace.append(dict(cycle=cycle, level=level, control_side=control_side, image_side=stage_resolution, direction=direction, step=step,
                                       total=value, **{k: float(v.detach()) for k, v in parts.items()},
                                       **diagnostics))
-                    if step < args.inner_steps:
+                    if step < stage_inner_steps:
                         tick = time.perf_counter(); total.backward(); synchronize()
                         backward_seconds.append(time.perf_counter()-tick)
                         if coefficients.grad is None or not bool(torch.isfinite(coefficients.grad).all()):
@@ -593,7 +613,7 @@ def optimize(args, accepted_stage_callback=None):
                     require_nested_fine_margin(accepted_fine,reference_corners,args.minimum_jacobian,"accepted anchor/fallback")
                 accepted_full_loss = float(evidence(accepted_fine)[0])
                 stages.append(dict(cycle=cycle, level=level, direction=direction,
-                                   control_side=control_side,image_side=stage_resolution,physical_lr=physical_lr,anchor_total=anchor_loss,
+                                   control_side=control_side,image_side=stage_resolution,inner_steps=stage_inner_steps,physical_lr=physical_lr,anchor_total=anchor_loss,
                                    accepted_total=best_loss,accepted_full_total=accepted_full_loss,**best_diagnostics,**acceptance_details))
                 if accepted_full_loss < full_best_loss:
                     full_best_map = accepted_fine.detach().clone()
@@ -624,7 +644,9 @@ def optimize(args, accepted_stage_callback=None):
     nested_prior_bytes=sum(item.nested_priors.resident_bytes for item in coarse_evidence.values())
     report = dict(configuration={**{k: str(v) if isinstance(v, Path) else v for k,v in vars(args).items()},
                                  "f2_floor_safety_fraction":f2_floor_safety_fraction,
-                                 "joint_prior_backend":joint_prior_backend},
+                                 "joint_prior_backend":joint_prior_backend,
+                                 "match_p1_sampling":match_p1_sampling,
+                                 "inner_steps_by_level":inner_steps_by_level},
                   representation=evidence.interpolation+" residual then frozen positive affine; exact declared interpretation",
                   initial=initial_record, final=dict(total=float(final), **{k: float(v) for k,v in parts.items()}),
                   control_vertices=args.grid_side**2, cells=(args.grid_side-1)**2,
@@ -646,9 +668,11 @@ def optimize(args, accepted_stage_callback=None):
                   f2_floor_safety_fraction=f2_floor_safety_fraction,
                   mind_order=mind_order if args.loss=="mind" else None,
                   image_levels=image_levels,
+                  inner_steps_by_level=inner_steps_by_level,
                   continuation_scope=continuation_scope,
                   output_selection=output_selection,selected_stage=full_best_stage if output_selection=="best_full" else len(stages)-1,
                   image_match_evidence=match_metadata,
+                  match_p1_sampling=match_p1_sampling,
                   image_preprocessing=preprocessing_metadata,
                   p1_sampling=p1_sampling,
                   geometry_backend=geometry_backend,
@@ -723,8 +747,12 @@ def main():
                    help="Select accepted output using full-resolution complete objective only, never landmarks")
     p.add_argument("--matches",type=Path,help="frozen image-only raw matcher JSON in the identical affine frame")
     p.add_argument("--match-weight",type=float,default=0.)
+    p.add_argument("--match-p1-sampling",choices=("existing","frozen"),default="existing",
+                   help="optional immutable P1 machine-point query cache; fixed control hierarchy only")
     p.add_argument("--match-robust-scale",type=float,default=8.,help="pseudohuber error scale in full moving-canvas pixels")
     p.add_argument("--inner-steps", type=int, default=5)
+    p.add_argument("--inner-steps-by-level",type=int,nargs="+",
+                   help="optional positive inner counts matching --levels; overrides the uniform --inner-steps budget")
     p.add_argument("--cycles", type=int, default=2)
     p.add_argument("--learning-rate", type=float, default=.004)
     p.add_argument("--lr-calibration", choices=("physical", "edge"), default="physical")

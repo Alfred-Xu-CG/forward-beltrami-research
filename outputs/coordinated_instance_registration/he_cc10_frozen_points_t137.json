@@ -1,0 +1,1228 @@
+{
+  "status": "complete",
+  "question": "Does freezing only existing immutable point-query P1 geometry reduce dispatch cost without changing energy or map/affine VJPs?",
+  "source_anchor": "results/lung_all20_fixedrecipe_t123/he_to_cc10_analytic.npz",
+  "source_matches": "results/lung_all20_fixedrecipe_t123/he_to_cc10_raw_matches.json",
+  "match_metadata": {
+    "path": "results/lung_all20_fixedrecipe_t123/he_to_cc10_raw_matches.json",
+    "raw_matches": 203,
+    "eligible_matches": 203,
+    "static_original_moving_domain_excluded": 0,
+    "confidence_denominator": 105.94496819376945,
+    "robust_scale_canvas_px": 8.0,
+    "target_frame": "affine-aligned moving; loss uses image_side*A(mapped(q)-p)",
+    "path_check": "raster basenames plus side and sampling-affine values; relocated paths allowed, not content identity proof",
+    "sampling_affine_storage_dtype": "float32",
+    "mask": "fixed target coordinate inside original moving rectangle; no adaptive query dropping"
+  },
+  "preparation": {
+    "prepared": true,
+    "backend": "frozen_p1",
+    "rows": 257,
+    "columns": 257,
+    "diagonal": "ac",
+    "queries": 203,
+    "resident_bytes": 9744,
+    "scope": "immutable source query IDs/weights only; no mapped-vertex, affine, or energy cache; no query gradients"
+  },
+  "preparation_seconds": 0.04251126945018768,
+  "loading_seconds": 0.022417861968278885,
+  "torch_version": "2.5.1+cu124",
+  "device": "cuda:0",
+  "threads": 2,
+  "cuda_device_name": "NVIDIA RTX A6000",
+  "geometry_shape": [
+    1,
+    257,
+    257,
+    2
+  ],
+  "interpolation": "p1_ac",
+  "images_annotations_matcher_read": false,
+  "inductor_used": false,
+  "timing_scope": "Input clones/CPU copies/checks excluded; synchronized grad-enabled F and full vertex+affine VJP separately. One first pair plus three warmup pairs excluded from ten alternating timed-pair medians. Preparation includes only evaluator construction, not deepcopy or match loading.",
+  "numerical_scope": "Same mathematical P1 evaluation, differently grouped rounded arithmetic; not a bitwise equality contract. All outputs and full vertex/affine gradients checked on every pair.",
+  "samples": [
+    {
+      "forward_seconds": 0.08343148604035378,
+      "vjp_seconds": 0.025566495954990387,
+      "forward_plus_vjp_seconds": 0.10899798199534416,
+      "cuda_baseline_allocated_bytes": 2144256,
+      "cuda_peak_allocated_bytes": 22076928,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "first_observed",
+      "repeat": 0,
+      "order": [
+        "existing",
+        "frozen"
+      ],
+      "position": 0,
+      "backend": "existing"
+    },
+    {
+      "forward_seconds": 0.06027734652161598,
+      "vjp_seconds": 0.0012781955301761627,
+      "forward_plus_vjp_seconds": 0.061555542051792145,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 21012992,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "first_observed",
+      "repeat": 0,
+      "order": [
+        "existing",
+        "frozen"
+      ],
+      "position": 1,
+      "backend": "frozen"
+    },
+    {
+      "forward_seconds": 0.0008873641490936279,
+      "vjp_seconds": 0.0021310187876224518,
+      "forward_plus_vjp_seconds": 0.0030183829367160797,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 22076928,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "warmup",
+      "repeat": 0,
+      "order": [
+        "existing",
+        "frozen"
+      ],
+      "position": 0,
+      "backend": "existing"
+    },
+    {
+      "forward_seconds": 0.00039455294609069824,
+      "vjp_seconds": 0.0013653859496116638,
+      "forward_plus_vjp_seconds": 0.001759938895702362,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 21012992,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "warmup",
+      "repeat": 0,
+      "order": [
+        "existing",
+        "frozen"
+      ],
+      "position": 1,
+      "backend": "frozen"
+    },
+    {
+      "forward_seconds": 0.0004524737596511841,
+      "vjp_seconds": 0.0010106824338436127,
+      "forward_plus_vjp_seconds": 0.0014631561934947968,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 21012992,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "warmup",
+      "repeat": 1,
+      "order": [
+        "frozen",
+        "existing"
+      ],
+      "position": 0,
+      "backend": "frozen"
+    },
+    {
+      "forward_seconds": 0.0008530616760253906,
+      "vjp_seconds": 0.0013828538358211517,
+      "forward_plus_vjp_seconds": 0.0022359155118465424,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 22076928,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "warmup",
+      "repeat": 1,
+      "order": [
+        "frozen",
+        "existing"
+      ],
+      "position": 1,
+      "backend": "existing"
+    },
+    {
+      "forward_seconds": 0.0008423700928688049,
+      "vjp_seconds": 0.0015352405607700348,
+      "forward_plus_vjp_seconds": 0.0023776106536388397,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 22076928,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "warmup",
+      "repeat": 2,
+      "order": [
+        "existing",
+        "frozen"
+      ],
+      "position": 0,
+      "backend": "existing"
+    },
+    {
+      "forward_seconds": 0.0004041828215122223,
+      "vjp_seconds": 0.0010119080543518066,
+      "forward_plus_vjp_seconds": 0.001416090875864029,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 21012992,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "warmup",
+      "repeat": 2,
+      "order": [
+        "existing",
+        "frozen"
+      ],
+      "position": 1,
+      "backend": "frozen"
+    },
+    {
+      "forward_seconds": 0.0008038543164730072,
+      "vjp_seconds": 0.0017001703381538391,
+      "forward_plus_vjp_seconds": 0.0025040246546268463,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 22076928,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 0,
+      "order": [
+        "existing",
+        "frozen"
+      ],
+      "position": 0,
+      "backend": "existing"
+    },
+    {
+      "forward_seconds": 0.00039748847484588623,
+      "vjp_seconds": 0.0009591765701770782,
+      "forward_plus_vjp_seconds": 0.0013566650450229645,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 21012992,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 0,
+      "order": [
+        "existing",
+        "frozen"
+      ],
+      "position": 1,
+      "backend": "frozen"
+    },
+    {
+      "forward_seconds": 0.00041819363832473755,
+      "vjp_seconds": 0.0010138079524040222,
+      "forward_plus_vjp_seconds": 0.0014320015907287598,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 21012992,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 1,
+      "order": [
+        "frozen",
+        "existing"
+      ],
+      "position": 0,
+      "backend": "frozen"
+    },
+    {
+      "forward_seconds": 0.0008370839059352875,
+      "vjp_seconds": 0.0015150904655456543,
+      "forward_plus_vjp_seconds": 0.0023521743714809418,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 22076928,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 1,
+      "order": [
+        "frozen",
+        "existing"
+      ],
+      "position": 1,
+      "backend": "existing"
+    },
+    {
+      "forward_seconds": 0.0008462406694889069,
+      "vjp_seconds": 0.001901429146528244,
+      "forward_plus_vjp_seconds": 0.002747669816017151,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 22076928,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 2,
+      "order": [
+        "existing",
+        "frozen"
+      ],
+      "position": 0,
+      "backend": "existing"
+    },
+    {
+      "forward_seconds": 0.00041825324296951294,
+      "vjp_seconds": 0.001041259616613388,
+      "forward_plus_vjp_seconds": 0.001459512859582901,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 21012992,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 2,
+      "order": [
+        "existing",
+        "frozen"
+      ],
+      "position": 1,
+      "backend": "frozen"
+    },
+    {
+      "forward_seconds": 0.00041771307587623596,
+      "vjp_seconds": 0.000970054417848587,
+      "forward_plus_vjp_seconds": 0.001387767493724823,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 21012992,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 3,
+      "order": [
+        "frozen",
+        "existing"
+      ],
+      "position": 0,
+      "backend": "frozen"
+    },
+    {
+      "forward_seconds": 0.0008540526032447815,
+      "vjp_seconds": 0.0018008537590503693,
+      "forward_plus_vjp_seconds": 0.0026549063622951508,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 22076928,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 3,
+      "order": [
+        "frozen",
+        "existing"
+      ],
+      "position": 1,
+      "backend": "existing"
+    },
+    {
+      "forward_seconds": 0.0008464939892292023,
+      "vjp_seconds": 0.0016180574893951416,
+      "forward_plus_vjp_seconds": 0.002464551478624344,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 22076928,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 4,
+      "order": [
+        "existing",
+        "frozen"
+      ],
+      "position": 0,
+      "backend": "existing"
+    },
+    {
+      "forward_seconds": 0.0003847479820251465,
+      "vjp_seconds": 0.001027274876832962,
+      "forward_plus_vjp_seconds": 0.0014120228588581085,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 21012992,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 4,
+      "order": [
+        "existing",
+        "frozen"
+      ],
+      "position": 1,
+      "backend": "frozen"
+    },
+    {
+      "forward_seconds": 0.0003794915974140167,
+      "vjp_seconds": 0.0011097155511379242,
+      "forward_plus_vjp_seconds": 0.001489207148551941,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 21012992,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 5,
+      "order": [
+        "frozen",
+        "existing"
+      ],
+      "position": 0,
+      "backend": "frozen"
+    },
+    {
+      "forward_seconds": 0.0008087232708930969,
+      "vjp_seconds": 0.001442592591047287,
+      "forward_plus_vjp_seconds": 0.002251315861940384,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 22076928,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 5,
+      "order": [
+        "frozen",
+        "existing"
+      ],
+      "position": 1,
+      "backend": "existing"
+    },
+    {
+      "forward_seconds": 0.0008285865187644958,
+      "vjp_seconds": 0.0015590563416481018,
+      "forward_plus_vjp_seconds": 0.0023876428604125977,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 22076928,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 6,
+      "order": [
+        "existing",
+        "frozen"
+      ],
+      "position": 0,
+      "backend": "existing"
+    },
+    {
+      "forward_seconds": 0.0003752000629901886,
+      "vjp_seconds": 0.0009631738066673279,
+      "forward_plus_vjp_seconds": 0.0013383738696575165,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 21012992,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 6,
+      "order": [
+        "existing",
+        "frozen"
+      ],
+      "position": 1,
+      "backend": "frozen"
+    },
+    {
+      "forward_seconds": 0.0004126615822315216,
+      "vjp_seconds": 0.0010329559445381165,
+      "forward_plus_vjp_seconds": 0.001445617526769638,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 21012992,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 7,
+      "order": [
+        "frozen",
+        "existing"
+      ],
+      "position": 0,
+      "backend": "frozen"
+    },
+    {
+      "forward_seconds": 0.0008193254470825195,
+      "vjp_seconds": 0.0014551430940628052,
+      "forward_plus_vjp_seconds": 0.0022744685411453247,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 22076928,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 7,
+      "order": [
+        "frozen",
+        "existing"
+      ],
+      "position": 1,
+      "backend": "existing"
+    },
+    {
+      "forward_seconds": 0.0008318386971950531,
+      "vjp_seconds": 0.0015213899314403534,
+      "forward_plus_vjp_seconds": 0.0023532286286354065,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 22076928,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 8,
+      "order": [
+        "existing",
+        "frozen"
+      ],
+      "position": 0,
+      "backend": "existing"
+    },
+    {
+      "forward_seconds": 0.0004181377589702606,
+      "vjp_seconds": 0.0010923594236373901,
+      "forward_plus_vjp_seconds": 0.0015104971826076508,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 21012992,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 8,
+      "order": [
+        "existing",
+        "frozen"
+      ],
+      "position": 1,
+      "backend": "frozen"
+    },
+    {
+      "forward_seconds": 0.0004086308181285858,
+      "vjp_seconds": 0.0009876415133476257,
+      "forward_plus_vjp_seconds": 0.0013962723314762115,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 21012992,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 9,
+      "order": [
+        "frozen",
+        "existing"
+      ],
+      "position": 0,
+      "backend": "frozen"
+    },
+    {
+      "forward_seconds": 0.0008320659399032593,
+      "vjp_seconds": 0.0015697740018367767,
+      "forward_plus_vjp_seconds": 0.002401839941740036,
+      "cuda_baseline_allocated_bytes": 19183616,
+      "cuda_peak_allocated_bytes": 22076928,
+      "device": "cuda:0",
+      "geometry_shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "point_count": 203,
+      "phase": "timed",
+      "repeat": 9,
+      "order": [
+        "frozen",
+        "existing"
+      ],
+      "position": 1,
+      "backend": "existing"
+    }
+  ],
+  "comparisons": [
+    {
+      "value": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": []
+      },
+      "full_vertex_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          1,
+          257,
+          257,
+          2
+        ]
+      },
+      "affine_matrix_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "passed": true,
+      "tolerances": {
+        "rtol": 1e-09,
+        "atol": 1e-10
+      },
+      "existing_value": 0.11512439445651973,
+      "frozen_value": 0.11512439445651973,
+      "phase": "first_observed",
+      "repeat": 0
+    },
+    {
+      "value": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": []
+      },
+      "full_vertex_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          1,
+          257,
+          257,
+          2
+        ]
+      },
+      "affine_matrix_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "passed": true,
+      "tolerances": {
+        "rtol": 1e-09,
+        "atol": 1e-10
+      },
+      "existing_value": 0.11512439445651973,
+      "frozen_value": 0.11512439445651973,
+      "phase": "warmup",
+      "repeat": 0
+    },
+    {
+      "value": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": []
+      },
+      "full_vertex_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          1,
+          257,
+          257,
+          2
+        ]
+      },
+      "affine_matrix_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "passed": true,
+      "tolerances": {
+        "rtol": 1e-09,
+        "atol": 1e-10
+      },
+      "existing_value": 0.11512439445651973,
+      "frozen_value": 0.11512439445651973,
+      "phase": "warmup",
+      "repeat": 1
+    },
+    {
+      "value": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": []
+      },
+      "full_vertex_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          1,
+          257,
+          257,
+          2
+        ]
+      },
+      "affine_matrix_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "passed": true,
+      "tolerances": {
+        "rtol": 1e-09,
+        "atol": 1e-10
+      },
+      "existing_value": 0.11512439445651973,
+      "frozen_value": 0.11512439445651973,
+      "phase": "warmup",
+      "repeat": 2
+    },
+    {
+      "value": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": []
+      },
+      "full_vertex_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          1,
+          257,
+          257,
+          2
+        ]
+      },
+      "affine_matrix_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "passed": true,
+      "tolerances": {
+        "rtol": 1e-09,
+        "atol": 1e-10
+      },
+      "existing_value": 0.11512439445651973,
+      "frozen_value": 0.11512439445651973,
+      "phase": "timed",
+      "repeat": 0
+    },
+    {
+      "value": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": []
+      },
+      "full_vertex_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          1,
+          257,
+          257,
+          2
+        ]
+      },
+      "affine_matrix_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "passed": true,
+      "tolerances": {
+        "rtol": 1e-09,
+        "atol": 1e-10
+      },
+      "existing_value": 0.11512439445651973,
+      "frozen_value": 0.11512439445651973,
+      "phase": "timed",
+      "repeat": 1
+    },
+    {
+      "value": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": []
+      },
+      "full_vertex_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          1,
+          257,
+          257,
+          2
+        ]
+      },
+      "affine_matrix_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "passed": true,
+      "tolerances": {
+        "rtol": 1e-09,
+        "atol": 1e-10
+      },
+      "existing_value": 0.11512439445651973,
+      "frozen_value": 0.11512439445651973,
+      "phase": "timed",
+      "repeat": 2
+    },
+    {
+      "value": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": []
+      },
+      "full_vertex_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          1,
+          257,
+          257,
+          2
+        ]
+      },
+      "affine_matrix_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "passed": true,
+      "tolerances": {
+        "rtol": 1e-09,
+        "atol": 1e-10
+      },
+      "existing_value": 0.11512439445651973,
+      "frozen_value": 0.11512439445651973,
+      "phase": "timed",
+      "repeat": 3
+    },
+    {
+      "value": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": []
+      },
+      "full_vertex_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          1,
+          257,
+          257,
+          2
+        ]
+      },
+      "affine_matrix_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "passed": true,
+      "tolerances": {
+        "rtol": 1e-09,
+        "atol": 1e-10
+      },
+      "existing_value": 0.11512439445651973,
+      "frozen_value": 0.11512439445651973,
+      "phase": "timed",
+      "repeat": 4
+    },
+    {
+      "value": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": []
+      },
+      "full_vertex_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          1,
+          257,
+          257,
+          2
+        ]
+      },
+      "affine_matrix_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "passed": true,
+      "tolerances": {
+        "rtol": 1e-09,
+        "atol": 1e-10
+      },
+      "existing_value": 0.11512439445651973,
+      "frozen_value": 0.11512439445651973,
+      "phase": "timed",
+      "repeat": 5
+    },
+    {
+      "value": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": []
+      },
+      "full_vertex_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          1,
+          257,
+          257,
+          2
+        ]
+      },
+      "affine_matrix_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "passed": true,
+      "tolerances": {
+        "rtol": 1e-09,
+        "atol": 1e-10
+      },
+      "existing_value": 0.11512439445651973,
+      "frozen_value": 0.11512439445651973,
+      "phase": "timed",
+      "repeat": 6
+    },
+    {
+      "value": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": []
+      },
+      "full_vertex_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          1,
+          257,
+          257,
+          2
+        ]
+      },
+      "affine_matrix_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "passed": true,
+      "tolerances": {
+        "rtol": 1e-09,
+        "atol": 1e-10
+      },
+      "existing_value": 0.11512439445651973,
+      "frozen_value": 0.11512439445651973,
+      "phase": "timed",
+      "repeat": 7
+    },
+    {
+      "value": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": []
+      },
+      "full_vertex_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          1,
+          257,
+          257,
+          2
+        ]
+      },
+      "affine_matrix_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "passed": true,
+      "tolerances": {
+        "rtol": 1e-09,
+        "atol": 1e-10
+      },
+      "existing_value": 0.11512439445651973,
+      "frozen_value": 0.11512439445651973,
+      "phase": "timed",
+      "repeat": 8
+    },
+    {
+      "value": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": []
+      },
+      "full_vertex_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          1,
+          257,
+          257,
+          2
+        ]
+      },
+      "affine_matrix_gradient": {
+        "passed": true,
+        "max_abs": 0.0,
+        "rms": 0.0,
+        "shape": [
+          2,
+          2
+        ]
+      },
+      "passed": true,
+      "tolerances": {
+        "rtol": 1e-09,
+        "atol": 1e-10
+      },
+      "existing_value": 0.11512439445651973,
+      "frozen_value": 0.11512439445651973,
+      "phase": "timed",
+      "repeat": 9
+    }
+  ],
+  "warm_medians": {
+    "existing": {
+      "forward_seconds": 0.0008319523185491562,
+      "vjp_seconds": 0.0015644151717424393,
+      "forward_plus_vjp_seconds": 0.002394741401076317
+    },
+    "frozen": {
+      "forward_seconds": 0.0004106462001800537,
+      "vjp_seconds": 0.0010205414146184921,
+      "forward_plus_vjp_seconds": 0.0014220122247934341
+    }
+  },
+  "existing_over_frozen": {
+    "forward_seconds": 2.0259588867116625,
+    "vjp_seconds": 1.5329266890430535,
+    "forward_plus_vjp_seconds": 1.6840512052729957
+  }
+}

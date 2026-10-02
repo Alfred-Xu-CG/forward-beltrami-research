@@ -32,17 +32,49 @@ class ImageCorrespondences(torch.nn.Module):
         self.register_buffer("target",target.detach().clone()[None])
         self.register_buffer("weights",(confidence/confidence.sum()).detach().clone())
         self.pixel_scale,self.robust_scale=float(pixel_scale),float(robust_scale)
+        self.fixed_p1_evaluator=None
+
+    def prepare_fixed_p1_sampling(self,rows,columns,diagonal="ac"):
+        """Cache only immutable source-query IDs/weights for one declared grid.
+
+        Queries are the detached registered ``source`` buffer, not learnable
+        coordinates. Do not mutate them after preparation; explicitly prepare
+        again after changing source queries or grid/diagonal. Mapped vertices,
+        the affine matrix, and the robust loss are never cached. Module.to
+        moves/casts the evaluator buffers too; casting weights is not query
+        recomputation. Rounded values need not be bitwise equal to the old
+        two-triangle evaluator. The ordinary path stays default until called.
+        """
+        from .coordinated_fixed_sampling import FrozenP1Evaluator
+        self.fixed_p1_evaluator=FrozenP1Evaluator(rows,columns,self.source,diagonal)
+        return self.fixed_p1_sampling_report()
+
+    def fixed_p1_sampling_report(self):
+        evaluator=self.fixed_p1_evaluator
+        if evaluator is None:
+            return dict(prepared=False,backend="existing")
+        return dict(prepared=True,backend="frozen_p1",rows=evaluator.rows,columns=evaluator.columns,
+            diagonal=evaluator.diagonal,queries=self.source.shape[1],
+            resident_bytes=sum(buffer.numel()*buffer.element_size() for buffer in evaluator.buffers()),
+            scope="immutable source query IDs/weights only; no mapped-vertex, affine, or energy cache; no query gradients")
 
     def forward(self,vertices,matrix,interpolation="q1"):
         if vertices.ndim!=4 or vertices.shape[-1]!=2 or min(vertices.shape[1:3])<2 or vertices.shape[0]!=1:
             raise ValueError("point evidence currently declares a single image pair")
         if matrix.shape!=(2,2) or vertices.dtype!=self.source.dtype or vertices.device!=self.source.device or matrix.dtype!=vertices.dtype or matrix.device!=vertices.device:
             raise ValueError("matching geometry/affine/point dtype and device required")
+        if self.fixed_p1_evaluator is not None:
+            evaluator=self.fixed_p1_evaluator
+            if tuple(vertices.shape[1:3])!=(evaluator.rows,evaluator.columns) or interpolation!="p1_"+evaluator.diagonal:
+                raise ValueError("prepared point sampler grid/diagonal differs; explicitly prepare the requested fixed P1 grid")
         if interpolation=="q1":
             mapped=F.grid_sample(vertices.permute(0,3,1,2),2*self.source[:,:,None]-1,
                 mode="bilinear",padding_mode="border",align_corners=True)[:,:,:,0].permute(0,2,1)
         elif interpolation in ("p1_ac","p1_bd"):
-            mapped=p1_map_at_queries(vertices,self.source,interpolation[-2:],validate_queries=False)
+            if self.fixed_p1_evaluator is None:
+                mapped=p1_map_at_queries(vertices,self.source,interpolation[-2:],validate_queries=False)
+            else:
+                mapped=self.fixed_p1_evaluator(vertices)
         else:
             raise ValueError("declare q1, p1_ac or p1_bd point interpolation")
         error=(mapped-self.target)@matrix.T*(self.pixel_scale/self.robust_scale)

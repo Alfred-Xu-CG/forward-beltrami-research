@@ -2352,3 +2352,155 @@ Independent literal CSV/frame/P1 interpolation of all20x80 IDs reproduces the
 safe-map and affine scores within2.51e-13 pixels. Archived A/DHR score dictionaries
 are unchanged. This checks numerical evaluation consistency, not historical
 blindness, registration correctness at unlabelled tissue, or SOTA.
+
+## 41. Frozen machine-point evaluation: sparse interpolation, not a frozen map
+
+Each machine correspondence has a FIXED source coordinate q_j, an affine-aligned
+moving target p_j and an unchanged confidence c_j. No quantity in this subsection
+is a human evaluation landmark. For the fixed source P1 triangulation, locate
+q_j once and let its triangle vertex indices be i_j1,i_j2,i_j3 with barycentric
+weights w_j1,w_j2,w_j3. These weights sum to1 and depend on q_j/source grid,
+NOT on the current deformed vertex table Y. Hence
+
+    m_j(Y)=sum_(k=1)^3 w_jk Y_(i_jk).
+
+The sparse linear interpolation operator can be called P, so m=PY. There are
+only three nonzero interpolation weights per point. We store vertex indices
+and weights, not a dense P matrix. Its derivative is exactly the same linear
+operator; for cotangent g at the evaluated points the vertex VJP is P^T g,
+implemented by weighted accumulation at the selected vertex indices.
+
+Let S=512 be the full moving-canvas side, kappa=8 its robust scale in pixels,
+and A the unchanged2x2 positive affine matrix. Define r_j=(S/kappa) A(m_j-p_j),
+and normalized eligible confidence beta_j=c_j/sum_l c_l. The unchanged loss is
+
+    E_match(Y,A)=sum_j beta_j (sqrt(1+||r_j||²)-1).
+
+The implementation's cancellation-resistant penalty ||r||²/(sqrt(1+||r||²)+1)
+is algebraically the same expression. A vertex cotangent is the weighted
+scatter of beta_j*(S/kappa)*A^T r_j/sqrt(1+||r_j||²). The affine derivative
+also remains connected. Targets, confidence, pixel units, static original-domain
+eligibility and robust scale do NOT change. No deformed point location, energy,
+gradient, map value or optimization history is cached.
+
+The optional prepared sampler rejects a different control-grid shape, diagonal
+or Q1 declaration; explicitly prepare again before such a change. Source buffers
+are contractually immutable after preparation. This application enables the
+cache only for fixed P1 controls with positive explicit match evidence, not the
+changing nested-control route. Module.to may cast existing weights, which is
+ordinary rounded conversion rather than recomputing query geometry at the new
+precision. Source-coordinate gradients are intentionally unsupported because
+the correspondence data are frozen.
+
+Isolated actual-GPU benchmark input: the existing HE-to-CC10 float64257² map,
+its original positive affine and203 raw-confidence points. Output: the original
+scalar match loss and its FULL vertex/affine-matrix VJPs, not a new registration
+or encoder. One first pair and three warmup pairs precede ten alternating timed
+pairs. Input clones, output CPU copies and comparisons are excluded; separate
+setup and loading costs remain recorded. The match outer weight .1 is not
+applied in this isolated operator benchmark.
+
+|Isolated operator|Existing point location|Frozen point indices/weights|
+|---|---:|---:|
+|Median gradient-enabled forward (ms)|.831952|.410646|
+|Median full vertex and affine VJP (ms)|1.564415|1.020541|
+|Median paired forward+VJP (ms)|2.394741|1.422012|
+
+Setup costs .042511s and stores9744 bytes for203 points. All14 value/full-vertex/
+affine-gradient comparisons are equal for this specific dyadic case; nonsquare
+and edge fixtures allow normal rounding differences. The measured1.684x
+operator ratio is NOT an application-speed claim. Optional application dispatch
+preserves the historical existing sampler by default and shares ONE prepared
+point object across all image resolutions; complete-call benefit is still to be
+measured. This is standard P1 evaluation reuse, not a new geometry theorem.
+
+## 42. One fixed-budget fine-stage allocation experiment
+
+The optimization variable remains each stage's interior scalar coefficient
+table. The same safe decoder and exact fine-grid constraints produce the trial
+map; this section changes only the integer number of Adam updates per stage.
+Coefficient sides are17,33,65,129,257 and image sides32,64,128,256,512.
+
+For each level l there are two sequential x/y directional stages, each with
+n_l gradients and n_l+1 trial evaluations. There is one cycle and a fresh fixed
+accepted anchor per stage. Uniform n=(30,30,30,30,30) is compared against the
+single predeclared allocation n=(30,20,20,30,50). Both satisfy
+
+    gradients=2*sum_l n_l=300,
+    stages=2*5=10,
+    trials=2*sum_l(n_l+1)=310,
+    complete-objective calls=trials+2*stages+2=332.
+
+The last term counts initial/final plus the anchor/accepted evaluation of each
+stage. Equal counts do not mean equal wall time: fine-resolution image/VJP
+calls cost more. Physical learning rates, initialization, evidence, weights,
+fixed257² output, extra eta floor and actual export checks remain identical.
+
+The diagnosis motivating the test uses objective traces, not annotations:
+16/20 directions never use scale<1; only257/6200 trials across four directions
+are capped. All40 final fine stages still lower the full objective in their
+last five trials, and all20 full-objective-selected maps are terminal stage9.
+Thus a cohort-wide topological stall is not established. This does NOT prove
+more fine iterations will improve anatomy or exclude other optimization issues.
+
+Both allocation arms will be recomputed for all20 directions under the SAME
+compiled-prior backend; cold costs and execution order are recorded. No human
+landmark selects allocation, step count or stopping. Scoring occurs after both
+complete prediction cohorts, with the same80-ID denominator. A lower objective
+without improved TRE/tails is a negative accuracy result, not a successful
+registration advance. No nearby allocation sweep or convergence theorem is
+implied. The optional per-level budget defaults to the historical uniform
+inner_steps setting; explicit uniform fixtures reproduce its map/objective.
+
+### 42.1 Actual allocation result: proxy improves, anatomy does not
+
+Both20-direction arms complete300 gradients,310 trials and332 objective calls
+without failures. Independent reading of all40 maps verifies10,485,760 strict
+four-corner constraints, exact fixed boundaries, common positive affines and
+P1-ac interpolation. Literal scoring of every80-ID set agrees within2.54e-13
+pixels. F2/DHR archive metrics stay unchanged.
+
+|Allocation|Mean direction mean TRE (px)|Mean direction p90 TRE (px)|Median complete-call time (s)|
+|---|---:|---:|---:|
+|Uniform30/30/30/30/30|4.520228|9.555206|2.94133|
+|Redistributed30/20/20/30/50|4.527272|9.578047|2.94025|
+
+The redistributed full objective is LOWER in20/20 directions, with mean change
+-.0008730, yet mean TRE improves in only5/20 directions and p90 in11/20.
+This is a NEGATIVE anatomical result. Notable regressions: proSPC-to-HE mean
++ .07949px; HE-to-Ki67 p90+ .22767px. Ki67-to-HE mean improves by.06687px but
+its p90 worsens by.16335px. Uniform output is retained; no neighbouring
+allocation sweep follows. Lower objective alone does not validate registration.
+
+First uniform call costs7.5554s and includes process/compiler initialization;
+total mean times3.21456 versus2.94484s are therefore confounded. Excluding the
+first pair gives paired19 means2.98610 versus2.94535s; near-equal medians and
+no repeated allocation ABBA prevent a robust speed claim. Timing excludes
+historical matcher/F2/DHR execution but includes current validation/output.
+
+## 43. Actual complete-application frozen-point dispatch
+
+Both arms use the SAME compiled joint priors from section39. Only the
+machine-point evaluator changes, existing versus frozen indices/weights.
+Each cold-plus-three-ABBA attempt starts a fresh identity residual, uses the
+unchanged300-gradient HE-to-CC10 recipe and writes a separate P1-ac output.
+Preparation happens exactly once per frozen run, zero times per existing run,
+and its cost is INSIDE the synchronized complete-call clock.
+
+Warm complete-call medians are2.944472 versus2.695455s: an8.4571% reduction.
+Three ABBA ratios of mean times are1.09336,1.09127,1.08644, and every frozen
+warm call is faster than every existing warm call. Independent14-table reading
+checks3,670,016 strict corners, exact boundaries/affines and unchanged300/310/
+332/0 counts. Cross-map maximum1.61410e-8 is below within-backend repeat
+maximum1.78035e-8; full-objective differences4.68e-12 versus5.73e-12. Image
+terms match. These are negligible observed changes, not universal bit equality.
+Warm allocated peaks203853312 versus202764288bytes are whole-optimizer counters
+with the previously stated feature/compiler-host exclusions, not graph-only or
+RSS measurements.
+
+Observed cold times7.52208 versus2.69539s do NOT measure a cold point-cache
+advantage: the FIRST existing run performs initial prior compiler/runtime
+setup, which the subsequent frozen run can reuse. Both share research compiler
+caches, with no hidden warmup. Only warm ABBA supports point-dispatch speed.
+The earlier prior27.1% gain and this8.46% gain were separate experiments;
+their ratios are not a simultaneously measured combined all20 speedup.

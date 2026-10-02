@@ -1895,3 +1895,75 @@ Coldextra7.44067s predictssevenadditionalwarmcalls underconstantmedianmodel,
 NOTmeasuredcrossover. FORMULATION39.1 definesactualinput/output/clocks/caveats.
 Independent3pairF2 score review also complete:1,572,864cornersstricteta,
 80IDs eachliteralCSV/frame/P1matches<=2.27e-13px; difficultpairp90bothworsen.
+
+### T+13.6h corrected complete F2 cohort and next accuracy decision
+
+CorrectedF2all20 onGPU7 completes20/20,300gradients/zero failedtrials each;
+newonlyF2elapsed290.810s, meancompletecall14.5334s. OriginalA/DHR/rawarchive
+references retained, notrerun orretimed. Postprediction productionall20score:
+meanTRE A4.52022762/F2.95 4.55134379/DHR5.13359287canvaspx; meanofdirectionp90
+9.55520600/9.65783971/11.55283127. A beatsF2 mean14/20,p9012/20, butmeanadvantage
+.0311px tiny. Bothmethods improveall20means overaffine; CC10-to-CD31tailworse
+thanaffine. IndependentAstraactual20maps/5,242,880corners allstricteta,
+boundary/commonaffine/P1ac verified, completeCSV/P1scoresagree<=2.51e-13.
+Allarchivedoriginalmetrics unchanged, configsONLYnewoutput/.95floorreserve.
+Usecorrectedcohortforfairbaselineclaims; oldprimaryremainsavailable.
+
+Read-onlygeometrybuilder tracedALL20 analytic trials:257/6200cappedtrials
+concentratedHEK113/KH85/HEProSPC30/CD31Ki6729; other16entirelyscale1.
+197/200acceptedstageslowerfull512E; threeincreases areearlycoarse-image
+surrogatetransitions. All40finalfine x/y stagesstillstrictlydecreaseE inlast5
+trials; all20best_fullselectterminalstage9. Medianlate5gain .00027162,
+uncapped .00027623/capped .00021157, roughly7%oftotalfine-stagegain.
+Noevidenceofcohortwidegeometryblockade orhardfine-stall. Allfine stages
+initiallyovershoot afterfirstAdamstep, so doNOTassume arbitrarilylargerLRhelps.
+
+Research card — ONE same300-gradient allocation test:
+Question: does shiftingexistinggradientbudget towardstill-improvingfine
+stages improveactualregistration, ratherthanmerelyaddingiterations?
+Exactalgorithm: onecycle, two scalardirections perlevel17/33/65/129/257,
+innercounts [30,20,20,30,50] versusoriginal[30,30,30,30,30]. Bothsum150
+perdirection,300gradients/10stages/310trials/332E. Stageanchors, actualfixed257
+map, pyramid32/64/128/256/512, physicalrates, evidence/weights,strictfloor/
+checks unchanged. No new universality/convergenceclaim followsfromallocation.
+Assumptions: fullbudgetcompleted, no landmark-drivenallocate/earlystop;
+all20directionsretained. Smallestdiscriminatingtest: tinyunequalbudgetcounts
+anduniformdefaultmapregression, thenpairuniform/redistributed ALL20 maps in
+oneprocessusingSAMEcompiledpriorbackend; separatecoldcachecost/orderrecords.
+Falsifier: lowerproxywithoutbetteranatomy orworse tails; retainnegativecases,
+doNOTsweepnearbyallocations. RuntimeNOTequalbecausefineimageiterationscostmore.
+Priorwork: standardmultiresolutionregistration iterationallocation/subspace
+optimization; this ismainlineoptimizationdiagnosis, notnewmechanism/novelty.
+Earlier600-cycle/joint/regional/fiber/filter/quartermixed/negative results stay
+retired; doNOTreopen themundernewnames.
+
+### T+14h paired allocation NEGATIVE, frozen-point dispatch transfers
+
+Root optionalperlevelbudget/defaultregression+point/prior tests31PASS8.37s,
+pointapp/fullharness39PASS25.93s, finaldispatch/budget30PASS27.78s;
+allocationrunnerroot14PASS39.57s (author14PASS41.01s, independentAstraread).
+No actual GPU speed was inferred from capture/mock fixtures.
+IdleGPU6actual40allocationmaps complete, both300/310/332/0 percase; same
+compiledpriorbackend andonlyallocation/outputdifferent. Postpredictionall20
+scoring: uniformmean/p90 4.52022762/9.55520600; redistribution4.52727187/
+9.57804700, WORSE despiteLOWERfullE20/20 (meanEchange-.000873024).
+Meanwins5/20,p90wins11/20; worstmeanproSPC-to-HE+.07949/tailHEK+.22767.
+IndependentAstra40maps10,485,760strictcorners/exactboundary/affine/P1ac and
+40x80literalCSVscoreagreement<=2.54e-13. Uniformretained; retireallocation,
+noadjacentsweep. Firstuniformcold7.5554sconfoundsmeantime; medians2.94133/
+2.94025 essentiallysame, noallocation-speedclaim.
+
+GPU7actual14point-dispatchapplications withBOTHjointpriorsInductor:
+warm2.944472→2.695455s,8.4571%less, ABBA1.09336/1.09127/1.08644.
+RootpartialAPIs setupcountverified; independentAstraall14maps/counters/
+comparisonrecomputation passes (3,670,016strictcorners). Warmcrossmapmax
+1.61410e-8<within1.78035e-8, E4.68e-12<within5.73e-12,imagepartsidentical.
+Coldexisting7.52208includesfirstpriorruntimecompile, secondfrozen2.69539
+reusescaches; doNOTpresentaspointcold-speedgain. Prior27.1% andpoint8.46%
+are separateboundedtests, notmeasuredcombinedall20speed. FORMULATION43/42.1.
+
+Next scientificdecision escalatedtoactualAstrahigh: objective-anatomyalignment,
+notanotherglobalcap/iterationremedy. ConsiderONEphysicalbending-priorhypothesis
+onlyafterdiagnosis; no newCNN/matcher/nearbyparameterforest. Currentuseful
+instance result isreal32%meanimprovementoveraffine onknownspecimen, but
+strongF2anatomicalsuperiority/independentclinicalgeneralization NOTestablished.
