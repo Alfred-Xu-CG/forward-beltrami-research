@@ -2128,3 +2128,25 @@ initializer/regularizer tuning. Result changes transfer claim, not frozen recipe
 Smallest decisive test: three pairs, one prediction per method, then posthoc
 all-ID score and independent frame/geometry recomputation. Not three patients.
 Prior work: official MIIT Zenodo14931377 and author analysis notebook04.
+
+### T+15.1h first additional-specimen prediction: two initializer failures
+
+Root runner/scorer31tests7.16s; independent review30tests6.49s closes an actual
+missing P1 diagonal argument before production scoring. NativeCUDA peak fixture
+then added; scorer successful124point fixture covers both P1 arms and no doubleA.
+Only six native TIFF images (102MB), no manual coordinates, are uploaded to AI.
+Fresh idleGPU6 call21.8052s completes all three attempt records. Two pairs have
+image-only initializer failure:2->3 rawSG5matches,10->11 rawSG3matches, both below
+existing8point eligibility. All three methods skipped on those pairs, failures
+remain in denominator.7->8 completes300/310/332/0 for both safe arms, actual
+mincorner.369447/.205039, completecalls4.73055/12.42606s, allocated225289216/
+495478272B. NativeDHR.71344s/70539264B; timing is single-call, not pairedspeed.
+
+No real coordinate or individualID has yet been opened. Thus no anatomical
+conclusion is available. Frozen pipeline fails to cover all3cases because of
+INITIALIZATION, not an observed decoder/topology failure. Before scoring, bounded
+Astra decision asks whether one standard image-only four-right-angle search is
+appropriate; it would be a disclosed NEW initializer protocol, never silently
+overwrite the frozen failure or call it unchanged confirmation. No image-loss,
+regularizer, decoder, annotation-based selection or nearby matcher threshold
+sweep is opened. Actual saved inputs/outputs are fetched to D.

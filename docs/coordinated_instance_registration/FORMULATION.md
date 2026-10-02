@@ -2791,3 +2791,101 @@ registration-method novelty. Root pair-selector tests pass25tests in48.11s;
 the independent14-map/timing/counter review passes without production imports.
 Actual report: outputs/coordinated_instance_registration/
 he_ki67_frozen_points_application_t14.json, with all14saved map/report pairs.
+
+## 47. Frozen recipe on an additional known prostate specimen
+
+This experiment is per-instance registration, not neural training. Its inputs
+are two native RGB TIFF images and no manual annotation. The selected native
+moving-to-fixed section pairs are2-to3,7-to8,10-to11; the actual exported
+function always maps FIXED coordinates to MOVING coordinates for image pullback.
+These directions were chosen from stain/section metadata before reading the
+new experiment's landmark coordinates, not selected by TRE.
+
+The [publisher dataset](https://zenodo.org/records/14931377) gives nine serial
+sections with matching landmark labels. They belong to ONE previously used
+prostate sample. Earlier QC comparisons and synthetic texture experiments
+have used these sections. This is additional-specimen DEVELOPMENT transfer,
+not untouched validation, nine patients, clinical validation or a leaderboard.
+The three pairs span HE/HES, HES/MTS and IHC/HES stain differences.
+
+### 47.1 Declared native, canvas and mesh frames
+
+For each pair let original image dimensions be(W_f,H_f),(W_m,H_m), and S=512.
+Choose nominal native-pixel scale s0=S/max(W_f,H_f,W_m,H_m). Resize each image
+with PIL bilinear resampling to W'=round(s0 W),H'=round(s0 H), then white-pad
+to S-square with p=(floor((S-W')/2),floor((S-H')/2)). Save actual two-axis
+scale s=(W'/W,H'/H), not merely s0. Aspect is preserved up to integer rounding.
+Scanner spacing is unknown: this is a pixel-layout choice, not an assertion
+of equal physical spacing. Nominal micron metadata is explicitly null.
+
+Native CSV location x=(x_1,x_2) is DECLARED a zero-based pixel-center location.
+Its normalized canvas coordinate and inverse are
+
+    q=((x+(.5,.5)) componentwise_times s+p)/S,
+    x=(S q-p) componentwise_divided_by s-(.5,.5).
+
+MIIT's [Pointset implementation](https://raw.githubusercontent.com/mwess/miit/master/miit/spatial_data/base_types/pointset.py)
+documents x/y columns and scaling/padding operations, but does not establish
+the exact center/origin convention. The convention above is therefore an
+explicit experiment assumption, not a publisher-proved fact, and is fixed
+before scores. No micrometer or official challenge score is invented.
+
+The existing raw-image SuperPoint/SuperGlue plus RANSAC positive similarity
+estimator produces a frozen float32 A,b satisfying det(A)>0. All methods use
+these EXACT saved values. Additional image-derived raw correspondence data is
+extracted once and frozen for analytic/F2; it is not ground truth. Initializer
+and correspondence extraction never read manual point locations or another
+method's deformation. Per-pair model setup is measured, not hidden as warmup.
+
+### 47.2 Optimization output and evaluation
+
+Analytic and F2 start from identity residual Y=X and output the declared
+257-square P1-ac map F(q)=A f_Y(q)+b. Analytic uses the original five-level,
+alternating300-gradient recipe, stage-cache geometry and E1. F2 uses two
+five-level cycles for the same300gradients and floor safety fraction.95,
+with accepted gain1. Both retain original eager priors, existing machine-point
+dispatch, frozen raster query weights, original objective coefficients and
+best-full-E selection. No capture prefix, image-weight or schedule retuning.
+Native DHR uses the same A,b but its original native objective/preprocessing;
+its exported full field already includes A and is NOT transformed by A again.
+It is a separate application comparator, not an equal-objective ablation.
+
+All three rows and their pending method attempts are recorded before any image
+or model call. Failures are retained and later pairs continue. A successful
+map export and a completed matched gradient budget are separate reported
+properties. All predictions must reach terminal status before coordinates
+are read by the separate scorer; failed methods never receive affine fallback.
+
+After predictions, require124unique nonempty finite labels in each selected
+native CSV and identical label sets, not an intersection that silently drops
+difficult points. Evaluate F at q_fixed using generic P1 triangle-affine solves.
+For native DHR evaluate its full field at those fixed queries using its declared
+frame conversion. For each method and point k, report
+
+    e_canvas,k = S ||F(q_fixed,k)-q_moving,k||_2,
+    e_native,k = || inverse_moving_layout(F(q_fixed,k))-x_moving,k ||_2.
+
+The first unit is512canvas pixels; the second is original MOVING-image pixels.
+Because rounded resize scales differ by axis, a scalar division of e_canvas
+does not exactly recover e_native. Report each pair mean and NumPy linear
+90th-percentile error, then equal-pair mean of means and mean of pair-p90s.
+Only if all three pairs are scored is an all-three numerical aggregate given;
+failures remain explicit, with no patient-level statistical inference.
+
+Separate actual stored-map digital/boundary certificates, minimum corner ratios,
+budgets, complete/optimization/setup/export times and CUDA allocated peaks.
+Native field corner signs are diagnostics, not a global topology guarantee.
+Prediction/scoring tools: coordinated_miit_transfer.py and coordinated_miit_score.py.
+
+### 47.3 Pre-run checking
+
+The initial independent scorer review found a missing required P1 diagonal
+argument which would misreport successful maps as failures. It was corrected
+to explicit ac BEFORE any production scoring. Synthetic end-to-end tests now
+exercise all124labels, both P1 methods, nonzero affine offset and already-
+affine-transformed native output; they check no affine is applied twice.
+Lowercase CSV headers with optional dataframe index, duplicate/empty/NaN/
+out-of-domain labels, terminal prediction gating, frames and failed-denominator
+retention are covered. Root combined runner/scorer suite passes31tests in7.16s;
+independent earlier suite passes30tests in6.49s before the native CUDA timing
+fixture was added. No real landmark coordinates have entered these tests.
