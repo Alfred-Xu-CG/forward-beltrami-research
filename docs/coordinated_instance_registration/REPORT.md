@@ -8,6 +8,73 @@ The detailed derivations and experiment definitions are in FORMULATION.md;
 chronology and negative interventions are in PROGRESS.md. This report introduces
 the main objects without requiring knowledge of those earlier discussions.
 
+### Same-prefix timed optimizer: lower loss is not a registration breakthrough
+
+This experiment keeps the frozen512 SG+MA objective, affine, images, support,
+257-square P1 control grid and all point units. Compute one common240-gradient
+prefix through coefficient levels17/33/65/129. From its SAME saved last map,
+compare the final257x/y stages with two seconds peraxis: original analytic-latent
+Adam versus a physical scalar update using a stiffness-plus-data sensitivity
+matrix and PCG/Armijo. The detailed operator, gradient, stopping and feasibility
+rules are defined in DATA_AWARE_METRIC_FORMULATION. This compares optimizer
+packages, not just their matrices. Both retain the common best prefix as an
+own-objective candidate and select only by full512 loss, never by landmarks.
+
+| Development specimen | Original fusion300 mean / p90 | Timed Adam mean / p90 | Timed data metric mean / p90 |
+|---|---:|---:|---:|
+| MIIT /3 directions | 3.534718 /5.858170 | 3.544819 /5.872471 | 3.541050 /5.864543 |
+| Lung /20 directions | 4.471007 /9.342538 | 4.490432 /9.417400 | 4.479757 /9.363577 |
+| HistoReg /1 | .842064 /1.580138 | .828476 /1.591787 | .839882 /1.594773 |
+| Kidney /1 | 2.243606 /4.643549 | 2.225893 /5.170345 | 2.236778 /4.684280 |
+
+Units are512-equivalent moving-canvas pixels, with means/p90 first computed
+within each direction. The data metric improves MIIT/lung means versus timed
+Adam but worsens HistoReg/kidney means; versus the cheaper original300 recipe,
+its MIIT/lung means and allfour p90s worsen. Its pair mean/p90/max regressions
+are8/7/11 of25 versus timedAdam and18/18/16 versus original300. These are
+mixed small changes, not evidence for replacing the retained global recipe.
+
+Timed Adam lowers the unchanged full loss versus original300 on25/25pairs
+(mean change-.00170144). The metric does so on24/25 (mean-.00107103). Both
+reduce loss from their common suffix start, yet anatomical gains do not track
+these decreases. This strengthens the observed loss--anatomy mismatch without
+proving either optimizer converged, the loss has an incorrect global minimizer,
+or all other optimizers are ineffective. A new solver has not solved the problem.
+
+The common prefix costs3.703s perpair on average; the complete timed suffixes
+cost4.428s Adam and4.433s metric. Required prefix+suffix is therefore about8.13s,
+not4.43s, before historical matching/initialization costs. The old300 optimizer
+averaged4.566s in its archived run. New suffix peaks are153--155MB/158--159MB;
+the maximum RECORDED prefix/suffix peaks are176--181MB. Prefix/old300 counters
+reset after feature construction and omit earlier setup transients; these are
+not verified complete cold-pipeline memory peaks and must not be added together.
+
+All corrected50attempts finish in315.173s; all100axis stages reach their nominal
+time budget with recorded overruns. Adam uses192--332suffix gradients perpair;
+the metric95--130. Across25metric calls:2,865accepted steps,22,920descriptorVJPs,
+30,193PCGiterations and92backtracks. Of2,865linear solves,323hit the20-step cap
+and remain explicitly NONCONVERGED (maximum reported recursive residual.24839);
+finite descent and actual feasibility/decrease still govern their accepted steps.
+No solve-cap label is changed to convergence. This is instance optimization,
+not a trained neural encoder or a backward pass through the whole trajectory.
+
+Independent reconstruction checks all50exports,100axis endpoint floors, full
+objectives and4,148original-CSV errors. Maximum discrepancies are2.74e-8 in
+the full objective and1.14e-13canvas pixels. Minimum saved corner ratios are
+.00610996 Adam/.00985886 metric, both>.001. The first attempted batch is retained
+separately: two older optional-field omissions caused FOUR wrapper failures,
+not numerical divergences. Restoring the original `mind_order=transport`
+default was independently tested before the complete corrected rerun; no
+images, configurations, points, loss weights or labels were altered.
+
+Primary corrected outputs: `data_metric_all50_t26r`; failed first attempt:
+`data_metric_all50_t26`. Next: one deformation-conditioned refresh of the SAME
+MA model's observations, with a same-incumbent/same300-suffix frozen-table
+control. REFRESHED_MATCH_FORMULATION states its exact coordinate conversion,
+self-confirmation risk and cost before accuracy testing. A supporting native
+STANDARD DHR replay with the same frozen initializer separately tests the
+initialization confound; it is not relabelled as the unmodified released pipeline.
+
 ### Original-image terminal detail: tested, no mean-accuracy benefit
 
 With the SAME257-square control map, frozen affine, fused points and300gradient

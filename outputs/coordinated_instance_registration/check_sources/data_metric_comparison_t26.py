@@ -43,6 +43,8 @@ def build(directory):
             left,right=groups[a]['all_directions_canvas_pixels'],groups[b]['all_directions_canvas_pixels']
             deltas[name]=None if left is None or right is None else {k:left[k]-right[k] for k in left}
         cohorts[cohort]=dict(methods=groups,deltas=deltas)
+    prefix_reports={p['name']:read(directory/'common'/Path(p['prefix_report']).name)
+        for p in outer['prefixes'] if p['status']=='ok'}
     rows=[];costs={};objective=[]
     for i,(name,cohort) in enumerate(identities):
         metrics={}
@@ -58,7 +60,11 @@ def build(directory):
             suffix_counts=r.get('suffix_counts'),stages=r.get('stages')) for a,r in records.items()}))
     for a,manifest in manifests.items():
         records=manifest['rows'];peak=summary([r.get('peak_allocated_bytes') for r in records],25);peak['total']=None
+        recorded_peaks=[max(prefix_reports[r['name']]['peak_allocated_bytes'],r['peak_allocated_bytes'])
+            if a in ARMS and r['status']=='ok' and r['name'] in prefix_reports else None for r in records]
+        recorded_peak_summary=summary(recorded_peaks,25);recorded_peak_summary['total']=None
         costs[a]=dict(complete_suffix_calls=summary([r.get('complete_call_seconds') for r in records],25),peak_allocated_bytes=peak,
+            maximum_recorded_prefix_suffix_peak=recorded_peak_summary,
             suffix_gradient_steps=summary([r.get('suffix_gradient_steps') for r in records],25),
             stage_stops=dict(Counter(s['stop_reason'] for r in records for s in r.get('stages',[]) if 'stop_reason' in s)),
             per_pair=[dict(name=r['name'],status=r['status'],complete_call_seconds=r.get('complete_call_seconds'),
@@ -70,7 +76,7 @@ def build(directory):
         units='512 moving-canvas pixels',cohorts=cohorts,rows=rows,objectives=objective,costs=costs,
         equal_specimen_deltas=equal,current_batch_wall_seconds=outer.get('elapsed_seconds'),
         common_prefix_calls=summary([p.get('complete_call_seconds') for p in outer['prefixes']],25),
-        cost_scope='Each timed arm requires common240-gradient prefix PLUS its complete suffix call; prefix computed once perpair and shared experimentally. frozen300 includes its own prefix. Initializer and frozen matcher extraction remain additional historical costs. Peaks are not additive. Historical frozen300 is not synchronized speed control.',
+        cost_scope='Each timed arm requires common240-gradient prefix PLUS its complete suffix call; prefix computed once perpair and shared experimentally. frozen300 includes its own prefix. Initializer and frozen matcher extraction remain additional historical costs. Suffix peaks include suffix loading/features; old prefix/300 counters reset after Evidence construction and omit earlier setup transients. Maximum recorded peaks are not additive and not a verified complete cold-pipeline peak. Historical frozen300 is not synchronized speed control.',
         interpretation='Same saved prefix and same objective; distinct optimizer packages/acceptance mechanisms, not an isolated Hessian ablation. Timed early stops remain visible, not stationarity claims. Lower objective need not improve anatomy.',
         prediction_manifest=str(directory/'predictions.json'))
 

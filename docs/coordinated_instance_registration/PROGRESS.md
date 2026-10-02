@@ -7,7 +7,70 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### Actual refresh smoke and complete native shared-init run — 2026-10-02 12:51 UTC
+
+Native STANDARD with the supplied shared SG initializer completes all25 calls
+in190.551s, and the ordinary scorers retain all2,074 available labels. The
+same-init replay is not uniformly better than native initialization: mean/p90
+are MIIT3.712720/6.260251, lung6.240578/14.626331,
+Histo.712976/1.523942, kidney2.464310/5.245805 canvas pixels. The unchanged
+native own-init pipeline remains a separate baseline. Independent full-output
+checking is ongoing; local native-field corner failures are not repaired.
+
+The current-map refresh's actual first MIIT smoke passes both300-gradient
+suffixes from the identical saved257 P1 map. Frozen/refreshed new calls take
+4.732/4.244s, recorded allocated peaks211.25/213.20MB, and minimum saved corner
+ratios.337980/.310484. Their own-objective decreases are implementation evidence,
+not anatomy. All25 extraction attempts followed by50 suffix attempts are now
+running on freshly checked idle AI GPU5. Root's integrated44 focused tests pass.
+The first smoke launcher used the ordinary DHR environment, which lacks yacs,
+and failed before extraction. Reusing the existing isolated MatchAnything venv
+fixes the launch; no package/shared environment/port was changed. The empty failed
+smoke directory is retained. Actual successful smoke is `refreshed_match_smoke_t27r`.
+
+### Timed optimizer closed; one observation refresh and matched-init baseline — 2026-10-02 12:34 UTC
+
+Corrected `data_metric_all50_t26r` completes50/50in315.173s. Independent full
+objective/corner/CSV checking passes: E discrepancy2.74e-8, all4148landmark
+errors1.14e-13canvas pixels. Both timedarms reduce loss from the commonprefix;
+extraAdam improves original300loss25/25, metric24/25, but neither supplies a
+stable anatomical advance. Metric means/p90: MIIT3.541050/5.864543,
+lung4.479757/9.363577,Histo.839882/1.594773,kidney2.236778/4.684280.
+Retain original512fusion300globally. New suffix cost4.43s is ADDITIONAL to
+commonprefix3.70s; report recorded peak scopes rather than a false153MBwholepipeline.
+Independent review caught a comparison-summary sum of memory peaks; corrected
+that derived `total` to null, preserving all measurements.
+
+One different observation hypothesis is approved in REFRESHED_MATCH_FORMULATION:
+render original moving gray once through savedincumbentF0=A f0+b, run the SAME
+MA, convert its warped-image coordinate s to originalaligned target p=f0(s),
+and replace only MA at its unchanged.1weight. Botharms start the identical
+fusion300map and receive300NEW safe gradients; frozen-table suffix controls
+extra optimization. No inverse/resampled-composition/newmodel/pointfilter.
+Root implementation has focused coordinate/incoming-map/defaultpath tests;
+independent review precedes actual refresh execution. No anatomical claim yet.
+
+Supporting baseline: full released STANDARD DHR nonrigid parameters/native
+preprocessing with ONLY its initializer replaced by the sameSGaffine. The
+native-frame conjugacy is independently checked; all25 original inputs exist.
+Production `native_standard_shared25_t27` starts on idleAI GPU5 after the timed
+batch finishes. This resolves a specific comparison gap; published own-init
+STANDARD and reduced512common-init results remain separately labelled.
+
 ### Same-prefix timed optimizer production — 2026-10-02 12:03 UTC
+
+First production batch terminates all50attempts in300.580s:23successful perarm,
+but HistoReg and kidney fail in BOTH wrappers before suffix optimization.
+Their older configuration records omit optional `mind_order`; the old optimizer
+defaults to `transport`, while the new wrapper incorrectly accessed the attribute
+directly. The failure is not a missing input, metric divergence or a discarded
+registration case. Preserve this entire first batch; reproduce the omission,
+restore the exact original default, and rerun all50 before reading new labels.
+No changes to images, matches, loss weights or historical configurations.
+Execution disclosure: root additionally read `systematic-debugging` for this
+actual software defect under the environment's instruction. Together with the
+earlier checker read, the user's no-installed-skill preference was not followed
+perfectly; no extra audit framework or workflow gate was added.
 
 Data-aware metric implementation and independent prechecks pass: explicit tiny
 H, actual sampler VJPs, point/OOB curvature, boundary trace, PCG status, strict

@@ -91,20 +91,23 @@ def _load_prefix_map(path,args,matrix,offset,device):
 
 def _build_evidence(args,matrix,offset,device):
     fixed,moving,mask,preprocessing=original.load_registration_evidence(args.fixed,args.moving,args.image_side,
-        preprocessing=args.preprocessing,device=device,dtype=torch.float32)
+        preprocessing=getattr(args,'preprocessing','raw_inverted'),device=device,dtype=torch.float32,
+        fixed_mask_path=getattr(args,'fixed_mask',None))
     matches,match_metadata=None,None
-    if args.match_weight:
+    match_weight=getattr(args,'match_weight',0.)
+    if match_weight:
         matches,match_metadata=original.load_image_matches(args.matches,matrix,offset,fixed_path=args.fixed,
             moving_path=args.moving,image_side=args.image_side,device=device,dtype=torch.float64,
-            robust_scale=args.match_robust_scale)
+            robust_scale=getattr(args,'match_robust_scale',8.))
         if getattr(args,'match_p1_sampling','existing')=='frozen':
             match_metadata['fixed_p1_sampling']=matches.prepare_fixed_p1_sampling(args.grid_side,args.grid_side,'ac')
     evidence=original.Evidence(fixed,moving,torch.as_tensor(matrix,device=device,dtype=torch.float64),
         torch.as_tensor(offset,device=device,dtype=torch.float64),loss=args.loss,strain_weight=args.strain_weight,
-        oob_weight=args.oob_weight,shape_weight=args.shape_weight,fixed_mask=mask,interpolation=args.interpolation,
-        matches=matches,match_weight=args.match_weight,strain_model=args.strain_model,mind_order=args.mind_order,
+        oob_weight=args.oob_weight,shape_weight=getattr(args,'shape_weight',0.),fixed_mask=mask,
+        interpolation=getattr(args,'interpolation','q1'),matches=matches,match_weight=match_weight,
+        strain_model=getattr(args,'strain_model','displacement_gradient'),mind_order=getattr(args,'mind_order','transport'),
         joint_prior_backend=getattr(args,'joint_prior_backend','eager'),image_weight=getattr(args,'image_weight',1.),
-        mind_frame=args.mind_frame)
+        mind_frame=getattr(args,'mind_frame','original'))
     if getattr(args,'p1_sampling','existing')=='frozen':
         evidence.prepare_fixed_p1_sampling(args.grid_side,args.grid_side,dtype=torch.float64,device=device)
     preprocessing.update(original_moving_features_no_affine_prewarp=False,

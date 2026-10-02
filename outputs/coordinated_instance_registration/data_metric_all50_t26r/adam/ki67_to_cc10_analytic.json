@@ -1,0 +1,6545 @@
+{
+  "configuration": {
+    "fixed": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/data_all20_t12/canvas/ki67_moving512.png",
+    "moving": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/data_all20_t12/canvas/cc10_moving512.png",
+    "affine": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/data_all20_t12/affines/ki67_to_cc10_affine.npz",
+    "output": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/data_metric_all50_t26r/adam/ki67_to_cc10_analytic.npz",
+    "method": "analytic",
+    "loss": "mind",
+    "mind_order": "transport",
+    "grid_side": 257,
+    "image_side": 512,
+    "image_levels": [
+      32,
+      64,
+      128,
+      256,
+      512
+    ],
+    "levels": [
+      17,
+      33,
+      65,
+      129,
+      257
+    ],
+    "inner_steps": 30,
+    "preprocessing": "raw_inverted",
+    "continuation_scope": "all_cycles",
+    "cycles": 1,
+    "learning_rate": 0.004,
+    "lr_calibration": "edge",
+    "patch_cells": 8,
+    "f2_accepted_gain": 1.0,
+    "regional_cells": 32,
+    "regional_min_level": 3,
+    "strain_weight": 3.0,
+    "strain_model": "p1_arap",
+    "oob_weight": 1.0,
+    "minimum_jacobian": 0.001,
+    "precision": "float64",
+    "image_precision": "float32",
+    "shape_weight": 0.0001,
+    "interpolation": "p1_ac",
+    "p1_sampling": "frozen",
+    "geometry_backend": "stage_cache",
+    "coordinate_mode": "alternating",
+    "joint_backend": "cached_manual",
+    "proposal_filter_steps": 0,
+    "proposal_filter_min_level": 129,
+    "fine_patch_cells": 0,
+    "fine_patch_backend": "ordinary",
+    "control_hierarchy": "fixed",
+    "nested_evaluation": "full_fine",
+    "output_selection": "best_full",
+    "matches": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/match_fusion_all50_t23/fused_tables/ki67_to_cc10.json",
+    "match_weight": 0.2,
+    "match_robust_scale": 8.0,
+    "device": "cuda",
+    "threads": 2,
+    "mind_frame": "shared_affine",
+    "f2_floor_safety_fraction": 1.0,
+    "joint_prior_backend": "eager",
+    "match_p1_sampling": "existing",
+    "inner_steps_by_level": [
+      30,
+      30,
+      30,
+      30,
+      30
+    ],
+    "image_weight": 1.0,
+    "capture_prefix": "none",
+    "image_objective": "continuation",
+    "trial_diagnostics": "existing"
+  },
+  "optimizer": "timed_final_adam",
+  "representation": "p1_ac residual then frozen original positive affine",
+  "landmarks_used": false,
+  "initial": {
+    "total": 0.30764221385296303,
+    "image": 0.27203816175460815,
+    "strain": 0.004970214726923122,
+    "oob": 3.806443837793103e-05,
+    "outside_fraction": 0.03513172268867493,
+    "shape": 0.039966547650978845,
+    "match": 0.10325673412221245
+  },
+  "final": {
+    "total": 0.29789579813693473,
+    "image": 0.2614658772945404,
+    "strain": 0.005431134370047136,
+    "oob": 3.800668556620076e-05,
+    "outside_fraction": 0.03513172268867493,
+    "shape": 0.04392261087071068,
+    "match": 0.10047059392799854
+  },
+  "prefix_best_total": 0.30764221385296303,
+  "suffix_start_total": 0.30764221385296303,
+  "prefix_best": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/data_metric_all50_t26r/common/ki67_to_cc10_prefix_best.npz",
+  "prefix_start": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/data_metric_all50_t26r/common/ki67_to_cc10_prefix_best_suffix_start.npz",
+  "prefix_report": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/data_metric_all50_t26r/common/ki67_to_cc10_prefix_best.json",
+  "prefix_gradient_steps": 240,
+  "suffix_gradient_steps": 326,
+  "gradient_steps": 566,
+  "gradient_count_scope": "shared original prefix plus this timed suffix; no fixed300 assertion",
+  "failed_trials": 0,
+  "suffix_counts": {
+    "gradient_steps": 326,
+    "accepted_steps": 276,
+    "objective_evaluations": 330,
+    "trial_evaluations": 326,
+    "failed_trials": 0,
+    "backtracks": 0,
+    "metric_refreshes": 0,
+    "descriptor_forwards": 0,
+    "descriptor_vjps": 0,
+    "pcg_iterations": 0,
+    "pcg_matvecs": 0,
+    "preconditioner_calls": 0
+  },
+  "objective_evaluations": 599,
+  "prefix_objective_evaluations": 266,
+  "suffix_objective_evaluations": 333,
+  "evaluations": 574,
+  "query_count": 262144,
+  "control_vertices": 66049,
+  "stages": [
+    {
+      "level": 257,
+      "image_side": 512,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "anchor_total": 0.30764221385296303,
+      "accepted_total": 0.30300761688026717,
+      "accepted_full_total": 0.30300761688026717,
+      "counts": {
+        "gradient_steps": 163,
+        "accepted_steps": 125,
+        "objective_evaluations": 165,
+        "trial_evaluations": 163,
+        "failed_trials": 0,
+        "backtracks": 0,
+        "metric_refreshes": 0,
+        "descriptor_forwards": 0,
+        "descriptor_vjps": 0,
+        "pcg_iterations": 0,
+        "pcg_matvecs": 0,
+        "preconditioner_calls": 0
+      },
+      "stop_reason": "time_budget",
+      "elapsed_seconds": 2.005939017981291,
+      "time_overrun_seconds": 0.005939017981290817,
+      "budget_elapsed": true,
+      "minimum_contracted_slack": 0.5528824362054565,
+      "geometry_acceptance": "strict original Q>.001; contracted slack diagnostic only",
+      "physical_lr": 0.00025
+    },
+    {
+      "level": 257,
+      "image_side": 512,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "anchor_total": 0.30300761688026717,
+      "accepted_total": 0.29789579813693473,
+      "accepted_full_total": 0.29789579813693473,
+      "counts": {
+        "gradient_steps": 163,
+        "accepted_steps": 151,
+        "objective_evaluations": 165,
+        "trial_evaluations": 163,
+        "failed_trials": 0,
+        "backtracks": 0,
+        "metric_refreshes": 0,
+        "descriptor_forwards": 0,
+        "descriptor_vjps": 0,
+        "pcg_iterations": 0,
+        "pcg_matvecs": 0,
+        "preconditioner_calls": 0
+      },
+      "stop_reason": "time_budget",
+      "elapsed_seconds": 2.0019384808838367,
+      "time_overrun_seconds": 0.0019384808838367462,
+      "budget_elapsed": true,
+      "minimum_contracted_slack": 0.4702293556009497,
+      "geometry_acceptance": "strict original Q>.001; contracted slack diagnostic only",
+      "physical_lr": 0.00025
+    }
+  ],
+  "trace": [
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 0,
+      "total": 0.317022015509434,
+      "image": 0.26913025975227356,
+      "strain": 0.009185602855329038,
+      "oob": 3.803310893349982e-05,
+      "outside_fraction": 0.03510559722781181,
+      "shape": 0.0752714490664495,
+      "match": 0.10144693468666546,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.190958287933458,
+      "minimum_contracted_slack": 0.5120070745152857
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 1,
+      "total": 0.3095706502102336,
+      "image": 0.26860085129737854,
+      "strain": 0.006891147073149351,
+      "oob": 3.804176659310441e-05,
+      "outside_fraction": 0.03505334258079529,
+      "shape": 0.05592043277191964,
+      "match": 0.1012636194176835,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.24512617142592816,
+      "minimum_contracted_slack": 0.5036871971617779
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 2,
+      "total": 0.30899089656948076,
+      "image": 0.26880520582199097,
+      "strain": 0.006618208782951445,
+      "oob": 3.804730697653145e-05,
+      "outside_fraction": 0.0350794680416584,
+      "shape": 0.053587411444174754,
+      "match": 0.1014382917525724,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.25679749431065846,
+      "minimum_contracted_slack": 0.5153984307445527
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 3,
+      "total": 0.30974933648124364,
+      "image": 0.2689773738384247,
+      "strain": 0.006805494188841697,
+      "oob": 3.804007706037067e-05,
+      "outside_fraction": 0.03512301295995712,
+      "shape": 0.055131006038149154,
+      "match": 0.10155963449314845,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.27858371674191185,
+      "minimum_contracted_slack": 0.4943365996522209
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 4,
+      "total": 0.3085770894948421,
+      "image": 0.26893192529678345,
+      "strain": 0.006434266880958509,
+      "oob": 3.8031876096357227e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.05204307708660931,
+      "match": 0.10149563685689031,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.2991849941759523,
+      "minimum_contracted_slack": 0.501666116697472
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 5,
+      "total": 0.30718855217636815,
+      "image": 0.26872068643569946,
+      "strain": 0.006054779492289227,
+      "oob": 3.802554122261043e-05,
+      "outside_fraction": 0.03511430323123932,
+      "shape": 0.04888425571690136,
+      "match": 0.10130306648503368,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2890082189945374,
+      "minimum_contracted_slack": 0.5230344574640033
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 6,
+      "total": 0.30661697115579034,
+      "image": 0.26843905448913574,
+      "strain": 0.005974068870241813,
+      "oob": 3.802332428959249e-05,
+      "outside_fraction": 0.03509688749909401,
+      "shape": 0.048216166333232335,
+      "match": 0.1010643255750312,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.25863261356634976,
+      "minimum_contracted_slack": 0.5385675982636355
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 7,
+      "total": 0.30666004438386685,
+      "image": 0.26817724108695984,
+      "strain": 0.006088992034402548,
+      "oob": 3.802509125273473e-05,
+      "outside_fraction": 0.03511430323123932,
+      "shape": 0.04917842017974933,
+      "match": 0.10086442130214342,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.2444828548882257,
+      "minimum_contracted_slack": 0.5388660039935195
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 8,
+      "total": 0.3065903238726239,
+      "image": 0.2679864168167114,
+      "strain": 0.006136331970015646,
+      "oob": 3.802890596939722e-05,
+      "outside_fraction": 0.03511430323123932,
+      "shape": 0.04958714238761472,
+      "match": 0.10075961762828693,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.24010665256274175,
+      "minimum_contracted_slack": 0.5273356692019585
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 9,
+      "total": 0.3061408979947054,
+      "image": 0.26787692308425903,
+      "strain": 0.006023206205737602,
+      "oob": 3.803217597704859e-05,
+      "outside_fraction": 0.03510559722781181,
+      "shape": 0.048652828700032,
+      "match": 0.10075729417193267,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.24347565579992286,
+      "minimum_contracted_slack": 0.5100535495115306
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 10,
+      "total": 0.30558516665508473,
+      "image": 0.2678340971469879,
+      "strain": 0.0058472344510217605,
+      "oob": 3.803346905214351e-05,
+      "outside_fraction": 0.035088177770376205,
+      "shape": 0.047188477622431085,
+      "match": 0.10083306919108584,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.26647543366739684,
+      "minimum_contracted_slack": 0.49344956631465553
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 11,
+      "total": 0.30523512396279084,
+      "image": 0.26783084869384766,
+      "strain": 0.005723898424035262,
+      "oob": 3.803233197989264e-05,
+      "outside_fraction": 0.03509688749909401,
+      "shape": 0.04616141173001048,
+      "match": 0.10094965761842253,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2798135782266717,
+      "minimum_contracted_slack": 0.4838205025290926
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 12,
+      "total": 0.3051361692734018,
+      "image": 0.26783958077430725,
+      "strain": 0.005680364080700672,
+      "oob": 3.80290947319151e-05,
+      "outside_fraction": 0.03509688749909401,
+      "shape": 0.04579928328034214,
+      "match": 0.10106443616966283,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.27758669968298033,
+      "minimum_contracted_slack": 0.48542812909548794
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 13,
+      "total": 0.3051093878401005,
+      "image": 0.26783502101898193,
+      "strain": 0.0056676666100692105,
+      "oob": 3.8024871295564344e-05,
+      "outside_fraction": 0.03511430323123932,
+      "shape": 0.04569761394414762,
+      "match": 0.10114386179110488,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2593138801398558,
+      "minimum_contracted_slack": 0.4986196299178768
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 14,
+      "total": 0.3049928591286989,
+      "image": 0.26780855655670166,
+      "strain": 0.0056355857941414265,
+      "oob": 3.802079095841585e-05,
+      "outside_fraction": 0.03512301295995712,
+      "shape": 0.045437772303294974,
+      "match": 0.10117490310692087,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22907878308663887,
+      "minimum_contracted_slack": 0.5204469295692122
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 15,
+      "total": 0.3047775014683075,
+      "image": 0.2677597999572754,
+      "strain": 0.005580924743213482,
+      "oob": 3.801759615254019e-05,
+      "outside_fraction": 0.03512301295995712,
+      "shape": 0.044989514036840886,
+      "match": 0.10116205366917733,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.21729054363726802,
+      "minimum_contracted_slack": 0.546214624083471
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 16,
+      "total": 0.30456153990675255,
+      "image": 0.26769861578941345,
+      "strain": 0.005532169565971712,
+      "oob": 3.801553273854039e-05,
+      "outside_fraction": 0.03509688749909401,
+      "shape": 0.04458995418416412,
+      "match": 0.10111970445633534,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2108509349512536,
+      "minimum_contracted_slack": 0.5705583938933049
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 17,
+      "total": 0.30442000302698297,
+      "image": 0.2676369845867157,
+      "strain": 0.0055090681079594615,
+      "oob": 3.801474627521305e-05,
+      "outside_fraction": 0.035088177770376205,
+      "shape": 0.04440402784245298,
+      "match": 0.10106679483664707,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20764324685482677,
+      "minimum_contracted_slack": 0.5885348493144631
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 18,
+      "total": 0.30434610061895495,
+      "image": 0.26758381724357605,
+      "strain": 0.005505207293955136,
+      "oob": 3.8015075595906326e-05,
+      "outside_fraction": 0.03506205230951309,
+      "shape": 0.04437758141146895,
+      "match": 0.10102104329888228,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20517382951045626,
+      "minimum_contracted_slack": 0.5969890948992634
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 19,
+      "total": 0.30428651515773186,
+      "image": 0.26754531264305115,
+      "strain": 0.005499916511172191,
+      "oob": 3.801623022234361e-05,
+      "outside_fraction": 0.03506205230951309,
+      "shape": 0.044337382000644854,
+      "match": 0.1009950150637085,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2091291918237031,
+      "minimum_contracted_slack": 0.5953047652852407
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 20,
+      "total": 0.3041998357947958,
+      "image": 0.2675205171108246,
+      "strain": 0.005479579067116085,
+      "oob": 3.801795727405018e-05,
+      "outside_fraction": 0.035088177770376205,
+      "shape": 0.044170824535012664,
+      "match": 0.10099073221447695,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2237147421729531,
+      "minimum_contracted_slack": 0.5858984936030406
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 21,
+      "total": 0.3040929022845125,
+      "image": 0.26750728487968445,
+      "strain": 0.0054474251744334075,
+      "oob": 3.8019929684691925e-05,
+      "outside_fraction": 0.035088177770376205,
+      "shape": 0.04390520337567251,
+      "match": 0.10100465715752799,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.226929559636683,
+      "minimum_contracted_slack": 0.5716474132888554
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 22,
+      "total": 0.30399580650959523,
+      "image": 0.2675001919269562,
+      "strain": 0.005415840192903296,
+      "oob": 3.8021748943634575e-05,
+      "outside_fraction": 0.03509688749909401,
+      "shape": 0.04364378345831187,
+      "match": 0.10102853938319858,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22296496653028766,
+      "minimum_contracted_slack": 0.5560016913253901
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 23,
+      "total": 0.3039263893134669,
+      "image": 0.2674933671951294,
+      "strain": 0.005393402610108696,
+      "oob": 3.802300670458128e-05,
+      "outside_fraction": 0.03509688749909401,
+      "shape": 0.04345863857508207,
+      "match": 0.10105222708724668,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2313097149609407,
+      "minimum_contracted_slack": 0.5421872272162084
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 24,
+      "total": 0.3038760754879797,
+      "image": 0.2674815058708191,
+      "strain": 0.0053795437244042454,
+      "oob": 3.80235025410456e-05,
+      "outside_fraction": 0.03511430323123932,
+      "shape": 0.04334534711455791,
+      "match": 0.10106790203347665,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2395363104661147,
+      "minimum_contracted_slack": 0.5326381364338385
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 25,
+      "total": 0.30382533708491727,
+      "image": 0.2674619257450104,
+      "strain": 0.005368935927651836,
+      "oob": 3.802336643878314e-05,
+      "outside_fraction": 0.03510559722781181,
+      "shape": 0.04326032806142632,
+      "match": 0.10107127078853242,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.24503643231127303,
+      "minimum_contracted_slack": 0.5287307887121908
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 26,
+      "total": 0.3037657252517184,
+      "image": 0.2674359977245331,
+      "strain": 0.0053584060977798055,
+      "oob": 3.8022869886365586e-05,
+      "outside_fraction": 0.03511430323123932,
+      "shape": 0.04317682909255925,
+      "match": 0.10106084340525157,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.24756833149031232,
+      "minimum_contracted_slack": 0.5303784362046263
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 27,
+      "total": 0.30370413321265494,
+      "image": 0.26740583777427673,
+      "strain": 0.005349229602531688,
+      "oob": 3.802230729898867e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04310428888737915,
+      "match": 0.10104136947297704,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2470984061403802,
+      "minimum_contracted_slack": 0.5366031481311145
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 28,
+      "total": 0.3036513178697558,
+      "image": 0.26737460494041443,
+      "strain": 0.005343527553847883,
+      "oob": 3.802196341461649e-05,
+      "outside_fraction": 0.03515784814953804,
+      "shape": 0.04305935957438864,
+      "match": 0.10101901184212803,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.24383418954498384,
+      "minimum_contracted_slack": 0.5457355499920646
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 29,
+      "total": 0.30361141970070776,
+      "image": 0.26734721660614014,
+      "strain": 0.0053406032766262455,
+      "oob": 3.802215424763023e-05,
+      "outside_fraction": 0.035166557878255844,
+      "shape": 0.043037279541511014,
+      "match": 0.10100033691243576,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2389898047456964,
+      "minimum_contracted_slack": 0.5557072323189552
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 30,
+      "total": 0.3035772199010102,
+      "image": 0.267325222492218,
+      "strain": 0.005337282647017338,
+      "oob": 3.802287472432898e-05,
+      "outside_fraction": 0.035166557878255844,
+      "shape": 0.04301192243197216,
+      "match": 0.10098912700386313,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23483517060259138,
+      "minimum_contracted_slack": 0.5644303050768102
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 31,
+      "total": 0.3035411149240629,
+      "image": 0.2673105001449585,
+      "strain": 0.0053303436214636145,
+      "oob": 3.802384639424937e-05,
+      "outside_fraction": 0.035166557878255844,
+      "shape": 0.04295550241162917,
+      "match": 0.1009863225903907,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23336077943859265,
+      "minimum_contracted_slack": 0.5702645332694324
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 32,
+      "total": 0.3035018365366267,
+      "image": 0.267301470041275,
+      "strain": 0.0053200680749764095,
+      "oob": 3.802471187650557e-05,
+      "outside_fraction": 0.035166557878255844,
+      "shape": 0.04286995761585452,
+      "match": 0.10098925281392158,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2343476051800123,
+      "minimum_contracted_slack": 0.5720496769420422
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 33,
+      "total": 0.303464885518924,
+      "image": 0.2672949731349945,
+      "strain": 0.005309494892497114,
+      "oob": 3.802511952307801e-05,
+      "outside_fraction": 0.03515784814953804,
+      "shape": 0.04278052434801233,
+      "match": 0.10099562267240131,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23501155944277616,
+      "minimum_contracted_slack": 0.568814947708933
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 34,
+      "total": 0.3034348029936209,
+      "image": 0.2672879695892334,
+      "strain": 0.005301575202868256,
+      "oob": 3.802476234206152e-05,
+      "outside_fraction": 0.035166557878255844,
+      "shape": 0.042712967080549155,
+      "match": 0.10099905868366328,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23261459467740186,
+      "minimum_contracted_slack": 0.5627112514083221
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 35,
+      "total": 0.30341110436637747,
+      "image": 0.2672784924507141,
+      "strain": 0.0052969906528328465,
+      "oob": 3.8024019586294535e-05,
+      "outside_fraction": 0.035166557878255844,
+      "shape": 0.04267406428683163,
+      "match": 0.10099674265574934,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22758616102610302,
+      "minimum_contracted_slack": 0.5554879305655762
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 36,
+      "total": 0.3033884361587567,
+      "image": 0.2672654390335083,
+      "strain": 0.005294293534035679,
+      "oob": 3.8023277894586335e-05,
+      "outside_fraction": 0.03515784814953804,
+      "shape": 0.04265202836701261,
+      "match": 0.10098914021205048,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2235974751521474,
+      "minimum_contracted_slack": 0.549093069290973
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 37,
+      "total": 0.30336404646769916,
+      "image": 0.267249196767807,
+      "strain": 0.005292265786665962,
+      "oob": 3.802292189991672e-05,
+      "outside_fraction": 0.03515784814953804,
+      "shape": 0.04263647578416445,
+      "match": 0.10097882885207973,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22463555113763584,
+      "minimum_contracted_slack": 0.5451122579177272
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 38,
+      "total": 0.30334019942314816,
+      "image": 0.2672320306301117,
+      "strain": 0.005290726768797723,
+      "oob": 3.8023160680155655e-05,
+      "outside_fraction": 0.03515784814953804,
+      "shape": 0.04262487984289416,
+      "match": 0.10096851418989439,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2309109807542144,
+      "minimum_contracted_slack": 0.5442616804638979
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 39,
+      "total": 0.30331846071252444,
+      "image": 0.26721611618995667,
+      "strain": 0.005289283612623931,
+      "oob": 3.802402847910099e-05,
+      "outside_fraction": 0.03515784814953804,
+      "shape": 0.04261428961990834,
+      "match": 0.10096104113627466,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2381897016924145,
+      "minimum_contracted_slack": 0.5461870905912991
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 40,
+      "total": 0.3032998625495342,
+      "image": 0.2672025263309479,
+      "strain": 0.005287885868211368,
+      "oob": 3.8025337751765754e-05,
+      "outside_fraction": 0.03515784814953804,
+      "shape": 0.042603981889875776,
+      "match": 0.10095696439005776,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.24139542237787565,
+      "minimum_contracted_slack": 0.5496782146331597
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 41,
+      "total": 0.3032826305577486,
+      "image": 0.2671913206577301,
+      "strain": 0.005285888761611751,
+      "oob": 3.802670930130678e-05,
+      "outside_fraction": 0.035166557878255844,
+      "shape": 0.04258862970531504,
+      "match": 0.10095679021455718,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23908421578333183,
+      "minimum_contracted_slack": 0.5531877946942028
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 42,
+      "total": 0.3032659248120875,
+      "image": 0.2671819031238556,
+      "strain": 0.005283260324983306,
+      "oob": 3.8027807403860425e-05,
+      "outside_fraction": 0.035166557878255844,
+      "shape": 0.04256830707559779,
+      "match": 0.10095978037585258,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23450642803569227,
+      "minimum_contracted_slack": 0.5554167694985896
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 43,
+      "total": 0.30324961598178446,
+      "image": 0.2671734094619751,
+      "strain": 0.005280418825442936,
+      "oob": 3.802857080729269e-05,
+      "outside_fraction": 0.035149138420820236,
+      "shape": 0.04254684617493571,
+      "match": 0.10096333394027837,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23228450795248234,
+      "minimum_contracted_slack": 0.5557359469435786
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 44,
+      "total": 0.3032337767179868,
+      "image": 0.26716428995132446,
+      "strain": 0.005278042586509832,
+      "oob": 3.8029010628584396e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04252931869262584,
+      "match": 0.10096538532317456,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23417458541744562,
+      "minimum_contracted_slack": 0.5543123903384928
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 45,
+      "total": 0.30321974755820874,
+      "image": 0.2671539783477783,
+      "strain": 0.0052768778330463985,
+      "oob": 3.802921381202093e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04252157818750149,
+      "match": 0.10096427169830231,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23807944545446974,
+      "minimum_contracted_slack": 0.5519462454870621
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 46,
+      "total": 0.3032076269245178,
+      "image": 0.26714369654655457,
+      "strain": 0.0052765284707490204,
+      "oob": 3.802929855855214e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04251973202146189,
+      "match": 0.10096031846977736,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.24071874401807983,
+      "minimum_contracted_slack": 0.5497089763993706
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 47,
+      "total": 0.30319754727815285,
+      "image": 0.2671353220939636,
+      "strain": 0.005276278596222767,
+      "oob": 3.8029275458185434e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04251832798101535,
+      "match": 0.10095554143632317,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.24075392803185475,
+      "minimum_contracted_slack": 0.5485071655224496
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 48,
+      "total": 0.3031881138167572,
+      "image": 0.26712802052497864,
+      "strain": 0.005275923615276308,
+      "oob": 3.8029183875557065e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04251534015511425,
+      "match": 0.10095020864029286,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23973839626925003,
+      "minimum_contracted_slack": 0.5487301251916484
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 49,
+      "total": 0.3031792311690291,
+      "image": 0.26712214946746826,
+      "strain": 0.005275284837908532,
+      "oob": 3.802901429682758e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.0425099631431351,
+      "match": 0.10094473588612075,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23874016993366773,
+      "minimum_contracted_slack": 0.5501413676381196
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 50,
+      "total": 0.3031709608867132,
+      "image": 0.26711663603782654,
+      "strain": 0.005274568054091626,
+      "oob": 3.802880108243265e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.042503797821767775,
+      "match": 0.10094170752873573,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23705101509021348,
+      "minimum_contracted_slack": 0.5520687704623226
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 51,
+      "total": 0.3031637731731352,
+      "image": 0.26711177825927734,
+      "strain": 0.005273810616898735,
+      "oob": 3.802872245622863e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042497343850544975,
+      "match": 0.10094142303160188,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23433460793867245,
+      "minimum_contracted_slack": 0.5537771771107451
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 52,
+      "total": 0.30315716840949547,
+      "image": 0.26710742712020874,
+      "strain": 0.005272950223843827,
+      "oob": 3.802888375390268e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042490534440236,
+      "match": 0.10094306340278628,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23127176322277407,
+      "minimum_contracted_slack": 0.5550387424906899
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 53,
+      "total": 0.30315018662287335,
+      "image": 0.2671034336090088,
+      "strain": 0.005271801588309618,
+      "oob": 3.802905653299325e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04248177575854964,
+      "match": 0.1009453550741342,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22941229608235278,
+      "minimum_contracted_slack": 0.5557338416062196
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 54,
+      "total": 0.303143113985859,
+      "image": 0.26710033416748047,
+      "strain": 0.005270486901403324,
+      "oob": 3.802906200450973e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042471368256672984,
+      "match": 0.10094521457669195,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22976497313065106,
+      "minimum_contracted_slack": 0.5559992599234347
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 55,
+      "total": 0.303136472390545,
+      "image": 0.26709675788879395,
+      "strain": 0.005269633393686861,
+      "oob": 3.802896450465368e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04246467278181269,
+      "match": 0.10094269444453795,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23193163191716282,
+      "minimum_contracted_slack": 0.5560332217017911
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 56,
+      "total": 0.30312994904935514,
+      "image": 0.2670919597148895,
+      "strain": 0.005269286244298668,
+      "oob": 3.802882079738947e-05,
+      "outside_fraction": 0.035149138420820236,
+      "shape": 0.042462226018872354,
+      "match": 0.10093927779085168,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23528279955876125,
+      "minimum_contracted_slack": 0.5559943206804319
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 57,
+      "total": 0.30312343777720574,
+      "image": 0.26708701252937317,
+      "strain": 0.005268967806153194,
+      "oob": 3.8028681836728024e-05,
+      "outside_fraction": 0.035149138420820236,
+      "shape": 0.04245993963002162,
+      "match": 0.10093623576786642,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2380564840002232,
+      "minimum_contracted_slack": 0.5556050515767985
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 58,
+      "total": 0.3031163308176069,
+      "image": 0.26708173751831055,
+      "strain": 0.005268434698827439,
+      "oob": 3.802850593816789e-05,
+      "outside_fraction": 0.035149138420820236,
+      "shape": 0.042455773831951246,
+      "match": 0.10093507559746348,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2399974823065315,
+      "minimum_contracted_slack": 0.5548201754533227
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 59,
+      "total": 0.3031098933784241,
+      "image": 0.267076700925827,
+      "strain": 0.005267943348367724,
+      "oob": 3.80282236275885e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042452204959348185,
+      "match": 0.10093544481685188,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.24109184304165435,
+      "minimum_contracted_slack": 0.5536210224877791
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 60,
+      "total": 0.3031041796463335,
+      "image": 0.2670723497867584,
+      "strain": 0.005267412022434414,
+      "oob": 3.8027901986893616e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04244851003797736,
+      "match": 0.10093660519640586,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2410297681950061,
+      "minimum_contracted_slack": 0.5521462599552079
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 61,
+      "total": 0.30309956937746596,
+      "image": 0.2670687437057495,
+      "strain": 0.005266962464307003,
+      "oob": 3.80275721828049e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042445727019420475,
+      "match": 0.10093833066955343,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23960489455262537,
+      "minimum_contracted_slack": 0.5507267323580632
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 62,
+      "total": 0.3030951094846879,
+      "image": 0.26706621050834656,
+      "strain": 0.005266157438182465,
+      "oob": 3.802716515568182e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04243881843659096,
+      "match": 0.1009407780739728,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23737507019929005,
+      "minimum_contracted_slack": 0.5497605765400063
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 63,
+      "total": 0.3030910378582681,
+      "image": 0.26706358790397644,
+      "strain": 0.005265479066053801,
+      "oob": 3.8026558777586266e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042432476422106465,
+      "match": 0.10094371474855192,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23606708046594063,
+      "minimum_contracted_slack": 0.5495083139201539
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 64,
+      "total": 0.303086636264372,
+      "image": 0.2670597434043884,
+      "strain": 0.005265144504827479,
+      "oob": 3.8025628189449714e-05,
+      "outside_fraction": 0.035149138420820236,
+      "shape": 0.04242940959260814,
+      "match": 0.10094595388176221,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2360205098921177,
+      "minimum_contracted_slack": 0.549965646617169
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 65,
+      "total": 0.303082709749444,
+      "image": 0.2670564353466034,
+      "strain": 0.005264769219743249,
+      "oob": 3.802450121588063e-05,
+      "outside_fraction": 0.035149138420820236,
+      "shape": 0.04242657183830822,
+      "match": 0.10094849792605587,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2366260175942173,
+      "minimum_contracted_slack": 0.5508997530996791
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 66,
+      "total": 0.30307955721098756,
+      "image": 0.26705434918403625,
+      "strain": 0.005264209849195298,
+      "oob": 3.802341886934673e-05,
+      "outside_fraction": 0.035149138420820236,
+      "shape": 0.04242283439131021,
+      "match": 0.10095156388528484,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23651848669873793,
+      "minimum_contracted_slack": 0.551993226516315
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 67,
+      "total": 0.3030757694134707,
+      "image": 0.26705223321914673,
+      "strain": 0.0052633438725417855,
+      "oob": 3.802243289761968e-05,
+      "outside_fraction": 0.035149138420820236,
+      "shape": 0.0424167167184986,
+      "match": 0.1009562023606457,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23604724249857337,
+      "minimum_contracted_slack": 0.5529747042406052
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 68,
+      "total": 0.30307188154464937,
+      "image": 0.26704999804496765,
+      "strain": 0.005262536594288105,
+      "oob": 3.80216388629655e-05,
+      "outside_fraction": 0.035149138420820236,
+      "shape": 0.042410317844572575,
+      "match": 0.10096005523084974,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2360903391582132,
+      "minimum_contracted_slack": 0.5536708017212479
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 69,
+      "total": 0.3030682233773932,
+      "image": 0.26704734563827515,
+      "strain": 0.0052621182337056795,
+      "oob": 3.802102455567741e-05,
+      "outside_fraction": 0.035149138420820236,
+      "shape": 0.04240659490210987,
+      "match": 0.10096130676977538,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23753403570937723,
+      "minimum_contracted_slack": 0.5540012322833293
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 70,
+      "total": 0.30306485473788336,
+      "image": 0.26704439520835876,
+      "strain": 0.005261980147520148,
+      "oob": 3.8020496601297456e-05,
+      "outside_fraction": 0.035149138420820236,
+      "shape": 0.042405335550474,
+      "match": 0.10096129028403934,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23926382796032789,
+      "minimum_contracted_slack": 0.5539646043240134
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 71,
+      "total": 0.30306185945423125,
+      "image": 0.26704034209251404,
+      "strain": 0.005262159901579282,
+      "oob": 3.8020080368873305e-05,
+      "outside_fraction": 0.035149138420820236,
+      "shape": 0.04240723402431583,
+      "match": 0.1009638842660405,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23944241309388606,
+      "minimum_contracted_slack": 0.5536300596546441
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 72,
+      "total": 0.30305824220218885,
+      "image": 0.2670356333255768,
+      "strain": 0.005262250681971825,
+      "oob": 3.801983325355974e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.0424086967480793,
+      "match": 0.10096798063884099,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2384121461166964,
+      "minimum_contracted_slack": 0.553123910012414
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 73,
+      "total": 0.3030552896533271,
+      "image": 0.267031729221344,
+      "strain": 0.00526222344235536,
+      "oob": 3.801968355736434e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04240922689295011,
+      "match": 0.10097314749335161,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23740907203281056,
+      "minimum_contracted_slack": 0.5526042947589354
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 74,
+      "total": 0.30305286226121353,
+      "image": 0.2670295834541321,
+      "strain": 0.005262034884861065,
+      "oob": 3.801952242190044e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.0424081029719412,
+      "match": 0.10097456909889593,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23778387524283384,
+      "minimum_contracted_slack": 0.5522253024870706
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 75,
+      "total": 0.3030506370469338,
+      "image": 0.2670285403728485,
+      "strain": 0.005261745441106433,
+      "oob": 3.8019418335761577e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04240551093300782,
+      "match": 0.10097300190668446,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23873618306420816,
+      "minimum_contracted_slack": 0.5520887515970497
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 76,
+      "total": 0.30304809803373517,
+      "image": 0.26702696084976196,
+      "strain": 0.005261614584850726,
+      "oob": 3.801935355424575e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04240391288508838,
+      "match": 0.10097016842289144,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23855125805536762,
+      "minimum_contracted_slack": 0.552190177758108
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 77,
+      "total": 0.3030458859986504,
+      "image": 0.267024964094162,
+      "strain": 0.005261576313815826,
+      "oob": 3.801930576071328e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04240333019089747,
+      "match": 0.10096966662130567,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2375110793467757,
+      "minimum_contracted_slack": 0.5523951378378156
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 78,
+      "total": 0.3030433169547446,
+      "image": 0.2670224606990814,
+      "strain": 0.005261473118152921,
+      "oob": 3.801937108954687e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04240282628342391,
+      "match": 0.10097088623743271,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23658404234370412,
+      "minimum_contracted_slack": 0.5524943700806482
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 79,
+      "total": 0.3030408674862859,
+      "image": 0.2670203447341919,
+      "strain": 0.005261249538377989,
+      "oob": 3.801962128860498e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04240210047002527,
+      "match": 0.10097257152812184,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2369549763965219,
+      "minimum_contracted_slack": 0.5523343552999987
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 80,
+      "total": 0.30303879277131157,
+      "image": 0.2670190632343292,
+      "strain": 0.005260927665874646,
+      "oob": 3.801992168373229e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.0423998627630131,
+      "match": 0.10097343315699203,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23797708548396151,
+      "minimum_contracted_slack": 0.5519360542778237
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 81,
+      "total": 0.30303669895632,
+      "image": 0.2670174837112427,
+      "strain": 0.005260721627341765,
+      "oob": 3.8020176759491435e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042398092576039624,
+      "match": 0.10097395188517475,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23824378901780585,
+      "minimum_contracted_slack": 0.5514977412617684
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 82,
+      "total": 0.3030350099439679,
+      "image": 0.2670150399208069,
+      "strain": 0.005260908175571796,
+      "oob": 3.802031902327989e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042399957208479916,
+      "match": 0.1009749259085076,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23803257526767077,
+      "minimum_contracted_slack": 0.5512713838576083
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 83,
+      "total": 0.30303327285499326,
+      "image": 0.26701274514198303,
+      "strain": 0.005260974240924013,
+      "oob": 3.802049467849297e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04240158028641622,
+      "match": 0.10097672168765531,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23778300914636438,
+      "minimum_contracted_slack": 0.5514116353192019
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 84,
+      "total": 0.3030319477879455,
+      "image": 0.26701104640960693,
+      "strain": 0.005260820043423873,
+      "oob": 3.8020618070557386e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04240149337827119,
+      "match": 0.10098090240329298,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2381971576813349,
+      "minimum_contracted_slack": 0.5519032409917847
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 85,
+      "total": 0.30303022843287825,
+      "image": 0.2670099139213562,
+      "strain": 0.005260352299389351,
+      "oob": 3.802077562784059e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04239772764546396,
+      "match": 0.10098498532480794,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23869606529587772,
+      "minimum_contracted_slack": 0.5525853356233638
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 86,
+      "total": 0.3030288049489315,
+      "image": 0.26700878143310547,
+      "strain": 0.005259988303772984,
+      "oob": 3.8021066300509036e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04239444684361497,
+      "match": 0.10098899046761085,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23834064422240128,
+      "minimum_contracted_slack": 0.5532283201227888
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 87,
+      "total": 0.303027121638574,
+      "image": 0.26700785756111145,
+      "strain": 0.005259464190570931,
+      "oob": 3.8021392497164335e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042390291233545686,
+      "match": 0.10099305542064647,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23772714271808545,
+      "minimum_contracted_slack": 0.553627957691001
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 88,
+      "total": 0.30302593770695063,
+      "image": 0.26700669527053833,
+      "strain": 0.0052592910500765064,
+      "oob": 3.8021647625687704e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238887886832007,
+      "match": 0.10099554375335164,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23794285932377995,
+      "minimum_contracted_slack": 0.5536946347637173
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 89,
+      "total": 0.3030244634723309,
+      "image": 0.2670055627822876,
+      "strain": 0.005259156062855073,
+      "oob": 3.8021894101988215e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042387812563191,
+      "match": 0.10099585913059865,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23840674101906592,
+      "minimum_contracted_slack": 0.5534916091146485
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 90,
+      "total": 0.3030233574375924,
+      "image": 0.2670040726661682,
+      "strain": 0.005259294085048317,
+      "oob": 3.802223411004728e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238917441621487,
+      "match": 0.10099570682363818,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23801328930211083,
+      "minimum_contracted_slack": 0.553182490704911
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 91,
+      "total": 0.30302236204718663,
+      "image": 0.2670029401779175,
+      "strain": 0.005259241744805104,
+      "oob": 3.802259356847049e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042389224429002795,
+      "match": 0.10099717559421245,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.237494366598009,
+      "minimum_contracted_slack": 0.5529228387781377
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 92,
+      "total": 0.30302125896166165,
+      "image": 0.2670019865036011,
+      "strain": 0.005259066466852045,
+      "oob": 3.8022854057390384e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042388445357669634,
+      "match": 0.10099905679455635,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2381111106156126,
+      "minimum_contracted_slack": 0.5527876753582798
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 93,
+      "total": 0.30301977538689123,
+      "image": 0.26700064539909363,
+      "strain": 0.00525892278717526,
+      "oob": 3.8022921872655025e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042387689434408723,
+      "match": 0.10100049967727874,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2390153848557132,
+      "minimum_contracted_slack": 0.5527775522879618
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 94,
+      "total": 0.30301901138998755,
+      "image": 0.26699912548065186,
+      "strain": 0.005259117540823274,
+      "oob": 3.802293631257681e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.0423894836674613,
+      "match": 0.10100135701093287,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23869779701194413,
+      "minimum_contracted_slack": 0.5528574839485213
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 95,
+      "total": 0.3030180476018605,
+      "image": 0.26699742674827576,
+      "strain": 0.0052592445037686186,
+      "oob": 3.802304421495228e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042390866136088,
+      "match": 0.10100312605725154,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23798209668685524,
+      "minimum_contracted_slack": 0.552973794718016
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 96,
+      "total": 0.3030170804445035,
+      "image": 0.26699623465538025,
+      "strain": 0.005259230536065776,
+      "oob": 3.802317320107588e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04239140855799175,
+      "match": 0.10100445933434535,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23854317375045989,
+      "minimum_contracted_slack": 0.5530535769679501
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 97,
+      "total": 0.3030160804071821,
+      "image": 0.2669956088066101,
+      "strain": 0.005259041702908486,
+      "oob": 3.8023215892403684e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042389871261332826,
+      "match": 0.10100542144413971,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23955503813828238,
+      "minimum_contracted_slack": 0.5530236839901583
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 98,
+      "total": 0.3030150832307276,
+      "image": 0.26699432730674744,
+      "strain": 0.005259039016571034,
+      "oob": 3.8023170362691556e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04239019726571624,
+      "match": 0.10100688342088932,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2391006469416746,
+      "minimum_contracted_slack": 0.5528505999301613
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 99,
+      "total": 0.30301439439032685,
+      "image": 0.2669922411441803,
+      "strain": 0.0052593639342064765,
+      "oob": 3.802306404006576e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04239308420589481,
+      "match": 0.1010089953553326,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23784417390574397,
+      "minimum_contracted_slack": 0.5525651828861234
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 100,
+      "total": 0.30301394130617565,
+      "image": 0.26699119806289673,
+      "strain": 0.005259413910231431,
+      "oob": 3.802296948401644e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04239359215557843,
+      "match": 0.10101119591942508,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23781881052791695,
+      "minimum_contracted_slack": 0.552253160256352
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 101,
+      "total": 0.30301331810789134,
+      "image": 0.26699069142341614,
+      "strain": 0.005259279803885254,
+      "oob": 3.8022939255129676e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04239276389694564,
+      "match": 0.10101262528587285,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2385871426149572,
+      "minimum_contracted_slack": 0.5520219669990883
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 102,
+      "total": 0.30301268206139637,
+      "image": 0.2669905424118042,
+      "strain": 0.005259046587333803,
+      "oob": 3.802286918225005e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042391485416688086,
+      "match": 0.10101368934933419,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23825079741194996,
+      "minimum_contracted_slack": 0.5519597504130068
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 103,
+      "total": 0.30301219352248115,
+      "image": 0.26698997616767883,
+      "strain": 0.0052590871113333305,
+      "oob": 3.802274595506571e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04239226923277941,
+      "match": 0.10101347023962003,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23729586258115112,
+      "minimum_contracted_slack": 0.5520983574311117
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 104,
+      "total": 0.3030117493926365,
+      "image": 0.2669895887374878,
+      "strain": 0.005259119126219016,
+      "oob": 3.8022624081340774e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04239294423803953,
+      "match": 0.1010127067899328,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23764921732413605,
+      "minimum_contracted_slack": 0.5523962203685292
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 105,
+      "total": 0.3030115352168548,
+      "image": 0.2669898569583893,
+      "strain": 0.005258997785191287,
+      "oob": 3.802248774893498e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042391634838859764,
+      "match": 0.10101211625829422,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23882427309657797,
+      "minimum_contracted_slack": 0.5527507856879936
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 106,
+      "total": 0.3030112743020575,
+      "image": 0.26698967814445496,
+      "strain": 0.005258951643808928,
+      "oob": 3.802238898923482e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042390325408150804,
+      "match": 0.1010123990232285,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23886186774829718,
+      "minimum_contracted_slack": 0.5530386814904149
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 107,
+      "total": 0.3030109991330827,
+      "image": 0.2669895887374878,
+      "strain": 0.005258718144460585,
+      "oob": 3.80222647463948e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238824340866099,
+      "match": 0.10101497436562945,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23895675697566832,
+      "minimum_contracted_slack": 0.5531716149150714
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 108,
+      "total": 0.3030107153549622,
+      "image": 0.2669903039932251,
+      "strain": 0.005258257811556164,
+      "oob": 3.8022264408988996e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042385115025219716,
+      "match": 0.10101688575578588,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23876275801604221,
+      "minimum_contracted_slack": 0.5531380166291254
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 109,
+      "total": 0.3030102791734354,
+      "image": 0.2669910192489624,
+      "strain": 0.005257791648712299,
+      "oob": 3.802225468803331e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238205089478854,
+      "match": 0.10101812259279311,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23930042225020742,
+      "minimum_contracted_slack": 0.5530010191536352
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 110,
+      "total": 0.30301004344876664,
+      "image": 0.2669908106327057,
+      "strain": 0.005257865753678769,
+      "oob": 3.8022170299190714e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042382801128446335,
+      "match": 0.10101687552306285,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2397303910062901,
+      "minimum_contracted_slack": 0.5528537523848776
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 111,
+      "total": 0.3030098821657226,
+      "image": 0.2669898569583893,
+      "strain": 0.0052582187982103444,
+      "oob": 3.8022002667809695e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238559249537756,
+      "match": 0.10101554125392469,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2388717821212539,
+      "minimum_contracted_slack": 0.5527616342824339
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 112,
+      "total": 0.3030097247098577,
+      "image": 0.2669888436794281,
+      "strain": 0.005258485522606212,
+      "oob": 3.802180741223154e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.0423869262165623,
+      "match": 0.10101581981288515,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23782357804299534,
+      "minimum_contracted_slack": 0.5527336480088452
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 113,
+      "total": 0.3030095359124957,
+      "image": 0.2669889032840729,
+      "strain": 0.005258434520262905,
+      "oob": 3.8021623714056084e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042386247307021084,
+      "match": 0.10101534409594656,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23814055331814224,
+      "minimum_contracted_slack": 0.5527426453353255
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 114,
+      "total": 0.3030095199593578,
+      "image": 0.26698917150497437,
+      "strain": 0.005258493216229691,
+      "oob": 3.802141183607058e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238701881089685,
+      "match": 0.10101304345988613,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23884524886600017,
+      "minimum_contracted_slack": 0.5527632167898022
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 115,
+      "total": 0.3030092489390821,
+      "image": 0.26698827743530273,
+      "strain": 0.00525884644995012,
+      "oob": 3.802112360636868e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042390479154537405,
+      "match": 0.10101085991203602,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2391767214723263,
+      "minimum_contracted_slack": 0.5527870167323687
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 116,
+      "total": 0.30300906195037514,
+      "image": 0.26698869466781616,
+      "strain": 0.005258640103556872,
+      "oob": 3.8020900447202815e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042389177412291604,
+      "match": 0.10101093576849984,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23865971336487551,
+      "minimum_contracted_slack": 0.5528144021782179
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 117,
+      "total": 0.30300894533756384,
+      "image": 0.26698946952819824,
+      "strain": 0.005258275211219687,
+      "oob": 3.802070260534996e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238590387742162,
+      "match": 0.10101195441356724,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23824501551922855,
+      "minimum_contracted_slack": 0.5528370980631814
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 118,
+      "total": 0.3030087055450625,
+      "image": 0.2669902443885803,
+      "strain": 0.005257833549596504,
+      "oob": 3.8020446859601715e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042381819007512145,
+      "match": 0.1010135093946614,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23878538410598724,
+      "minimum_contracted_slack": 0.5528287439011234
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 119,
+      "total": 0.30300859623535686,
+      "image": 0.2669903039932251,
+      "strain": 0.005257806095856158,
+      "oob": 3.802019096237987e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238173442029457,
+      "match": 0.10101307795079462,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23931948210319665,
+      "minimum_contracted_slack": 0.5527646097135702
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 120,
+      "total": 0.3030085556780818,
+      "image": 0.2669900953769684,
+      "strain": 0.005257817059838984,
+      "oob": 3.802003093713571e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238233906130016,
+      "match": 0.10101375428376638,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23965133340161165,
+      "minimum_contracted_slack": 0.5526606396372742
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 121,
+      "total": 0.3030083813844139,
+      "image": 0.26699012517929077,
+      "strain": 0.005257754999689295,
+      "oob": 3.8019877300213734e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042381802380792685,
+      "match": 0.10101366574258445,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23921575854571042,
+      "minimum_contracted_slack": 0.5525882718164176
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 122,
+      "total": 0.3030084100641423,
+      "image": 0.26699021458625793,
+      "strain": 0.005257748979096825,
+      "oob": 3.801965600475981e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238191372784107,
+      "match": 0.1010134534660818,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23851744310262998,
+      "minimum_contracted_slack": 0.5526351625191526
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 123,
+      "total": 0.30300815726661645,
+      "image": 0.26699012517929077,
+      "strain": 0.005257656866508606,
+      "oob": 3.801950198355386e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042381192626551635,
+      "match": 0.10101401933276816,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2386606067767764,
+      "minimum_contracted_slack": 0.552827709951168
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 124,
+      "total": 0.3030081478998863,
+      "image": 0.2669900953769684,
+      "strain": 0.00525761646708609,
+      "oob": 3.801940144976791e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238091951362952,
+      "match": 0.10101472814129236,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23923542502135653,
+      "minimum_contracted_slack": 0.5530837130541159
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 125,
+      "total": 0.30300814734455644,
+      "image": 0.2669898271560669,
+      "strain": 0.005257701366435269,
+      "oob": 3.8019319400813906e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042381541161630225,
+      "match": 0.10101479307833369,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23983968929043445,
+      "minimum_contracted_slack": 0.5532524352887555
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 126,
+      "total": 0.3030079915707875,
+      "image": 0.26698896288871765,
+      "strain": 0.005258037864107558,
+      "oob": 3.8019210018390546e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238472432516602,
+      "match": 0.10101328703648135,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2392614982220038,
+      "minimum_contracted_slack": 0.5532234092322539
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 127,
+      "total": 0.30300801680106226,
+      "image": 0.26698875427246094,
+      "strain": 0.005258210364036058,
+      "oob": 3.801907390029333e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.0423863608400869,
+      "match": 0.1010118686325443,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23903641281067226,
+      "minimum_contracted_slack": 0.553016830249154
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 128,
+      "total": 0.30300811630002805,
+      "image": 0.26698946952819824,
+      "strain": 0.0052579183472553385,
+      "oob": 3.8019007089868375e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042383844637242915,
+      "match": 0.10101317169255086,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.239334112497937,
+      "minimum_contracted_slack": 0.5527776515505534
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 129,
+      "total": 0.3030078810868677,
+      "image": 0.26699015498161316,
+      "strain": 0.005257579333652813,
+      "oob": 3.801892355708207e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238036876346982,
+      "match": 0.10101365571931341,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2390159469995804,
+      "minimum_contracted_slack": 0.5526701749708502
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 130,
+      "total": 0.3030078348986682,
+      "image": 0.2669897675514221,
+      "strain": 0.005257761607219431,
+      "oob": 3.8018879346433696e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042381646043972834,
+      "match": 0.101012627408185,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23926172364962117,
+      "minimum_contracted_slack": 0.5527625430794695
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 131,
+      "total": 0.30300774046907347,
+      "image": 0.2669885456562042,
+      "strain": 0.0052582222062706845,
+      "oob": 3.801884005502418e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238551958006285,
+      "match": 0.1010113540102209,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23930974283989706,
+      "minimum_contracted_slack": 0.5529970831334459
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 132,
+      "total": 0.30300790007757655,
+      "image": 0.2669890224933624,
+      "strain": 0.005258125894998095,
+      "oob": 3.801879055296156e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042384960482126435,
+      "match": 0.10101121306309335,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23873921381109217,
+      "minimum_contracted_slack": 0.5532383549588498
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 133,
+      "total": 0.30300785900516214,
+      "image": 0.26699021458625793,
+      "strain": 0.005257776101407241,
+      "oob": 3.801884756231863e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042382188995365985,
+      "match": 0.10101029524110286,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23943847599877824,
+      "minimum_contracted_slack": 0.5533370095194405
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 134,
+      "total": 0.3030076844897439,
+      "image": 0.2669905424118042,
+      "strain": 0.005257671667983208,
+      "oob": 3.801900929226897e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238074889780123,
+      "match": 0.10100934994904007,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.24008531400457392,
+      "minimum_contracted_slack": 0.5532068413828672
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 135,
+      "total": 0.3030077690813709,
+      "image": 0.26698991656303406,
+      "strain": 0.005258016211462935,
+      "oob": 3.801918511398359e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238352904172225,
+      "match": 0.10100773172964939,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23895226538952782,
+      "minimum_contracted_slack": 0.552905831585217
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 136,
+      "total": 0.30300774180568324,
+      "image": 0.2669897675514221,
+      "strain": 0.005258059248660366,
+      "oob": 3.801929371072878e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042384524801316194,
+      "match": 0.10100769381044561,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23886181411779625,
+      "minimum_contracted_slack": 0.5526253769027016
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 137,
+      "total": 0.3030078524609016,
+      "image": 0.2669903039932251,
+      "strain": 0.005257842036071225,
+      "oob": 3.801931372538056e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042382653850538875,
+      "match": 0.10100882390176205,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.2395894539079273,
+      "minimum_contracted_slack": 0.5525401476178283
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 138,
+      "total": 0.3030077553735765,
+      "image": 0.26698970794677734,
+      "strain": 0.005257899996109396,
+      "oob": 3.801936792041945e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042382633994118804,
+      "match": 0.10101044903575576,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23912796418726978,
+      "minimum_contracted_slack": 0.5526634112053275
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 139,
+      "total": 0.30300761688026717,
+      "image": 0.2669892907142639,
+      "strain": 0.0052580577717548805,
+      "oob": 3.80195270940484e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042384102217734226,
+      "match": 0.10100947456711386,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23884782261539092,
+      "minimum_contracted_slack": 0.5528824362054565
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 140,
+      "total": 0.30300774350902715,
+      "image": 0.2669887840747833,
+      "strain": 0.0052583144499653844,
+      "oob": 3.8019663431858796e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238622232591001,
+      "match": 0.10100878899341614,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23903329834093293,
+      "minimum_contracted_slack": 0.5531060699865936
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 141,
+      "total": 0.3030076299622567,
+      "image": 0.2669893503189087,
+      "strain": 0.005258082359508504,
+      "oob": 3.8019894457999465e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238439836819624,
+      "match": 0.10100887115263818,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.2384468961375569,
+      "minimum_contracted_slack": 0.5533060064820555
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 142,
+      "total": 0.3030077832156318,
+      "image": 0.2669904828071594,
+      "strain": 0.005257734820272426,
+      "oob": 3.8020009514979786e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238155921333113,
+      "match": 0.10100918891109417,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.2393668682683711,
+      "minimum_contracted_slack": 0.55344301410161
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 143,
+      "total": 0.30300775354276727,
+      "image": 0.2669902741909027,
+      "strain": 0.005257861474782804,
+      "oob": 3.802003206432377e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238252274349705,
+      "match": 0.10100818321588742,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.24063906442632288,
+      "minimum_contracted_slack": 0.5534545796966752
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 144,
+      "total": 0.3030077688676453,
+      "image": 0.26698923110961914,
+      "strain": 0.005258231817729372,
+      "oob": 3.801999125696978e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042385785358762,
+      "match": 0.10100791867522609,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23986806777867226,
+      "minimum_contracted_slack": 0.5533192655553366
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 145,
+      "total": 0.3030076237189058,
+      "image": 0.2669888734817505,
+      "strain": 0.005258243960315542,
+      "oob": 3.8020226099543193e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238543019176679,
+      "match": 0.10100879793544998,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.2381469271950498,
+      "minimum_contracted_slack": 0.5530797690506388
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 146,
+      "total": 0.3030076570716395,
+      "image": 0.26698923110961914,
+      "strain": 0.005258089308246387,
+      "oob": 3.8020522347826226e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238378950274556,
+      "match": 0.10100949567991577,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.2393080500465288,
+      "minimum_contracted_slack": 0.5528174010145974
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 147,
+      "total": 0.3030076833808862,
+      "image": 0.2669898569583893,
+      "strain": 0.005257940014021488,
+      "oob": 3.802066240348419e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042382649770684316,
+      "match": 0.10100873726525922,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.24033413607722057,
+      "minimum_contracted_slack": 0.5526458690207465
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 148,
+      "total": 0.3030077976700689,
+      "image": 0.26698988676071167,
+      "strain": 0.00525806326730889,
+      "oob": 3.802067353241932e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238436882177398,
+      "match": 0.10100730998507984,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23888521075809865,
+      "minimum_contracted_slack": 0.552681683273765
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 149,
+      "total": 0.3030076232431877,
+      "image": 0.26698926091194153,
+      "strain": 0.005258312216456106,
+      "oob": 3.802077526009935e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238674843392084,
+      "match": 0.10100583115887178,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23880130954661238,
+      "minimum_contracted_slack": 0.5529325256146209
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 150,
+      "total": 0.3030077578133632,
+      "image": 0.2669891119003296,
+      "strain": 0.005258382017095255,
+      "oob": 3.802082204841332e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042387149451597175,
+      "match": 0.1010062016237715,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23954343522462848,
+      "minimum_contracted_slack": 0.5513033497119773
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 151,
+      "total": 0.3030078337146268,
+      "image": 0.2669890522956848,
+      "strain": 0.0052582095581530435,
+      "oob": 3.802104583935352e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238511163164872,
+      "match": 0.10100946593740187,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23907964349305008,
+      "minimum_contracted_slack": 0.5509759612528633
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 152,
+      "total": 0.3030078142034004,
+      "image": 0.26698923110961914,
+      "strain": 0.005258113309841354,
+      "oob": 3.8021094057353656e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238394778617066,
+      "match": 0.10100991837710602,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23960535897885374,
+      "minimum_contracted_slack": 0.5519463670114374
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 153,
+      "total": 0.30300785838640126,
+      "image": 0.2669898569583893,
+      "strain": 0.005258051236561218,
+      "oob": 3.802111619048457e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238386023303309,
+      "match": 0.10100794108057251,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.2399469461067859,
+      "minimum_contracted_slack": 0.5533586813021468
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 154,
+      "total": 0.30300764832147314,
+      "image": 0.26699018478393555,
+      "strain": 0.0052579943207906234,
+      "oob": 3.8021086856953156e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042383445774075365,
+      "match": 0.10100610571865669,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23877454804660717,
+      "minimum_contracted_slack": 0.5542920484380982
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 155,
+      "total": 0.3030077369593325,
+      "image": 0.2669896185398102,
+      "strain": 0.005258204400859592,
+      "oob": 3.8021124278314e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238527957478864,
+      "match": 0.10100622782353852,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.2384617948063411,
+      "minimum_contracted_slack": 0.5543898171388164
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 156,
+      "total": 0.30300787797808715,
+      "image": 0.266989141702652,
+      "strain": 0.005258410570815126,
+      "oob": 3.8021153651425534e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238700314222376,
+      "match": 0.10100622354512066,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23942859646951886,
+      "minimum_contracted_slack": 0.5538926928460345
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 157,
+      "total": 0.30300785414069525,
+      "image": 0.2669891119003296,
+      "strain": 0.005258455172491504,
+      "oob": 3.8021260595003815e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238726706329236,
+      "match": 0.10100558367794926,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23985069866472594,
+      "minimum_contracted_slack": 0.5532383787338494
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 158,
+      "total": 0.3030077549712966,
+      "image": 0.26698970794677734,
+      "strain": 0.005258142878951083,
+      "oob": 3.802134400014771e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238463647871123,
+      "match": 0.10100679290008989,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.2390382900269899,
+      "minimum_contracted_slack": 0.5527084600365206
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 159,
+      "total": 0.30300789548122753,
+      "image": 0.26698973774909973,
+      "strain": 0.005258248107250079,
+      "oob": 3.802139355086944e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04238581947264543,
+      "match": 0.10100576717439722,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23817897165543703,
+      "minimum_contracted_slack": 0.5524015738570711
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 160,
+      "total": 0.30300783348981947,
+      "image": 0.26698964834213257,
+      "strain": 0.005258436777851008,
+      "oob": 3.802144396455226e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042387562369210464,
+      "match": 0.1010030730696623,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23887716094155326,
+      "minimum_contracted_slack": 0.5523704768661309
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 161,
+      "total": 0.30300775470884544,
+      "image": 0.26698899269104004,
+      "strain": 0.005258623048434906,
+      "oob": 3.8021336187730074e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042388780669362504,
+      "match": 0.10100316329123007,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.2393585045170292,
+      "minimum_contracted_slack": 0.5526342849485238
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 162,
+      "total": 0.3030077897805553,
+      "image": 0.2669888138771057,
+      "strain": 0.005258568972241243,
+      "oob": 3.8021242417029905e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.042387936968981826,
+      "match": 0.10100504475305971,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.23988519690494625,
+      "minimum_contracted_slack": 0.5510734974049809
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 0,
+      "total": 0.31248159225732425,
+      "image": 0.26399895548820496,
+      "strain": 0.009503431740738023,
+      "oob": 3.80201000143281e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.078032632360693,
+      "match": 0.09963259091827448,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.21253503182571065,
+      "minimum_contracted_slack": 0.4343509373530492
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 1,
+      "total": 0.3048523851883867,
+      "image": 0.2633911371231079,
+      "strain": 0.007157536956042176,
+      "oob": 3.8019993517777627e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.05816082600519089,
+      "match": 0.09972400560516995,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.279319660612178,
+      "minimum_contracted_slack": 0.39501623351485327
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 2,
+      "total": 0.3042915122288177,
+      "image": 0.2635383903980255,
+      "strain": 0.0068999705666879605,
+      "oob": 3.801968890601341e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.05597310817162235,
+      "match": 0.10004796565502541,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.2974597796213532,
+      "minimum_contracted_slack": 0.41419647638648416
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 3,
+      "total": 0.305114050216211,
+      "image": 0.26368099451065063,
+      "strain": 0.007112687374239694,
+      "oob": 3.8019649360259374e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.05774636154235753,
+      "match": 0.10025599648663402,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.27597136243058823,
+      "minimum_contracted_slack": 0.45130385141464124
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 4,
+      "total": 0.3039259921841885,
+      "image": 0.26363885402679443,
+      "strain": 0.006732031299150606,
+      "oob": 3.8019754924807776e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.05457607642433962,
+      "match": 0.1002378344868751,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.229680070685716,
+      "minimum_contracted_slack": 0.48293975755396457
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 5,
+      "total": 0.30248489388583866,
+      "image": 0.2634418308734894,
+      "strain": 0.00632902066875035,
+      "oob": 3.801977048646681e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.051246244500886225,
+      "match": 0.10006428305580863,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.21940340131053107,
+      "minimum_contracted_slack": 0.49782711469720686
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 6,
+      "total": 0.301883350768264,
+      "image": 0.2631780803203583,
+      "strain": 0.0062311829122268965,
+      "oob": 3.801968630507646e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.05047123416299002,
+      "match": 0.09984327450751851,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.21380303912179627,
+      "minimum_contracted_slack": 0.4945421451790054
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 7,
+      "total": 0.3019325430166387,
+      "image": 0.26292842626571655,
+      "strain": 0.006342288071313698,
+      "oob": 3.80195585166857e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.05141679375252051,
+      "match": 0.09967045649544568,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.22066113810576907,
+      "minimum_contracted_slack": 0.4807746561243941
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 8,
+      "total": 0.30188246239386424,
+      "image": 0.262744277715683,
+      "strain": 0.006391962671189756,
+      "oob": 3.8019453270460096e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.051846007559862614,
+      "match": 0.09959546305292744,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22788974355864314,
+      "minimum_contracted_slack": 0.46687084086322295
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 9,
+      "total": 0.3014312939760414,
+      "image": 0.2626368999481201,
+      "strain": 0.006275688213504671,
+      "oob": 3.801939313521653e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.050881084952071096,
+      "match": 0.09962110942888439,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.21890873488050508,
+      "minimum_contracted_slack": 0.46020683346579294
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 10,
+      "total": 0.3008554819650156,
+      "image": 0.26259416341781616,
+      "strain": 0.006091696968088173,
+      "oob": 3.801937368348069e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04934742534084331,
+      "match": 0.09971636763358685,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19097270284689702,
+      "minimum_contracted_slack": 0.4627591449874763
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 11,
+      "total": 0.30048948656191576,
+      "image": 0.26258939504623413,
+      "strain": 0.005963392340904247,
+      "oob": 3.8019378154075175e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04828086795335125,
+      "match": 0.09983533514009749,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.21371529401168027,
+      "minimum_contracted_slack": 0.471619639201999
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 12,
+      "total": 0.3003902937778082,
+      "image": 0.26259368658065796,
+      "strain": 0.005922185918350179,
+      "oob": 3.801938205273581e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.047937935030860634,
+      "match": 0.09993618133271925,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23127310511470783,
+      "minimum_contracted_slack": 0.4813876188655384
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 13,
+      "total": 0.30037608424475015,
+      "image": 0.26258519291877747,
+      "strain": 0.005916347399946512,
+      "oob": 3.801936846529338e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04788843151057279,
+      "match": 0.09999520457258375,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2397648125491017,
+      "minimum_contracted_slack": 0.487070020058722
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 14,
+      "total": 0.30026336482170474,
+      "image": 0.26255378127098083,
+      "strain": 0.005888649301180069,
+      "oob": 3.801932771823023e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04766001840513648,
+      "match": 0.10000425158812482,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.23837503424915954,
+      "minimum_contracted_slack": 0.4862316811224927
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 15,
+      "total": 0.30003624886640895,
+      "image": 0.2625043988227844,
+      "strain": 0.005831554701097698,
+      "oob": 3.801925128324945e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.047191714381837224,
+      "match": 0.09997223758805,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22932035997747835,
+      "minimum_contracted_slack": 0.4791818949379538
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 16,
+      "total": 0.2998003467735478,
+      "image": 0.26244571805000305,
+      "strain": 0.005775974902623314,
+      "oob": 3.801913764151684e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04674105116009835,
+      "match": 0.09992005386458641,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.21604486695744934,
+      "minimum_contracted_slack": 0.4682319388488163
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 17,
+      "total": 0.299644230487946,
+      "image": 0.2623859643936157,
+      "strain": 0.005747145987743877,
+      "oob": 3.801901326215934e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04651376622016268,
+      "match": 0.09987078870607197,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20249103923568842,
+      "minimum_contracted_slack": 0.4569258888296749
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 18,
+      "total": 0.29956772540074805,
+      "image": 0.2623339295387268,
+      "strain": 0.005740935610038178,
+      "oob": 3.801892134726786e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04647023479946447,
+      "match": 0.0998416154353976,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2030969257176153,
+      "minimum_contracted_slack": 0.4491626108861967
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 19,
+      "total": 0.2995075468045968,
+      "image": 0.262292742729187,
+      "strain": 0.005734842765774382,
+      "oob": 3.801888672454871e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.0464220055912907,
+      "match": 0.09983807345401483,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.21316899084148586,
+      "minimum_contracted_slack": 0.44827565310789574
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 20,
+      "total": 0.2994126497954662,
+      "image": 0.26226240396499634,
+      "strain": 0.00571200559979286,
+      "oob": 3.8018898351274034e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04623152608557735,
+      "match": 0.09985793490065734,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22309266014536017,
+      "minimum_contracted_slack": 0.45464567562340663
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 21,
+      "total": 0.29928978962553704,
+      "image": 0.262241393327713,
+      "strain": 0.005675844973476437,
+      "oob": 3.80189192298597e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04592984154417399,
+      "match": 0.0998912473700522,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22362050089440258,
+      "minimum_contracted_slack": 0.4658802611814298
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 22,
+      "total": 0.2991773964869179,
+      "image": 0.2622259557247162,
+      "strain": 0.005641179679000716,
+      "oob": 3.801891086148976e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.045641614659009726,
+      "match": 0.0999265932643609,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2255815311810047,
+      "minimum_contracted_slack": 0.4785368636115238
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 23,
+      "total": 0.2990974805528442,
+      "image": 0.26221156120300293,
+      "strain": 0.005617551072844135,
+      "oob": 3.801885030449946e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04544642070233102,
+      "match": 0.09995351319467045,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22467572348797127,
+      "minimum_contracted_slack": 0.4886146285350944
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 24,
+      "total": 0.29904013827185555,
+      "image": 0.26219314336776733,
+      "strain": 0.005603685248300404,
+      "oob": 3.801873546906795e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.045333737297831925,
+      "match": 0.09996693524994069,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22461663718870586,
+      "minimum_contracted_slack": 0.49279946710336664
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 25,
+      "total": 0.29898474397170377,
+      "image": 0.2621689736843109,
+      "strain": 0.0055933422331757195,
+      "oob": 3.801858158923805e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04525187817939118,
+      "match": 0.09996599909229253,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20860194024358178,
+      "minimum_contracted_slack": 0.4896881051677263
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 26,
+      "total": 0.2989196617976262,
+      "image": 0.2621389329433441,
+      "strain": 0.005582440988357522,
+      "oob": 3.8018414885299646e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04516690562620242,
+      "match": 0.09995435391880769,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20252835494551616,
+      "minimum_contracted_slack": 0.48032450539836624
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 27,
+      "total": 0.2988505334439357,
+      "image": 0.2621050179004669,
+      "strain": 0.005571779427557624,
+      "oob": 3.801826407578574e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.045084317733375456,
+      "match": 0.09993825282473377,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20722537393042703,
+      "minimum_contracted_slack": 0.46789525874536353
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 28,
+      "total": 0.29878948995962257,
+      "image": 0.2620714008808136,
+      "strain": 0.005563493971404994,
+      "oob": 3.801814981539436e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04502056840536722,
+      "match": 0.09992543478969033,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20668458345408278,
+      "minimum_contracted_slack": 0.4567681916190529
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 29,
+      "total": 0.298742249757803,
+      "image": 0.26204124093055725,
+      "strain": 0.005558124873099282,
+      "oob": 3.80180765137831e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04497985051787187,
+      "match": 0.0999205907319116,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2065993046277838,
+      "minimum_contracted_slack": 0.4509356609924884
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 30,
+      "total": 0.29870563493248553,
+      "image": 0.2620157301425934,
+      "strain": 0.005554072432890841,
+      "oob": 3.801803394135555e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.044948252701772475,
+      "match": 0.09992587316004059,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20483744870492626,
+      "minimum_contracted_slack": 0.4523332203216167
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 31,
+      "total": 0.29867052391933235,
+      "image": 0.26199576258659363,
+      "strain": 0.005548110805254475,
+      "oob": 3.801800810897794e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.0448985368649064,
+      "match": 0.09993960527589918,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2048985750498132,
+      "minimum_contracted_slack": 0.459955788318834
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 32,
+      "total": 0.2986325315382093,
+      "image": 0.2619810104370117,
+      "strain": 0.005539219857571739,
+      "oob": 3.801798940857998e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04482268128482235,
+      "match": 0.09995680635472659,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20959294176083046,
+      "minimum_contracted_slack": 0.47027615861576655
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 33,
+      "total": 0.29859463216360477,
+      "image": 0.2619689404964447,
+      "strain": 0.005529535869572723,
+      "oob": 3.801796897935222e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04473985707780233,
+      "match": 0.09997296051877373,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20866592577010545,
+      "minimum_contracted_slack": 0.4788193327196153
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 34,
+      "total": 0.2985606941448212,
+      "image": 0.26195693016052246,
+      "strain": 0.005521399124537391,
+      "oob": 3.801793241919281e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04467074790596877,
+      "match": 0.09998540801738426,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20351316649755266,
+      "minimum_contracted_slack": 0.48219701863940334
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 35,
+      "total": 0.29853247863845606,
+      "image": 0.26194384694099426,
+      "strain": 0.005515830687155993,
+      "oob": 3.801786505095159e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04462415209920861,
+      "match": 0.0999932967786647,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.21398039110450506,
+      "minimum_contracted_slack": 0.47945996609717056
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 36,
+      "total": 0.29850665289000256,
+      "image": 0.2619289755821228,
+      "strain": 0.005511975758984427,
+      "oob": 3.801776419221e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.044592922541228895,
+      "match": 0.09999636487240064,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.21757222635326756,
+      "minimum_contracted_slack": 0.4721831293150067
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 37,
+      "total": 0.2984794933076244,
+      "image": 0.26191332936286926,
+      "strain": 0.005508158480931719,
+      "oob": 3.801764137597813e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04456274072362127,
+      "match": 0.09999607293255841,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.21282131908254612,
+      "minimum_contracted_slack": 0.46354865299927006
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 38,
+      "total": 0.298452696367586,
+      "image": 0.2618980407714844,
+      "strain": 0.005504316496620322,
+      "oob": 3.801751226452204e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04453273428973927,
+      "match": 0.0999961766027358,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20183190093943254,
+      "minimum_contracted_slack": 0.4569000858464414
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 39,
+      "total": 0.2984283633409536,
+      "image": 0.26188376545906067,
+      "strain": 0.005500827144854418,
+      "oob": 3.801738773315492e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04450478093129591,
+      "match": 0.09999824290751698,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19720411722960585,
+      "minimum_contracted_slack": 0.4544360423485825
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 40,
+      "total": 0.29840741195181675,
+      "image": 0.2618710994720459,
+      "strain": 0.005497800846247099,
+      "oob": 3.801727400489518e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.044479419010613065,
+      "match": 0.10000222362561778,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19881273803580984,
+      "minimum_contracted_slack": 0.4566373653421706
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 41,
+      "total": 0.29838816713470634,
+      "image": 0.2618609070777893,
+      "strain": 0.005494377105816333,
+      "oob": 3.8017174274976176e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04444973345536765,
+      "match": 0.10000833295923756,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.1994508738793798,
+      "minimum_contracted_slack": 0.46241152135543606
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 42,
+      "total": 0.2983695150782174,
+      "image": 0.2618526220321655,
+      "strain": 0.005490529151815919,
+      "oob": 3.8017086174348926e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04441665232398288,
+      "match": 0.10001423419598685,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20366959971637227,
+      "minimum_contracted_slack": 0.4695745835650841
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 43,
+      "total": 0.29834989560578523,
+      "image": 0.26184457540512085,
+      "strain": 0.005486251733555785,
+      "oob": 3.801699930294992e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04438055381640649,
+      "match": 0.10002054972656219,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20599656463079707,
+      "minimum_contracted_slack": 0.47549507302440186
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 44,
+      "total": 0.2983316969717027,
+      "image": 0.26183733344078064,
+      "strain": 0.005482192500682053,
+      "oob": 3.8016900512061597e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04434661195532126,
+      "match": 0.10002667233584137,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20601448203940886,
+      "minimum_contracted_slack": 0.4779507680232642
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 45,
+      "total": 0.2983156298334017,
+      "image": 0.26183053851127625,
+      "strain": 0.005478851996078431,
+      "oob": 3.8016783916192434e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04431897033986311,
+      "match": 0.10003043326469999,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20374007452124815,
+      "minimum_contracted_slack": 0.4760519151474727
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 46,
+      "total": 0.29830110640605295,
+      "image": 0.2618241608142853,
+      "strain": 0.005476067474029839,
+      "oob": 3.8016653060484776e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04429589998915553,
+      "match": 0.10003148463309383,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2038373069253016,
+      "minimum_contracted_slack": 0.47079156885461493
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 47,
+      "total": 0.2982859624618909,
+      "image": 0.2618166506290436,
+      "strain": 0.005473597856825849,
+      "oob": 3.80165132580797e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.044274768134825115,
+      "match": 0.1000303713614908,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2155484698549966,
+      "minimum_contracted_slack": 0.46468275829936856
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 48,
+      "total": 0.298269543885789,
+      "image": 0.26180821657180786,
+      "strain": 0.005471127158749705,
+      "oob": 3.801636823460675e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.044253502142639414,
+      "match": 0.10002752059641593,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20190456059901452,
+      "minimum_contracted_slack": 0.4605274733525677
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 49,
+      "total": 0.2982535074998073,
+      "image": 0.2617998719215393,
+      "strain": 0.005468727229536415,
+      "oob": 3.8016225540602386e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.044232681121095505,
+      "match": 0.1000250719800301,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2019198827203878,
+      "minimum_contracted_slack": 0.4599783372923717
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 50,
+      "total": 0.2982390290296494,
+      "image": 0.26179200410842896,
+      "strain": 0.005466570776391637,
+      "oob": 3.8016094159705535e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04421377641122421,
+      "match": 0.10002437560122347,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20280987398129435,
+      "minimum_contracted_slack": 0.46282544084762645
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 51,
+      "total": 0.29822532949401215,
+      "image": 0.2617836892604828,
+      "strain": 0.005464717548847708,
+      "oob": 3.80159746371267e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04419735284538251,
+      "match": 0.10002525938532264,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2051421026738454,
+      "minimum_contracted_slack": 0.4673976099776499
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 52,
+      "total": 0.2982118657307386,
+      "image": 0.2617745101451874,
+      "strain": 0.005463165992802917,
+      "oob": 3.801586087337147e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.044183208005134395,
+      "match": 0.10002711712734293,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2051930392870881,
+      "minimum_contracted_slack": 0.4715997952486015
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 53,
+      "total": 0.2981985317478136,
+      "image": 0.26176443696022034,
+      "strain": 0.005461941190599882,
+      "oob": 3.8015748888628195e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.0441720939633218,
+      "match": 0.10002919128754349,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20878968990810967,
+      "minimum_contracted_slack": 0.47388316776936446
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 54,
+      "total": 0.29818555856702905,
+      "image": 0.26175376772880554,
+      "strain": 0.0054610049432327,
+      "oob": 3.801563469521405e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04416315375654375,
+      "match": 0.10003172029227263,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.21364381208866673,
+      "minimum_contracted_slack": 0.4737116718595136
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 55,
+      "total": 0.29817341752863163,
+      "image": 0.26174217462539673,
+      "strain": 0.0054606602949433605,
+      "oob": 3.80155104772894e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04415938469654388,
+      "match": 0.10003415284728959,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.21523791907746878,
+      "minimum_contracted_slack": 0.4715440091311668
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 56,
+      "total": 0.29816153990080296,
+      "image": 0.26172909140586853,
+      "strain": 0.005460960580149191,
+      "oob": 3.801537230688728e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04416157096317751,
+      "match": 0.10003567612541801,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2161283063187512,
+      "minimum_contracted_slack": 0.4685224052254624
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 57,
+      "total": 0.298149166978853,
+      "image": 0.26171544194221497,
+      "strain": 0.005461343535529722,
+      "oob": 3.8015223140448686e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.044164997388155616,
+      "match": 0.10003631353584813,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.21564522033443756,
+      "minimum_contracted_slack": 0.4659833848110365
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 58,
+      "total": 0.2981371549253734,
+      "image": 0.2617019712924957,
+      "strain": 0.005461717340916176,
+      "oob": 3.801506582294913e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04416873462410709,
+      "match": 0.10003799835421887,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.21832508515592325,
+      "minimum_contracted_slack": 0.4649300601892785
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 59,
+      "total": 0.29812574950175025,
+      "image": 0.26168909668922424,
+      "strain": 0.005461997995345297,
+      "oob": 3.801490221460706e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.0441719581862043,
+      "match": 0.10004113364228426,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22104391495002063,
+      "minimum_contracted_slack": 0.46566333129868787
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 60,
+      "total": 0.2981143342276696,
+      "image": 0.2616758346557617,
+      "strain": 0.0054622348702132815,
+      "oob": 3.801473734180418e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04417517184208339,
+      "match": 0.10004681353370974,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22294577275891428,
+      "minimum_contracted_slack": 0.46769564241846806
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 61,
+      "total": 0.2981037271778264,
+      "image": 0.2616632580757141,
+      "strain": 0.00546236914859812,
+      "oob": 3.801457788175517e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04417754269857327,
+      "match": 0.10005464662083167,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22527540721362566,
+      "minimum_contracted_slack": 0.4700023470181599
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 62,
+      "total": 0.2980933105552772,
+      "image": 0.26165175437927246,
+      "strain": 0.005462127401206034,
+      "oob": 3.801442869024281e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.044176830005365694,
+      "match": 0.1000637093034796,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22658953038092708,
+      "minimum_contracted_slack": 0.4715700185503574
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 63,
+      "total": 0.29808452157600995,
+      "image": 0.2616417407989502,
+      "strain": 0.005461839302131441,
+      "oob": 3.801429038909842e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04417496325808814,
+      "match": 0.10007415541975284,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22416601857692484,
+      "minimum_contracted_slack": 0.4719141661010763
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 64,
+      "total": 0.29807682054711004,
+      "image": 0.26163411140441895,
+      "strain": 0.005461077994063401,
+      "oob": 3.801415809042786e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.04416802104102382,
+      "match": 0.10008522100153171,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20665663452982128,
+      "minimum_contracted_slack": 0.47113321335856106
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 65,
+      "total": 0.2980689206238243,
+      "image": 0.2616276144981384,
+      "strain": 0.005459839708710408,
+      "oob": 3.801402625806662e-05,
+      "outside_fraction": 0.03514043241739273,
+      "shape": 0.044156816313276094,
+      "match": 0.10009678645832595,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20079980340693165,
+      "minimum_contracted_slack": 0.4696626435867647
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 66,
+      "total": 0.2980612772479714,
+      "image": 0.2616215646266937,
+      "strain": 0.005458449172542443,
+      "oob": 3.8013892223251807e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04414524491322945,
+      "match": 0.10010968343467863,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22292633681904403,
+      "minimum_contracted_slack": 0.46807721832950466
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 67,
+      "total": 0.2980531956206389,
+      "image": 0.26161617040634155,
+      "strain": 0.005456687176654037,
+      "oob": 3.8013753279216235e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.044131061503993166,
+      "match": 0.10012268412452813,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.22462826541932124,
+      "minimum_contracted_slack": 0.46699863512897
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 68,
+      "total": 0.29804517581528944,
+      "image": 0.261611670255661,
+      "strain": 0.005454748501896147,
+      "oob": 3.801360691598802e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04411486990224947,
+      "match": 0.10013417480016916,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20920125130234923,
+      "minimum_contracted_slack": 0.46680749133940913
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 69,
+      "total": 0.29803681761078116,
+      "image": 0.2616064250469208,
+      "strain": 0.0054530601830640405,
+      "oob": 3.801345513851473e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04409988563454695,
+      "match": 0.10014394285483158,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20357691474589182,
+      "minimum_contracted_slack": 0.4673653424630694
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 70,
+      "total": 0.29803001255335615,
+      "image": 0.2616007924079895,
+      "strain": 0.005452024014563656,
+      "oob": 3.8013302457701005e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.044090683637874925,
+      "match": 0.10015362865427119,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2085354977217605,
+      "minimum_contracted_slack": 0.4681589193512349
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 71,
+      "total": 0.29802343394913106,
+      "image": 0.2615949213504791,
+      "strain": 0.005451200213101291,
+      "oob": 3.8013152370415564e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.044084231300135515,
+      "match": 0.10016245191923848,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20031540625006997,
+      "minimum_contracted_slack": 0.4687603293494427
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 72,
+      "total": 0.29801610044289045,
+      "image": 0.2615884840488434,
+      "strain": 0.005450456762668176,
+      "oob": 3.801300821725232e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04407811431041844,
+      "match": 0.10016912643197112,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19941630419362985,
+      "minimum_contracted_slack": 0.46909172499211516
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 73,
+      "total": 0.29800932501401334,
+      "image": 0.261581689119339,
+      "strain": 0.00545007758397028,
+      "oob": 3.801287084892031e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04407460678968229,
+      "match": 0.10017491405617791,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20147560397383482,
+      "minimum_contracted_slack": 0.46925236438778795
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 74,
+      "total": 0.298003476221124,
+      "image": 0.2615746557712555,
+      "strain": 0.0054499989785943646,
+      "oob": 3.801273643362198e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04407350674923856,
+      "match": 0.1001820171348845,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.1988207699127879,
+      "minimum_contracted_slack": 0.469220738625008
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 75,
+      "total": 0.29799758668657195,
+      "image": 0.2615683078765869,
+      "strain": 0.005449654004258276,
+      "oob": 3.801260121717963e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.044070442121324514,
+      "match": 0.1001894857589048,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19857495747900555,
+      "minimum_contracted_slack": 0.4688885059601513
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 76,
+      "total": 0.29799242616882415,
+      "image": 0.2615637183189392,
+      "strain": 0.00544893182428489,
+      "oob": 3.801246279282817e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04406520024655028,
+      "match": 0.10019746697106385,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2019715108415103,
+      "minimum_contracted_slack": 0.4683838877928913
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 77,
+      "total": 0.29798673063497616,
+      "image": 0.2615590989589691,
+      "strain": 0.00544802855287361,
+      "oob": 3.8012319821188705e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.0440584237522584,
+      "match": 0.10020563927594908,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2031909637223073,
+      "minimum_contracted_slack": 0.4681081926159768
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 78,
+      "total": 0.29798230151409916,
+      "image": 0.26155492663383484,
+      "strain": 0.005447492790662901,
+      "oob": 3.801217389889297e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04405393911787178,
+      "match": 0.10021239470232474,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2019818844037872,
+      "minimum_contracted_slack": 0.4682755356343349
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 79,
+      "total": 0.29797846205662404,
+      "image": 0.2615512013435364,
+      "strain": 0.005447025688185546,
+      "oob": 3.801202790753412e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.044049942393199405,
+      "match": 0.10021883313192095,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19887196630643492,
+      "minimum_contracted_slack": 0.46863806903584515
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 80,
+      "total": 0.2979745566524359,
+      "image": 0.2615475058555603,
+      "strain": 0.005446645905725531,
+      "oob": 3.80118836777159e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.044046928005291384,
+      "match": 0.10022348251610388,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19541111026795147,
+      "minimum_contracted_slack": 0.4688975520527793
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 81,
+      "total": 0.2979713886468761,
+      "image": 0.2615453004837036,
+      "strain": 0.005446040003342385,
+      "oob": 3.8011743316758696e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.044042352496105,
+      "match": 0.100227760872895,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19772268341871557,
+      "minimum_contracted_slack": 0.46910754933754417
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 82,
+      "total": 0.2979682969115052,
+      "image": 0.2615432143211365,
+      "strain": 0.00544536438859856,
+      "oob": 3.80116058379145e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.044036422057670235,
+      "match": 0.10023287088264697,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20066008680040118,
+      "minimum_contracted_slack": 0.469335956445341
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 83,
+      "total": 0.29796517471672235,
+      "image": 0.2615407705307007,
+      "strain": 0.005444854069568353,
+      "oob": 3.8011467886960796e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04403161179281974,
+      "match": 0.1002371367412519,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20303808219422045,
+      "minimum_contracted_slack": 0.46939983651867134
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 84,
+      "total": 0.29796134032920235,
+      "image": 0.2615376114845276,
+      "strain": 0.0054443735872813735,
+      "oob": 3.801132925469429e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04402685532633262,
+      "match": 0.10024097034021646,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20336891325351153,
+      "minimum_contracted_slack": 0.46921828296463675
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 85,
+      "total": 0.2979581420528072,
+      "image": 0.26153406500816345,
+      "strain": 0.005444293738261728,
+      "oob": 3.8011190842137035e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.044026411954814174,
+      "match": 0.10024390998910468,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20099961464045937,
+      "minimum_contracted_slack": 0.46906971301648825
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 86,
+      "total": 0.2979556778491588,
+      "image": 0.2615312933921814,
+      "strain": 0.005444198455910051,
+      "oob": 3.801105286745586e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.044026433644674456,
+      "match": 0.10024687696507653,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19562151183899493,
+      "minimum_contracted_slack": 0.4691861842797238
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 87,
+      "total": 0.29795375771574273,
+      "image": 0.26152995228767395,
+      "strain": 0.005443780610048213,
+      "oob": 3.8010915922423074e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04402335200110184,
+      "match": 0.10025025173400817,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19786887744467863,
+      "minimum_contracted_slack": 0.4693710643992154
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 88,
+      "total": 0.29795159401423277,
+      "image": 0.2615288496017456,
+      "strain": 0.005443151212392602,
+      "oob": 3.801078023267748e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.044018836350004614,
+      "match": 0.10025439055720856,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20028050358941502,
+      "minimum_contracted_slack": 0.46934073645048935
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 89,
+      "total": 0.29794975198015544,
+      "image": 0.261527419090271,
+      "strain": 0.005442707750950175,
+      "oob": 3.8010646431152066e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.044015352572489876,
+      "match": 0.1002589872767273,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20118341608136694,
+      "minimum_contracted_slack": 0.4692023646307645
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 90,
+      "total": 0.29794768778505226,
+      "image": 0.26152503490448,
+      "strain": 0.005442511845486572,
+      "oob": 3.8010515058597305e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.044013474763696714,
+      "match": 0.10026352740788796,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.1998555299659864,
+      "minimum_contracted_slack": 0.469177242127915
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 91,
+      "total": 0.2979456393951598,
+      "image": 0.26152271032333374,
+      "strain": 0.0054423669544872025,
+      "oob": 3.801038552755062e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04401205901400148,
+      "match": 0.10026708308467737,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19650006103165024,
+      "minimum_contracted_slack": 0.46915246357743556
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 92,
+      "total": 0.29794354646033766,
+      "image": 0.2615201771259308,
+      "strain": 0.005442404316652818,
+      "oob": 3.8010257186385446e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04401316444432494,
+      "match": 0.1002687240540884,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20000404962051996,
+      "minimum_contracted_slack": 0.46892958762242765
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 93,
+      "total": 0.29794146489111895,
+      "image": 0.26151758432388306,
+      "strain": 0.005442484401263428,
+      "oob": 3.8010129128805024e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.044015156689724916,
+      "match": 0.10027007859323912,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20345819178880675,
+      "minimum_contracted_slack": 0.4686788931244019
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 94,
+      "total": 0.2979391760752613,
+      "image": 0.2615148425102234,
+      "strain": 0.005442460592970985,
+      "oob": 3.801000089909507e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.044015031243688274,
+      "match": 0.10027270141050745,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20384766206189267,
+      "minimum_contracted_slack": 0.46874429006364315
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 95,
+      "total": 0.29793715081812855,
+      "image": 0.2615114748477936,
+      "strain": 0.005442637646355657,
+      "oob": 3.800987280929728e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04401675316013939,
+      "match": 0.10027675741571358,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.1995397225754321,
+      "minimum_contracted_slack": 0.4691033324560354
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 96,
+      "total": 0.29793512852086995,
+      "image": 0.2615077495574951,
+      "strain": 0.005442891197677869,
+      "oob": 3.8009745873042076e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04401962304672897,
+      "match": 0.10028146831081777,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19577252610278978,
+      "minimum_contracted_slack": 0.46932501851973063
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 97,
+      "total": 0.2979328864725825,
+      "image": 0.2615034878253937,
+      "strain": 0.005443291048413872,
+      "oob": 3.8009621275815056e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04402384500765963,
+      "match": 0.10028556748085299,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20006022739832952,
+      "minimum_contracted_slack": 0.4692207122653632
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 98,
+      "total": 0.2979312451971622,
+      "image": 0.26149964332580566,
+      "strain": 0.005443745339811368,
+      "oob": 3.8009501173526136e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04402803432583757,
+      "match": 0.1002897677365816,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20348880842377737,
+      "minimum_contracted_slack": 0.469056179931605
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 99,
+      "total": 0.29792984167034103,
+      "image": 0.2614975869655609,
+      "strain": 0.005443663134873367,
+      "oob": 3.800938634547717e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.044027386336982784,
+      "match": 0.10029426587590427,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20344582855914592,
+      "minimum_contracted_slack": 0.46905738648510953
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 100,
+      "total": 0.29792892085223566,
+      "image": 0.26149630546569824,
+      "strain": 0.00544348295771575,
+      "oob": 3.800927548191486e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04402587673927577,
+      "match": 0.10029877325117151,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19892409021837446,
+      "minimum_contracted_slack": 0.4691669060384488
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 101,
+      "total": 0.2979275844158815,
+      "image": 0.2614946961402893,
+      "strain": 0.005443282044236568,
+      "oob": 3.8009167823046294e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.044023986807368756,
+      "match": 0.10030315288189365,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19659954724149295,
+      "minimum_contracted_slack": 0.4692915139878543
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 102,
+      "total": 0.297926528696819,
+      "image": 0.26149287819862366,
+      "strain": 0.005443295115674002,
+      "oob": 3.8009062401271706e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04402372615059176,
+      "match": 0.10030676858078502,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20027470212999887,
+      "minimum_contracted_slack": 0.46943313904959183
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 103,
+      "total": 0.29792556090696715,
+      "image": 0.26149144768714905,
+      "strain": 0.005443205340791776,
+      "oob": 3.800895838909332e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04402274775757778,
+      "match": 0.10031042982138963,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20343080637906752,
+      "minimum_contracted_slack": 0.4696001233923145
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 104,
+      "total": 0.29792471793098635,
+      "image": 0.26149168610572815,
+      "strain": 0.005442530763837096,
+      "oob": 3.800885606532033e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04401695333214917,
+      "match": 0.10031514491174201,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2011723233192295,
+      "minimum_contracted_slack": 0.46973709153844323
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 105,
+      "total": 0.29792379875524544,
+      "image": 0.2614920139312744,
+      "strain": 0.005441673649336197,
+      "oob": 3.800875635141886e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04401004740990696,
+      "match": 0.10032177057435034,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19803588462752966,
+      "minimum_contracted_slack": 0.4696644523024225
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 106,
+      "total": 0.29792274323207296,
+      "image": 0.2614915668964386,
+      "strain": 0.005440970489718233,
+      "oob": 3.8008659726091566e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04400410492896628,
+      "match": 0.10032927898130342,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19679256502294282,
+      "minimum_contracted_slack": 0.46936190067471084
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 107,
+      "total": 0.29792148822110515,
+      "image": 0.26149067282676697,
+      "strain": 0.005440423960307949,
+      "oob": 3.800856716053534e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043998991728937176,
+      "match": 0.10033567523540463,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19725399481533837,
+      "minimum_contracted_slack": 0.4691055081885833
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 108,
+      "total": 0.2979202606600843,
+      "image": 0.2614889144897461,
+      "strain": 0.005440306892947016,
+      "oob": 3.800847901691828e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04399815572996279,
+      "match": 0.1003400859845364,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2040574564021175,
+      "minimum_contracted_slack": 0.46911602560956567
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 109,
+      "total": 0.29791914489121274,
+      "image": 0.2614876925945282,
+      "strain": 0.005440086545398718,
+      "oob": 3.8008395137669444e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04399653767520524,
+      "match": 0.10034392305791577,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20422730101347913,
+      "minimum_contracted_slack": 0.4692909718690621
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 110,
+      "total": 0.2979177069405325,
+      "image": 0.26148682832717896,
+      "strain": 0.005439638014218281,
+      "oob": 3.80083142355822e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04399266199266674,
+      "match": 0.10034778495131924,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20116078513222088,
+      "minimum_contracted_slack": 0.46939736717172276
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 111,
+      "total": 0.2979165344661801,
+      "image": 0.26148533821105957,
+      "strain": 0.0054394789148472025,
+      "oob": 3.8008236075763145e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04399085214221595,
+      "match": 0.10035176094644502,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19785366671473822,
+      "minimum_contracted_slack": 0.4693586710521155
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 112,
+      "total": 0.2979155617067736,
+      "image": 0.2614833116531372,
+      "strain": 0.005439593402215446,
+      "oob": 3.800815952174755e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043990897800642276,
+      "match": 0.10035531298844093,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20212113418537683,
+      "minimum_contracted_slack": 0.4693020637100924
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 113,
+      "total": 0.29791429875966335,
+      "image": 0.26148152351379395,
+      "strain": 0.005439528980641914,
+      "oob": 3.800808511451375e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043989929700589944,
+      "match": 0.10035890612929552,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20206381962074402,
+      "minimum_contracted_slack": 0.46934210749001404
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 114,
+      "total": 0.2979133691506024,
+      "image": 0.2614804208278656,
+      "strain": 0.005439400641020109,
+      "oob": 3.800801246624767e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043989004956733406,
+      "match": 0.1003616974335727,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20031899647821158,
+      "minimum_contracted_slack": 0.4693276304183187
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 115,
+      "total": 0.2979122912528998,
+      "image": 0.26147913932800293,
+      "strain": 0.005439332902010909,
+      "oob": 3.800794334648173e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04398911705844412,
+      "match": 0.1003637318190592,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.1985648520094239,
+      "minimum_contracted_slack": 0.4691952357380229
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 116,
+      "total": 0.297911124419388,
+      "image": 0.26147791743278503,
+      "strain": 0.005439080220742314,
+      "oob": 3.800787582032694e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043987158231124646,
+      "match": 0.10036779866366291,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.1969903679549921,
+      "minimum_contracted_slack": 0.4691506714226221
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 117,
+      "total": 0.2979098944773645,
+      "image": 0.2614768147468567,
+      "strain": 0.005438689579448826,
+      "oob": 3.800781240813775e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043984193661354726,
+      "match": 0.10037302380193544,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20177473622044434,
+      "minimum_contracted_slack": 0.46927287747463753
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 118,
+      "total": 0.2979090698649268,
+      "image": 0.26147666573524475,
+      "strain": 0.005438207749983959,
+      "oob": 3.800774894328807e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04398098863425221,
+      "match": 0.1003768751596173,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20097735756831622,
+      "minimum_contracted_slack": 0.46937629743492204
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 119,
+      "total": 0.29790847201357806,
+      "image": 0.2614765763282776,
+      "strain": 0.005437912901156121,
+      "oob": 3.800769105875606e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04397968715042076,
+      "match": 0.10037875661029155,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.1990492640661009,
+      "minimum_contracted_slack": 0.4693191267625617
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 120,
+      "total": 0.2979079401775296,
+      "image": 0.26147621870040894,
+      "strain": 0.005437750934784167,
+      "oob": 3.8007629343380805e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04397831657852503,
+      "match": 0.10038031605883474,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19851770003104569,
+      "minimum_contracted_slack": 0.469166313901495
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 121,
+      "total": 0.2979075852372047,
+      "image": 0.2614758014678955,
+      "strain": 0.0054376003787641805,
+      "oob": 3.800757703045694e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04397655942511892,
+      "match": 0.10038288700021843,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19874568258090233,
+      "minimum_contracted_slack": 0.46911690248190085
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 122,
+      "total": 0.2979072540221728,
+      "image": 0.261475533246994,
+      "strain": 0.005437307258705294,
+      "oob": 3.800751824413346e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04397399558928827,
+      "match": 0.10038697040629907,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19784034690576746,
+      "minimum_contracted_slack": 0.46923251973741453
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 123,
+      "total": 0.2979065806104731,
+      "image": 0.26147550344467163,
+      "strain": 0.005436830731982022,
+      "oob": 3.800746978266911e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04397114395956349,
+      "match": 0.10039090192838387,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20077477117728418,
+      "minimum_contracted_slack": 0.4693311463118759
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 124,
+      "total": 0.2979060188288034,
+      "image": 0.26147446036338806,
+      "strain": 0.005436743159129828,
+      "oob": 3.800741992533278e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04397090343987892,
+      "match": 0.10039462238878274,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20164746032288228,
+      "minimum_contracted_slack": 0.4692794507699055
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 125,
+      "total": 0.2979054699700397,
+      "image": 0.26147401332855225,
+      "strain": 0.005436421824113268,
+      "oob": 3.800737090349886e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04396838914938748,
+      "match": 0.10039893479664612,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2015144909380158,
+      "minimum_contracted_slack": 0.4692522222153571
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 126,
+      "total": 0.2979047606473154,
+      "image": 0.26147377490997314,
+      "strain": 0.005435860254058996,
+      "oob": 3.800732951743682e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04396374380144806,
+      "match": 0.10040500635633856,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20048531828920285,
+      "minimum_contracted_slack": 0.46947186737133584
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 127,
+      "total": 0.2979043218040416,
+      "image": 0.2614741623401642,
+      "strain": 0.005435207133032813,
+      "oob": 3.8007284077134866e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043957898741224646,
+      "match": 0.10041067495413872,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.1971154098432578,
+      "minimum_contracted_slack": 0.46973885872076426
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 128,
+      "total": 0.2979036147108395,
+      "image": 0.2614741325378418,
+      "strain": 0.005434688824832253,
+      "oob": 3.8007242751630616e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04395328409741674,
+      "match": 0.10041506563669769,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20172657303394864,
+      "minimum_contracted_slack": 0.46973530689140497
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 129,
+      "total": 0.2979029058478706,
+      "image": 0.2614738941192627,
+      "strain": 0.005434230532836695,
+      "oob": 3.8007204407901e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04394945822827728,
+      "match": 0.10041958989933562,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.204175461250995,
+      "minimum_contracted_slack": 0.4695591587492167
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 130,
+      "total": 0.2979021538204481,
+      "image": 0.2614729106426239,
+      "strain": 0.005433981214736248,
+      "oob": 3.800716344911733e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04394758724650141,
+      "match": 0.10042448805720862,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20268076008657138,
+      "minimum_contracted_slack": 0.4694560211173435
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 131,
+      "total": 0.29790180683122064,
+      "image": 0.26147153973579407,
+      "strain": 0.005434087230727682,
+      "oob": 3.800712739064193e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04394818083066427,
+      "match": 0.10042801728884881,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.1985320317576276,
+      "minimum_contracted_slack": 0.46942723919797014
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 132,
+      "total": 0.2979012271744292,
+      "image": 0.2614707350730896,
+      "strain": 0.005433963759833452,
+      "oob": 3.800709459468427e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04394669790350808,
+      "match": 0.10043099528727097,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19600118369474304,
+      "minimum_contracted_slack": 0.4693584445977059
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 133,
+      "total": 0.2979012301847913,
+      "image": 0.26147037744522095,
+      "strain": 0.005433963283200496,
+      "oob": 3.800705751753415e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043946820235418085,
+      "match": 0.1004328057521389,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.19754607364091123,
+      "minimum_contracted_slack": 0.46929044982013335
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 134,
+      "total": 0.2979009720976902,
+      "image": 0.2614694833755493,
+      "strain": 0.0054340700477517895,
+      "oob": 3.800703055426281e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04394780617412958,
+      "match": 0.10043438383856865,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20178006780986452,
+      "minimum_contracted_slack": 0.4692980534486093
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 135,
+      "total": 0.2979005084861668,
+      "image": 0.2614692747592926,
+      "strain": 0.005433752953342734,
+      "oob": 3.800699722170876e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04394476615957886,
+      "match": 0.10043786696504173,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20297085390430133,
+      "minimum_contracted_slack": 0.4693375026975718
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 136,
+      "total": 0.29790035333284287,
+      "image": 0.26146936416625977,
+      "strain": 0.005433459826382096,
+      "oob": 3.8006974088869504e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043941727762513295,
+      "match": 0.10044104270285852,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20152289799442905,
+      "minimum_contracted_slack": 0.46942604579103997
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 137,
+      "total": 0.2979001185322914,
+      "image": 0.26146888732910156,
+      "strain": 0.005433403209929622,
+      "oob": 3.8006946058759824e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04394170634548899,
+      "match": 0.10044310228353856,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19774439135010574,
+      "minimum_contracted_slack": 0.46962114645834785
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 138,
+      "total": 0.2978998457575842,
+      "image": 0.2614690959453583,
+      "strain": 0.005433184580503575,
+      "oob": 3.800692603069524e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04394029877243498,
+      "match": 0.10044397557403664,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.1985923834368509,
+      "minimum_contracted_slack": 0.46971715571734773
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 139,
+      "total": 0.2978995558517524,
+      "image": 0.2614692151546478,
+      "strain": 0.005432888274882386,
+      "oob": 3.8006904332729695e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04393770505025975,
+      "match": 0.10044637598809793,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2033274720982086,
+      "minimum_contracted_slack": 0.46967634458693586
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 140,
+      "total": 0.2978987597513814,
+      "image": 0.26146888732910156,
+      "strain": 0.005432568608163778,
+      "oob": 3.800688335559409e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043934421181230324,
+      "match": 0.10044883136157431,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2052588151681695,
+      "minimum_contracted_slack": 0.4696145015892773
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 141,
+      "total": 0.29789860785868344,
+      "image": 0.26146844029426575,
+      "strain": 0.005432631399125018,
+      "oob": 3.800686831627416e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043934863542482536,
+      "match": 0.10044936506186058,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20002337843277138,
+      "minimum_contracted_slack": 0.46945262100183016
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 142,
+      "total": 0.29789835832677436,
+      "image": 0.26146838068962097,
+      "strain": 0.005432513744022762,
+      "oob": 3.800685065831578e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04393399129127951,
+      "match": 0.10045018077648851,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19584873805331832,
+      "minimum_contracted_slack": 0.4692920093986759
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 143,
+      "total": 0.2978980236157306,
+      "image": 0.2614689767360687,
+      "strain": 0.005432126064917803,
+      "oob": 3.800683466581073e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04393118595604844,
+      "match": 0.1004513436582353,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2027824629285159,
+      "minimum_contracted_slack": 0.46935378178736575
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 144,
+      "total": 0.29789797052778505,
+      "image": 0.2614686191082001,
+      "strain": 0.005432080895781018,
+      "oob": 3.800682583910107e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04393053997044971,
+      "match": 0.10045354426202915,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20598213737620644,
+      "minimum_contracted_slack": 0.4694146906901844
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 145,
+      "total": 0.2978977712575989,
+      "image": 0.26146793365478516,
+      "strain": 0.005432127244826869,
+      "oob": 3.8006807795532256e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04393080372728715,
+      "match": 0.10045527990082419,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20071179669973144,
+      "minimum_contracted_slack": 0.4693063455788966
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 146,
+      "total": 0.29789763524087903,
+      "image": 0.261466920375824,
+      "strain": 0.005432206633081036,
+      "oob": 3.80068031564132e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04393135071957111,
+      "match": 0.10045847513791792,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.1948304975190911,
+      "minimum_contracted_slack": 0.469225785159586
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 147,
+      "total": 0.29789737919565873,
+      "image": 0.26146677136421204,
+      "strain": 0.005432009042458509,
+      "oob": 3.800678946830713e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04392966533527666,
+      "match": 0.10046090474034647,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.1940439284391524,
+      "minimum_contracted_slack": 0.4694654321179639
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 148,
+      "total": 0.2978973904986496,
+      "image": 0.26146745681762695,
+      "strain": 0.005431694703136206,
+      "oob": 3.800678104052442e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043927720545887505,
+      "match": 0.10046225009259432,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.20415517398075902,
+      "minimum_contracted_slack": 0.46996327881122446
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 149,
+      "total": 0.2978971951832374,
+      "image": 0.2614666223526001,
+      "strain": 0.005431774742782538,
+      "oob": 3.800677786308305e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04392896527696932,
+      "match": 0.1004642446394942,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.2059683604594223,
+      "minimum_contracted_slack": 0.4703028605016858
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 150,
+      "total": 0.29789717172994074,
+      "image": 0.261466920375824,
+      "strain": 0.005431521673034538,
+      "oob": 3.800676008286826e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043926765293034506,
+      "match": 0.10046643449200507,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20142228081092178,
+      "minimum_contracted_slack": 0.4702088947832017
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 151,
+      "total": 0.2978971342057892,
+      "image": 0.26146695017814636,
+      "strain": 0.005431469589834707,
+      "oob": 3.8006767245098524e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043926183347492764,
+      "match": 0.10046687936279472,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19657958459556613,
+      "minimum_contracted_slack": 0.46997972282670863
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 152,
+      "total": 0.2978965379853963,
+      "image": 0.2614665925502777,
+      "strain": 0.005431425866821737,
+      "oob": 3.8006744781812945e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043925381101102334,
+      "match": 0.10046634275880692,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.1954889232903708,
+      "minimum_contracted_slack": 0.46989324809437183
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 153,
+      "total": 0.2978966772373414,
+      "image": 0.26146650314331055,
+      "strain": 0.005431460876350824,
+      "oob": 3.8006746606143556e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043925805845157546,
+      "match": 0.10046696068893872,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.2023632961561709,
+      "minimum_contracted_slack": 0.4697463899959473
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 154,
+      "total": 0.29789635953330523,
+      "image": 0.2614668011665344,
+      "strain": 0.005431171231259399,
+      "oob": 3.8006738920403226e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04392378010899673,
+      "match": 0.10046822778030644,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20500932364463245,
+      "minimum_contracted_slack": 0.4695469229560584
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 155,
+      "total": 0.29789629365458065,
+      "image": 0.2614668011665344,
+      "strain": 0.0054311766231396365,
+      "oob": 3.800672531248836e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04392406687617715,
+      "match": 0.10046781743313606,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20218873539148458,
+      "minimum_contracted_slack": 0.46945972214950316
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 156,
+      "total": 0.29789608790796096,
+      "image": 0.261466920375824,
+      "strain": 0.005431106254219104,
+      "oob": 3.800672673102556e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04392293719168539,
+      "match": 0.10046724874514709,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19745476963792025,
+      "minimum_contracted_slack": 0.46908281726947854
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 157,
+      "total": 0.29789618538033436,
+      "image": 0.2614666819572449,
+      "strain": 0.005431145199764615,
+      "oob": 3.8006713903622994e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04392227097152659,
+      "match": 0.10046834441397412,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.19630716023041211,
+      "minimum_contracted_slack": 0.4688394133101934
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 158,
+      "total": 0.2978960226816575,
+      "image": 0.26146644353866577,
+      "strain": 0.0054310418012131845,
+      "oob": 3.800670662327969e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043921449357631676,
+      "match": 0.1004702744389658,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20032704744780705,
+      "minimum_contracted_slack": 0.46941008715208876
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 159,
+      "total": 0.29789598404702833,
+      "image": 0.26146647334098816,
+      "strain": 0.005431049296315471,
+      "oob": 3.800670139839355e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04392181070899259,
+      "match": 0.10046981967312217,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.20522571361637032,
+      "minimum_contracted_slack": 0.47007599345830264
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 160,
+      "total": 0.2978959923832097,
+      "image": 0.2614666223526001,
+      "strain": 0.0054310736724495975,
+      "oob": 3.800669209670619e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.043922116188888125,
+      "match": 0.10046875054772596,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.2042460263406274,
+      "minimum_contracted_slack": 0.4701749322257165
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 161,
+      "total": 0.29789579813693473,
+      "image": 0.2614658772945404,
+      "strain": 0.005431134370047136,
+      "oob": 3.800668556620076e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04392261087071068,
+      "match": 0.10047059392799854,
+      "accepted": true,
+      "scale": 1.0,
+      "gauge": 0.19984424666570264,
+      "minimum_contracted_slack": 0.4702293556009497
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 162,
+      "total": 0.2978958936216837,
+      "image": 0.26146578788757324,
+      "strain": 0.005431142468081303,
+      "oob": 3.8006678560814324e-05,
+      "outside_fraction": 0.03513172268867493,
+      "shape": 0.04392281178987831,
+      "match": 0.10047139685063397,
+      "accepted": false,
+      "scale": 1.0,
+      "gauge": 0.19692902111032254,
+      "minimum_contracted_slack": 0.47024712152036463
+    }
+  ],
+  "terminal_budget": {
+    "protocol": "timed_final",
+    "arm": "adam",
+    "seconds_per_axis": 2.0,
+    "stage_records": [
+      {
+        "level": 257,
+        "image_side": 512,
+        "direction": [
+          1.0,
+          0.0
+        ],
+        "anchor_total": 0.30764221385296303,
+        "accepted_total": 0.30300761688026717,
+        "accepted_full_total": 0.30300761688026717,
+        "counts": {
+          "gradient_steps": 163,
+          "accepted_steps": 125,
+          "objective_evaluations": 165,
+          "trial_evaluations": 163,
+          "failed_trials": 0,
+          "backtracks": 0,
+          "metric_refreshes": 0,
+          "descriptor_forwards": 0,
+          "descriptor_vjps": 0,
+          "pcg_iterations": 0,
+          "pcg_matvecs": 0,
+          "preconditioner_calls": 0
+        },
+        "stop_reason": "time_budget",
+        "elapsed_seconds": 2.005939017981291,
+        "time_overrun_seconds": 0.005939017981290817,
+        "budget_elapsed": true,
+        "minimum_contracted_slack": 0.5528824362054565,
+        "geometry_acceptance": "strict original Q>.001; contracted slack diagnostic only",
+        "physical_lr": 0.00025
+      },
+      {
+        "level": 257,
+        "image_side": 512,
+        "direction": [
+          0.0,
+          1.0
+        ],
+        "anchor_total": 0.30300761688026717,
+        "accepted_total": 0.29789579813693473,
+        "accepted_full_total": 0.29789579813693473,
+        "counts": {
+          "gradient_steps": 163,
+          "accepted_steps": 151,
+          "objective_evaluations": 165,
+          "trial_evaluations": 163,
+          "failed_trials": 0,
+          "backtracks": 0,
+          "metric_refreshes": 0,
+          "descriptor_forwards": 0,
+          "descriptor_vjps": 0,
+          "pcg_iterations": 0,
+          "pcg_matvecs": 0,
+          "preconditioner_calls": 0
+        },
+        "stop_reason": "time_budget",
+        "elapsed_seconds": 2.0019384808838367,
+        "time_overrun_seconds": 0.0019384808838367462,
+        "budget_elapsed": true,
+        "minimum_contracted_slack": 0.4702293556009497,
+        "geometry_acceptance": "strict original Q>.001; contracted slack diagnostic only",
+        "physical_lr": 0.00025
+      }
+    ],
+    "scope": "all per-axis setup/gradient/linearization/solve/trials/synchronization; finish started bounded iteration"
+  },
+  "output_selection": "best_full",
+  "selected_stage": 1,
+  "selected_stage_scope": "None=common best prefix including identity;0/1=accepted timed x/y suffix",
+  "terminal_full_total": 0.29789579813693473,
+  "best_accepted_full_total": 0.29789579813693473,
+  "loading_seconds": 0.07414143532514572,
+  "feature_seconds": 0.35184523463249207,
+  "optimize_seconds": 4.009366180747747,
+  "serialization_seconds": 0.004038427025079727,
+  "certification_seconds": 0.03309393674135208,
+  "end_to_end_seconds": 4.479182317852974,
+  "common_prefix_seconds": 3.3764769844710827,
+  "peak_allocated_bytes": 155336704,
+  "saved_binary_certificate": {
+    "valid": true,
+    "corners": 262144,
+    "positive_corners": 262144,
+    "nonpositive_corners": 0,
+    "exact_fallback_corners": 0,
+    "nonfinite_coordinates": 0,
+    "boundary_exact": true,
+    "boundary_ordered_rectangle": true,
+    "dtype": "float64"
+  },
+  "mind_frame": "shared_affine",
+  "image_levels": [
+    32,
+    64,
+    128,
+    256,
+    512
+  ],
+  "mind_frame_by_resolution": {
+    "512": {
+      "raster_hw": [
+        512,
+        512
+      ],
+      "intensity_prewarp_count": 1,
+      "descriptor_construction_count": 1,
+      "coordinate_dtype": "torch.float64",
+      "normalized_sampling_grid_dtype": "torch.float32",
+      "sampling": "bilinear zeros align_corners=False; original moving intensity prewarped ONCE at this scale",
+      "fixed_descriptor_support": {
+        "full_domain_fraction": 0.9766998291015625,
+        "fixed_mask_weighted_fraction": 0.9893838449814936
+      },
+      "shared_affine_descriptor_support": {
+        "full_domain_fraction": 0.8826637268066406,
+        "fixed_mask_weighted_fraction": 0.9498367080339647
+      },
+      "original_frame_descriptor_support": {
+        "full_domain_fraction": 0.8836174011230469,
+        "fixed_mask_weighted_fraction": 0.9501589375136077
+      },
+      "fixed_mask_denominator": 114825.0,
+      "support_scope": "nominal float64 offset2+pool1+query-bilinear footprint; four affine-mapped extreme pixel centers with original moving bilinear floor/ceil inside raster; NOT an exact float32 access certificate",
+      "support_query_scope": "STATIC setup fractions at undeformed residual/identity raster pixel centers, NOT current f(q) support or a guarantee for deformed foreground samples",
+      "boundary_difference": "outside-original prewarp intensity is zero; its self-similarity descriptors may be ones, unlike zero padding of original descriptor fields",
+      "mask_policy": "ALL original fixed-mask weights retained; support fractions are reporting ONLY"
+    }
+  },
+  "image_preprocessing": {
+    "name": "raw_inverted",
+    "mask_source": "original inverted grayscale >.04",
+    "original_moving_features_no_affine_prewarp": false,
+    "original_moving_raster_no_affine_prewarp": true,
+    "moving_descriptor_frame": "shared_affine",
+    "moving_descriptor_prewarp_scope": "once at original512 scale"
+  },
+  "image_match_evidence": {
+    "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/match_fusion_all50_t23/fused_tables/ki67_to_cc10.json",
+    "raw_matches": 3410,
+    "eligible_matches": 3391,
+    "static_original_moving_domain_excluded": 19,
+    "confidence_denominator": 2.0,
+    "robust_scale_canvas_px": 8.0,
+    "target_frame": "affine-aligned moving; loss uses image_side*A(mapped(q)-p)",
+    "path_check": "raster basenames plus side and sampling-affine values; relocated paths allowed, not content identity proof",
+    "sampling_affine_storage_dtype": "float32",
+    "mask": "fixed target coordinate inside original moving rectangle; no adaptive query dropping"
+  },
+  "timing_scope": "common prefix charged once per pair; per-suffix loading/features/export charged separately from both2s axis clocks",
+  "stop_caution": "legal retained maps and elapsed time are not stationarity or completed gradient-budget claims"
+}

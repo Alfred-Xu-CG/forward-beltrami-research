@@ -1,0 +1,5025 @@
+{
+  "configuration": {
+    "fixed": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/data_all20_t12/canvas/cc10_fixed512.png",
+    "moving": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/data_all20_t12/canvas/prospc_moving512.png",
+    "affine": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/data_all20_t12/affines/he_to_prospc_affine.npz",
+    "output": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/data_metric_all50_t26/data_metric/he_to_prospc_analytic.npz",
+    "method": "analytic",
+    "loss": "mind",
+    "mind_order": "transport",
+    "grid_side": 257,
+    "image_side": 512,
+    "image_levels": [
+      32,
+      64,
+      128,
+      256,
+      512
+    ],
+    "levels": [
+      17,
+      33,
+      65,
+      129,
+      257
+    ],
+    "inner_steps": 30,
+    "preprocessing": "raw_inverted",
+    "continuation_scope": "all_cycles",
+    "cycles": 1,
+    "learning_rate": 0.004,
+    "lr_calibration": "edge",
+    "patch_cells": 8,
+    "f2_accepted_gain": 1.0,
+    "regional_cells": 32,
+    "regional_min_level": 3,
+    "strain_weight": 3.0,
+    "strain_model": "p1_arap",
+    "oob_weight": 1.0,
+    "minimum_jacobian": 0.001,
+    "precision": "float64",
+    "image_precision": "float32",
+    "shape_weight": 0.0001,
+    "interpolation": "p1_ac",
+    "p1_sampling": "frozen",
+    "geometry_backend": "stage_cache",
+    "coordinate_mode": "alternating",
+    "joint_backend": "cached_manual",
+    "proposal_filter_steps": 0,
+    "proposal_filter_min_level": 129,
+    "fine_patch_cells": 0,
+    "fine_patch_backend": "ordinary",
+    "control_hierarchy": "fixed",
+    "nested_evaluation": "full_fine",
+    "output_selection": "best_full",
+    "matches": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/match_fusion_all50_t23/fused_tables/he_to_prospc.json",
+    "match_weight": 0.2,
+    "match_robust_scale": 8.0,
+    "device": "cuda",
+    "threads": 2,
+    "mind_frame": "shared_affine",
+    "f2_floor_safety_fraction": 1.0,
+    "joint_prior_backend": "eager",
+    "match_p1_sampling": "existing",
+    "inner_steps_by_level": [
+      30,
+      30,
+      30,
+      30,
+      30
+    ],
+    "image_weight": 1.0,
+    "capture_prefix": "none",
+    "image_objective": "continuation",
+    "trial_diagnostics": "existing"
+  },
+  "optimizer": "timed_final_data_metric",
+  "representation": "p1_ac residual then frozen original positive affine",
+  "landmarks_used": false,
+  "initial": {
+    "total": 0.3671648079445342,
+    "image": 0.2961653769016266,
+    "strain": 0.00622977571867118,
+    "oob": 2.8158495434431623e-05,
+    "outside_fraction": 0.024954237043857574,
+    "shape": 0.051352091001608396,
+    "match": 0.26138405091179717
+  },
+  "final": {
+    "total": 0.3581305851319631,
+    "image": 0.28705596923828125,
+    "strain": 0.006725709967046323,
+    "oob": 2.765198630842647e-05,
+    "outside_fraction": 0.02465265430510044,
+    "shape": 0.056515481659596446,
+    "match": 0.2543209122903425
+  },
+  "prefix_best_total": 0.3671648079445342,
+  "suffix_start_total": 0.3671648079445342,
+  "prefix_best": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/data_metric_all50_t26/common/he_to_prospc_prefix_best.npz",
+  "prefix_start": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/data_metric_all50_t26/common/he_to_prospc_prefix_best_suffix_start.npz",
+  "prefix_report": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/data_metric_all50_t26/common/he_to_prospc_prefix_best.json",
+  "prefix_gradient_steps": 240,
+  "suffix_gradient_steps": 123,
+  "gradient_steps": 363,
+  "gradient_count_scope": "shared original prefix plus this timed suffix; no fixed300 assertion",
+  "failed_trials": 0,
+  "suffix_counts": {
+    "gradient_steps": 123,
+    "accepted_steps": 123,
+    "objective_evaluations": 248,
+    "trial_evaluations": 123,
+    "failed_trials": 0,
+    "backtracks": 0,
+    "metric_refreshes": 123,
+    "descriptor_forwards": 123,
+    "descriptor_vjps": 984,
+    "pcg_iterations": 1316,
+    "pcg_matvecs": 1316,
+    "preconditioner_calls": 1316
+  },
+  "objective_evaluations": 517,
+  "prefix_objective_evaluations": 266,
+  "suffix_objective_evaluations": 251,
+  "evaluations": 371,
+  "query_count": 262144,
+  "control_vertices": 66049,
+  "stages": [
+    {
+      "level": 257,
+      "image_side": 512,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "anchor_total": 0.3671648079445342,
+      "accepted_total": 0.36262213499286655,
+      "accepted_full_total": 0.36262213499286655,
+      "counts": {
+        "gradient_steps": 63,
+        "accepted_steps": 63,
+        "objective_evaluations": 127,
+        "trial_evaluations": 63,
+        "failed_trials": 0,
+        "backtracks": 0,
+        "metric_refreshes": 63,
+        "descriptor_forwards": 63,
+        "descriptor_vjps": 504,
+        "pcg_iterations": 659,
+        "pcg_matvecs": 659,
+        "preconditioner_calls": 659
+      },
+      "stop_reason": "time_budget",
+      "elapsed_seconds": 2.009978450834751,
+      "time_overrun_seconds": 0.00997845083475113,
+      "budget_elapsed": true,
+      "minimum_contracted_slack": 0.11768032366782065,
+      "geometry_acceptance": "strict fixed contracted Q>Qfloor and actual original Q>.001",
+      "physical_lr": null
+    },
+    {
+      "level": 257,
+      "image_side": 512,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "anchor_total": 0.36262213499286655,
+      "accepted_total": 0.3581305851319631,
+      "accepted_full_total": 0.3581305851319631,
+      "counts": {
+        "gradient_steps": 60,
+        "accepted_steps": 60,
+        "objective_evaluations": 121,
+        "trial_evaluations": 60,
+        "failed_trials": 0,
+        "backtracks": 0,
+        "metric_refreshes": 60,
+        "descriptor_forwards": 60,
+        "descriptor_vjps": 480,
+        "pcg_iterations": 657,
+        "pcg_matvecs": 657,
+        "preconditioner_calls": 657
+      },
+      "stop_reason": "time_budget",
+      "elapsed_seconds": 2.0298221707344055,
+      "time_overrun_seconds": 0.029822170734405518,
+      "budget_elapsed": true,
+      "minimum_contracted_slack": 0.1146571443557093,
+      "geometry_acceptance": "strict fixed contracted Q>Qfloor and actual original Q>.001",
+      "physical_lr": null
+    }
+  ],
+  "trace": [
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 0,
+      "total": 0.3671648079445342,
+      "image": 0.2961653769016266,
+      "strain": 0.00622977571867118,
+      "oob": 2.8158495434431623e-05,
+      "outside_fraction": 0.024954237043857574,
+      "shape": 0.051352091001608396,
+      "match": 0.26138405091179717,
+      "pcg": {
+        "iterations": 6,
+        "matvecs": 6,
+        "preconditioner_calls": 6,
+        "converged": true,
+        "relative_residual": 0.08964939693092668,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.0206895329305092,
+      "directional_derivative": -0.002728985746817227,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3651523153564055,
+          "armijo_rhs": 0.36716453504595953,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 2.102249519616415,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 1,
+      "total": 0.3651523153564055,
+      "image": 0.2946876585483551,
+      "strain": 0.006216240004125273,
+      "oob": 2.8090423805851477e-05,
+      "outside_fraction": 0.024891113862395287,
+      "shape": 0.05139345957228125,
+      "match": 0.2589135351295574,
+      "pcg": {
+        "iterations": 8,
+        "matvecs": 8,
+        "preconditioner_calls": 8,
+        "converged": true,
+        "relative_residual": 0.09249240624439194,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.1585993348997752,
+      "directional_derivative": -0.0008124988567679242,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3644773634437143,
+          "armijo_rhs": 0.36515223410651987,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 3.255747319250351,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 2,
+      "total": 0.3644773634437143,
+      "image": 0.2939552366733551,
+      "strain": 0.006290596265554805,
+      "oob": 2.804049753805071e-05,
+      "outside_fraction": 0.024842020124197006,
+      "shape": 0.052317603881816103,
+      "match": 0.2580853285788426,
+      "pcg": {
+        "iterations": 12,
+        "matvecs": 12,
+        "preconditioner_calls": 12,
+        "converged": true,
+        "relative_residual": 0.08469195324683489,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.245305112586045,
+      "directional_derivative": -0.00040908628311726224,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3641221575383528,
+          "armijo_rhs": 0.36447732253508597,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 7.130938761331442,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 3,
+      "total": 0.3641221575383528,
+      "image": 0.29352959990501404,
+      "strain": 0.006335352635269473,
+      "oob": 2.7982421851966253e-05,
+      "outside_fraction": 0.024827992543578148,
+      "shape": 0.05287627152627827,
+      "match": 0.25776614839262846,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09475623248954157,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.3034129642530417,
+      "directional_derivative": -0.0002522687237639194,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3638968894845426,
+          "armijo_rhs": 0.36412213231148044,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 22.67636513872667,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 4,
+      "total": 0.3638968894845426,
+      "image": 0.2932417392730713,
+      "strain": 0.006366939814330094,
+      "oob": 2.7956018449006477e-05,
+      "outside_fraction": 0.024785911664366722,
+      "shape": 0.053209571286163576,
+      "match": 0.2576052689645167,
+      "pcg": {
+        "iterations": 12,
+        "matvecs": 12,
+        "preconditioner_calls": 12,
+        "converged": true,
+        "relative_residual": 0.09932955094353223,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.3565498054929477,
+      "directional_derivative": -0.00017740242244930336,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36373618161164506,
+          "armijo_rhs": 0.36389687174430035,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 22.55432205339313,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 5,
+      "total": 0.36373618161164506,
+      "image": 0.29303768277168274,
+      "strain": 0.006387977385720527,
+      "oob": 2.7925720242770387e-05,
+      "outside_fraction": 0.024771884083747864,
+      "shape": 0.053426533409290475,
+      "match": 0.25750649154608496,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09074029085013645,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.4046283471319747,
+      "directional_derivative": -0.00013412676842322136,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.363614909403993,
+          "armijo_rhs": 0.3637361681989682,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 23.10604045152508,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 6,
+      "total": 0.363614909403993,
+      "image": 0.2928833067417145,
+      "strain": 0.006403960910562374,
+      "oob": 2.7911820253507028e-05,
+      "outside_fraction": 0.024771884083747864,
+      "shape": 0.05358102478497369,
+      "match": 0.2574322500392968,
+      "pcg": {
+        "iterations": 15,
+        "matvecs": 15,
+        "preconditioner_calls": 15,
+        "converged": true,
+        "relative_residual": 0.09043527926653784,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.438511839846215,
+      "directional_derivative": -0.00010386522376293179,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36351910062333,
+          "armijo_rhs": 0.3636148990174706,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 38.6926976573693,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 7,
+      "total": 0.36351910062333,
+      "image": 0.29276376962661743,
+      "strain": 0.006415704754048344,
+      "oob": 2.7886612115106683e-05,
+      "outside_fraction": 0.024757856503129005,
+      "shape": 0.05370161812014166,
+      "match": 0.2573747998032019,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09374800122881359,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.483018167990485,
+      "directional_derivative": -8.519596104837035e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36344094258166626,
+          "armijo_rhs": 0.3635190921037339,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 26.716570746027863,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 8,
+      "total": 0.36344094258166626,
+      "image": 0.2926650643348694,
+      "strain": 0.006425591514440297,
+      "oob": 2.788078038670554e-05,
+      "outside_fraction": 0.024743828922510147,
+      "shape": 0.05379691016327236,
+      "match": 0.25732921616036486,
+      "pcg": {
+        "iterations": 12,
+        "matvecs": 12,
+        "preconditioner_calls": 12,
+        "converged": true,
+        "relative_residual": 0.09488190997688861,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.5157508126445824,
+      "directional_derivative": -7.22313718926537e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36337364861804367,
+          "armijo_rhs": 0.36344093535852906,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 35.90402136092984,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 9,
+      "total": 0.36337364861804367,
+      "image": 0.29258280992507935,
+      "strain": 0.006433239254390927,
+      "oob": 2.7872822246228936e-05,
+      "outside_fraction": 0.024743828922510147,
+      "shape": 0.053889174708904516,
+      "match": 0.25728929595037187,
+      "pcg": {
+        "iterations": 11,
+        "matvecs": 11,
+        "preconditioner_calls": 11,
+        "converged": true,
+        "relative_residual": 0.09728034817769582,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.5568521425463255,
+      "directional_derivative": -6.417736984651719e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36331409819172455,
+          "armijo_rhs": 0.36337364220030666,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 33.426933386206464,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 10,
+      "total": 0.36331409819172455,
+      "image": 0.29251107573509216,
+      "strain": 0.00643926273588801,
+      "oob": 2.7867342427987132e-05,
+      "outside_fraction": 0.024729803204536438,
+      "shape": 0.053950017357679146,
+      "match": 0.25725985952402286,
+      "pcg": {
+        "iterations": 11,
+        "matvecs": 11,
+        "preconditioner_calls": 11,
+        "converged": true,
+        "relative_residual": 0.09990550043929416,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.5896844720449421,
+      "directional_derivative": -5.991248717092438e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3632590840132869,
+          "armijo_rhs": 0.36331409220047584,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 31.967069243374148,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 11,
+      "total": 0.3632590840132869,
+      "image": 0.29244646430015564,
+      "strain": 0.006444177410825977,
+      "oob": 2.786159853536801e-05,
+      "outside_fraction": 0.024736816063523293,
+      "shape": 0.053999752895866227,
+      "match": 0.25723412953414193,
+      "pcg": {
+        "iterations": 11,
+        "matvecs": 11,
+        "preconditioner_calls": 11,
+        "converged": true,
+        "relative_residual": 0.09807248700688104,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.6035732428840421,
+      "directional_derivative": -5.118666606145318e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36321215514239,
+          "armijo_rhs": 0.3632590788946203,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 31.349732696687138,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 12,
+      "total": 0.36321215514239,
+      "image": 0.29239171743392944,
+      "strain": 0.006448056428340981,
+      "oob": 2.7855930115906454e-05,
+      "outside_fraction": 0.024736816063523293,
+      "shape": 0.05403780390514295,
+      "match": 0.2572150435646563,
+      "pcg": {
+        "iterations": 12,
+        "matvecs": 12,
+        "preconditioner_calls": 12,
+        "converged": true,
+        "relative_residual": 0.09852299936136714,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.6245586676807375,
+      "directional_derivative": -4.6367876547038646e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36316946959411783,
+          "armijo_rhs": 0.36321215050560235,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 32.62432382770924,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 13,
+      "total": 0.36316946959411783,
+      "image": 0.29234209656715393,
+      "strain": 0.006451337572175021,
+      "oob": 2.7849621022856557e-05,
+      "outside_fraction": 0.024729803204536438,
+      "shape": 0.05406979316788453,
+      "match": 0.257200518550496,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09785303479379341,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.6416546674362893,
+      "directional_derivative": -4.169863797499666e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3631310428158717,
+          "armijo_rhs": 0.36316946542425405,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 28.047043497625705,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 14,
+      "total": 0.3631310428158717,
+      "image": 0.2922983169555664,
+      "strain": 0.006453680263272532,
+      "oob": 2.7845661511491186e-05,
+      "outside_fraction": 0.024722788482904434,
+      "shape": 0.054092664889884415,
+      "match": 0.2571921507124361,
+      "pcg": {
+        "iterations": 14,
+        "matvecs": 14,
+        "preconditioner_calls": 14,
+        "converged": true,
+        "relative_residual": 0.09400799058473824,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.6548355200909464,
+      "directional_derivative": -3.742219274092329e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3630976010572891,
+          "armijo_rhs": 0.36313103907365246,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 23.396924947703496,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 15,
+      "total": 0.3630976010572891,
+      "image": 0.2922593057155609,
+      "strain": 0.006456310330188732,
+      "oob": 2.7836061235619774e-05,
+      "outside_fraction": 0.024722788482904434,
+      "shape": 0.054120683838029815,
+      "match": 0.25718058110771286,
+      "pcg": {
+        "iterations": 8,
+        "matvecs": 8,
+        "preconditioner_calls": 8,
+        "converged": true,
+        "relative_residual": 0.09994481498613343,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.6650968585394095,
+      "directional_derivative": -3.272126943778701e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3630682108931578,
+          "armijo_rhs": 0.36309759778516215,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 27.103743003244798,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 16,
+      "total": 0.3630682108931578,
+      "image": 0.2922261357307434,
+      "strain": 0.006458161523869278,
+      "oob": 2.7832904531781298e-05,
+      "outside_fraction": 0.024722788482904434,
+      "shape": 0.05414260460267343,
+      "match": 0.2571717171290724,
+      "pcg": {
+        "iterations": 12,
+        "matvecs": 12,
+        "preconditioner_calls": 12,
+        "converged": true,
+        "relative_residual": 0.09626795587830118,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.6762956451011937,
+      "directional_derivative": -3.0382325396863336e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36304071739191995,
+          "armijo_rhs": 0.3630682078549252,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 34.829252641844526,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 17,
+      "total": 0.36304071739191995,
+      "image": 0.2921930253505707,
+      "strain": 0.006460511007313008,
+      "oob": 2.7827291277060827e-05,
+      "outside_fraction": 0.02471577562391758,
+      "shape": 0.05416504898195432,
+      "match": 0.25716457611617494,
+      "pcg": {
+        "iterations": 11,
+        "matvecs": 11,
+        "preconditioner_calls": 11,
+        "converged": true,
+        "relative_residual": 0.09909458930369246,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.6810138608633112,
+      "directional_derivative": -2.935878046431313e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.363014291999008,
+          "armijo_rhs": 0.3630407144560419,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 26.253840003544845,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 18,
+      "total": 0.363014291999008,
+      "image": 0.29216140508651733,
+      "strain": 0.006462353865187953,
+      "oob": 2.7823829163071016e-05,
+      "outside_fraction": 0.024722788482904434,
+      "shape": 0.054182296667131126,
+      "match": 0.2571629162904851,
+      "pcg": {
+        "iterations": 13,
+        "matvecs": 13,
+        "preconditioner_calls": 13,
+        "converged": true,
+        "relative_residual": 0.09915628328618885,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.6860704588628241,
+      "directional_derivative": -2.7465823817134104e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36298942942979245,
+          "armijo_rhs": 0.36301428925242557,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 33.182678812320326,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 19,
+      "total": 0.36298942942979245,
+      "image": 0.2921314835548401,
+      "strain": 0.006463999454929259,
+      "oob": 2.781933210748904e-05,
+      "outside_fraction": 0.02471577562391758,
+      "shape": 0.05419590351148329,
+      "match": 0.2571635429385297,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09923882021131282,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.6934957757399562,
+      "directional_derivative": -2.5112961676414743e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3629672615388008,
+          "armijo_rhs": 0.3629894269184963,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 36.718088359725364,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 20,
+      "total": 0.3629672615388008,
+      "image": 0.29210394620895386,
+      "strain": 0.006465572778674551,
+      "oob": 2.7817070752729567e-05,
+      "outside_fraction": 0.02471577562391758,
+      "shape": 0.05421040742904828,
+      "match": 0.2571667944116385,
+      "pcg": {
+        "iterations": 16,
+        "matvecs": 16,
+        "preconditioner_calls": 16,
+        "converged": true,
+        "relative_residual": 0.09493926480810998,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7024642072585583,
+      "directional_derivative": -2.3092918684586224e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36294677995058217,
+          "armijo_rhs": 0.36296725922950895,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 46.33293666910598,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 21,
+      "total": 0.36294677995058217,
+      "image": 0.292077898979187,
+      "strain": 0.006467396934307129,
+      "oob": 2.7810910525324564e-05,
+      "outside_fraction": 0.02471577562391758,
+      "shape": 0.05422553727924113,
+      "match": 0.25716728352110246,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09611503880284775,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7106660237450158,
+      "directional_derivative": -2.1238163572347543e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3629282144415519,
+          "armijo_rhs": 0.3629467778267658,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 14.15316453201422,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 22,
+      "total": 0.3629282144415519,
+      "image": 0.29205557703971863,
+      "strain": 0.0064687170301895676,
+      "oob": 2.7807465803970624e-05,
+      "outside_fraction": 0.024708762764930725,
+      "shape": 0.05423901899121449,
+      "match": 0.2571662747178073,
+      "pcg": {
+        "iterations": 16,
+        "matvecs": 16,
+        "preconditioner_calls": 16,
+        "converged": true,
+        "relative_residual": 0.09395746935106863,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.71029867114846,
+      "directional_derivative": -2.0388165535737192e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3629101091242769,
+          "armijo_rhs": 0.3629282124027353,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 26.45162689595666,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 23,
+      "total": 0.3629101091242769,
+      "image": 0.29203537106513977,
+      "strain": 0.006469315011303723,
+      "oob": 2.779728991830371e-05,
+      "outside_fraction": 0.02471577562391758,
+      "shape": 0.05424516615529656,
+      "match": 0.2571678560934607,
+      "pcg": {
+        "iterations": 14,
+        "matvecs": 14,
+        "preconditioner_calls": 14,
+        "converged": true,
+        "relative_residual": 0.09535402594704595,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7118559839201843,
+      "directional_derivative": -2.0252631163182654e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3628925592100112,
+          "armijo_rhs": 0.3629101070990138,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 20.5004295321231,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 24,
+      "total": 0.3628925592100112,
+      "image": 0.2920149266719818,
+      "strain": 0.006470080554167656,
+      "oob": 2.7788639756803498e-05,
+      "outside_fraction": 0.02470174804329872,
+      "shape": 0.0542526275024839,
+      "match": 0.25717088486509676,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09925687957489515,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7188155806007936,
+      "directional_derivative": -1.6587125319796826e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36287799800110204,
+          "armijo_rhs": 0.3628925575512986,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 23.840950523056012,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 25,
+      "total": 0.36287799800110204,
+      "image": 0.29199808835983276,
+      "strain": 0.0064708733635292694,
+      "oob": 2.7784050929300694e-05,
+      "outside_fraction": 0.024694735184311867,
+      "shape": 0.05426116696507641,
+      "match": 0.25717039691527827,
+      "pcg": {
+        "iterations": 16,
+        "matvecs": 16,
+        "preconditioner_calls": 16,
+        "converged": true,
+        "relative_residual": 0.09790664254742928,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7262851056033175,
+      "directional_derivative": -1.638387171887407e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36286349416181973,
+          "armijo_rhs": 0.3628779963627149,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 26.608963017395112,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 26,
+      "total": 0.36286349416181973,
+      "image": 0.2919815480709076,
+      "strain": 0.006471582328475504,
+      "oob": 2.777134736970425e-05,
+      "outside_fraction": 0.024694735184311867,
+      "shape": 0.05426841045803182,
+      "match": 0.2571700045853505,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09070150161548522,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7323660960080174,
+      "directional_derivative": -1.6254626551174892e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3628486978343333,
+          "armijo_rhs": 0.3628634925363571,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 33.79447463872778,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 27,
+      "total": 0.3628486978343333,
+      "image": 0.29196494817733765,
+      "strain": 0.006472557445013129,
+      "oob": 2.7767775545771253e-05,
+      "outside_fraction": 0.02468070760369301,
+      "shape": 0.05427936592013853,
+      "match": 0.25716440804909246,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09577374723998065,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7364402392260367,
+      "directional_derivative": -1.725980799555496e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3628336511252,
+          "armijo_rhs": 0.3628486961083525,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 39.17224057201868,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 28,
+      "total": 0.3628336511252,
+      "image": 0.2919481694698334,
+      "strain": 0.006473557215758057,
+      "oob": 2.7763045826415133e-05,
+      "outside_fraction": 0.024673694744706154,
+      "shape": 0.054289844881271816,
+      "match": 0.2571580898888894,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09595148831095998,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7383393691158868,
+      "directional_derivative": -1.8915325999521795e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3628179880089276,
+          "armijo_rhs": 0.3628336492336674,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 23.965239459536686,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 29,
+      "total": 0.3628179880089276,
+      "image": 0.2919309437274933,
+      "strain": 0.006474198006816814,
+      "oob": 2.7758652333540393e-05,
+      "outside_fraction": 0.024673694744706154,
+      "shape": 0.05429785305776895,
+      "match": 0.25715630911672294,
+      "pcg": {
+        "iterations": 17,
+        "matvecs": 17,
+        "preconditioner_calls": 17,
+        "converged": true,
+        "relative_residual": 0.09772639946825412,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7343335467182837,
+      "directional_derivative": -1.5455886939877994e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3628048523837465,
+          "armijo_rhs": 0.3628179864633389,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 33.09665178254805,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 30,
+      "total": 0.3628048523837465,
+      "image": 0.2919154167175293,
+      "strain": 0.006475133528724248,
+      "oob": 2.7743072941768807e-05,
+      "outside_fraction": 0.02466668002307415,
+      "shape": 0.054304766471563515,
+      "match": 0.25715430765227765,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.08863004694341403,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7402059929592963,
+      "directional_derivative": -1.3054450858338596e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36279387951398645,
+          "armijo_rhs": 0.3628048510783014,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 44.87042168601188,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 31,
+      "total": 0.36279387951398645,
+      "image": 0.291901558637619,
+      "strain": 0.0064760394921421615,
+      "oob": 2.7739331531348656e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.054314703253810916,
+      "match": 0.2571551579904211,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.0988547814035475,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7372183889036812,
+      "directional_derivative": -1.1646984331203443e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36278419795608324,
+          "armijo_rhs": 0.362793878349288,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 54.39048663815042,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 32,
+      "total": 0.36278419795608324,
+      "image": 0.2918902039527893,
+      "strain": 0.006476714728725002,
+      "oob": 2.7735791388671444e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.054322558268716604,
+      "match": 0.257153408849517,
+      "pcg": {
+        "iterations": 11,
+        "matvecs": 11,
+        "preconditioner_calls": 11,
+        "converged": true,
+        "relative_residual": 0.09865102892639091,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7388246502203597,
+      "directional_derivative": -1.1557176593111519e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36277443756631395,
+          "armijo_rhs": 0.3627841968003656,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 41.35191998121959,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 33,
+      "total": 0.36277443756631395,
+      "image": 0.2918796241283417,
+      "strain": 0.006476904904202125,
+      "oob": 2.773192541820912e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05432571068656916,
+      "match": 0.25715467114439494,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09828871225486101,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.741345612388645,
+      "directional_derivative": -1.160973628625297e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3627643669269117,
+          "armijo_rhs": 0.3627744364053403,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 29.702380095193483,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 34,
+      "total": 0.3627643669269117,
+      "image": 0.29186907410621643,
+      "strain": 0.006477027924418962,
+      "oob": 2.7728767756394243e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.054331585012465725,
+      "match": 0.25715523560590375,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09704507221590139,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7428484687460664,
+      "directional_derivative": -1.1690677608343613e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36275475728095674,
+          "armijo_rhs": 0.36276436575784393,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 47.34889682973792,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 35,
+      "total": 0.36275475728095674,
+      "image": 0.29185932874679565,
+      "strain": 0.006477070273795774,
+      "oob": 2.7725503777354457e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.054336722801498795,
+      "match": 0.2571552926835813,
+      "pcg": {
+        "iterations": 11,
+        "matvecs": 11,
+        "preconditioner_calls": 11,
+        "converged": true,
+        "relative_residual": 0.0946463404604598,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7444419917305305,
+      "directional_derivative": -1.0487715011607315e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.362746249902541,
+          "armijo_rhs": 0.3627547562321852,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 47.34043016595719,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 36,
+      "total": 0.362746249902541,
+      "image": 0.29184967279434204,
+      "strain": 0.006477366989404055,
+      "oob": 2.7722047763619018e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05434267810711034,
+      "match": 0.2571565991220622,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09954934695978716,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7498959826267324,
+      "directional_derivative": -9.015034925231321e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3627389557633452,
+          "armijo_rhs": 0.3627462490010375,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 65.47214350136981,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 37,
+      "total": 0.3627389557633452,
+      "image": 0.29184243083000183,
+      "strain": 0.006477416380637183,
+      "oob": 2.7719361968845166e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.054345337407309735,
+      "match": 0.25715560947861127,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09912235807089481,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7521106264018853,
+      "directional_derivative": -8.434077672962914e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3627320169177911,
+          "armijo_rhs": 0.3627389549199374,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 47.15933081821367,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 38,
+      "total": 0.3627320169177911,
+      "image": 0.2918350398540497,
+      "strain": 0.006477420807681962,
+      "oob": 2.771695621846797e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.054347095430641236,
+      "match": 0.25715781487467,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09826705432473666,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7542672857304205,
+      "directional_derivative": -9.349428461632208e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36272428668787665,
+          "armijo_rhs": 0.36273201598284827,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 43.993672967458096,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 39,
+      "total": 0.36272428668787665,
+      "image": 0.291826993227005,
+      "strain": 0.006477427090092459,
+      "oob": 2.771462187075133e-05,
+      "outside_fraction": 0.024645639583468437,
+      "shape": 0.05434929788711858,
+      "match": 0.2571593131946741,
+      "pcg": {
+        "iterations": 11,
+        "matvecs": 11,
+        "preconditioner_calls": 11,
+        "converged": true,
+        "relative_residual": 0.09557890221206682,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.75108331841603,
+      "directional_derivative": -8.868127824087964e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36271731419291003,
+          "armijo_rhs": 0.36272428580106386,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 57.43528021604783,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 40,
+      "total": 0.36271731419291003,
+      "image": 0.29181966185569763,
+      "strain": 0.006477544761132433,
+      "oob": 2.771218247699205e-05,
+      "outside_fraction": 0.024645639583468437,
+      "shape": 0.05435187717607116,
+      "match": 0.2571593534181025,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09140142736049663,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7511529507331682,
+      "directional_derivative": -8.188440931621859e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36271113101283514,
+          "armijo_rhs": 0.36271731337406593,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 45.81337619522479,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 41,
+      "total": 0.36271113101283514,
+      "image": 0.29181236028671265,
+      "strain": 0.006477800042521452,
+      "oob": 2.771044319642066e-05,
+      "outside_fraction": 0.024638626724481583,
+      "shape": 0.05435615393023555,
+      "match": 0.25716112269984354,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09519264382655485,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7532682358589453,
+      "directional_derivative": -7.90255855187427e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36270514153395716,
+          "armijo_rhs": 0.3627111302225793,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 55.61560466616505,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 42,
+      "total": 0.36270514153395716,
+      "image": 0.2918047606945038,
+      "strain": 0.006478185518472734,
+      "oob": 2.7708634059166214e-05,
+      "outside_fraction": 0.024638626724481583,
+      "shape": 0.05436057098502092,
+      "match": 0.2571633979643876,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09374453420391306,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7543304647451756,
+      "directional_derivative": -6.939686789975202e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3626997656848778,
+          "armijo_rhs": 0.3627051408399885,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 55.14806497888009,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 43,
+      "total": 0.3626997656848778,
+      "image": 0.2917976677417755,
+      "strain": 0.00647881727519398,
+      "oob": 2.7706873663136128e-05,
+      "outside_fraction": 0.024638626724481583,
+      "shape": 0.05436688286102822,
+      "match": 0.2571625127778552,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09356981574178554,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7651256141839236,
+      "directional_derivative": -6.421860403821589e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36269488127991906,
+          "armijo_rhs": 0.36269976504269175,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 58.938748447560805,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 44,
+      "total": 0.36269488127991906,
+      "image": 0.2917915880680084,
+      "strain": 0.0064792229934765595,
+      "oob": 2.77052392874842e-05,
+      "outside_fraction": 0.024638626724481583,
+      "shape": 0.05437086056071841,
+      "match": 0.25716240953068714,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09884803460308758,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.767787522710286,
+      "directional_derivative": -6.203801093620172e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36269037100458285,
+          "armijo_rhs": 0.3626948806595389,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 65.05922827659373,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 45,
+      "total": 0.36269037100458285,
+      "image": 0.2917855679988861,
+      "strain": 0.00647978932858099,
+      "oob": 2.770400326927835e-05,
+      "outside_fraction": 0.024645639583468437,
+      "shape": 0.05437646350760889,
+      "match": 0.2571614668516686,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09489698665255672,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7685200667807388,
+      "directional_derivative": -6.4279640687650366e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36268563678240995,
+          "armijo_rhs": 0.3626903703617864,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 37.206901869042056,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 46,
+      "total": 0.36268563678240995,
+      "image": 0.2917800843715668,
+      "strain": 0.006480124094054393,
+      "oob": 2.7702484527701083e-05,
+      "outside_fraction": 0.024645639583468437,
+      "shape": 0.05437966780508433,
+      "match": 0.25716019838685905,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.0946561444659258,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7676093054611146,
+      "directional_derivative": -5.6451954133010405e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3626816752437848,
+          "armijo_rhs": 0.3626856362178904,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 49.49454479760234,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 47,
+      "total": 0.3626816752437848,
+      "image": 0.29177457094192505,
+      "strain": 0.006480655264027292,
+      "oob": 2.7700754054981378e-05,
+      "outside_fraction": 0.024645639583468437,
+      "shape": 0.05438332113662432,
+      "match": 0.2571599971180459,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09730019171549587,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7687165719695133,
+      "directional_derivative": -5.242597637731349e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3626779848611622,
+          "armijo_rhs": 0.36268167471952506,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 71.30729797825532,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 48,
+      "total": 0.3626779848611622,
+      "image": 0.29177039861679077,
+      "strain": 0.00648098226892312,
+      "oob": 2.769904869017436e-05,
+      "outside_fraction": 0.024645639583468437,
+      "shape": 0.05438596525417094,
+      "match": 0.2571575089619326,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.0958651193681515,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7737992044995379,
+      "directional_derivative": -5.312730385311955e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3626742111104149,
+          "armijo_rhs": 0.3626779843298892,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 53.010626553466174,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 49,
+      "total": 0.3626742111104149,
+      "image": 0.291765421628952,
+      "strain": 0.0064813966933817985,
+      "oob": 2.769777186922302e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.05438962275005843,
+      "match": 0.2571573133358661,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09487265775487416,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7759045836221117,
+      "directional_derivative": -5.461227332096627e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3626702325026107,
+          "armijo_rhs": 0.36267421056429217,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 52.28069893715701,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 50,
+      "total": 0.3626702325026107,
+      "image": 0.2917605936527252,
+      "strain": 0.006481627092696091,
+      "oob": 2.7696560509123318e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.05439212441607262,
+      "match": 0.25715810899423236,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09869584913423149,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7803838806105707,
+      "directional_derivative": -5.43694104977636e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36266652666281496,
+          "armijo_rhs": 0.3626702319589166,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 64.42435404107265,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 51,
+      "total": 0.36266652666281496,
+      "image": 0.2917560338973999,
+      "strain": 0.006481961492153762,
+      "oob": 2.7695558912420104e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.054394530355150614,
+      "match": 0.2571573663850293,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09148479258957465,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.779021312781866,
+      "directional_derivative": -5.827006411475185e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3626624166959372,
+          "armijo_rhs": 0.3626665260801143,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 50.16314805930164,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 52,
+      "total": 0.3626624166959372,
+      "image": 0.2917512059211731,
+      "strain": 0.006482264645761571,
+      "oob": 2.7694563879989413e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.05439714039225527,
+      "match": 0.257156412797801,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09311455873539931,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.779237711418607,
+      "directional_derivative": -5.295359486573199e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3626586739536168,
+          "armijo_rhs": 0.3626624161664012,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 46.68590336083108,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 53,
+      "total": 0.3626586739536168,
+      "image": 0.2917472720146179,
+      "strain": 0.0064824370949601775,
+      "oob": 2.7693860188752788e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.05439885247214525,
+      "match": 0.2571547845434119,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.08848497758455261,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.778115818598135,
+      "directional_derivative": -5.151732265727984e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3626551785484581,
+          "armijo_rhs": 0.36265867343844355,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 56.84631526432153,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 54,
+      "total": 0.3626551785484581,
+      "image": 0.2917429804801941,
+      "strain": 0.006482811057316203,
+      "oob": 2.769313098521094e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.054403162054044205,
+      "match": 0.2571531572456238,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.08488791581986274,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.777896701327094,
+      "directional_derivative": -4.965978823858403e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3626518537870856,
+          "armijo_rhs": 0.3626551780518602,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 37.75216562749807,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 55,
+      "total": 0.3626518537870856,
+      "image": 0.2917391061782837,
+      "strain": 0.00648307863393169,
+      "oob": 2.7692538285545022e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.05440538039571619,
+      "match": 0.25715189315340825,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09172829101288785,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7813367188996057,
+      "directional_derivative": -4.848893675555628e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3626485409537239,
+          "armijo_rhs": 0.36265185330219624,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 62.89780920233254,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 56,
+      "total": 0.3626485409537239,
+      "image": 0.2917352020740509,
+      "strain": 0.0064834016813732995,
+      "oob": 2.769211281541829e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.054408624203295786,
+      "match": 0.25715000430158685,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.0914521788531857,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7815400087868614,
+      "directional_derivative": -5.063633215066772e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3626450267477123,
+          "armijo_rhs": 0.36264854044736056,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 52.959911335339164,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 57,
+      "total": 0.3626450267477123,
+      "image": 0.29173147678375244,
+      "strain": 0.006483539851786212,
+      "oob": 2.769170823870621e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.054410343028313636,
+      "match": 0.2571489883302985,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09502895082520307,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7826297950594892,
+      "directional_derivative": -4.981563705636382e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36264161855357313,
+          "armijo_rhs": 0.36264502624955597,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 54.57097140083551,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 58,
+      "total": 0.36264161855357313,
+      "image": 0.2917274236679077,
+      "strain": 0.006483745648862116,
+      "oob": 2.769122712233456e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.05441277843909601,
+      "match": 0.2571491271705643,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.095007062361057,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7855301257987521,
+      "directional_derivative": -5.009237885807882e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3626381548881458,
+          "armijo_rhs": 0.36264161805264933,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 56.6098405843936,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 59,
+      "total": 0.3626381548881458,
+      "image": 0.29172322154045105,
+      "strain": 0.006483931848644169,
+      "oob": 2.769104969132988e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.05441421487637579,
+      "match": 0.25715002665291675,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09350705859733649,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7863407511379537,
+      "directional_derivative": -5.681317167057611e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3626341470888542,
+          "armijo_rhs": 0.3626381543200141,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 44.7157878219691,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 60,
+      "total": 0.3626341470888542,
+      "image": 0.2917189300060272,
+      "strain": 0.006483907089763041,
+      "oob": 2.7690728364310625e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.054413963623068384,
+      "match": 0.2571518184440561,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.08954899112266318,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7821749544608236,
+      "directional_derivative": -5.9469104423337676e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36262996347658044,
+          "armijo_rhs": 0.3626341464941632,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 57.19261001694432,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 61,
+      "total": 0.36262996347658044,
+      "image": 0.2917146682739258,
+      "strain": 0.006483797073888784,
+      "oob": 2.7690634965788225e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.054413878191151545,
+      "match": 0.25715385979101724,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09099865060503148,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.784228596532987,
+      "directional_derivative": -5.759231511197282e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3626259118997418,
+          "armijo_rhs": 0.3626299629006573,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 42.3575085875082,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 0,
+      "direction": [
+        1.0,
+        0.0
+      ],
+      "step": 62,
+      "total": 0.3626259118997418,
+      "image": 0.29171034693717957,
+      "strain": 0.006483707566565511,
+      "oob": 2.769036847340344e-05,
+      "outside_fraction": 0.024645639583468437,
+      "shape": 0.05439930951502088,
+      "match": 0.2571565598172043,
+      "pcg": {
+        "iterations": 8,
+        "matvecs": 8,
+        "preconditioner_calls": 8,
+        "converged": true,
+        "relative_residual": 0.09924305609440547,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7869709676795051,
+      "directional_derivative": -5.186182869825142e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36262213499286655,
+          "armijo_rhs": 0.36262591138112354,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 72.14663346449356,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 0,
+      "total": 0.36262213499286655,
+      "image": 0.29170656204223633,
+      "strain": 0.006483515344983497,
+      "oob": 2.7690340327008996e-05,
+      "outside_fraction": 0.024645639583468437,
+      "shape": 0.05440556626509439,
+      "match": 0.2571594800936311,
+      "pcg": {
+        "iterations": 6,
+        "matvecs": 6,
+        "preconditioner_calls": 6,
+        "converged": true,
+        "relative_residual": 0.08817703838388796,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.1870942534742883,
+      "directional_derivative": -0.0025034150487465478,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3607532953738537,
+          "armijo_rhs": 0.3626218846513617,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 3.6740415021454327,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 1,
+      "total": 0.3607532953738537,
+      "image": 0.29024383425712585,
+      "strain": 0.006468674080679689,
+      "oob": 2.7688262688029898e-05,
+      "outside_fraction": 0.024645639583468437,
+      "shape": 0.054339815378575594,
+      "match": 0.25535158315231465,
+      "pcg": {
+        "iterations": 8,
+        "matvecs": 8,
+        "preconditioner_calls": 8,
+        "converged": true,
+        "relative_residual": 0.08851161739469936,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.2300977073081945,
+      "directional_derivative": -0.0008383090042669453,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.36004984089259645,
+          "armijo_rhs": 0.36075321154295326,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 9.445788505352674,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 2,
+      "total": 0.36004984089259645,
+      "image": 0.2894587516784668,
+      "strain": 0.006536357745887723,
+      "oob": 2.7686221447628334e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.054920814560581635,
+      "match": 0.2547441883678141,
+      "pcg": {
+        "iterations": 12,
+        "matvecs": 12,
+        "preconditioner_calls": 12,
+        "converged": true,
+        "relative_residual": 0.08985800120441025,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.2835792571716884,
+      "directional_derivative": -0.00044961390300930895,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3596580185386309,
+          "armijo_rhs": 0.3600497959312062,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 18.683140921255905,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 3,
+      "total": 0.3596580185386309,
+      "image": 0.2889859974384308,
+      "strain": 0.006580523338035275,
+      "oob": 2.7682452105543063e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05529617867880048,
+      "match": 0.25448619508060416,
+      "pcg": {
+        "iterations": 11,
+        "matvecs": 11,
+        "preconditioner_calls": 11,
+        "converged": true,
+        "relative_residual": 0.09431194901912371,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.3333455389185522,
+      "directional_derivative": -0.0002802638742927477,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3594062420360414,
+          "armijo_rhs": 0.35965799051224345,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 25.665400293888215,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 4,
+      "total": 0.3594062420360414,
+      "image": 0.28866496682167053,
+      "strain": 0.006612767975319849,
+      "oob": 2.7680417531371896e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05557073102349402,
+      "match": 0.25434866898888797,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09999472092629429,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.3783452840422927,
+      "directional_derivative": -0.00019842476601417277,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3592280358131245,
+          "armijo_rhs": 0.3594062221935648,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 20.029628961880103,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 5,
+      "total": 0.3592280358131245,
+      "image": 0.2884340286254883,
+      "strain": 0.006636247818624501,
+      "oob": 2.767940873717954e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05576616828898272,
+      "match": 0.25426003853098345,
+      "pcg": {
+        "iterations": 20,
+        "matvecs": 20,
+        "preconditioner_calls": 20,
+        "converged": false,
+        "relative_residual": 0.1081167081782724,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "iteration_cap"
+      },
+      "metric_gamma": 1.4360520257582152,
+      "directional_derivative": -0.00014471780789018427,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3590979587542988,
+          "armijo_rhs": 0.35922802134134374,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 31.13801375289587,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 6,
+      "total": 0.3590979587542988,
+      "image": 0.28826698660850525,
+      "strain": 0.006648927299638561,
+      "oob": 2.767226893091383e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05587877693473393,
+      "match": 0.2542546505012674,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.08668251644659235,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.4743864070568051,
+      "directional_derivative": -0.00010708011589660133,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.359000186932684,
+          "armijo_rhs": 0.3590979480462872,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 32.40064270935556,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 7,
+      "total": 0.359000186932684,
+      "image": 0.2881361246109009,
+      "strain": 0.00666256825138829,
+      "oob": 2.7671718487563505e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05599920919510718,
+      "match": 0.2542154296410557,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.090632403422896,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.5128855368813414,
+      "directional_derivative": -9.022280374277918e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35891679214796035,
+          "armijo_rhs": 0.3590001779104036,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 25.838918487617853,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 8,
+      "total": 0.35891679214796035,
+      "image": 0.28802865743637085,
+      "strain": 0.006672495190309265,
+      "oob": 2.767113481075251e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05608006286630965,
+      "match": 0.2541868499978217,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09483034965945474,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.533541570401224,
+      "directional_derivative": -7.957002956426629e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3588434306545789,
+          "armijo_rhs": 0.3589167841909574,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 31.7599240784864,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 9,
+      "total": 0.3588434306545789,
+      "image": 0.2879371643066406,
+      "strain": 0.006679407506672126,
+      "oob": 2.7670592661589182e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.056137081070983676,
+      "match": 0.2541737976357664,
+      "pcg": {
+        "iterations": 15,
+        "matvecs": 15,
+        "preconditioner_calls": 15,
+        "converged": true,
+        "relative_residual": 0.09209968876590938,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.5583617739284434,
+      "directional_derivative": -6.989589980063258e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35877897243972035,
+          "armijo_rhs": 0.35884342366498895,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 21.43106642663594,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 10,
+      "total": 0.35877897243972035,
+      "image": 0.2878562808036804,
+      "strain": 0.006684705541271476,
+      "oob": 2.766933948569209e-05,
+      "outside_fraction": 0.02466668002307415,
+      "shape": 0.056181640420355415,
+      "match": 0.25417643754348895,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09997111776191589,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.576568846674614,
+      "directional_derivative": -5.988748365137332e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3587238528401509,
+          "armijo_rhs": 0.35877896645097196,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 37.98835413803408,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 11,
+      "total": 0.3587238528401509,
+      "image": 0.28778642416000366,
+      "strain": 0.006690008331613245,
+      "oob": 2.7668914695410008e-05,
+      "outside_fraction": 0.02466668002307415,
+      "shape": 0.05622482133412732,
+      "match": 0.25417056144239325,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.0951344466359964,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.5861368124886777,
+      "directional_derivative": -5.2839329828075286e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.358675358968207,
+          "armijo_rhs": 0.35872384755621795,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 31.49721632835142,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 12,
+      "total": 0.358675358968207,
+      "image": 0.2877243459224701,
+      "strain": 0.006694823856117535,
+      "oob": 2.7668442525912788e-05,
+      "outside_fraction": 0.02466668002307415,
+      "shape": 0.05626342936671323,
+      "match": 0.2541662334596089,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09633440641879679,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.6058001173122225,
+      "directional_derivative": -4.6049688625780794e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35863324441096356,
+          "armijo_rhs": 0.35867535436323816,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 23.1098218048575,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 13,
+      "total": 0.35863324441096356,
+      "image": 0.2876717746257782,
+      "strain": 0.006698268880670408,
+      "oob": 2.7668039654860193e-05,
+      "outside_fraction": 0.02466668002307415,
+      "shape": 0.056290133444047215,
+      "match": 0.25416683045087424,
+      "pcg": {
+        "iterations": 20,
+        "matvecs": 20,
+        "preconditioner_calls": 20,
+        "converged": false,
+        "relative_residual": 0.1162204982108576,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "iteration_cap"
+      },
+      "metric_gamma": 1.6297010676809611,
+      "directional_derivative": -4.0990551866156626e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35859562058989697,
+          "armijo_rhs": 0.35863324031190835,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 35.41388852582169,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 14,
+      "total": 0.35859562058989697,
+      "image": 0.2876245677471161,
+      "strain": 0.006700019926327242,
+      "oob": 2.7666218504939896e-05,
+      "outside_fraction": 0.024673694744706154,
+      "shape": 0.056305187389827815,
+      "match": 0.25418848163277624,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09909431016712004,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.646933407078945,
+      "directional_derivative": -3.655911091293776e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3585619038608926,
+          "armijo_rhs": 0.3585956169339859,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 33.36778973968081,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 15,
+      "total": 0.3585619038608926,
+      "image": 0.2875819206237793,
+      "strain": 0.0067028770667673584,
+      "oob": 2.766597473903256e-05,
+      "outside_fraction": 0.024673694744706154,
+      "shape": 0.05632775656145869,
+      "match": 0.2541902664320801,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09818882638756521,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.6604446610388013,
+      "directional_derivative": -3.41551147651006e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35853111752807454,
+          "armijo_rhs": 0.3585619004453811,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 31.921477721193828,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 16,
+      "total": 0.35853111752807454,
+      "image": 0.2875427007675171,
+      "strain": 0.00670541618039703,
+      "oob": 2.7665713281383414e-05,
+      "outside_fraction": 0.024673694744706154,
+      "shape": 0.05634750695685527,
+      "match": 0.2541943387769462,
+      "pcg": {
+        "iterations": 17,
+        "matvecs": 17,
+        "preconditioner_calls": 17,
+        "converged": true,
+        "relative_residual": 0.09341321579681877,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.676103972461206,
+      "directional_derivative": -3.0331596732919634e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35850354163682496,
+          "armijo_rhs": 0.35853111449491487,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 37.91823083036642,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 17,
+      "total": 0.35850354163682496,
+      "image": 0.2875085175037384,
+      "strain": 0.0067064943998330125,
+      "oob": 2.7664943265598508e-05,
+      "outside_fraction": 0.024673694744706154,
+      "shape": 0.05635801334258382,
+      "match": 0.2542112009449382,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09646504766807402,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.691627751791455,
+      "directional_derivative": -2.649259693461641e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3584797628508938,
+          "armijo_rhs": 0.35850353898756526,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 31.601964371308817,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 18,
+      "total": 0.3584797628508938,
+      "image": 0.2874791622161865,
+      "strain": 0.006708222373953536,
+      "oob": 2.7664780596104175e-05,
+      "outside_fraction": 0.024673694744706154,
+      "shape": 0.05637079899486313,
+      "match": 0.25421315826175506,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09619764126039787,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.697963654473265,
+      "directional_derivative": -2.478342994727953e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35845746763911235,
+          "armijo_rhs": 0.3584797603725508,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 37.35686004848283,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 19,
+      "total": 0.35845746763911235,
+      "image": 0.2874525487422943,
+      "strain": 0.006709526058476129,
+      "oob": 2.7664587297421515e-05,
+      "outside_fraction": 0.02466668002307415,
+      "shape": 0.05638089469507658,
+      "match": 0.25421519022311334,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09026636019196241,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7107547130420668,
+      "directional_derivative": -2.279147231224239e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35843756411087324,
+          "armijo_rhs": 0.35845746535996514,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 28.21624531603929,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 20,
+      "total": 0.35843756411087324,
+      "image": 0.2874274253845215,
+      "strain": 0.006711217118382146,
+      "oob": 2.76643907620158e-05,
+      "outside_fraction": 0.02466668002307415,
+      "shape": 0.056393530535474426,
+      "match": 0.25421591813694866,
+      "pcg": {
+        "iterations": 11,
+        "matvecs": 11,
+        "preconditioner_calls": 11,
+        "converged": true,
+        "relative_residual": 0.09975411826279186,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7174767226864291,
+      "directional_derivative": -2.0305643699514663e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35841925280962167,
+          "armijo_rhs": 0.35843756208030886,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 42.556620515554705,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 21,
+      "total": 0.35841925280962167,
+      "image": 0.28740453720092773,
+      "strain": 0.006712456100367912,
+      "oob": 2.7664100594381777e-05,
+      "outside_fraction": 0.02466668002307415,
+      "shape": 0.05640387659663268,
+      "match": 0.2542202140966806,
+      "pcg": {
+        "iterations": 13,
+        "matvecs": 13,
+        "preconditioner_calls": 13,
+        "converged": true,
+        "relative_residual": 0.09819096482271489,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7239277896092433,
+      "directional_derivative": -1.989481593190358e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35840203125252784,
+          "armijo_rhs": 0.3584192508201401,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 27.011618385766614,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 22,
+      "total": 0.35840203125252784,
+      "image": 0.2873828411102295,
+      "strain": 0.006713372492335068,
+      "oob": 2.766376884379862e-05,
+      "outside_fraction": 0.02466668002307415,
+      "shape": 0.05641135194795881,
+      "match": 0.2542288388062726,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09420675701071021,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7270253905466637,
+      "directional_derivative": -1.8494293890868563e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35838609984953307,
+          "armijo_rhs": 0.35840202940309845,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 36.98863340203313,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 23,
+      "total": 0.35838609984953307,
+      "image": 0.28736308217048645,
+      "strain": 0.00671430633792772,
+      "oob": 2.7663531387445123e-05,
+      "outside_fraction": 0.02466668002307415,
+      "shape": 0.05641859122034898,
+      "match": 0.2542339663737696,
+      "pcg": {
+        "iterations": 13,
+        "matvecs": 13,
+        "preconditioner_calls": 13,
+        "converged": true,
+        "relative_residual": 0.09879906021991619,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.727144806167675,
+      "directional_derivative": -1.6344855133459965e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3583719515321738,
+          "armijo_rhs": 0.3583860982150476,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 26.427818292592306,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 24,
+      "total": 0.3583719515321738,
+      "image": 0.2873459756374359,
+      "strain": 0.006714832786823642,
+      "oob": 2.766311253823499e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05642310340547657,
+      "match": 0.2542408605569411,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09880530339670753,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7286686560169573,
+      "directional_derivative": -1.5105228944422721e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3583592526859939,
+          "armijo_rhs": 0.35837195002165095,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 30.454898799116982,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 25,
+      "total": 0.3583592526859939,
+      "image": 0.2873307466506958,
+      "strain": 0.0067155222953742,
+      "oob": 2.766290688858436e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05642859395592199,
+      "match": 0.25424316691445653,
+      "pcg": {
+        "iterations": 15,
+        "matvecs": 15,
+        "preconditioner_calls": 15,
+        "converged": true,
+        "relative_residual": 0.09799716855408527,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7359124745889203,
+      "directional_derivative": -1.3408576252081491e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3583476588295231,
+          "armijo_rhs": 0.35835925134513624,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 62.67523125133947,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 26,
+      "total": 0.3583476588295231,
+      "image": 0.2873170077800751,
+      "strain": 0.00671587402510349,
+      "oob": 2.766225826951999e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.0564318947716486,
+      "match": 0.2542486176319545,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.08927680993861772,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.743327714324754,
+      "directional_derivative": -1.349069644280818e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35833611487149647,
+          "armijo_rhs": 0.35834765748045344,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 30.52637733811797,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 27,
+      "total": 0.35833611487149647,
+      "image": 0.28730249404907227,
+      "strain": 0.006716713700709636,
+      "oob": 2.7662017350484856e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05643843135507465,
+      "match": 0.2542508692990464,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09676050779534355,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7501374446345461,
+      "directional_derivative": -1.2259435985206436e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3583260609628978,
+          "armijo_rhs": 0.35833611364555285,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 34.91267417186389,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 28,
+      "total": 0.3583260609628978,
+      "image": 0.2872897684574127,
+      "strain": 0.006717573901728141,
+      "oob": 2.766179605259356e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.056444902420267076,
+      "match": 0.25425132257003014,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09901051165552772,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7545841550667742,
+      "directional_derivative": -1.1623810480506505e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35831636003990747,
+          "armijo_rhs": 0.3583260598005168,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 33.447004066731566,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 29,
+      "total": 0.35831636003990747,
+      "image": 0.2872766852378845,
+      "strain": 0.00671866288763418,
+      "oob": 2.7661493605257042e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.056453224654664444,
+      "match": 0.25425189661524844,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09160948654644764,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7570925402863924,
+      "directional_derivative": -1.1630869718654119e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3583065385741515,
+          "armijo_rhs": 0.3583163588768205,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 43.78427831757185,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 30,
+      "total": 0.3583065385741515,
+      "image": 0.2872641384601593,
+      "strain": 0.006719507248802455,
+      "oob": 2.766120578813958e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.056459856708130376,
+      "match": 0.2542528558806296,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.0929040155392905,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7622383695644517,
+      "directional_derivative": -1.1636561436417246e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3582961713130197,
+          "armijo_rhs": 0.3583065374104954,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 29.32783338802935,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 31,
+      "total": 0.3582961713130197,
+      "image": 0.28725069761276245,
+      "strain": 0.006720550983114646,
+      "oob": 2.7660904604618713e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.056468371731697733,
+      "match": 0.25425256504567784,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09711238389567368,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.761554317369466,
+      "directional_derivative": -1.3714044724346444e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35828493401950645,
+          "armijo_rhs": 0.35829616994161523,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 28.90662708726395,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 32,
+      "total": 0.35828493401950645,
+      "image": 0.2872375547885895,
+      "strain": 0.00672110017253394,
+      "oob": 2.7660647173109214e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05647247253381371,
+      "match": 0.2542538540944429,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09225470428737324,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7705544497845027,
+      "directional_derivative": -1.1657780582613734e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35827536211769967,
+          "armijo_rhs": 0.35828493285372837,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 40.13684482762096,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 33,
+      "total": 0.35827536211769967,
+      "image": 0.28722473978996277,
+      "strain": 0.00672208193175408,
+      "oob": 2.7660295152545775e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.056480199398652176,
+      "match": 0.2542553410869114,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09216849382817816,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.781056328708588,
+      "directional_derivative": -1.1283988787812205e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3582662899715418,
+          "armijo_rhs": 0.3582753609893008,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 38.018639314868416,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 34,
+      "total": 0.3582662899715418,
+      "image": 0.2872125208377838,
+      "strain": 0.006723082104398726,
+      "oob": 2.76599429158552e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05648858271302888,
+      "match": 0.25425607009687323,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09961985632473955,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7804187015430126,
+      "directional_derivative": -1.0681334364811756e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35825754169274093,
+          "armijo_rhs": 0.3582662889034084,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 31.405611918302252,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 35,
+      "total": 0.35825754169274093,
+      "image": 0.28720077872276306,
+      "strain": 0.0067240517247094825,
+      "oob": 2.765961023967432e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05649615168985938,
+      "match": 0.25425649285220386,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09354250429997757,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7822616197196108,
+      "directional_derivative": -1.0216920050355321e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3582490989568025,
+          "armijo_rhs": 0.3582575406710489,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 35.320850630187316,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 36,
+      "total": 0.3582490989568025,
+      "image": 0.28718915581703186,
+      "strain": 0.006725104090274946,
+      "oob": 2.7659301260779754e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.056505135984393905,
+      "match": 0.2542566052704325,
+      "pcg": {
+        "iterations": 12,
+        "matvecs": 12,
+        "preconditioner_calls": 12,
+        "converged": true,
+        "relative_residual": 0.0999140691196793,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.78258233263701,
+      "directional_derivative": -1.0137357272408375e-05,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35824123473948144,
+          "armijo_rhs": 0.3582490979430668,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 31.40591769206906,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 37,
+      "total": 0.35824123473948144,
+      "image": 0.28717926144599915,
+      "strain": 0.0067256734908878605,
+      "oob": 2.765876855497861e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.056510718017957116,
+      "match": 0.25425821490230965,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09567102236507652,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.789157979843448,
+      "directional_derivative": -8.239565621888275e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35823489701892186,
+          "armijo_rhs": 0.35824123391552487,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 31.2577873900662,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 38,
+      "total": 0.35823489701892186,
+      "image": 0.28717049956321716,
+      "strain": 0.0067264652787080645,
+      "oob": 2.7658492077525393e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.056516651256721256,
+      "match": 0.2542584573118865,
+      "pcg": {
+        "iterations": 10,
+        "matvecs": 10,
+        "preconditioner_calls": 10,
+        "converged": true,
+        "relative_residual": 0.09500700971171383,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7873827149395471,
+      "directional_derivative": -7.122323986709456e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3582294053900819,
+          "armijo_rhs": 0.3582348963066895,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 37.736148989854414,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 39,
+      "total": 0.3582294053900819,
+      "image": 0.2871633470058441,
+      "strain": 0.006727127108243535,
+      "oob": 2.7658158032349585e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05652259813935379,
+      "match": 0.2542568332083045,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09750881096541388,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7900994030960804,
+      "directional_derivative": -7.803396520279415e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3582235512536754,
+          "armijo_rhs": 0.3582294046097423,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 38.103465260118284,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 40,
+      "total": 0.3582235512536754,
+      "image": 0.2871560752391815,
+      "strain": 0.006727618128342454,
+      "oob": 2.765787266628593e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05652624677068556,
+      "match": 0.25425655566061567,
+      "pcg": {
+        "iterations": 20,
+        "matvecs": 20,
+        "preconditioner_calls": 20,
+        "converged": false,
+        "relative_residual": 0.10532111340565463,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "iteration_cap"
+      },
+      "metric_gamma": 1.7897659909507968,
+      "directional_derivative": -7.830264120622064e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3582173989681602,
+          "armijo_rhs": 0.35822355047064897,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 38.13857910086557,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 41,
+      "total": 0.3582173989681602,
+      "image": 0.2871491611003876,
+      "strain": 0.006727270093238685,
+      "oob": 2.7656115640561987e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05652503128212737,
+      "match": 0.25426559484643885,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.08361302459511115,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7915822723521735,
+      "directional_derivative": -7.821261697940584e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3582113808384279,
+          "armijo_rhs": 0.358217398186034,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 56.61154564159869,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 42,
+      "total": 0.3582113808384279,
+      "image": 0.28714194893836975,
+      "strain": 0.006727626171828321,
+      "oob": 2.7655929783855365e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.056527357225395175,
+      "match": 0.25426622359533385,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.08476761969033769,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.794884718954134,
+      "directional_derivative": -7.5703743757587e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3582055244728737,
+          "armijo_rhs": 0.3582113800813905,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 33.15017960847283,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 43,
+      "total": 0.3582055244728737,
+      "image": 0.28713515400886536,
+      "strain": 0.006727966703393422,
+      "oob": 2.7655761355500626e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.056530710412090415,
+      "match": 0.25426580760715656,
+      "pcg": {
+        "iterations": 12,
+        "matvecs": 12,
+        "preconditioner_calls": 12,
+        "converged": true,
+        "relative_residual": 0.0957723435594091,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7928336982453985,
+      "directional_derivative": -7.554184478124372e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35819976338592985,
+          "armijo_rhs": 0.35820552371745523,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 65.4637306191727,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 44,
+      "total": 0.35819976338592985,
+      "image": 0.28712883591651917,
+      "strain": 0.006728075956120525,
+      "oob": 2.7655456377387777e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.056531099030798615,
+      "match": 0.25426695517384285,
+      "pcg": {
+        "iterations": 14,
+        "matvecs": 14,
+        "preconditioner_calls": 14,
+        "converged": true,
+        "relative_residual": 0.09607823368768101,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7906040250776096,
+      "directional_derivative": -7.06542540696603e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35819446918946274,
+          "armijo_rhs": 0.3581997626793873,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 74.56082382109531,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 45,
+      "total": 0.35819446918946274,
+      "image": 0.2871227562427521,
+      "strain": 0.0067280963582595655,
+      "oob": 2.7655048741173355e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05653191460672598,
+      "match": 0.2542705781586504,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09121593345551358,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7937883653637414,
+      "directional_derivative": -6.603630373810938e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3581896946920301,
+          "armijo_rhs": 0.3581944685290997,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 46.38356346909921,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 46,
+      "total": 0.3581896946920301,
+      "image": 0.287117600440979,
+      "strain": 0.006728122855369754,
+      "oob": 2.765491343975746e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05653160953145593,
+      "match": 0.2542720880527445,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09793888390684684,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7911734955160965,
+      "directional_derivative": -6.2984251377799926e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35818536643934534,
+          "armijo_rhs": 0.3581896940621876,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 66.34346508564767,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 47,
+      "total": 0.35818536643934534,
+      "image": 0.2871130704879761,
+      "strain": 0.0067281497389358276,
+      "oob": 2.765477229337186e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05653164026042489,
+      "match": 0.25427269399121144,
+      "pcg": {
+        "iterations": 17,
+        "matvecs": 17,
+        "preconditioner_calls": 17,
+        "converged": true,
+        "relative_residual": 0.09990850248127142,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7920741348914553,
+      "directional_derivative": -6.1885060591749404e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35818084768366465,
+          "armijo_rhs": 0.35818536582049476,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 68.28538844301303,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 48,
+      "total": 0.35818084768366465,
+      "image": 0.2871086895465851,
+      "strain": 0.006727449579144916,
+      "oob": 2.7654147660307277e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.056526843500475696,
+      "match": 0.25428251283817216,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.08455873222618625,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7929006886879306,
+      "directional_derivative": -6.206817992013618e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3581764140356868,
+          "armijo_rhs": 0.35818084706298287,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 50.46595336208816,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 49,
+      "total": 0.3581764140356868,
+      "image": 0.2871052324771881,
+      "strain": 0.006726981668499122,
+      "oob": 2.7654037819489216e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.0565231143963236,
+      "match": 0.2542846510187108,
+      "pcg": {
+        "iterations": 20,
+        "matvecs": 20,
+        "preconditioner_calls": 20,
+        "converged": true,
+        "relative_residual": 0.09957188677611895,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7956628076547616,
+      "directional_derivative": -6.980080152708343e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35817120775182026,
+          "armijo_rhs": 0.35817641333767875,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 59.854374904909555,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 50,
+      "total": 0.35817120775182026,
+      "image": 0.28710076212882996,
+      "strain": 0.006725750678515179,
+      "oob": 2.765337943973321e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05651490554075886,
+      "match": 0.25429944358725465,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.08767504347249418,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7920076332734978,
+      "directional_derivative": -7.531180112306632e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35816541361355425,
+          "armijo_rhs": 0.35817120699870225,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 27.760647817645275,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 51,
+      "total": 0.35816541361355425,
+      "image": 0.2870957851409912,
+      "strain": 0.006725090183052959,
+      "oob": 2.7653284101305426e-05,
+      "outside_fraction": 0.024659667164087296,
+      "shape": 0.05650922204339605,
+      "match": 0.2543052685854925,
+      "pcg": {
+        "iterations": 12,
+        "matvecs": 12,
+        "preconditioner_calls": 12,
+        "converged": true,
+        "relative_residual": 0.09615020255155321,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7935881346486922,
+      "directional_derivative": -6.827330456181311e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3581605112247827,
+          "armijo_rhs": 0.3581654129308212,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 31.169754555050048,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 52,
+      "total": 0.3581605112247827,
+      "image": 0.28709015250205994,
+      "strain": 0.0067251978915567985,
+      "oob": 2.7653090469323928e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.05651150122251718,
+      "match": 0.2543073040373043,
+      "pcg": {
+        "iterations": 8,
+        "matvecs": 8,
+        "preconditioner_calls": 8,
+        "converged": true,
+        "relative_residual": 0.09272533154180468,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.7928262994954889,
+      "directional_derivative": -6.148744965502219e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35815602132024127,
+          "armijo_rhs": 0.3581605106099082,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 19.46016466296499,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 53,
+      "total": 0.35815602132024127,
+      "image": 0.28708577156066895,
+      "strain": 0.006725113781641633,
+      "oob": 2.765299840246353e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.056510803945639856,
+      "match": 0.2543080216792519,
+      "pcg": {
+        "iterations": 8,
+        "matvecs": 8,
+        "preconditioner_calls": 8,
+        "converged": true,
+        "relative_residual": 0.09844422133086149,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.8000522223481403,
+      "directional_derivative": -6.249625489726609e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3581517853824452,
+          "armijo_rhs": 0.35815602069527874,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 37.76239661627337,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 54,
+      "total": 0.3581517853824452,
+      "image": 0.28708118200302124,
+      "strain": 0.0067251797885434575,
+      "oob": 2.7652906968588996e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.0565115048160859,
+      "match": 0.2543087997817166,
+      "pcg": {
+        "iterations": 15,
+        "matvecs": 15,
+        "preconditioner_calls": 15,
+        "converged": true,
+        "relative_residual": 0.09935903859556271,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.799375879587857,
+      "directional_derivative": -6.294592533569152e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35814720980133696,
+          "armijo_rhs": 0.3581517847529859,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 60.82187150690247,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 55,
+      "total": 0.35814720980133696,
+      "image": 0.28707632422447205,
+      "strain": 0.006724759454621214,
+      "oob": 2.7652564893841663e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.056507698400310835,
+      "match": 0.2543165193913368,
+      "pcg": {
+        "iterations": 8,
+        "matvecs": 8,
+        "preconditioner_calls": 8,
+        "converged": true,
+        "relative_residual": 0.09774390902153116,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.8046901470020928,
+      "directional_derivative": -5.939169794574795e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3581429673733762,
+          "armijo_rhs": 0.35814720920742,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 45.713457046038606,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 56,
+      "total": 0.3581429673733762,
+      "image": 0.2870710790157318,
+      "strain": 0.006724983319185878,
+      "oob": 2.7652463429945452e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.056509028745330134,
+      "match": 0.2543181751689113,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.089164568995336,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.8061752963726054,
+      "directional_derivative": -5.541093757737461e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3581392729920084,
+          "armijo_rhs": 0.35814296681926683,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 33.69940488820875,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 57,
+      "total": 0.3581392729920084,
+      "image": 0.2870669364929199,
+      "strain": 0.006725152288723418,
+      "oob": 2.7652341130803264e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.05651105741649189,
+      "match": 0.2543178809302288,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09643255410680997,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.8083677269247953,
+      "directional_derivative": -4.878025802010762e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35813619723980894,
+          "armijo_rhs": 0.3581392725042058,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 44.14338293685705,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 58,
+      "total": 0.35813619723980894,
+      "image": 0.2870633006095886,
+      "strain": 0.006725311670272992,
+      "oob": 2.7652213086253973e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.05651256950325677,
+      "match": 0.25431829074682344,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09744524619261784,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.8067213439548024,
+      "directional_derivative": -4.268910253998521e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.35813351291388795,
+          "armijo_rhs": 0.3581361968129179,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 67.44693468812751,
+      "initial_alpha": 1.0,
+      "accepted": true
+    },
+    {
+      "stage": 1,
+      "direction": [
+        0.0,
+        1.0
+      ],
+      "step": 59,
+      "total": 0.35813351291388795,
+      "image": 0.2870599329471588,
+      "strain": 0.006725519666418677,
+      "oob": 2.7652095725521547e-05,
+      "outside_fraction": 0.02465265430510044,
+      "shape": 0.056513542273370326,
+      "match": 0.2543185875876013,
+      "pcg": {
+        "iterations": 9,
+        "matvecs": 9,
+        "preconditioner_calls": 9,
+        "converged": true,
+        "relative_residual": 0.09397848575349017,
+        "residual_kind": "recursive Euclidean norm divided by initial norm",
+        "reason": "relative_residual"
+      },
+      "metric_gamma": 1.8124049014983203,
+      "directional_derivative": -4.5536176378875375e-06,
+      "trials": [
+        {
+          "alpha": 1.0,
+          "total": 0.3581305851319631,
+          "armijo_rhs": 0.3581335124585262,
+          "geometry_valid": true,
+          "accepted": true
+        }
+      ],
+      "alpha_max": 51.2671286519114,
+      "initial_alpha": 1.0,
+      "accepted": true
+    }
+  ],
+  "terminal_budget": {
+    "protocol": "timed_final",
+    "arm": "data_metric",
+    "seconds_per_axis": 2.0,
+    "stage_records": [
+      {
+        "level": 257,
+        "image_side": 512,
+        "direction": [
+          1.0,
+          0.0
+        ],
+        "anchor_total": 0.3671648079445342,
+        "accepted_total": 0.36262213499286655,
+        "accepted_full_total": 0.36262213499286655,
+        "counts": {
+          "gradient_steps": 63,
+          "accepted_steps": 63,
+          "objective_evaluations": 127,
+          "trial_evaluations": 63,
+          "failed_trials": 0,
+          "backtracks": 0,
+          "metric_refreshes": 63,
+          "descriptor_forwards": 63,
+          "descriptor_vjps": 504,
+          "pcg_iterations": 659,
+          "pcg_matvecs": 659,
+          "preconditioner_calls": 659
+        },
+        "stop_reason": "time_budget",
+        "elapsed_seconds": 2.009978450834751,
+        "time_overrun_seconds": 0.00997845083475113,
+        "budget_elapsed": true,
+        "minimum_contracted_slack": 0.11768032366782065,
+        "geometry_acceptance": "strict fixed contracted Q>Qfloor and actual original Q>.001",
+        "physical_lr": null
+      },
+      {
+        "level": 257,
+        "image_side": 512,
+        "direction": [
+          0.0,
+          1.0
+        ],
+        "anchor_total": 0.36262213499286655,
+        "accepted_total": 0.3581305851319631,
+        "accepted_full_total": 0.3581305851319631,
+        "counts": {
+          "gradient_steps": 60,
+          "accepted_steps": 60,
+          "objective_evaluations": 121,
+          "trial_evaluations": 60,
+          "failed_trials": 0,
+          "backtracks": 0,
+          "metric_refreshes": 60,
+          "descriptor_forwards": 60,
+          "descriptor_vjps": 480,
+          "pcg_iterations": 657,
+          "pcg_matvecs": 657,
+          "preconditioner_calls": 657
+        },
+        "stop_reason": "time_budget",
+        "elapsed_seconds": 2.0298221707344055,
+        "time_overrun_seconds": 0.029822170734405518,
+        "budget_elapsed": true,
+        "minimum_contracted_slack": 0.1146571443557093,
+        "geometry_acceptance": "strict fixed contracted Q>Qfloor and actual original Q>.001",
+        "physical_lr": null
+      }
+    ],
+    "scope": "all per-axis setup/gradient/linearization/solve/trials/synchronization; finish started bounded iteration"
+  },
+  "output_selection": "best_full",
+  "selected_stage": 1,
+  "selected_stage_scope": "None=common best prefix including identity;0/1=accepted timed x/y suffix",
+  "terminal_full_total": 0.3581305851319631,
+  "best_accepted_full_total": 0.3581305851319631,
+  "loading_seconds": 0.07446567341685295,
+  "feature_seconds": 0.24590697512030602,
+  "optimize_seconds": 4.040507402271032,
+  "serialization_seconds": 0.003974158316850662,
+  "certification_seconds": 0.03239990398287773,
+  "end_to_end_seconds": 4.403427232056856,
+  "common_prefix_seconds": 3.5904321745038033,
+  "peak_allocated_bytes": 158883840,
+  "saved_binary_certificate": {
+    "valid": true,
+    "corners": 262144,
+    "positive_corners": 262144,
+    "nonpositive_corners": 0,
+    "exact_fallback_corners": 0,
+    "nonfinite_coordinates": 0,
+    "boundary_exact": true,
+    "boundary_ordered_rectangle": true,
+    "dtype": "float64"
+  },
+  "mind_frame": "shared_affine",
+  "image_levels": [
+    32,
+    64,
+    128,
+    256,
+    512
+  ],
+  "mind_frame_by_resolution": {
+    "512": {
+      "raster_hw": [
+        512,
+        512
+      ],
+      "intensity_prewarp_count": 1,
+      "descriptor_construction_count": 1,
+      "coordinate_dtype": "torch.float64",
+      "normalized_sampling_grid_dtype": "torch.float32",
+      "sampling": "bilinear zeros align_corners=False; original moving intensity prewarped ONCE at this scale",
+      "fixed_descriptor_support": {
+        "full_domain_fraction": 0.9766998291015625,
+        "fixed_mask_weighted_fraction": 0.9906930095875327
+      },
+      "shared_affine_descriptor_support": {
+        "full_domain_fraction": 0.9159698486328125,
+        "fixed_mask_weighted_fraction": 0.9640905871048737
+      },
+      "original_frame_descriptor_support": {
+        "full_domain_fraction": 0.9170875549316406,
+        "fixed_mask_weighted_fraction": 0.9645815361092993
+      },
+      "fixed_mask_denominator": 142581.0,
+      "support_scope": "nominal float64 offset2+pool1+query-bilinear footprint; four affine-mapped extreme pixel centers with original moving bilinear floor/ceil inside raster; NOT an exact float32 access certificate",
+      "support_query_scope": "STATIC setup fractions at undeformed residual/identity raster pixel centers, NOT current f(q) support or a guarantee for deformed foreground samples",
+      "boundary_difference": "outside-original prewarp intensity is zero; its self-similarity descriptors may be ones, unlike zero padding of original descriptor fields",
+      "mask_policy": "ALL original fixed-mask weights retained; support fractions are reporting ONLY"
+    }
+  },
+  "image_preprocessing": {
+    "name": "raw_inverted",
+    "mask_source": "original inverted grayscale >.04",
+    "original_moving_features_no_affine_prewarp": false,
+    "original_moving_raster_no_affine_prewarp": true,
+    "moving_descriptor_frame": "shared_affine",
+    "moving_descriptor_prewarp_scope": "once at original512 scale"
+  },
+  "image_match_evidence": {
+    "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/match_fusion_all50_t23/fused_tables/he_to_prospc.json",
+    "raw_matches": 2856,
+    "eligible_matches": 2854,
+    "static_original_moving_domain_excluded": 2,
+    "confidence_denominator": 2.0,
+    "robust_scale_canvas_px": 8.0,
+    "target_frame": "affine-aligned moving; loss uses image_side*A(mapped(q)-p)",
+    "path_check": "raster basenames plus side and sampling-affine values; relocated paths allowed, not content identity proof",
+    "sampling_affine_storage_dtype": "float32",
+    "mask": "fixed target coordinate inside original moving rectangle; no adaptive query dropping"
+  },
+  "timing_scope": "common prefix charged once per pair; per-suffix loading/features/export charged separately from both2s axis clocks",
+  "stop_caution": "legal retained maps and elapsed time are not stationarity or completed gradient-budget claims"
+}

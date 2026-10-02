@@ -59,3 +59,42 @@ def test_production_frozen_configuration_rejects_changes(tmp_path):
     for key,value in [('learning_rate',.1),('match_weight',.1),('image_side',1024),('geometry_backend','existing')]:
         bad=copy.deepcopy(args);setattr(bad,key,value)
         with pytest.raises(ValueError):app._validate_configuration(bad)
+
+
+@pytest.mark.parametrize('name',['histo','rat_kidney'])
+def test_archived_optional_omissions_use_exact_original_evidence_defaults(tmp_path,monkeypatch,name):
+    import torch
+    from tools.digital_q1_dhr_distill import identity_vertices
+    archive=Path('outputs/coordinated_instance_registration/match_fusion_all50_t23/fusion/predictions.json')
+    if not archive.exists():pytest.skip('archived development configuration unavailable')
+    archived=next(r['configuration'] for r in json.loads(archive.read_text())['rows'] if r['name']==name)
+    assert 'mind_order' not in archived
+    args=configuration(tmp_path,'analytic');args.mind_frame='shared_affine'
+    # Use tiny image-only fixtures, but reproduce the real archived optional-field omissions.
+    optional=('mind_order','image_weight','joint_prior_backend','match_p1_sampling','fixed_mask',
+        'fine_patch_cells','fine_patch_backend','nested_evaluation','seed_initializer','capture_prefix')
+    for key in optional:
+        if key not in archived and hasattr(args,key):delattr(args,key)
+    assert not hasattr(args,'mind_order')
+    baseline=original.optimize(args)
+    with np.load(args.affine) as saved:matrix,offset=saved['post_affine_matrix'],saved['post_affine_offset']
+    evidence,metadata,_=app._build_evidence(args,matrix,offset,torch.device('cpu'))
+    reference=identity_vertices(args.grid_side,device='cpu').double()
+    value,parts=evidence(reference)
+    assert dict(total=float(value),**{k:float(v) for k,v in parts.items()})==baseline['initial']
+    assert evidence.mind_order=='transport' and metadata['moving_descriptor_frame']=='shared_affine'
+    explicit=copy.deepcopy(args);explicit.mind_order='transport'
+    other,_,_=app._build_evidence(explicit,matrix,offset,torch.device('cpu'))
+    Y=(reference+.0007*torch.randn_like(reference)).requires_grad_()
+    old=other(Y)[0];new=evidence(Y)[0]
+    assert torch.equal(old,new)
+    assert torch.equal(torch.autograd.grad(old,Y)[0],torch.autograd.grad(new,Y)[0])
+    monkeypatch.setattr(app,'_validate_configuration',lambda cfg:None)
+    args.output=tmp_path/'prefix.npz';prefix=app.extract_prefix(args)
+    fn=app.optimize_timed_adam_fiber
+    monkeypatch.setattr(app,'optimize_timed_adam_fiber',lambda *a,**kw:fn(*a,clock=Tick(),**kw))
+    args.output=tmp_path/'timed.npz'
+    report=app.optimize_timed_final(args,prefix_best=prefix['prefix_best'],prefix_start=prefix['prefix_start'],arm='adam')
+    assert report['saved_binary_certificate']['valid'] and report['mind_frame']=='shared_affine'
+    assert report['image_preprocessing']['original_moving_features_no_affine_prewarp'] is False
+    assert 'mind_order' not in report['configuration']  # Never rewrite the archived configuration.
