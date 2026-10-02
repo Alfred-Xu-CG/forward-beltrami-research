@@ -1663,3 +1663,73 @@ Root finalaffected quadrature/sampler/nestedpriors/stagecache suite:
 108passed/1localCUDAfixture skip9.21s. GPUalias smoke was separately executed
 on the actual remoteA6000. Code,pairedcomplete reports andall-IDscores form
 the milestone; largeactualnpz/maps andfailure/processlogs remain preservedonD.
+
+### T+12h CPU portability/scaling measurement, unchanged existing operator
+
+Question: are compact first-order full-currentY/proposal VJPs useful outside
+the GPU application? Reuse the ALREADY verified explicit_vjp benchmark and
+EXACTsame savedreal257P1 anchor as the earlier GPU test, refinedexactlyto1025.
+No newgeometry/loss/optimizer, no image/landmarks in the timed operation.
+Measure existingAD versus compact torch_manual, float64, validate=True,
+radial/activeanalytic/inactiveanalytic,3warmups/10repeats; batch1 at257/1025,
+batch4only257. KeepfullY andproposal gradients enabled withsame randomupstream.
+Recordmedianforward/VJP andretainedsavedstorage separately; CPUtotalRSS/peak
+is NOT inferred from graphstorage or GPUpeak. Candidate equality and BOTHVJPs
+must pass existingstrictchecks, freshactualcorners remainpositiveaftertiming.
+Element resourceprobe:128CPUs, load~2.1,~918GiBavailable; useONLY2CPUthreads,
+no GPUallocation or packageinstall. Confirmed existingbase_cp Torch2.5.1cu124.
+Smallestdecisivetest: oneexistingboundedbenchmarkcall, nominalunder10min,
+no threadcount/autotuning sweep. This changesdeployment/scaling evidence only,
+notanatomy or the all20predeclared method recipe.
+
+ActualCPUbenchmarkfinished;9cases,3warmups/10rep each, sameY/z/upstream,
+candidatevalueerror0, maxrelativeY/zVJPerror3.65e-16/1.76e-16. At1025B1,
+ordinary→compacttorch_manual forward/VJPms:radial338.10/372.40→238.63/18.26,
+activeanalytic266.62/370.79→263.31/19.60, inactive290.76/349.91→212.10/16.45.
+Saveduniquegraphstorage432.031→24.047MiB includesY/z; NOTCPUtotalRSS/peak.
+Allfreshqmin>.001. IndependentAstra recomputesall18storedmedians exactly,
+checksactualbenchmarkcode/counts/scope, noindependenthardware re-probe/rerun.
+FORMULATION35 hasall9rows; oldbenchmarkGPU6/integrationcaveats explicitly stale.
+
+All20predictor10tinytests/scorer34tests; rootjoint44pass21.62s andindependent
+checker44pass21.92s. Scorer raw-pending andmissingaffine-catch fixesverified,
+no actualannotationsread duringthese syntheticfixtures. ResourcecheckGPU6idle,
+thenall20fixedrecipe t123started with externaltimeout1800s,2CPUthreads,
+ClearAllForwardings=yes; original5canvases/20positiveaffines onlytransferred,
+no annotations/densemaps/teachers. All20rawmatchattempts completedfirst;
+currentmanifest has11/20directions all3methodsok,0failures. No scoresselected.
+ActualF2accepted_gain1 isverifiedfrom original512ARAPt88config, not silently
+changedtoearlierdiagnosticgain.75. FORMULATION36 is the self-contained protocol.
+
+### T+12.5h all20 completion and measured next decision
+
+All20 predictions and post-prediction scores complete. Allmethods exported20/20;
+all80IDs retained. Primary meanTRE/mean-p90,512canvaspx: affine6.66122/12.23468,
+analytic4.52023/9.55521,F2 4.59946/9.70151,nativeDHR5.13359/11.55283.
+Native196916nonpositivecorners over20maps, no foldedcase removed fromscoring.
+Analytic300grads/0failures each; F2 two incompletebudgets:HE→Ki67 242grads/2
+marginrejections,Ki67→HE158/5. Allrejectedextra margins are roundoff-negative
+aroundeta=.001, notorientationflips; exportedacceptedmapsvalid. This corrects
+the earlier informal "0failures":0job/export failures doesNOTmean0trialfailures.
+IndependentAstra reaggregates per-ID errors within1.25e-14. On descriptive
+complete-budget18subset, A/F2mean4.1795866/4.1850395,p90mean9.0243651/9.0171700.
+The2incompletecases explain93.8%meanadvantage/104.4%tailadvantage; keepprimary20.
+DoNOTclaim substantialanatomicalsuperiorityovercompletedF2fromthisevidence.
+Actualcompletecall meansA4.79099/F2 15.07797/DHR.72903s,rawmatchermean.37460s
+separate. Ainner4.68476s≈97.8%call. A6.57xslowernativeDHR; this matters.
+
+Research card — unchanged complete-application runtime attribution:
+Question: which measured component prevents a competitive time-to-accuracy?
+Claim: profiler can locate the dominant CURRENT execution cost; no speedup is
+claimed before measurement. Assumptions: exact frozen HE→CC10 firstdirection,
+same300-gradient analytic recipe/rawmachinepoints/affine/objective/guards.
+Falsifier: instrumentation changes maps/counters/functionals, or profiler overhead
+dominates sufficiently that device/host attribution is uninformative.
+Smallest test: unprofiled→oneCPU/CUDAprofile→unprofiled complete runs on sameidle
+GPU, <10min, annotationsabsent. Reportoverhead, nestednonadditive ranges, kernel/
+host selfevents andscalar/sync events, ordinaryend-to-endtimings separately.
+Prior work: existingstagecache/FrozenP1/compactVJP alreadyimplemented; doNOT
+rebrandrecachingasnewgain. SelectONEpure-tensor speed intervention onlyafter
+measured attribution; doNOTstartnewCNN/distillation ononeviewedspecimen.
+Decision independently recommended by Astra; builder owns boundedprofiletool,
+root executes, raw-arraychecker works separately. Remainingwindow~11.5h.

@@ -1812,3 +1812,226 @@ The extra queries add arithmetic, not observed tissue information.
 Decision: retain the original center functional as the mainline. End this
 quadrature variant without a parameter/feature/preconditioner sweep. Section33
 remains a valid SOURCE-OPERATOR result, but is not a practical anatomy theorem.
+
+## 35. CPU full-current-map and proposal adjoint portability
+
+This is a deployment measurement of the existing operator, not a new map class
+or a new registration optimizer. It uses the same saved real257P1ac anchor as
+the earlier GPU operator test, exactly refined to1025 without new image detail.
+Geometry, proposal and upstream vectors are float64. No image loss, landmark,
+optimizer history or neural encoder is involved in the timed call.
+
+For the candidate operator R(Y,z), both Y and scalar proposal z require gradients.
+The upstream vector w has the shape of R and is generated once with seed20261001,
+then divided by the number of vertex-coordinate entries. The measured reverse
+operation returns BOTH (D_Y R)^T w and (D_z R)^T w, not just the proposal part.
+This full-current-map derivative is relevant to chaining decoder layers; it does
+not demonstrate backpropagation through the entire per-case optimizer or a
+trained registration network. Only first-order derivatives are supported by
+the compact custom adjoint; auxiliary diagnostics are not differentiated.
+
+Each method uses validate=True, so its forward includes actual rounded-margin
+checks. Fresh independent corner recomputation follows timing. Test proposals
+are z(x,y)=a*sin²(pi*x)*sin²(pi*y), with exactzero boundary. Cases include radial
+a=.02, analytic active a=.02 and analytic inactive a=.0001. Reference, input,
+proposal, random upstream and all method configurations are shared per case.
+
+Element supplied128logicalCPUs; pre-job load was~2.1 with~918GiBavailable.
+The job used ONLY2CPUthreads, CUDA_VISIBLE_DEVICES empty and existingTorch2.5.1.
+Threewarmups and10measured repetitions followed correctness checks. Existing
+ordinaryAD runs before compactAD; these are repeated operator medians, not an
+ABBA hardware-comparison study or measured image-registration time-to-accuracy.
+
+| Controls/batch/branch | Ordinary forward ms | Compact forward ms | Ordinary VJP ms | Compact VJP ms |
+|---|---:|---:|---:|---:|
+|257²/B1/radial|9.55|6.56|10.41|1.39|
+|257²/B1/analytic active|9.50|6.47|11.42|1.33|
+|257²/B1/analytic inactive|10.07|6.70|12.02|.98|
+|257²/B4/radial|55.88|46.61|55.68|4.52|
+|257²/B4/analytic active|50.26|47.28|56.42|4.74|
+|257²/B4/analytic inactive|60.01|46.39|54.89|4.25|
+|1025²/B1/radial|338.10|238.63|372.40|18.26|
+|1025²/B1/analytic active|266.62|263.31|370.79|19.60|
+|1025²/B1/analytic inactive|290.76|212.10|349.91|16.45|
+
+All candidate values match exactly in these fixtures. Maximum relative-L2
+fullY derivative discrepancy is3.65e-16 and proposal discrepancy1.76e-16.
+Actual minimumcorner ratios at1025 are.009545(radial),.002590(activeanalytic)
+and.009873(inactiveanalytic), all above the required.001. These are measured
+nontrivial legal current maps, not identity-only latent tests.
+
+Untimed saved-tensor hooks count unique retained candidate-graph storage,
+including saved inputY/z; they do NOT count the process's total/RSS/peak memory.
+At1025/B1 this storage is453017672/453017673bytes ordinary versus
+25215058/25215025bytes compact, approximately432.031MiB versus24.047MiB.
+At257/B1 it is~27.008MiB versus~1.512MiB. Active-row/tie-dependent storage
+must not be advertised as the same constant for every possible input. No CPU
+allocatedpeak was measured, and GPUmemory values cannot fill that missing metric.
+
+The observed CPU reverse improvement is useful engineering evidence. Forward
+still visits the complete geometry, and activeanalytic1025 forward changes
+little. Nothing here establishes competitive anatomy, an end-to-end learned
+network or a hardware-independent speed ratio. The existing benchmark's
+historical caveat about concurrentGPU6/applicationintegration was inherited;
+this actual job was CPU-only and current integration status is documented in
+the application sections rather than inferred from that old caveat string.
+
+## 36. Predeclared20-direction known-specimen instance comparison
+
+### 36.1 Inputs, outputs and variables
+
+The stain set is S={HE,CC10,CD31,Ki67,proSPC}. The case set is exactly
+{(s,t):s,t in S,s!=t}, so there are20ORDEREDcases from ONE physical specimen.
+All these annotations were viewed in prior research. The experiment examines
+direction/stain failure coverage, not blind generalization or20patients.
+
+For each orderedcase, fixed image I_s and moving image I_t are original512square
+canvases. A_s,t and b_s,t are the already saved image-only positive affine,
+not a fit to human landmarks. Every method starts from that same affine.
+The safe methods output one residual table Y in R^(1x257x257x2), including
+allboundary/corner vertices, plus frozenA/b and interpolation tag P1ac.
+The full fixed-to-moving map is F(x)=A*f_Y(x)+b. Its material grid has66049
+vertices and131072triangles; all262144digitalcorner signs are protected.
+The residual boundary is EXACTidentity, not a trained free boundary.
+The full map is a homeomorphism onto the affine image of the unitrectangle,
+not necessarily onto the entire movingunitcanvas. Out-of-canvas imagequeries
+are retained with the declared zero-padding/penalty; no canvas clipping is
+claimed to preserve the geometric homeomorphism.
+
+This is an INSTANCEOPTIMIZER experiment. No newCNN is trained. Inputs to the
+local differentiable decoder are the accepted current map and per-case scalar
+or vector coefficient fields. Image gradients optimize those coefficients;
+human landmark coordinates are not provided to that decoder/optimizer.
+The nativeDHR output instead is its existing saved512pixel-center displacement
+field, with its own interpolation/frame declaration and no hardglobal certificate.
+
+### 36.2 Frozen image evidence and identical safe-method functional
+
+First perform20calls of the EXISTING frozen raw-confidence image matcher.
+No geometricRANSAC filter is newly applied, no human targets are used, and no
+confidence is invented for older selected-inlier archives. All matcher attempts
+finish before any registrationmethod call. Model setup/inference is counted.
+These learned pretrained features provide IMAGE evidence, not groundtruth.
+
+For eachcase, the two safe methods share the complete functional
+
+    E(Y)=E_MIND_transport(Y)+3*E_P1_ARAP(Y)
+         +1e-4*E_corner_symmetric_Dirichlet(Y)+E_center_OOB(Y)
+         +.1*E_frozen_machine_matches(Y).
+
+Every term/coordinate convention is defined in the preceding sections. The
+original fixed foreground mask and its constant denominator are retained.
+The machine-point robustscale is8canvaspixels. No region is excluded because
+its current candidate maps badly. NativeDHR uses its standard preprocessing,
+NCC7/diffusion-like regularization and boundary freedom; it is therefore an
+application baseline, not a same-functional geometry ablation.
+
+### 36.3 Optimizer budgets and selection
+
+Coefficientlevels are17,33,65,129,257; corresponding imagelevels are
+32,64,128,256,512. The outputcontrol table is always257², not32²--512².
+Eachstage fixes its accepted map as anchor, zeros its coefficients and makes
+30Adamupdates plus the last evaluated trial. Coefficient rate atleveln is
+.004*16/(n-1). Geometry isfloat64 and frozen rasterfeaturesfloat32.
+
+Analytic performs onecycle of x/y stages, giving1*5*2*30=300gradients.
+F2 performs twocycles of vectorstages, giving2*5*1*30=300gradients. Its existing
+patchsize8, rawspan.5, safetyfraction.75 and accepted_gain1 are retained from
+the actual512ARAP baseline configuration; gain1 is not confused with earlier
+gain.75 diagnostic experiments. Geometricpass counts, channel counts and
+wallclockcosts are different despite equalnominal gradient counts.
+
+The label-free best_full rule selects among initial/acceptedstates by the
+COMPLETE512functional. Imagecontinuation stage objectives can differ, so
+acceptedstage values atdifferentimagelevels are not one monotone sequence.
+Report actualgradient/failedtrial counts, validmap and completedbudget separately.
+NativeDHR retains its existing5levels/30iterations each; its150updates are NOT
+called300matched scalar/vector gradients. No output is post-hoc repaired.
+
+### 36.4 Evaluation chronology and denominator
+
+The scorer runs only after all20prediction attempts are terminal. It reads
+the SAME80IDs for each of the five stain annotations. Nominal50pc-CSV to5pc-JPEG
+conversion is (p+.5)/10-.5; that center-preserving convention carries subpixel
+uncertainty and is not advertised as measured physicalmicrometres.
+OriginalJPEG→canvas conversion uses the stored peraxis resizeandpadding frame.
+
+For eachfixed landmark p and corresponding movinglandmark p', evaluate the
+declared FULLmap at the sourceunit query q. Error is Euclidean distance in
+512canvaspixels, and separately in originalmoving5pcJPEGpixels. P1evaluation
+uses independent NumPy barycentric matrix solves. Nativepixel displacement
+is converted with its exported unit-resample/unpaddedframe; its stored affine
+is already in the field and is NOT applied a secondtime.
+
+Everydirectionreports meanTRE,90thpercentileTRE,maxTRE and all80values.
+Equal-direction aggregates include meanof20directionmeans, meanof20direction
+p90values, p90ofdirectionmeans and worstlandmarkerror. The second and third
+quantities are different statistics; neither pools1600correlated observations
+as independentpatients or claims an official challenge score.
+
+Any failed/skipped/invalidexport retains its direction in denominator20.
+If a method lacks anydirection score, its all20numeric aggregate is unavailable;
+conditional successful-direction diagnostics are explicitly marked. Failed
+methods are not silently replaced with the affine. Nativefoldedcases keep
+their scores, with their negativecorner counts reported separately. Native
+localcorner signs do not prove a simpleboundary/globalhomeomorphism.
+
+The scorer verifies actualstoredmap geometry and commonaffines, not every
+optimizerintermediate or the historical absence of priorlabelaccess. Chronology
+is supported by the separate predictor and its completion/nolabel declarations;
+known-specimen status remains explicit. The current experiment does not reuse
+the three-case lesion78ID evaluation denominator as if it were this80ID source.
+
+### 36.5 Actual complete cohort results and an important budget confound
+
+All20 directions produced all three requested outputs; every score includes all80
+IDs. The primary denominator remains20, including the native folded maps and
+the two F2 runs whose gradient budgets did not finish. These are distinct events:
+successful file export, validity of the exported geometry, and completion of
+the requested optimizer budget must not be conflated.
+
+|Method|Mean of direction mean TRE|Mean of direction p90 TRE|Worst direction mean TRE|Mean complete call (s)|CUDA allocated peak range (MiB)|
+|---|---:|---:|---:|---:|---:|
+|Common frozen affine|6.66122|12.23468|11.76354|Not timed here|Not measured|
+|Analytic coordinated|4.52023|9.55521|7.76521|4.79099|214.442--218.436|
+|F2|4.59946|9.70151|8.57700|15.07797|472.522--479.319|
+|Native DHR|5.13359|11.55283|11.98744|0.72903|69.184|
+
+TRE units in this table are512canvaspixels, not micrometres. Each direction has
+equal weight, and these directions share one specimen. The actual sequential
+cohort is not an ABBA hardware experiment. Timings exclude the separate raw
+matcher calls (sum7.49196s, mean0.37460s); matcher model setup is included in
+those calls. Peaks are reported CUDA allocated peaks, not total physical memory,
+CPU resident memory or a simultaneously deployed learned network's footprint.
+Analytic mean inner optimization is4.68476s,97.8%of its complete call.
+Analytic is therefore about6.57times SLOWER than native DHR in this execution;
+the current result is not a native-baseline speed win.
+
+Analytic improves meanTRE over affine on20/20directions and p90 on19/20.
+Against native DHR it improves mean on14/20 and p90 on16/20, with adverse cases
+retained. Native DHR has196916nonpositive local digital corners summed over
+all20outputs; every direction has at least one. These local counts do not
+establish a global boundary certificate and do not remove native scores.
+
+Analytic completed300gradients with0failedtrials on every direction. F2
+completed300on18directions. HE-to-Ki67 completed242with2rejected trials;
+Ki67-to-HE completed158with5. The rejected losses/coordinates were finite:
+their extra normalized margin above eta=.001 was approximately-5.54e-16
+to-1.49e-14. This is a roundoff-scale violation of the requested extra floor,
+not a negative-orientation exported map. The existing guard was retained;
+neither case was silently restarted with a relaxed floor or a new gain.
+
+To identify the confound, the descriptive common complete-budget18subset has
+meanTRE4.1795866 analytic versus4.1850395 F2, an advantage of only0.005453px.
+Its mean-p90 is9.0243651 analytic versus9.0171700 F2: analytic is0.007195px
+worse. The two incomplete F2 cases explain93.8%of the primary mean advantage
+and104.4%of the primary tail advantage. This subset is supplementary, NOT a
+replacement denominator. Current evidence supports analytic's budget reliability
+and observed speed relative to F2, not substantial intrinsic anatomical
+superiority on cases where both finished.
+
+An independent checker recalculated every reported per-direction statistic and
+cohort aggregate from stored per-ID errors, agreeing within1.25e-14. Literal
+raw-map/frame checks are separately recorded in PROGRESS when complete.
+No blind independent-specimen generalization, full image-to-latent training,
+clinical validity or official challenge competitiveness follows from this cohort.
