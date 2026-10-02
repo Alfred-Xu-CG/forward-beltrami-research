@@ -190,3 +190,24 @@ A separately predeclared matched analytic-versus-F2 oracle comparison will ask
 whether the coordinated mechanism reaches this known sparse motion more
 efficiently. That is a new controlled geometry-efficiency question, not another
 budget/weight search and not a production accuracy claim.
+
+## 7. A visual context for the persistent worst center
+
+![Worst original center and explicit label-oracle target](../../outputs/coordinated_instance_registration/miit_7_to_8_oracle_tail_context_t17.png)
+
+This POST-HOC illustration selects Pt121 because it is the worst original
+analytic error in this pair, not because of its oracle score. Top panels show
+the original 512 canvases; bottom panels show native-resolution color image
+contexts with native pixel axes. The red cross is the manual annotation.
+Hollow circles show original analytic, original F2, unchanged native DHR and
+the explicitly labelled oracle. The original three predictions nearly coincide
+around 53 pixels from the annotation. The oracle coincides with that annotation
+because it was directly fitted to it, NOT because image matching found it.
+All plotted original error lengths are checked against the saved score.
+
+The figure makes the location and native tissue context inspectable; it does
+not establish that an annotation is mistaken, that either neighborhood is the
+true anatomical match, or that the oracle's surrounding dense warp is correct.
+No label is relabelled/excluded and no output selection changes. The plot is
+reproducible with tools/coordinated_miit_tail_plot.py; it is not another numerical
+benchmark or a clinical assessment.
