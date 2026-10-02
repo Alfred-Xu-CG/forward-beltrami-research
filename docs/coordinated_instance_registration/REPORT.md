@@ -8,6 +8,41 @@ The detailed derivations and experiment definitions are in FORMULATION.md;
 chronology and negative interventions are in PROGRESS.md. This report introduces
 the main objects without requiring knowledge of those earlier discussions.
 
+### Fixed shared-stain evidence: stable execution, no useful accuracy gain
+
+The single H-proxy experiment applies fixed H/E/DAB color deconvolution to
+each original512 RGB canvas, clamps negative H concentration, converts it to
+bounded darkness and divides by its own frozen99th percentile on the ORIGINAL
+gray support. The exact formula and zero/weak-signal rules are in
+OPTIMIZER_REDESIGN. Only image preprocessing changes versus the already-run
+shared-affine gray controls: not masks, affine, machine matches, optimizer,
+priors,257P1ac representation,300-gradient budget or final selector.
+
+All25 directions complete before scoring; all300/332 gradient/objective budgets
+complete without failure. Mean / mean-pair-p90 TRE in512canvas pixels:
+
+| Previously viewed specimen | Shared-affine gray | H proxy |
+|---|---:|---:|
+| MIIT /3 directions | 3.548752 /5.907957 | 3.568221 /5.942328 |
+| Lung /20 directions | 4.568541 /9.593679 | 4.567560 /9.636410 |
+| HistoReg /1 | .851903 /1.586005 | .925172 /1.664603 |
+| Kidney /1 | 2.364866 /4.756907 | 2.355327 /4.552949 |
+
+Kidney's tail improves, but its mean change is small; lung's mean is essentially
+unchanged with a worse tail, and MIIT/Histo worsen. This is not a useful general
+advance, and no matrix/percentile/epsilon sweep follows. The known weak-H MIIT7
+image retains68.76% zero H values; calibration raises its512-scale median
+descriptor variance to.003589, so its adverse outcome cannot simply be blamed
+on leaving the low-amplitude channel below the descriptor's1e-4 stabilizer.
+That does not make the proxy a faithful physical stain measurement.
+
+Complete calls take4.20--5.86s, allocated GPU peaks198--204MiB, and the serial
+25-case run takes121.26s; timings exclude frozen initialization/matches and
+include the new CPU preprocessing/diagnostics. Minimum actual corner ratio
+across outputs is.0068615, above.001. The H and gray total energies belong to
+different functionals and are not compared as convergence scores. Outputs,
+unchanged label denominators and paired deltas are in `stain_proxy_all25_t21`.
+
 ### Additional real cohorts: benefit is dataset-dependent, not universal
 
 Full released STANDARD DeeperHistReg and the shared-affine analytic300 control

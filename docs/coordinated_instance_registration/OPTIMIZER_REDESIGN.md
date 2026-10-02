@@ -649,9 +649,10 @@ Required diagnostics, all reporting-only: on each unwarped512input, record
 pre-clamp negative-H fraction, RGB-floor fraction, H zero fraction, raw H range,
 s_raw, s, numerical-floor activation, and H_feature saturation fraction within
 that input's original gray support. At each ordinary image-pyramid scale record
-the NORMALIZED-H MIND local variance median and the fixed-weight
-fraction at or below the unchanged1e-4 epsilon, using the corresponding static
-gray-mask area average. Moving-input diagnostics use its OWN original gray
+the NORMALIZED-H MIND local variance median (ordinary linear median over
+pixels with positive support weight) and the mask-WEIGHTED fraction at or below
+the unchanged1e-4 epsilon, using the corresponding static gray-mask area
+average. Moving-input diagnostics use its OWN original gray
 support only for reporting; they never gate moving overlap or the fixed loss.
 Label these as unwarped-channel diagnostics, not bounds on deformed descriptor
 support. Constant/near-flat H remains in the experiment with its diagnostics;
@@ -697,3 +698,42 @@ The coordinator approved this EXACT contrast-calibrated recipe before any
 H-proxy registration was run. Implementation is handed to a separate
 Astra-medium builder; this card's author does not implement it. An independent
 high-effort checker reviews the resulting transform and application protocol.
+
+### Actual H-proxy result: no useful general gain
+
+The Astra-medium implementation is tools/coordinated_stain_proxy.py plus a
+minimal preprocessing hook; the raw default is unchanged. Eight focused tests
+and the affected author suite56 pass; root's overlapping suite61 passes.
+Independent scalar/cofactor, linear-quantile, raw-mask and separate affine
+sampler checks passed before production. All25 AI GPU1 predictions completed
+in121.2556s after the08:46:46UTC launch and before either scorer read labels.
+Each used300gradients/332objective calls and zero failed trials. Final exported
+minimum corner ratio across cases is.0068614954, strictly above.001.
+
+| Specimen | Shared-gray mean / p90 | H-proxy mean / p90 |
+|---|---:|---:|
+| MIIT,3 directions | 3.54875190 /5.90795739 | 3.56822147 /5.94232848 |
+| Lung,20 directions | 4.56854112 /9.59367916 | 4.56755994 /9.63640989 |
+| HistoReg | .85190347 /1.58600541 | .92517151 /1.66460296 |
+| Kidney | 2.36486646 /4.75690671 | 2.35532726 /4.55294922 |
+
+Units are512moving-canvas pixels; the first two rows average within-specimen
+direction statistics. Kidney improves its tail and slightly its mean; lung
+is nearly neutral in mean with a worse tail, while MIIT/Histo worsen. Retire
+this exact proxy as a general improvement without a stain-matrix/scale/epsilon
+sweep. This does not refute all stain-aware features or show raw gray optimal.
+H and gray E totals are different functionals, not convergence comparisons.
+
+The weak7moving raw H q99=.1277100953 and zero fraction=.687592053 are preserved.
+The declared normalization gives512 variance median.00358927669 and weighted
+epsilon-incidence.27303326. Thus this implementation did not simply leave the
+weak image's global contrast below the unchanged descriptor stabilizer. It also
+could not create missing counterstain information. These are unwarped diagnostic
+statistics, not deformable-matching accuracy theorems.
+
+Complete per-case calls4.2049--5.8584s include H preprocessing/diagnostics but not
+frozen initial-affine/matcher preparation; allocated peaks208002560--213791744
+bytes. Independent postrun checks recompute all2074 errors (maximum discrepancy
+1.14e-13canvas pixels), all25 boundaries/corners/budgets/selection and all15unique
+input H/mask calibrations. Outputs and paired comparison are in
+stain_proxy_all25_t21. No failed attempt or label is excluded.

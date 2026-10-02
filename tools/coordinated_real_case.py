@@ -281,8 +281,17 @@ def load_registration_evidence(fixed_path,moving_path,image_side,*,preprocessing
         fixed,moving,native=load_native_preprocessed_pair(fixed_path,moving_path,
                                                         expected_side=image_side,device="cpu")
         metadata["native_capture"]=native
+    elif preprocessing=="hematoxylin_proxy":
+        from tools.coordinated_stain_proxy import load_proxy_image
+        if fixed_mask_path is not None:
+            raise ValueError("approved H proxy preserves original gray support")
+        fixed,fixed_diagnostics=load_proxy_image(fixed_path,fixed,image_side)
+        moving,moving_diagnostics=load_proxy_image(moving_path,moving,image_side)
+        metadata.update(fixed=fixed_diagnostics,moving=moving_diagnostics,
+            calibration="each input linear H q99 on own original gray support, floor1e-6, frozen at512 before pyramid/affine",
+            diagnostics_scope="unwarped normalized channels; moving support is reporting only")
     elif preprocessing!="raw_inverted":
-        raise ValueError("declare raw_inverted or native_dhr frozen evidence")
+        raise ValueError("declare raw_inverted, native_dhr or hematoxylin_proxy frozen evidence")
     if fixed_mask_path is not None:
         from tools.coordinated_tissue_support import load_tissue_support
         mask,support=load_tissue_support(fixed_mask_path,fixed_path,image_side,device=device,dtype=dtype)
@@ -948,7 +957,7 @@ def main():
                    help="Use unwindowed global updates below this coefficient level")
     p.add_argument("--loss", choices=("mind", "local_ncc", "ngf"), default="mind")
     p.add_argument("--mind-order",choices=("transport","after_warp"),default="transport")
-    p.add_argument("--preprocessing",choices=("raw_inverted","native_dhr"),default="raw_inverted",
+    p.add_argument("--preprocessing",choices=("raw_inverted","native_dhr","hematoxylin_proxy"),default="raw_inverted",
                    help="Frozen native PIL/normalization/grayscale/CLAHE option; mask stays original, not native optimizer equivalence")
     p.add_argument("--fixed-mask",type=Path,
                    help="optional prepared released semi-manual fixed tissue .npz support; area weights at coarse levels, all evaluation landmarks retained")

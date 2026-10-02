@@ -7,6 +7,46 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### Shared-stain result — 2026-10-02 08:53 UTC
+
+All25 H-proxy attempts completed in121.26s before scoring; each has300gradients,
+332objective calls, zero failed trials and a valid257P1ac output. Shared-gray
+to H mean/p90: MIIT3.548752/5.907957 to3.568221/5.942328; lung4.568541/9.593679
+to4.567560/9.636410; Histo.851903/1.586005 to.925172/1.664603; kidney
+2.364866/4.756907 to2.355327/4.552949. There is no useful general gain. Kidney
+tail improvement and all other paired changes remain reported, not hidden.
+Known weak MIIT7H stays68.76%zero despite correct fixed contrast calibration;
+its512 variance median is.003589, so an uncalibrated descriptor epsilon is not
+the simple explanation. Full result table is in REPORT; postrun independent
+recomputation is underway. No neighboring stain-vector/scale sweep follows.
+
+Next decision is a bounded Astra-high review of a materially stronger existing
+evidence/objective mechanism, not another small pixel-cue substitution.
+Existing higher-resolution/NCC/CLAHE negatives must be
+considered so the next implementation is not a duplicate. Goal remains ACTIVE.
+
+### One contrast-calibrated stain-evidence test launched — 2026-10-02 08:46:46 UTC
+
+The approved H-proxy card in OPTIMIZER_REDESIGN is now implemented by a fresh
+gpt-6-astra medium worker. The independent high-effort context checked scalar
+cofactors, ideal optical mixtures, sorted linear quantiles, raw masks, frozen
+512 calibration and separate affine bilinear sampling; no blocking discrepancy.
+All25 actual source configurations change only preprocessing and output.
+Root61 affected tests and author56 tests (including the final eighth adapter
+test) passed; these overlapping suites are not added into a fictitious count.
+The existing masks, affine/matches, Adam300,257P1ac and topology checks remain
+unchanged. Shared-affine raw-gray controls exist for all25 directions.
+
+Production launched serially on AI GPU1, PID1527439, after checking its idle
+48GB capacity and preserving all occupied GPUs/SSH forwards. Exact output is
+results/stain_proxy_all25_t21, mirrored later to the existing D-drive outputs
+tree. All25 attempts must terminate before either existing cohort scorer reads
+manual coordinates. The single universal q99 rule was fixed before this run;
+there is no case-specific rescue or fallback. A different image functional is
+being tested, so total objective values are not same-objective convergence
+comparisons against the gray controls. Goal remains active through the extended
+deadline, irrespective of this pilot's outcome.
+
 ### Completed native comparison and coupled-seed result — 2026-10-02 08:32 UTC
 
 All22 native STANDARD DHR and all22 matched shared-affine A300 predictions

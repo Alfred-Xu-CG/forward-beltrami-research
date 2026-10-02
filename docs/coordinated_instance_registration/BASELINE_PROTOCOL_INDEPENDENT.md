@@ -442,3 +442,33 @@ All three runs have 300 gradients, 333 objective calls, zero failed trials and
 selected stage9. Final original-E selection agrees with the minimum over identity,
 seed and accepted prefixes. Run the coupled probe with `--postrun`; no prediction
 rerun or additional GPU experiment is involved.
+
+### Fixed contrast-calibrated H proxy: independent preproduction check
+
+The approved single-recipe card and implementation pass a bounded independent
+check. This does not predict registration accuracy or establish real-slide
+stain invariance. The checker uses the scalar cofactor expression
+`cH=(.7095*OD_R-.0249*OD_G-.2274*OD_B)/.377799` and manually sorted linear order
+statistics, not the implementation's matrix inverse or quantile call.
+
+- Random-RGB normalized float32 output agrees exactly; ideal mixed Beer--Lambert
+  output agrees within `2.98e-8` when calibration support is held fixed.
+  Pure E/DAB leaves at most `3.99e-10` normalized floating-point residue, not
+  a new threshold or fallback. White, zero/saturated RGB, negative H, empty
+  calibration support, and sparse-positive q99=0 follow the declared formula.
+- Default raw loading is bitwise unchanged. Original grayscale masks and their
+  area weights are identical. Independent area averaging and a separate NumPy
+  bilinear sampler verify normalized512 -> area pyramid -> frozen affine ->
+  descriptor order. Under a strongly rotated, partially outside affine, the
+  captured pre-descriptor intensity agrees within `5.97e-8`; no renormalization
+  or support-based query removal occurs after the original calibration.
+- All 25 actual completed control configurations differ only in preprocessing
+  and output. A nonterminal case25 blocks scorer-input creation. A deliberate
+  all-failed fixture retains the full 3+22 denominators and all original MIIT
+  geometry, match and archived F2/DHR path targets. No manual labels were read.
+
+Source: `outputs/coordinated_instance_registration/check_sources/independent_stain_proxy_probe_20261002.py`.
+No production correction was needed. The adapter's relative-path operation
+requires a common filesystem volume on Windows; the first checker fixture
+exposed this when its temporary output was on C: and inputs on D:. The fixture
+now uses D: and passes; the approved Linux same-tree production is unaffected.
