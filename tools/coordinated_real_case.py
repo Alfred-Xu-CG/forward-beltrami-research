@@ -54,10 +54,13 @@ def require_nested_fine_margin(vertices,reference_corners,minimum_jacobian,conte
 class Evidence:
     """Fixed mask, original evidence, and explicitly penalized out-of-bounds."""
 
-    def __init__(self, fixed, moving, matrix, offset, loss, strain_weight, oob_weight, shape_weight=0., fixed_mask=None, interpolation="q1", matches=None, match_weight=0., strain_model="displacement_gradient", mind_order="transport", joint_prior_backend="eager"):
+    def __init__(self, fixed, moving, matrix, offset, loss, strain_weight, oob_weight, shape_weight=0., fixed_mask=None, interpolation="q1", matches=None, match_weight=0., strain_model="displacement_gradient", mind_order="transport", joint_prior_backend="eager", image_weight=1.):
         self.fixed, self.moving = fixed, moving
         self.matrix, self.offset = matrix, offset
         self.loss, self.strain_weight, self.oob_weight = loss, strain_weight, oob_weight
+        if isinstance(image_weight,bool) or not isinstance(image_weight,(int,float)) or not math.isfinite(image_weight) or image_weight<0:
+            raise ValueError("image_weight must be a finite nonnegative number")
+        self.image_weight=float(image_weight)
         self.shape_weight = shape_weight
         if not np.isfinite(match_weight) or match_weight<0 or (match_weight>0 and matches is None):
             raise ValueError("positive match weight requires explicit frozen point evidence")
@@ -160,7 +163,10 @@ class Evidence:
         else:
             strain,nested_shape = self.nested_priors(vertices)
             shape = nested_shape if self.shape_weight else None
-        total = image + self.strain_weight*strain + self.oob_weight*oob
+        # Preserve historical arithmetic at weight one. At zero the original
+        # dense term is still computed/reported, but does not drive optimization.
+        weighted_image=image if self.image_weight==1. else self.image_weight*image
+        total = weighted_image + self.strain_weight*strain + self.oob_weight*oob
         if shape is not None:
             total = total + self.shape_weight*shape
         match = self.matches(vertices,self.matrix,self.interpolation) if self.match_weight else None
@@ -246,6 +252,10 @@ def optimize(args, accepted_stage_callback=None):
         raise ValueError("coefficient levels must fit output grid")
     if args.inner_steps < 1 or args.cycles < 1 or args.learning_rate <= 0:
         raise ValueError("positive optimization budget required")
+    image_weight=getattr(args,"image_weight",1.)
+    if isinstance(image_weight,bool) or not isinstance(image_weight,(int,float)) or not math.isfinite(image_weight) or image_weight<0:
+        raise ValueError("image_weight must be a finite nonnegative number")
+    image_weight=float(image_weight)
     inner_steps_by_level=getattr(args,"inner_steps_by_level",None)
     if inner_steps_by_level is None:
         inner_steps_by_level=[args.inner_steps]*len(args.levels)
@@ -367,7 +377,7 @@ def optimize(args, accepted_stage_callback=None):
     evidence = Evidence(fixed, moving, torch.from_numpy(a).to(device=device, dtype=dtype),
                         torch.from_numpy(b).to(device=device, dtype=dtype), args.loss,
                         args.strain_weight, args.oob_weight, getattr(args,"shape_weight",0.),
-                        fixed_mask=fixed_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model,mind_order=mind_order,joint_prior_backend=joint_prior_backend)
+                        fixed_mask=fixed_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model,mind_order=mind_order,joint_prior_backend=joint_prior_backend,image_weight=image_weight)
     evidence_by_resolution={args.image_side:evidence}
     for image_resolution in sorted(set(image_levels)):
         if image_resolution not in evidence_by_resolution:
@@ -376,7 +386,7 @@ def optimize(args, accepted_stage_callback=None):
             reduced_mask=F.interpolate(evidence.mask,size=(image_resolution,image_resolution),mode="area")
             evidence_by_resolution[image_resolution]=Evidence(reduced_fixed,reduced_moving,evidence.matrix,
                 evidence.offset,args.loss,args.strain_weight,args.oob_weight,getattr(args,"shape_weight",0.),
-                reduced_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model,mind_order=mind_order)
+                reduced_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model,mind_order=mind_order,image_weight=image_weight)
             # The prior sees the SAME control shape, not the raster resolution.
             # Share its callable, never an energy/graph tied to a current map.
             evidence_by_resolution[image_resolution].joint_prior_backend=joint_prior_backend
@@ -646,7 +656,8 @@ def optimize(args, accepted_stage_callback=None):
                                  "f2_floor_safety_fraction":f2_floor_safety_fraction,
                                  "joint_prior_backend":joint_prior_backend,
                                  "match_p1_sampling":match_p1_sampling,
-                                 "inner_steps_by_level":inner_steps_by_level},
+                                 "inner_steps_by_level":inner_steps_by_level,
+                                 "image_weight":image_weight},
                   representation=evidence.interpolation+" residual then frozen positive affine; exact declared interpretation",
                   initial=initial_record, final=dict(total=float(final), **{k: float(v) for k,v in parts.items()}),
                   control_vertices=args.grid_side**2, cells=(args.grid_side-1)**2,
@@ -668,6 +679,7 @@ def optimize(args, accepted_stage_callback=None):
                   f2_floor_safety_fraction=f2_floor_safety_fraction,
                   mind_order=mind_order if args.loss=="mind" else None,
                   image_levels=image_levels,
+                  image_weight=image_weight,
                   inner_steps_by_level=inner_steps_by_level,
                   continuation_scope=continuation_scope,
                   output_selection=output_selection,selected_stage=full_best_stage if output_selection=="best_full" else len(stages)-1,
@@ -747,6 +759,8 @@ def main():
                    help="Select accepted output using full-resolution complete objective only, never landmarks")
     p.add_argument("--matches",type=Path,help="frozen image-only raw matcher JSON in the identical affine frame")
     p.add_argument("--match-weight",type=float,default=0.)
+    p.add_argument("--image-weight",type=float,default=1.,
+                   help="dense image contribution; zero still computes/reports it diagnostically")
     p.add_argument("--match-p1-sampling",choices=("existing","frozen"),default="existing",
                    help="optional immutable P1 machine-point query cache; fixed control hierarchy only")
     p.add_argument("--match-robust-scale",type=float,default=8.,help="pseudohuber error scale in full moving-canvas pixels")

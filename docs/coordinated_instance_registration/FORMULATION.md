@@ -5,14 +5,15 @@ The first real experiments optimize each image pair's own coefficients. They do
 not yet deliver a trained image-to-map network. Operator gradients are tested
 locally; stages intentionally detach accepted anchors in instance optimization.
 
-Current reading guide (T+13h; the research window is still active): the main real
+Current reading guide (around T+14h; the research window is still active): the main real
 comparison outputs a257x257 CONTROL-vertex P1-ac map, evaluated on512x512 image
 pixel centers. It is a per-pair optimizer, not a newly trained image encoder.
 Sections1--2 introduce Q1 to derive the four digital corner constraints; they
 do not change the current P1 declaration. Read sections3--5 for latent updates,
 7 for the actual P1 interpolation,9 and25 for the frozen machine-point/ARAP
-objective,36 for the20-direction protocol and limitations,37 for the F2 baseline
-strict-floor correction, and38--39 for measured runtime diagnostics. Earlier
+objective,36 for the20-direction protocol and limitations,37 and40 for the F2
+strict-floor correction/full-budget comparison,38--39 and41/43 for measured
+runtime diagnostics, and42 for the negative fixed-budget accuracy experiment. Earlier
 objective variants are documented as experiments, not all simultaneously enabled.
 
 A homeomorphism is a continuous bijection with a continuous inverse. A P1 map
@@ -141,8 +142,9 @@ Initial Adam rate is .004·16/(ℓ−1). This calibrates edge-scale proposals bu
 not make parameter-coordinate work or conditioning identical across methods.
 
 Each stage fixes anchorYbar, starts coefficients at zero, evaluates decoder
-D(Ybar,P_ℓc), and minimizes the declared complete objective. Five updates plus
-evaluation of the last update are included. The best legal full-objective
+D(Ybar,P_ℓc), and minimizes the declared complete objective. A declared number
+n of gradient updates plus evaluation of the last update are included; current
+mainline uniform stages use n=30. The best legal full-objective
 candidate is accepted, detached, and becomes the NEXT stage's anchor. Trials
 inside a stage are not cumulatively compounded. Directions alternatex/y for
 coordinated operators. Fixed image evidence is always queried through the full
@@ -2175,8 +2177,8 @@ use the0.94s event sum as a promised achievable complete-call time.
 
 ## 39. Joint-prior fusion operator and restricted application integration
 
-The two unchanged functions are E_ARAP(Y), the P1 face-average squared distance
-of its Jacobian to a proper rotation, and E_shape(Y), the existing four-corner
+The two unchanged functions are E_ARAP(Y), ONE HALF the P1 face-average squared
+distance of its Jacobian to a proper rotation, and E_shape(Y), the existing four-corner
 symmetric-Dirichlet average. Their definitions are given above. The isolated
 closure returns BOTH scalar values. Its reverse test applies scalar seeds
 (3,1e-4), so the compared full vertex derivative is
@@ -2504,3 +2506,95 @@ setup, which the subsequent frozen run can reuse. Both share research compiler
 caches, with no hidden warmup. Only warm ABBA supports point-dispatch speed.
 The earlier prior27.1% gain and this8.46% gain were separate experiments;
 their ratios are not a simultaneously measured combined all20 speedup.
+
+## 44. Dense-image knockout: precisely what was changed and tested
+
+This is an evidence ablation, not a new deformation representation. Let
+Y contain the 257-by-257 residual vertices, and let f_Y be the fixed-source-grid
+P1-ac interpolant. The complete fixed-to-moving map remains F_Y(x)=A f_Y(x)+b.
+The frozen positive affine A,b, the exact identity residual boundary, and all
+four corner constraints q_k(Y)/q_ref>eta with eta=.001 are unchanged.
+
+Write the production full-resolution objective as
+
+    E_beta(Y) = beta I(Y) + 3 S_ARAP(Y) + 1e-4 R_corner(Y)
+                + .1 P_match(Y) + O(Y),   beta in {1,0}.
+
+Here beta means ONLY the dense-image weight; the earlier section6 used beta
+for the historical OOB weight, which here is fixed to1. The terms are:
+
+- I: fixed-foreground-weighted mean absolute difference of the eight-channel
+  original-raster MIND-like descriptors, transported through F_Y. Descriptor
+  construction, pixel centers, zero padding, and fixed denominator are specified
+  in sections6 and26. It is still computed and reported when beta=0.
+- S_ARAP: one HALF of the material-area mean squared distance of each actual
+  P1 triangle Jacobian from its closest proper rotation, as defined in section25.
+  On this uniform mesh it is .5 times the mean over its131072 triangles.
+- R_corner: the mean over262144 digital corners of
+  ||J||_F^2+||J^{-1}||_F^2-4. This is the existing corner shape penalty, not
+  an additional barrier or the primary topology guarantee.
+- P_match: the original normalized-confidence machine-correspondence penalty
+  from section9. With512canvas pixels and kappa=8pixels, its residual is
+  (512/8) A(f_Y(q_j)-p_j), and its penalty is sqrt(1+||residual||^2)-1.
+  Machine points are image-derived, frozen, imperfect, and NOT manual truth.
+- O: the original fixed-mask mean squared out-of-bounds coordinate excess;
+  no difficult pixel or manual evaluation point is discarded after deformation.
+
+All terms and their gradients remain live except that beta=0 multiplies the
+dense-image contribution by zero. For the SAME Y and evidence, mathematically
+E_0(Y)=E_1(Y)-I(Y) and grad E_0=grad E_1-grad I. Focused tests check values
+and full vertex VJPs, including nonzero retained-term gradients. The beta=1
+branch preserves the historical arithmetic rather than introducing an extra
+multiply-by-one. Tests do not establish anatomical correctness.
+
+Both arms use the original uniform30updates at each of17/33/65/129/257
+coefficient levels, scalar x/y stages, image sizes32/64/128/256/512, onecycle,
+and fixed257control topology throughout:300gradient steps,310decoder trials,
+332complete-objective evaluations and10stages. The beta0 arm uses the SAME
+compiled prior backend and existing machine-point sampler as uniform_t14.
+Each starts from the same affine plus identity residual, not the beta1 output.
+Every arm selects among accepted maps using its own complete512objective E_beta.
+Therefore final E0 and final E1 totals are NOT values of a common objective and
+must not be ranked against one another. Anatomical TRE is scored afterwards.
+
+### 44.1 Actual all20 result and decision
+
+The beta0 run completes20/20 directions, each with300/310/332/0 counts
+(the last number is failed trials). No matcher is rerun and no new manual point
+enters prediction. The scorer retains all80shared IDs in every direction.
+As before these20directions belong to ONE previously viewed physical specimen,
+not20 independent patients, a blind test, or an official leaderboard submission.
+
+|Dense weight|Mean direction mean TRE (512canvas px)|Mean direction p90 TRE (px)|
+|---|---:|---:|
+|beta=1, retained hybrid|4.520228|9.555206|
+|beta=0, knockout|5.024223|10.020200|
+
+Removing the dense term worsens mean TRE in ALL20directions; p90 improves
+in only5/20. Largest mean regressions include proSPC-to-HE (+1.041997px),
+proSPC-to-CC10 (+.841707px), andCC10-to-proSPC (+.767191px). Thus the
+predeclared falsifier is met: reject beta0, retain the original hybrid, and do
+NOT start an intermediate-image-weight sweep. This supports a useful dense
+contribution in THIS finite-budget pipeline and prior balance; it does not
+prove that MIND's global optimum is anatomical, diagnose every remaining error,
+or establish that all other image objectives would be inferior.
+
+Total new prediction time is63.7652s. The first complete call is7.45846s,
+including first-process/compiler setup; complete-call median is2.95394s.
+This is NOT a new speedup experiment: I remains computed, the compared beta1
+cohort is historical, and no repeated paired timing design was used here.
+Reported optimizer allocated peaks are202001408--206005248bytes, with existing
+feature/setup/compiler-host exclusions. Exported minimum corner ratio is
+.0073506453, strictly above eta. Independent generic triangle-affine scoring
+of BOTH arms'40 maps and3200 query points agrees with all stored per-ID errors
+within1.1413e-13px. Direct recomputation checks10,485,760 strict corners,
+exact boundaries/common affines, all budgets, and unchanged F2/DHR artifacts.
+Independent ARAP and corner-shape values agree within1.73e-18 and9.71e-16,
+and each correctly weighted E_beta reconstruction within6.94e-18.
+
+Files: tools/coordinated_dense_knockout_all20.py and
+outputs/coordinated_instance_registration/lung_all20_dense_knockout_t14/
+(predictions.json, landmark_scores.json, actual map/report pairs). Optional
+nonfinite-return handling keeps the failed direction, records invalid diagnostic
+paths, writes null instead of nonstandard NaN/Inf JSON, and continues the cohort;
+it never converts a failed numerical result into a successful map.

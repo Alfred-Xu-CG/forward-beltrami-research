@@ -1967,3 +1967,100 @@ notanotherglobalcap/iterationremedy. ConsiderONEphysicalbending-priorhypothesis
 onlyafterdiagnosis; no newCNN/matcher/nearbyparameterforest. Currentuseful
 instance result isreal32%meanimprovementoveraffine onknownspecimen, but
 strongF2anatomicalsuperiority/independentclinicalgeneralization NOTestablished.
+
+### Around T+14h actual-Astra scientific pivot: test evidence causally, not another prior
+
+The proposed bending explanation is NOT supported. IndependentCPU five-point
+diagnostic on the40savedmaps: r=Y-X withbinary-exact257identity,
+L=(r_left+r_right+r_up+r_down-4*r_center)*256², E_b=mean(sum_components L²)
+over255²interiors; pre-affine map, no padding/newprior/classicalP1Hessianclaim.
+Redistribution lowersE_b18/20 (median24.07%decrease) butmeanTREworsens15/20;
+onlyHEK/KH E_b increases. MINDdecreases20/20, ARAP16/20. Therefore doNOT
+implementbending asifroughmotionwerea diagnosedcohortcause. No priortuning.
+
+Research card — ONE dense-MIND knockout:
+Question: doesdenseMIND addusefulanatomicalsignal beyondexistingfrozenmachine
+points underCURRENTpriorbalance? Exactfunctional E_beta=beta*MIND+3*ARAP+
+1e-4*cornerSD+.1*rawmatch+OOB, betaONLY1or0. Implementoptionalimage_weight
+defaulthistorical1; E0candidateuses0, nointermediateweight/sweep. Same original
+affine/rawmatches/confidences/robustscale/foregroundmask/fixeddenominator,
+257P1controls/uniform300budget/strictcorners/fixedboundary/compiledpriorbackend.
+KeepMINDcomputedandreporteddiagnostically evenwhenitsweightzero, so this
+experimentisnotaninference-speedshortcut; geometry/pointgradientsremainlive.
+Outputselection usesE_beta ofeacharm, neverlandmarks; doNOTcompareunlikeE0/E1
+totalsascommonobjective. All20failures/80IDs retained, labelsreadafterprediction.
+Assumptions: rawmachinepoints provideimperfectimage-derivedcorrespondence,
+NOTgroundtruth; inredistributionmatch improves11cases,10withworseTRE.
+Smallestdecisivetest: completevalue/VJP E0=E1-MIND onactualfixedEvidence,
+thentinyoptimizer+counters/certificates, thenONE20-directionknockoutcohort.
+Falsifier: meanORtailworse=>rejectcandidate/keeporiginalhybrid,noadjacentweight
+sweep. Bothbetterwithoutnewfailure=>densecontributiondetrimental underTHIS
+fixedbalance/knownspecimen ONLY; independentconfirmationstillrequired.
+Priorwork: featureassignment correspondence (SuperGlueprimaryarXiv1911.11763)
+andstandardregularizedlandmarkregistration. Notnewmatcher/neuraltrainingclaim.
+
+Separatecheapposthocboundary-capacity diagnostic (AFTERcompletedpredictions):
+fixedresidualboundary impliesimageA([0,1]²). Projectmovingannotationtargets
+ontoitsfourline segments tolowerboundunreachableTRE.14/1600targets across6
+directions outsidepolygon, maximumbound19.8657pxHE-to-ProSPC;14/20directions
+boundzero inclALLproSPC-source whereDHRwins. This raretailrestriction doesNOT
+explaincohortwideerrors; boundaryslidinginsamepolygonwouldnotremoveit.
+No boundary/affinebranch opened orlandmark-driveninitializerchange.
+
+### T+14.25h dense-MIND knockout NEGATIVE; retain hybrid
+
+Root20focused tests passed58.11s; independentSol verifiedall20 source recipes
+and180rebasedartifact references, with ONLYbeta changed. IdleAI GPU6actual
+20calls finish300/310/332/0 each; elapsed63.7652s. PostpredictionALL80-ID scoring:
+beta0mean/p90 5.02422311/10.02019965 vsbeta1 4.52022762/9.55520600.
+MeanTREworsens20/20; tailwins5/20. proSPC-to-HE+1.041997pxmean isstrongadverse
+case. Rejectknockout, keeporiginalhybrid; NO intermediateweight sweep.
+This intervention showsdensecontributionuseful underTHISfixedbudget/balance,
+notMIND'sglobalanatomicalcorrectness. UnlikeE0/E1totalsNOTcompared.
+Minimumactualcornerratio.0073506453, allocations202001408--206005248bytes;
+firstcall7.45846s/median2.95394s NOTpairedspeedclaim. Independentactualmap/
+literalCSVreview inprogress. FORMULATION44definesallterms/selection/VJP/scope.
+
+Independentchecker alsofoundreturnedNaNdiagnostic couldabortJSONpersistence:
+builderfixedONLYnewrunner withnonfinitepaths/null+failedstatus+continue19;
+14focusedtests60.72s. Actualfinitecohort/results unchanged. Rootaffectedcheck
+pending. No newauditframework oroldrunner rewrite.
+
+Next: actualAstra decidingONE evidence/optimization move afterknockout;
+parallelboundedengineeringcheck willtestknownfrozen-point speedtransfer on
+geometry-difficult HE-to-Ki67, notclaimnewanatomicalgain orindependentdata.
+24hgoalremainsACTIVE withapproximately9.75havailable, notcomplete.
+
+IndependentSol closure: literal5CSVs/all80IDs/generictriangleaffine solves on
+both40maps/3200queries maxstoredscoreerror1.1413e-13px;10,485,760strictcorners,
+exactboundaries/commonaffines/P1ac/counterspass. IndependentARAP/shapevalues
+agree1.73e-18/9.71e-16; E_beta reconstruction6.94e-18. F2/DHR140archiverefs/
+allper-IDmetricsunchanged. Rootpostfix21tests59.09s; checkerreadNaNfailurefix
+andFORMULATION44 approves. Denseknockoutimplementation/researchresultclosed,
+NOT24hgoalclosed.
+
+Research card — ONE finite-displacement MIND capture prefix:
+Question: can existingfeatures proposefinite motion beyond a local derivative,
+entering a better basin without changing the accepted objective or topology?
+Exactalgorithm: existing128Evidence;33nodeqi=(j/32,i/32),9patchsamples
+s=(-1,0,1)^2/128,81labels k=(-4,...,4)^2 ORIGINALmoving128px. Cost_i(k)=
+sum_s m(qi+s)*[mean8ch abs(Phi_f(qi+s)-Phi_m(A(qi+s)+b+k/128))+
+sum(relu(-target)+relu(target-1))^2]/sum_s m(qi+s). SampleORIGINALmoving
+features, zero padding/bilinear/align_corners=False; denominatorSTATICalllabels,
+nooverlapdropping. Emptyfixedpatch=>zero; zero-firstthenlexicographicties;
+coarseboundaryzero. p_i=A^{-1}(k*/128); prolongRAWscalarcomponents33→257,
+notmaps. Prefixtryxtheny withoriginalanalyticeta.001/theta.95/trial1;
+actualroundedstrictgeometry+unchangedFULL512E1decrease required toaccept
+eachaxis;refreshconstraintsonacceptedY, noalpha ladder/repair/smoothing.
+Thenoriginaluniform300gradientsfromacceptedprefix; extraE/search/costsreported,
+NOTsame332calls/equalcompute. DiscreteargminnotclaimedneuralVJP.
+Assumptions: residualcorrespondencewithin±16canvaspx/axis, discriminative
+existingfeatures, locallytranslatedpatch andcoarsebasiscanfindbetterbasin.
+Falsifier: fixedsyntheticcapturefixture noimprovement/extra failure=>retire;
+actualall20 ifjustified mustimprovebothmeanandtailwithoutnewfailure, otherwise
+retainoriginalhybrid. No radius/window/weight/feature sweep.
+Priorwork: Siebert/Hansen/Heinrich arXiv2112.03053 Sec2(fullprimaryread)
+costvolume+coupledconvex+Adam; ourL1/33basis/strictprefix is LIMITEDadaptation,
+NOTConvexAdamreplication/globalconvexity/globaloptimality theorem.
+Builderownsisolatedproposalmodule/tests; rootownscurrentoptionalcoreintegration;
+independentchecker willverifyunits/denominators/actualsafeacceptance.
