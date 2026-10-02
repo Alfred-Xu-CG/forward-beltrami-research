@@ -909,9 +909,11 @@ seven historical rows retain the global decoder metadata. Every one of the
 nine cached decodes was independently resized under current Pillow and shown
 to reconstruct accepted512 RGB exactly. No extra decoder version,
 annotations, accepted-image rewrite, fallback tolerance or changes to the
-original sources were introduced. Initial seven-image generation took 6.78
-seconds, and the nine-image extension/verification took 7.58 seconds; the
-earlier failed attempt and diagnostic time are separate. This bridge is
+original sources were introduced. Completing/verifying the initial seven-image
+cache took 6.78 seconds after two HistoImages PNGs had already been written by
+the failed first attempt. The later nine-image extension/verification took
+7.58 seconds. Neither number is fresh-from-empty total cache cost: the earlier
+failed attempt and diagnostic setup are separate and not fully timed. This bridge is
 preparation cost, not added image information. A fresh remote all-direction
 reconstruction check must still pass there. Execution note: after the actual reconstruction failure,
 the checker read `systematic-debugging/SKILL.md` once; no subsequent skill was
@@ -936,3 +938,85 @@ Reproduction sources are
 `produce_historical_rgb_cache_20261002.py` in that same directory. This precheck
 does not establish 50-case completion, GPU cost, terminal anatomical benefit,
 or the correctness of not-yet-reviewed production scores.
+
+### Terminal detail: independent all-50 saved-result check
+
+`terminal_detail_all50_t25` passes the independent saved-result check, with
+the finite-arithmetic qualifications below. Before reading original CSVs,
+the checker verifies the outer completion record, both complete 25-case
+manifests, all 50 saved map/report paths and the all-50 scoring declarations.
+Source review confirms that scoring adapters are created only after all
+attempts terminate. Every run uses 300 gradients, 332 objective evaluations,
+zero failed trials, 257-square controls and 1024-square queries. Original
+affine parameters and frozen fused match evidence remain unchanged. All saved
+boundaries equal the unit-square reference exactly; binary certificates and
+positive exact-binary affine determinant signs pass. Independently computed
+minimum normalized corner ratios are `0.00557258179` (direct) and
+`0.00573967989` (lift), both above `.001`.
+
+All direct-original prepared intensities reconstruct pixel-exactly from the
+declared original TIFFs or per-source decoded RGB caches, with the recorded
+double dimensions/padding. All masks are exact two-by-two repetitions of the
+original512 support. Seven JPEG9 and two kidney JPEG8 source decodes are
+explicit in the saved metadata, including the original-image dimensions and
+lung upsampling. Across every saved lift image, an independent separable
+half-pixel bilinear oracle differs by at most `1.19209290e-7` in intensity;
+a separate local Torch replay has the same maximum discrepancy from the remote
+saved float32 result. Therefore cross-runtime lift reconstruction is NOT
+claimed bitwise exact. No new RGB/grayscale quantization is present.
+
+The first four levels retain exactly the declared settings, input-construction
+path, image-loss traces and outside-fraction traces. Their actual GPU numerical
+trajectories are NOT bitwise identical to the archive: maximum differences
+are `3.2793e-10` in trace total, `1.6268e-10` in static-point loss,
+`8.3686e-10` in corner-shape loss and `5.9716e-8` in a geometric margin
+diagnostic. Accepted-stage current objectives differ by at most `4.7043e-12`.
+There are no saved intermediate maps proving bitwise prefix-map equality.
+This does not retract the earlier controlled tiny CPU equality check; it limits
+the separate production claim to unchanged construction and schedule plus the
+reported numerical comparisons.
+
+All 50 final full1024 objectives were independently recomputed from the SAVED
+maps, SAVED prepared images, literal descriptor/interpolation calculations,
+SVD-based ARAP and frozen machine points. Maximum objective discrepancy is
+`3.5237e-8`, static-point discrepancy `5.56e-17`, and outside-fraction discrepancy
+`4.803e-9`. Every arm/case selects stage9, whose full objective is the minimum
+over the initial and accepted-stage values. All 4,148 landmark errors were
+recomputed from original CSV coordinates and literal P1 interpolation followed
+by the original affine; maximum discrepancies are `1.661e-13` canvas pixels
+and `2.594e-12` native-moving pixels. Every required label, reported mean/p90,
+paired delta, cohort/equal-specimen aggregation and cost summary agrees.
+
+| Cohort | Frozen512 mean | Direct mean | Lift mean | Frozen512 mean pair-p90 | Direct mean pair-p90 | Lift mean pair-p90 |
+|---|---:|---:|---:|---:|---:|---:|
+| MIIT, 3 directions | 3.53471836 | 3.56196634 | 3.54753996 | 5.85817028 | 5.82631649 | 5.86928026 |
+| Lung, 20 directions | 4.47100714 | 4.49272836 | 4.47937148 | 9.34253837 | 9.42861498 | 9.40106849 |
+| Histo | 0.84206433 | 0.86431318 | 0.84390350 | 1.58013825 | 1.66040791 | 1.67062241 |
+| Kidney | 2.24360647 | 2.27098771 | 2.25145235 | 4.64354946 | 4.68220463 | 4.87430180 |
+
+All units are 512-equivalent canvas pixels. Direct-original worsens all four
+specimen mean errors versus BOTH controls. Relative to Frozen512, direct
+worsens 19/25 pair means, 17/25 pair-p90s and 9/25 maxima; lift worsens 15/25,
+19/25 and 8/25 respectively. Direct versus lift worsens 20/25 means, 14/25
+pair-p90s and 11/25 maxima. Every regression's case name and numerical delta,
+not just selected examples, is retained in
+`outputs/coordinated_instance_registration/terminal_detail_all50_t25/independent_check.json`.
+The equal-specimen mean changes are `+0.02464982` (direct versus Frozen512),
+`+0.00771775` (lift versus Frozen512) and `+0.01693208` (direct versus lift).
+Tails remain mixed: direct improves MIIT mean pair-p90, but the MIIT worst error
+remains `52.83107` pixels. This is negative evidence for extra original-image
+detail helping this fixed recipe, not an impossibility result for other uses
+of the original images.
+
+Complete optimizer calls total `171.158316s` direct and `172.744234s` lift,
+versus archived Frozen512 `114.162324s`. Shared per-pair rendering totals
+`9.070214s`; current batch wall is `354.444963s`. Current allocated peak reaches
+`520508928` bytes. Historical setup/matching and the incompletely timed
+one-time mixed-decoder cache creation are excluded, not free. These are
+single-run costs rather than synchronized speed repeats. Neither1024 arm
+provides a mean-accuracy or cost advantage here, and this reviewed run does
+not justify automatic2048 escalation or choosing arms per case using labels.
+
+Reproduction: `check_sources/independent_terminal_postrun_20261002.py` under
+the same output parent. It performs no optimization and shares only the
+previous independent literal P1, descriptor, prior and original-CSV oracles.

@@ -7,6 +7,32 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### Terminal comparison closed; data-aware direction implementation — 2026-10-02 11:43 UTC
+
+Terminal-detail all50complete in354.445s, no failed trials, then scoring and
+independent full saved-result reconstruction. Direct/enlarged1024both worsen
+allfour specimen means versus retained512; direct also worsens allfour means
+versus enlargement. Every4148error and all50fullobjectives independently agree
+within1.67e-13canvas pixels/3.53e-8objective. Direct/enlarged mean calls
+6.846/6.910s, peak.521GB; old5124.566s/.214GB. Preserve negative result;
+do not raise raster resolution again on this evidence. Mixed tail benefits
+and every regression remain in comparison.json/independent_check.json.
+
+Exact-source JPEG bridge remains necessary and documented; complete from-empty
+cache cost was not measured. GPU lower-stage traces and cross-runtime float32
+lift rasters are not bitwise identical: maximum total difference3.28e-10,
+corner-margin difference5.97e-8, lift intensity absolute difference1.19e-7.
+These do not change the stated construction/units or the negative conclusion.
+
+Approved DATA_AWARE_METRIC_FORMULATION now targets unchanged512fused E. It uses
+the exact old AD gradient with a positive stiffness-plus-data sensitivity metric,
+not a false smooth MIND Hessian. Only final257x/y stages change after one common
+saved240-gradient prefix. Compare existing latentAdam and physical-metric/PCG/
+Armijo packages at2seconds peraxis; count all work/overruns and preserve early
+stops. ActualAstra high implements, separate high independently checks, xhigh
+reviews derivation/transcription. Root owns pairedbatch/scoring. No production
+job for this new candidate is started at this entry.
+
 ### Terminal-detail paired production — 2026-10-02 11:19 UTC
 
 The preparation mismatch is JPEG decoding, not source identity, half-pixel

@@ -8,6 +8,66 @@ The detailed derivations and experiment definitions are in FORMULATION.md;
 chronology and negative interventions are in PROGRESS.md. This report introduces
 the main objects without requiring knowledge of those earlier discussions.
 
+### Original-image terminal detail: tested, no mean-accuracy benefit
+
+With the SAME257-square control map, frozen affine, fused points and300gradient
+schedule, change only the last image level/full-objective selector to1024.
+Compare direct rendering from the original files against a deliberately enlarged
+float32 version of the old512 input. Both use the same replicated original
+support mask; the firstfour image levels remain constructed from the old512
+images. Machine points remain in512/8pixel/robust-scale units. This isolates
+available source information from merely adding raster samples, although
+resampling/quantization differences prevent a pure frequency-only interpretation.
+
+| Previously viewed specimen | Original512 mean / p90 | Direct-original1024 mean / p90 | Enlarged512-information mean / p90 |
+|---|---:|---:|---:|
+| MIIT /3 directions | 3.534718 /5.858170 | 3.561966 /5.826316 | 3.547540 /5.869280 |
+| Lung /20 directions | 4.471007 /9.342538 | 4.492728 /9.428615 | 4.479371 /9.401068 |
+| HistoReg /1 | .842064 /1.580138 | .864313 /1.660408 | .843904 /1.670622 |
+| Kidney /1 | 2.243606 /4.643549 | 2.270988 /4.682205 | 2.251452 /4.874302 |
+
+All error units are STILL512-equivalent moving-canvas pixels. Both1024arms
+worsen every specimen mean versus512; direct-original also worsens every mean
+versus the enlarged control. Direct worsens19/25pair means versus512 and20/25
+versus enlargement. Some tails improve, notably MIIT p90 and kidney maximum,
+but this is not an average accuracy advance. Do not escalate automatically to
+2048, select different resolutions by specimen, or call this a map-capacity
+failure. It is negative evidence for this particular use of additional detail.
+
+All50attempts complete before scoring with300gradients/332objective calls and
+zero failed trials. Independent full-objective reconstruction agrees within
+3.53e-8; all4148label errors agree within1.67e-13canvas pixels. Minimum actual
+corner ratios are.00557258direct and.00573968enlarged, both>.001. Every output
+selects the final stage9 using its own declared full objective, not labels.
+
+Per-pair calls average6.846/6.910s (direct/enlarged) versus archived5124.566s;
+allocated peaks are.517--.521GB versus.210--.214GB. Shared rendering takes9.070s,
+whole50batch354.445s. Original matching/initialization and full one-time decode
+cache setup are excluded, not free. This is not a controlled repeated speedup
+measurement. The representation is257controls, NEVER1024controls.
+
+A consequential preprocessing issue was found and resolved BEFORE production:
+old JPEG canvases used two decoder environments. Seven lung/HistoReg sources
+require Pillow10.3/JPEG9, while the two kidney sources require12.3/JPEG8. Lossless
+full-resolution RGB caches now preserve these decodes, and all accepted512RGB
+canvases reconstruct EXACTLY on the remote host. No source, accepted image or
+layout was rewritten. Cache creation was interrupted by two informative failed
+attempts; a full fresh-from-empty setup time is unmeasured. The recorded6.78s
+and7.58s partial completion/verification timings must NOT be called its total.
+
+Numerical scope also matters: lower-level IMAGE terms and outside fractions
+match the old traces exactly, but geometry/total traces differ at roundoff
+(max total3.28e-10, normalized margin5.97e-8). Across runtimes, enlarged float32
+rasters differ from an independent formula by at most1.19e-7 absolute. These
+are disclosed numerical differences, not bitwise production-prefix equivalence.
+Details, every regression and reproducible checks are in
+`terminal_detail_all50_t25`, TERMINAL_DETAIL_FORMULATION and the independent report.
+
+The next controlled question concerns a data-Jacobian-aware SEARCH direction
+for the unchanged512objective. DATA_AWARE_METRIC_FORMULATION records the
+mathematics and matched final-stage wall budgets before implementation; no
+accuracy benefit from that new optimizer is yet claimed.
+
 ### Joint positive global pose: lung benefit, not a uniform replacement
 
 The next controlled experiment changes the map from F(x)=A f_Y(x)+b to

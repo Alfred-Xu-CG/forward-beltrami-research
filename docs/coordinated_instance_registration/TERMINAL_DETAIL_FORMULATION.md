@@ -1,7 +1,8 @@
 # Terminal original-image detail with unchanged dense P1 geometry
 
 Status, initially approved2026-10-02 10:46 UTC; independent prechecks and
-actual-source smoke now pass, production started11:19UTC. No accuracy result yet. The preceding
+actual-source smoke passed, production started11:19UTC. All50results and independent
+saved-result review are now complete (11:43UTC); the outcome is recorded below. The preceding
 joint-pose comparison gives a lung-specific gain but mixed cross-specimen tails
 and higher cost; it is not a uniform replacement for frozen-pose fusion300.
 The following uses ONE frozen-pose fusion300 recipe on all25 directions, not
@@ -179,3 +180,31 @@ If both1024 arms improve similarly, the gain is not established to come from
 additional source information. If neither improves, retain the negative result;
 do not automatically proceed to2048 or a parameter sweep. Mixed specimen results
 remain mixed; do not select a different arm per case using landmarks.
+
+## 5. Executed result and numerical qualifications
+
+All50attempts complete in354.445s with300gradients/332objective calls and no
+failed trials. Both1024arms worsen allfour specimen means versus original512;
+direct-original also worsens allfour means versus the enlarged512-information
+control. Equal-specimen mean changes are+.024650direct and+.007718enlarged
+versus original512, in512equivalent pixels. Some tails improve, but the worst
+MIIT error remains52.83pixels. Full mean/p90 tables and every paired regression
+are in REPORT and `terminal_detail_all50_t25/comparison.json`.
+
+Independent evaluation of all4148label errors agrees within1.67e-13canvas
+pixels, and all50fullobjectives within3.53e-8. Actual corner minima exceed.0055.
+All direct rasters reproduce their specified source rendering exactly. Lift
+float32 intensities differ across runtime/independent-formula implementations
+by at most1.1921e-7 ABSOLUTE (not oneulp at every intensity). The unchanged
+lower-stage construction does not promise bitwise GPU trajectories: fulltotal
+differs up to3.28e-10 and normalizedmargin up to5.97e-8 versus archived512.
+
+Optimizer calls average6.846/6.910s and peak at520.5MB, versus archived512
+4.566s/214.3MB. Rendering9.070s is separately charged; full one-time decoder
+cache creation cost is unmeasured because the first attempts only partially
+completed. Partial6.78s/7.58s timings are not a complete fresh setup charge.
+
+Decision: no general accuracy/cost benefit for this terminal-resolution recipe;
+retain512for the next isolated optimizer study. This does not prove all ways
+of using original high-resolution images are ineffective or that the P1 map
+lacks capacity. No2048escalation, per-case choice or automatic reweighting follows.
