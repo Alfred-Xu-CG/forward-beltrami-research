@@ -7,7 +7,71 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
-### Last bounded robustness question: reverse the three MIIT tasks — 2026-10-02 14:32 UTC
+### Bounded transfer of existing exact-functional acceleration — 2026-10-02 14:47 UTC
+
+New measured bottleneck: optimization/export consumes136.1803 of149.5177 seconds
+in the fresh-match conditional pipeline (about91%). The repository ALREADY has
+compiled P1 ARAP/corner-shape evaluation and prepared fixed-source P1 point
+interpolation, with earlier sparse-SG timing evidence. Their transfer to the
+current dense SG+MA/shared-affine recipe is unmeasured. Astra xhigh approved one
+bounded engineering check, after the reverse experiment is secured, not a new
+anatomical optimization hypothesis or a reason to change the objective.
+
+Before any timing, fix four existing development tasks: MIIT2->3, lung HE->Ki67,
+HistoReg and kidney. HE->Ki67 is selected for its already measured active
+geometric restrictions, not its speed or anatomical score. ArmA is eager
+joint priors plus the existing point evaluator; armB is Inductor-compiled
+joint priors plus prepared fixed-source point indices/weights. All input pixels,
+A/b, fused points/confidences, coefficients,300-step schedule, output selection
+and geometry checks remain identical. Only these two dispatch switches vary.
+This tests the package, not the individual attribution of each switch.
+
+Use a new process and explicitly new task-local Inductor/Triton cache directories;
+never clear shared caches. Other driver/framework cache state is not claimed
+pristine. Time first observed A/B calls BEFORE compiled equivalence probes;
+only the first case encounters the new compilation cache. Later first-case
+calls may reuse it and are not independent cold launches. Then compare unchanged
+objective components and full vertex VJPs at identity and the saved incumbent,
+at every image level, before three warm A/B/B/A groups per case. No hidden
+application warmups. Each of the56 calls starts from identity, produces a new
+map/report, and counts factory, point preparation, optimization and export.
+The total workload includes numerical probes; individual application timing
+excludes those separately measured probes. Stop the warm experiment on a real
+capture/equivalence failure; no compiler tuning, new kernels or eager fallback.
+
+An outer reset-aware collector measures each full call's allocated/reserved
+peaks, not just optimizer-internal segments. Report first-call costs, warm
+complete-call medians, all paired groups and same-backend repeat variation.
+Compare all saved geometry, objective values and available anatomical errors
+only after all declared attempts are terminal. Any accuracy difference is
+numerical transfer evidence, NOT a new anatomical improvement. A cold/warm
+amortization estimate is not a measured crossover or full-pipeline speedup.
+No default is switched by this test. Bound this work to approximately30--40min
+including checking and preserve final-review time.
+
+### Reverse robustness completed — 2026-10-02 14:58 UTC
+
+Corrected t30r finishes9/9 calls in124.332753s, after which all123/107/98 available
+IDs were scored. Independent all9 actual-map/field/objective/configuration and
+984 method-CSV-error checks PASS, plus328 affine errors. Fusion mean/p90
+3.562529/5.672112 versus SG1 3.565420/5.857085 and native STANDARD shared-A
+3.567001/5.983648. Fusion improves2/3 means and p90s, worsens11->10, and raises
+2/3 maxima;8->7 maximum52.045358 still exceeds affine51.142462. Tiny aggregate
+mean benefit is not a breakthrough or unseen-specimen validation. No retuning.
+Safe-map minimum corner.373175; native full-field nonpositive-corner counts
+21,364/84,177/80,345 remain local diagnostics rather than clinical/global claims.
+
+The initial t30 attempt retained6 successes and3 fusion preflight failures:
+`*_fusion.json` was both the proposed fused-match table and output-report name.
+The optimizer's overwrite guard rejected this before optimization. Only the
+table filename changed to `*_fused_matches.json`; a regression now models the
+real report-path guard that the original injected fixture had missed. No labels
+were read before the corrected complete attempt. Both FULL attempts/logs are
+downloaded to D, including the native MHA fields; no old artifact was removed.
+Root's fresh affected suite after that fix and the new dispatch probe passes
+35 tests in55.35s. Engineering transfer is still pending; no default changed.
+
+### Last anatomical robustness question: reverse the three MIIT tasks — 2026-10-02 14:32 UTC
 
 Question: does the retained SG+MA complement improve the unchanged SG1 recipe
 when the three existing image pairs exchange moving/fixed roles? Test ALL

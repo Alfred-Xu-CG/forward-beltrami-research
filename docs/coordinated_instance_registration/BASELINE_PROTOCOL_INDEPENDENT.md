@@ -1663,3 +1663,109 @@ fresh conditional pipeline; MIIT `dhr` and `f2` entries point to archived output
 and explicitly say `unchanged archived comparison; not rerun`. Fresh MIIT
 raw-match provenance points to the new fused tables. Those inherited DHR/F2
 entries must not be reported as newly run native baselines or timed by this batch.
+
+### Reverse MIIT precheck and a concrete precheck miss
+
+Read the14:32 research card and complete reverse runner/scorer plus native
+shared-initializer dependencies. `independent_miit_reverse_probe_20261002.py`
+checks all three actual accepted-canvas files byte-for-byte after role swap,
+exact layout/native TIFF roles, and a separate scalar2-by-2 inverse. The saved
+float32 reverse matrices/offsets match this inverse, with positive determinants
+`.962695715 / .984177169 / .910603236`; largest two-order corner round-trip
+error is `3.33151e-5` canvas pixels. Only the saved affine is inverted.
+The task named3-to2 means moving3/fixed2 and evaluates the pullback2-to3.
+
+Its independent CPU lifecycle fixture retains all nine injected failures and
+rejects an existing output directory. A separate synthetic-coordinate scoring
+fixture uses the real unequal native layouts,124 nominal IDs, opposite-role
+missing IDs and122 available pairs to verify new-moving pixel units and every
+failure denominator. A pending ninth attempt is rejected before coordinates.
+No actual evaluation CSV or GPU inference is accessed by this precheck.
+
+The initial source/mocked precheck nevertheless missed a real filename
+collision: `*_fusion.json` was both the machine table and the optimizer report
+for `*_fusion.npz`. Production refused all three fusion calls before numerical
+optimization. Six SG1/native calls succeeded; that failed batch remains
+separate and unscored. The correction changes only the machine-table filename
+to `*_fused_matches.json`. The checker reread that change and the regression
+asserting both actual map/report nonexistence and distinct table/report paths;
+five focused tests pass independently (4.81 seconds). The first precheck's
+mock did not implement the real optimizer's filesystem guard; passing that
+mock was insufficient. A clean separately authorized rerun is required, not
+relabelling those three preflight failures as successful maps.
+
+### Reverse MIIT actual closure: all nine corrected calls checked
+
+The separately saved `miit_reverse3_t30r` contains nine successes. Its
+`independent_miit_reverse_postrun_20261002.py` check reconstructs all input
+roles, original canvas bytes, stored inverse affines, separately normalized
+fresh SG/MA fusion, six safe objectives/maps and three native STANDARD
+configurations/affine-frame conjugacies/final displacement fields. It reads
+the original CSVs only after checking all nine terminal records. Exactly
+123/107/98 available IDs remain per direction:984 method-specific errors plus
+the328 shared-affine errors are independently recomputed. Safe-map score
+agreement is within `1.548e-13` canvas pixels; literal float64 native sampling
+versus the declared float32 scorer differs by at most `5.647e-5` canvas pixels
+(`3.350e-4` native pixels). Maximum safe objective difference is `2.64544e-8`.
+
+All six actual257-square float64 P1-ac exports have the exact ordered boundary,
+the same stored A',b' within each comparison, positive binary certificates and
+minimum corner ratio at least `.3731750514`. All three native fields are read
+without clipping or repair:21,364/84,177/80,345 nonpositive local corners,
+minimum `-.5348923653`, among105,710,072 checked corners. This is a saved-field
+local diagnostic, not a native global-homeomorphism certificate. Independently
+reconstructed native theta64 differs by at most `2.221e-16`; the initial dense
+field was not exported, so its online audit is not called a reread of that field.
+
+| Reverse arm | Mean direction mean TRE | Mean direction p90 TRE | Worst maximum TRE |
+|---|---:|---:|---:|
+| SG1 |3.565420|5.857085|52.025384|
+| Fusion |3.562529|5.672112|52.045358|
+| Native STANDARD shared inverse-A |3.567001|5.983648|52.899695|
+
+Units are new-moving512-canvas pixels. Fusion improves mean/p90 over SG1 on
+two directions but worsens11-to10; it worsens two maxima. Native shared-A wins
+two of three direction means against fusion. The8-to7 fusion maximum52.0454
+still exceeds the affine maximum51.1425. This supports only a mixed, small
+direction-robustness observation within the same previously viewed specimen,
+not an independent cohort, an outlier cure or inverse-consistency theorem.
+No method is chosen per case using these labels.
+
+The corrected serial workload is124.332753 seconds, including preparation and
+fresh matching; method calls total19.764884 SG1,22.754749 fusion and78.320714
+native seconds. Seventeen reset-delimited captures report maxima
+1,794,539,008 allocated and2,262,827,008 reserved bytes, not summed component
+memory. These are one workload's measurements, not replicated cross-method
+speed distributions. The first failed batch remains separate: its actual
+manifest was independently reread as6 successes/3 `FileExistsError` failures,
+68.423772 seconds, annotations unread. Corrected results and this audit are
+stored in `miit_reverse3_t30r/independent_check.json`.
+
+## Current-fusion dispatch transfer: independent pre-execution check (2026-10-02)
+
+Read the four-case timing wrapper, full-Evidence equivalence probe, underlying
+application observer/comparator, reset-aware collector and actual export
+validator. The declared comparison changes only joint-prior and point-sampling
+dispatch, retaining archived fusion weights, initialization and300 gradients.
+All56 slots exist before calls; each case executes first A/B, then identity and
+saved-incumbent probes at allfive raster levels, then three A/B/B/A groups.
+Only the first case encounters empty task-local compiler/Triton directories;
+later first calls are not independent cold launches. Probe costs belong to the
+whole workload but not application-call medians. Allocator peaks span setup,
+internal peak resets and export, not host memory or total board VRAM.
+
+Independent CPU capture-probe tests pass8/8 in16.98s, including full components,
+full vertex gradients, repeated evaluations and deliberately corrupted/nonfinite
+gradients. These test capture semantics, NOT GPU Inductor performance. Initial
+wrapper tests pass3/3 in4.26s but miss a real exception-path defect: constructing
+`dict(**pending_row, status=...)` duplicates its existing status keyword and
+raises `TypeError`, preventing terminal accounting. The builder corrected this
+to a dict-unpacking literal and added a regression before any GPU launch.
+
+The independent `independent_fusion_dispatch_lifecycle_20261002.py` then passes
+allfive scenarios:56-call success with exact order; failures at first call,
+compiled call, equivalence probe and later warm call. They respectively retain
+1/2/2/4 attempted calls and all remaining explicit not-run slots; all56 become
+terminal and an existing output remains byte-for-byte unchanged. This is a
+source/lifecycle PASS for the bounded experiment, not approval of a speed or
+accuracy result. Numerical transfer and actual56 saved maps remain to check.

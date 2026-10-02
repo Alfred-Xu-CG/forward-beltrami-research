@@ -7,6 +7,66 @@ sections retain their dated scopes; newer restart measurements are added below.
 The detailed derivations and experiment definitions are in FORMULATION.md;
 chronology and negative interventions are in PROGRESS.md. This report introduces
 the main objects without requiring knowledge of those earlier discussions.
+For the current result and its limits, start with
+[RESTART_SYNTHESIS.md](RESTART_SYNTHESIS.md). Sections 1--5 below define the
+current mathematical objects; sections 6--7 preserve dated development evidence
+and are not a list of all simultaneously active choices.
+
+### Fixed-recipe reverse-direction robustness: small, mixed benefit
+
+The three MIIT tasks were reversed to moving3/fixed2, moving8/fixed7, and
+moving11/fixed10. Accepted 512 canvases were exchanged byte-for-byte, with their
+layout roles swapped. Only the saved INITIAL affine was inverted in float64
+and stored as float32; no optimized deformation or forward matching table was
+inverted or reused. The maximum two-order affine round-trip discrepancy over
+canvas corners is 3.332e-5 pixels. All methods receive exactly that same stored
+reverse affine. Fresh SG and MA evidence is extracted in the reverse direction.
+The formulas, weights and schedules remain unchanged; native DHR uses STANDARD
+on the original TIFFs with only initialization replaced by the shared affine.
+
+All nine corrected method attempts completed before any evaluation CSV was
+read. The same 123/107/98 available paired IDs are retained, with errors now
+expressed in the NEW moving image's canvas. Entries are mean/p90 TRE in pixels:
+
+| Moving -> fixed | Initial affine | SG1 | Fusion | Native STANDARD, shared affine |
+|---|---:|---:|---:|---:|
+| 3 -> 2 | 3.882312 / 7.522792 | 3.058343 / 5.993203 | 3.043667 / 5.450405 | 2.924072 / 5.458835 |
+| 8 -> 7 | 3.687409 / 5.737444 | 3.280624 / 4.639894 | 3.269247 / 4.609600 | 3.248496 / 4.648677 |
+| 11 -> 10 | 6.716843 / 12.637295 | 4.357292 / 6.938158 | 4.374674 / 6.956330 | 4.528437 / 7.843432 |
+| Equal-direction mean | 4.762188 / 8.632510 | 3.565420 / 5.857085 | 3.562529 / 5.672112 | 3.567001 / 5.983648 |
+
+Fusion improves two means/p90s but worsens the third; its aggregate mean gain
+over SG1 is only about0.08%. Maximum errors worsen in two directions. On8->7,
+fusion's maximum52.045358 exceeds the affine's51.142462. The substantial tail
+gain is concentrated in3->2. This extends the modest development signal but
+does not establish independent confirmation or remove the hard failure case.
+Native STANDARD has better means on3->2 and8->7; no universal winner is declared.
+
+The six safe maps pass the 257-square fixed-boundary/all-four-corner checks,
+minimum normalized corner.373175. Independent literal recomputation verifies
+all984 method/landmark errors plus328 affine errors, full safe objectives,
+native STANDARD settings, affine conjugacy and final native fields. Native
+fields have21,364/84,177/80,345 nonpositive local corners; these are full-field
+diagnostics, not a claim that every tissue region folds or a global certificate.
+The mixed nine-call batch costs124.332753s. Safe calls span4.394--9.206s and
+native calls18.119--35.745s, with different image resolutions/work. These single
+calls do not establish a repeated paired speedup. Batch allocated/reserved
+peaks are1,794,539,008/2,262,827,008 bytes, covering all methods, not just fusion.
+
+An earlier attempt had six successful calls and three fusion PRE-FLIGHT failures:
+the fused-point JSON name collided with its optimizer-report JSON name. The
+overwrite guard prevented the collision. The one-line filename correction and
+regression test preserve the failed attempt; the corrected run is not an
+accuracy-selected retry. Both complete attempts remain on D and AI. Small
+source/results are versioned; native dense MHA fields are retained outside Git.
+
+This is one already viewed specimen, not a new cohort. Moreover, the inverse of
+A composed with f is f-inverse composed with A-inverse, whereas the reversed
+recipe is A-inverse composed with a new boundary-fixed g. These need not have
+the same admissible boundary/domain class. Direction differences therefore
+do not directly measure inverse consistency or identify a matcher-only cause.
+Artifacts: `outputs/coordinated_instance_registration/miit_reverse3_t30r/`,
+with the failed predecessor `miit_reverse3_t30/` kept separately.
 
 ### Measured conditional pipeline cost, not raw-WSI end-to-end cost
 
@@ -935,8 +995,10 @@ without storing or forming that entire dense Jacobian.
 This is coordinated motion: adjacent vertices may move a long common distance
 while their DIFFERENCES, not original mesh spacing, determine admissibility.
 A worst active cell can still limit the global scalar scale. This limitation is
-measured rather than denied. F2 provides a local-patch comparator under identical
-input evidence and objective; it is not automatically worse by construction.
+measured rather than denied. F2 provides the historical local-patch comparator
+under identical SG1 input evidence and objective; no matched F2 run with the
+later SG+MA fusion objective is claimed. It is not automatically worse by
+construction.
 
 Successive accepted tables are on the same source triangulation. Geometrically,
 one can define an affine update h on each current deformed triangle taking its
@@ -951,11 +1013,19 @@ Inputs for one case: fixed and moving images, one common positive image-only
 affine, frozen machine-generated correspondence points/confidences, and the
 fixed reference mesh. Manual evaluation landmarks are not inputs. The output is
 the saved P1 map, its affine factor, explicit geometry certificate, runtime,
-gradient/evaluation counts and diagnostics. There is no trained CNN in this phase.
+gradient/evaluation counts and diagnostics. There is no newly trained image-to-map
+encoder in this phase. SG and MA use existing pretrained neural networks for
+their frozen image correspondences.
 
-The retained objective is
+The current retained fusion objective is
 
-    E = I +3 R +.0001 S +.1 M + O.
+    E = I +3 R +.0001 S +.1 M_SG +.1 M_MA + O.
+
+SG1 is the comparison that omits M_MA; SG2 replaces the two point terms with
+.2 M_SG. These are different objectives, not three solvers minimizing one
+unchanged functional. The definitions below describe the current shared-affine
+descriptor frame and fusion recipe; the historical experiments above identify
+when a different frame or evidence source was used.
 
 Here are definitions of every term. Convert images to inverted grayscale
 intensities G in[0,1]. At each raster scale, use the eight integer offsets
@@ -966,13 +1036,20 @@ for shifting and available-neighbor averaging at pooling edges. Set
     Phi_a(x)=exp[-(D_a(x)-min_b D_b(x))/(mean_b D_b(x)+.0001)].
 
 These eight values are the local self-similarity descriptor (MIND-like here;
-not a claim of reproducing every published MIND variant). Compute Phi_f and
-Phi_m separately before warping. Let m(x) be the fixed foreground mask: threshold
+not a claim of reproducing every published MIND variant). The descriptor's
+coordinate frame matters. At each raster level, area-reduce the original
+fixed and moving grayscale images separately to obtain G_f and G_m. With
+bilinear, zero-padded image interpolation B, first form the affine-aligned
+moving raster G_m^A(z)=B(G_m,Az+b0). Then compute Phi_f=Phi(G_f) and
+Phi_m^A=Phi(G_m^A). The affine prewarp is fixed for the entire instance solve;
+the current nonlinear candidate does not cause descriptor recomputation.
+This is not the same operation as computing Phi(G_m) and then sampling it
+at A f_Y(x)+b0. Let m(x) be the fixed foreground mask: threshold
 G_f>.04 at full resolution, area-reduced to lower raster scales. Let Z=sum_x m(x)
 on the fixed pixel centers; this denominator is unchanged by the candidate map.
 With bilinear zero-padded feature sampling B, define
 
-    I=sum_x m(x) mean_a |Phi_f,a(x)-B(Phi_m,a,F(x))| / Z.
+    I=sum_x m(x) mean_a |Phi_f,a(x)-B(Phi_m^A,a,f_Y(x))| / Z.
 
 For a source triangle t=(i,j,k), define edge matrices
 B_t=[X_j-X_i,X_k-X_i],D_t=[Y_j-Y_i,Y_k-Y_i],J_t=D_t B_t^{-1}.
@@ -993,13 +1070,20 @@ For a2-by2 K with positive determinant, ||K^{-1}||_F^2=||K||_F^2/det(K)^2;
 the implementation uses that identity rather than a mesh-system solve. This is
 four-corner quadrature, not an exact quadrilateral integral; identity has S=0.
 
-Frozen machine points are(q_j,p_j,c_j): fixed-unit keypoint, affine-aligned
-moving-unit keypoint and original confidence. Their original moving location
-is A p_j+b0. Statically discard only machine targets outside the original moving
-rectangle, never difficult MANUAL evaluation points. Normalize eligible c_j
-to weights w_j with sum1. With rho(r)=sqrt(1+||r||_2^2)-1 and kappa=8pixels,
+For each matcher h in {SG,MA}, frozen machine points are
+(q_hj,p_hj,c_hj): fixed-unit keypoint, affine-aligned moving-unit keypoint and
+original confidence. Their original moving location is A p_hj+b0. Statically
+exclude only machine targets outside the original moving rectangle, never
+difficult MANUAL evaluation points. Normalize eligible confidences SEPARATELY
+within each matcher to weights w_hj with sum_j w_hj=1. The two matchers do not
+compete for one mass according to how many points they extract. With
+rho(r)=sqrt(1+||r||_2^2)-1 and kappa=8pixels,
 
-    M=sum_j w_j rho(512 A(f_Y(q_j)-p_j)/kappa).
+    M_h=sum_j w_hj rho(512 A(f_Y(q_hj)-p_hj)/kappa).
+
+The implementation concatenates the two unit-mass tables, normalizes that
+combined mass2 inside the point loader, and multiplies it by .2; this is
+algebraically .1 M_SG+.1 M_MA, not .2 for each matcher.
 
 The translation cancels; A remains in the metric. There is no extra kappa^2
 multiplier. Machine confidence is not anatomical ground truth, and no derivative
@@ -1009,7 +1093,7 @@ outside excess t_d(v)=max(-v_d,0)+max(v_d-1,0) and
     O=sum_x m(x) sum_d t_d(F(x))^2 / Z.
 
 Thus out-of-bounds image queries are both zero-padded and penalized, not dropped.
-I and O use the current raster scale; M always uses the full512pixel metric;
+I and O use the current raster scale; each M_h always uses the full512pixel metric;
 R and S use the actual fixed fine control mesh. A stage compares its COMPLETE
 objective at that stage's raster scale, with all terms and the coefficients
 above; it does not compare image loss alone. Accepted stage maps are additionally
@@ -1026,12 +1110,18 @@ objective among accepted maps, never by manual landmark error.
 Production analytic: five scalar scales, x/y alternating stages,30Adam steps
 per stage,300gradient steps total,310decoder trials,332complete objective calls.
 Learning-rate calibration is.004*16/(level-1), in pre-affine normalized units.
-F2 uses two five-scale cycles with30steps each for the same300gradients and
-has the corrected.95strict-floor reserve. Both start from the same affine plus
-identity residual. Native DHR has its own objective/preprocessing and is an
+The historical SG1-matched F2 comparison uses two five-scale cycles with30steps
+each for the same300gradients and has the corrected.95strict-floor reserve.
+Those paired runs start from the same affine plus identity residual; F2 has
+not been rerun with the current fusion objective. Native DHR has its own objective/preprocessing and is an
 application comparator, not an equal-objective geometry ablation.
 
 ## 6. Evidence available aroundT+15h
+
+This section is historical. Its DHR results use the shared-initializer,
+reduced-512 configuration, NOT native-resolution STANDARD. Its runtime and
+70--73 MB allocator figures must not be attached to the later full baseline.
+Current comparisons and their corrected scopes appear above and in the synthesis.
 
 The lung comparison covers20ordered stain directions from ONE previously viewed
 physical specimen, with all80matched manual IDs per direction. Directions and
@@ -1045,12 +1135,12 @@ mean of each direction's90th-percentile error, not the pooled90th percentile.
 |Common affine|6.661222|12.234678|Positive affine|
 |Coordinated analytic|4.520228|9.555206|Certified P1-ac/all-four corners|
 |Corrected full-budget F2|4.551344|9.657840|Certified P1-ac/all-four corners|
-|Native DHR|5.133593|11.552831|No hard global guarantee|
+|Historical reduced-512 DHR|5.133593|11.552831|No hard global guarantee|
 
-Analytic improves mean TRE versus affine in all20directions, but native DHR
+Analytic improves mean TRE versus affine in all20directions, but reduced-512 DHR
 wins six direction means, including all fourproSPC-source directions. Analytic's
 aggregate advantage over corrected F2 is only0.68%mean and1.06%tail: do not claim
-strong anatomical superiority. Native DHR remains much faster in these small
+strong anatomical superiority. Reduced-512 DHR remains much faster in these small
 canvas experiments. Clinical competitiveness and unseen-patient generalization
 are not established.
 
@@ -1060,7 +1150,7 @@ one known pair) and then by precomputing fixed machine-point triangle indices
 and barycentric weights (2.95to2.70s on a second known pair). Map/objective
 differences stay at the scale of measured repeat variation, not bitwise identity.
 Cold compiler setup is not a speedup. Typical allocated GPU peaks for the main
-analytic optimizer are about205--229MB; F2 about495--500MB; native DHR about70--73MB.
+analytic optimizer are about205--229MB; F2 about495--500MB; reduced-512 DHR about70--73MB.
 These are measured allocated peaks, not whole-process RAM/driver/compiler peaks;
 setup/load/export inclusion is specified for each timing experiment.
 
@@ -1087,7 +1177,7 @@ Finite-point bounds and invalid-prediction guards are not relaxed.
 |Common affine|4.904193|8.897884|
 |Coordinated analytic|3.897540|6.289528|
 |Corrected F2|3.964294|6.381702|
-|Native DHR|4.050615|7.181205|
+|Historical reduced-512 DHR|4.050615|7.181205|
 
 Independent native-frame/CSV/generic-triangle evaluation agrees within1.13e-12px;
 actual six safe maps have1,572,864positive corners, minimum ratio.2015743,
@@ -1149,7 +1239,13 @@ prefix. All available123/107/98points remain. Different stages use different
 coefficient/image resolutions, but the plotted objective is ALWAYS full512E1.
 These curves do not authorize TRE-based stopping or early-checkpoint selection.
 
-### 7.2 A feature-frame limitation with an exact controlled example
+### 7.2 Historical feature-frame study and the decision made before restart
+
+This subsection preserves the order of the original tests and their THEN-current
+decisions. Its references to a next diagnostic and the 24-hour window are
+historical. The restart explicitly reconsidered the mixed development result,
+adopted the shared-affine frame for controlled subsequent experiments, and
+completed the oracle mentioned below; see sections 7.3 and the current synthesis.
 
 Our eight MIND-like channels measure directional patch self-similarity.
 Under a known affine image transform, both offset directions and patch windows
@@ -1232,8 +1328,9 @@ the full method, counts, timing/memory scopes and failure interpretation.
 
 ### 7.4 One actual initializer-restriction check, with no downstream sweep
 
-The original 'affine' initializer is in fact a four-parameter positive
-similarity, not an unrestricted six-parameter affine. A one-shot label-free
+The three original MIIT 'affine' initializers are four-parameter positive
+similarities, not unrestricted six-parameter affines. This statement is specific
+to those three cases, not the historical HistoReg/kidney initializers. A one-shot label-free
 probe fits both model families to the SAME frozen machine correspondences,
 original confidences/world eligibility and eight-pixel pseudo-Huber loss.
 The predeclared4-by4 spatial parity split holds each parity out once on all

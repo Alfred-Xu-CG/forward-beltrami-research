@@ -2,7 +2,32 @@
 
 ## Current dense-homeomorphism research
 
-The current [Phase VII self-contained report](docs/research_phase7/REPORT.md) and [21-hour research plan](docs/research_phase7/PLAN.md) study solve-free coarse-to-fine latent decoders that output **one fixed-triangulation P1 homeomorphism**, not a sampled composition. Two independent forward mechanisms, four-color vertex updates (F1) and staggered joint patch updates (F2), have full-latent forward/VJP measurements at **4097×4097 actual control vertices**. A hybrid image-to-latent model also completed 4097² multi-step training; its synthetic multiview accuracy and a new symmetric coarse-view fusion are documented alongside failures under weak texture, noise, and single-view ambiguity. Exact-arithmetic topology/approximation theorems, float32 output certification, raw logs, memory/cold-start costs, and explicit limitations are in that report. These findings do **not** imply accurate registration from arbitrary natural images or exact recovery of arbitrary facewise Beltrami fields. The earlier linear-system and composition alternatives remain in the [Phase VI report](docs/research_phase6/REPORT.md). The remainder of this README describes the older sparse QC baseline and its separate reproduction commands.
+The active October 2026 work is **coordinated, topology-preserving instance
+registration**. Start with the [current synthesis](docs/coordinated_instance_registration/RESTART_SYNTHESIS.md),
+then the [self-contained mathematical and experimental report](docs/coordinated_instance_registration/REPORT.md).
+Its main real-image experiments use **257×257 actual control vertices**, a fixed
+piecewise-affine triangulation, and separately recorded 512×512 image queries.
+Single-direction coordinated updates avoid a global mesh solve; four-corner
+positivity and the preserved boundary protect the declared coordinate map.
+Per-image latent optimization is not a newly trained image-to-map neural network.
+
+The 25 registration directions come from only **four repeatedly viewed development
+specimens**. Adding frozen MatchAnything correspondences to the original
+SuperGlue evidence gives modest aggregate gains, not a general breakthrough.
+The [baseline protocol review](docs/coordinated_instance_registration/BASELINE_PROTOCOL_REVIEW.md)
+corrects the earlier reduced-DHR comparison and distinguishes actual native
+STANDARD runs, same-initializer runs, preprocessing conventions and timing scopes.
+The [progress record](docs/coordinated_instance_registration/PROGRESS.md) preserves
+failed interventions and the active research deadline. No SOTA, blind validation,
+raw-WSI end-to-end speedup or completed original neural-layer goal is claimed.
+
+Earlier [Phase VII](docs/research_phase7/REPORT.md) studied solve-free coarse-to-fine
+F1/F2 latent decoders and synthetic forward/VJP/training experiments up to
+4097×4097 controls. Those results do not establish complex real-image registration.
+The earlier linear-system and composition alternatives remain in the
+[Phase VI report](docs/research_phase6/REPORT.md). The remainder of this README
+describes the older sparse QC baseline and its separate reproduction commands;
+its runtime and scripts are not the current registration protocol.
 
 This repository is a research reference implementation for facewise variable-μ reconstruction, exact implicit gradients, numerical injectivity auditing, large-distortion registration, prescribed-area deformation, and transition-aware multi-chart registration.
 
