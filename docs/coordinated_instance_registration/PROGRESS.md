@@ -7,6 +7,29 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### Same-prefix timed optimizer production — 2026-10-02 12:03 UTC
+
+Data-aware metric implementation and independent prechecks pass: explicit tiny
+H, actual sampler VJPs, point/OOB curvature, boundary trace, PCG status, strict
+actual acceptance, common raw prefix and work/timing counts are checked. Root's
+22 focused core/application/batch/timed-scoring tests pass. Legacy scorer paths
+remain intact; variable timed budgets are explicit, never relabelled300steps.
+Original Adam accepts Q>.001 and may attain the contracted floor; the metric
+arm requires strict contracted slack. This is an optimizer-package comparison.
+
+The label-free first257-control/512-query GPU smoke starts both arms at the same
+E=.254924778 after the same240-gradient prefix. In approximately4.4s per suffix,
+Adam performs311gradients and reaches.247485357; the metric performs124gradients,
+992descriptorVJPs/978PCGiterations and reaches.247713124, with no backtracking.
+Peak allocated memory is153.2/159.0MB. Both output maps certify, minimum ratios
+.377236/.375311. This establishes execution, not better accuracy or speed.
+
+All25pairs/twoarms now run as `data_metric_all50_t26` on freshly checked idle
+AI GPU5. Shared prefix cost and all per-axis setup/gradient/metric/solve/trial
+work remain charged. No landmarks are read until all50attempts finish. A first
+launcher used an incorrect remote results path and stopped before any compute;
+the corrected path is `results/match_fusion_all50_t23/fusion/predictions.json`.
+
 ### Terminal comparison closed; data-aware direction implementation — 2026-10-02 11:43 UTC
 
 Terminal-detail all50complete in354.445s, no failed trials, then scoring and

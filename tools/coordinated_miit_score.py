@@ -86,6 +86,10 @@ def load_manifest(path):
     value = json.loads(path.read_text(encoding="utf-8"))
     if value.get("prediction_complete") is not True or value.get("annotations_read") is not False:
         raise ValueError("completed label-free predictions required BEFORE labels")
+    timed=value.get('budget_mode')=='timed_final'
+    if timed and (value.get('all50_terminal') is not True or value.get('seconds_per_axis')!=2.
+            or value.get('timed_arm') not in ('adam','data_metric')):
+        raise ValueError('explicit completed paired timed-final protocol required BEFORE labels')
     rows = value.get("rows")
     if not isinstance(rows,list) or len(rows) != 3:
         raise ValueError("all three predeclared directions required")
@@ -100,11 +104,26 @@ def load_manifest(path):
         if set(row.get("methods",{})) != {"analytic","f2","dhr"} or any(
             v.get("status") not in TERMINAL for v in row["methods"].values()):
             raise ValueError("all method attempts must be terminal")
+        analytic=row['methods']['analytic']
+        if timed and analytic.get('status')=='ok':
+            budget=analytic.get('terminal_budget',{})
+            if (budget.get('protocol')!='timed_final' or budget.get('seconds_per_axis')!=2.
+                    or budget.get('arm')!=value['timed_arm'] or analytic.get('arm')!=value['timed_arm']):
+                raise ValueError('successful timed analytic record must match declared paired arm BEFORE labels')
     return value,path.parent
 
 
 def _analytic_map(record,directory,a,b):
     """Only an explicitly declared joint analytic export may change its affine."""
+    if record.get('terminal_budget',{}).get('protocol')=='timed_final':
+        from tools.coordinated_data_metric_batch import validate_timed_budget
+        report_path=Path(record['report'])
+        if not report_path.is_absolute():report_path=directory/report_path
+        report=json.loads(report_path.read_text(encoding='utf-8'))
+        validate_timed_budget(report,arm=record.get('arm'))
+        if any(record.get(k)!=report.get(k) for k in ('gradient_steps','prefix_gradient_steps',
+                'suffix_gradient_steps','terminal_budget','failed_trials')):
+            raise ValueError('timed prediction/report accounting mismatch')
     if record.get("pose_mode")!="joint_positive_affine":
         return _safe_map(record,directory,a,b)
     from tools.coordinated_joint_pose import validate_joint_export

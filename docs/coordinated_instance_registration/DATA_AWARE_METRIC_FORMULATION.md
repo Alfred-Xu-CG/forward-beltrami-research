@@ -182,6 +182,14 @@ the final257-square horizontal/vertical stages:
 - The new physical-fiber data-aware metric, fixed2seconds per axis.
 
 Preserve the original final Adam learning rate and best-trial selection.
+Preserve its original geometry acceptance as well: the analytic Adam scaling
+can place a trial exactly on the contracted stage floor Q_floor. Its existing
+acceptance requires actual Q>.001, not strict Q>Q_floor; contracted slack is
+reported only as a diagnostic for that control. The new physical-metric arm
+uses the stricter Q>Q_floor fractional-boundary rule defined above. Therefore
+this is a comparison of optimizer packages with distinct step/acceptance
+mechanisms, not a claim that only the search matrix differs. Rejecting Adam
+at equality with Q_floor would artificially weaken the baseline and is forbidden.
 Include axis-specific layer/query-row/metric setup, full gradient, descriptor linearization, PCG, trials and necessary
 synchronization in the stage clock. Finish an in-progress bounded iteration;
 record actual elapsed time/overrun and counts. Equal nominal seconds are not

@@ -1020,3 +1020,105 @@ not justify automatic2048 escalation or choosing arms per case using labels.
 Reproduction: `check_sources/independent_terminal_postrun_20261002.py` under
 the same output parent. It performs no optimization and shares only the
 previous independent literal P1, descriptor, prior and original-CSV oracles.
+
+### Data-aware metric: independent formula, operator and timed-wrapper precheck
+
+The approved data-metric card and new core/application/runner/scoring paths pass
+the bounded independent precheck. This is a preparation result, not a claim
+about production GPU performance, anatomical accuracy or optimizer convergence.
+The checker did not author the new metric or production wrapper, did not edit
+them, and used no installed skill workflow. The new independent probe is
+`outputs/coordinated_instance_registration/check_sources/independent_data_metric_probe_20261002.py`.
+
+The metric is not the Hessian of the original nonsmooth MIND objective. With
+fixed-axis residual motion and fixed precomputed moving descriptors, ordinary
+bilinear sampling is piecewise affine along the moving axis; absolute residuals
+are piecewise linear away from sampling/sign knots. The positive image block
+is an IRLS search model. Its exact production AD definition includes the
+float64-query to float32-grid cast, zero padding and align_corners=False.
+No second affine factor belongs in this image slope, since those features
+already occupy the shared affine-aligned frame. OOB still uses the original
+frame and thus retains Ae, factor2 and the original fixed-mask denominator.
+
+For an individual point, differentiating
+lambda*w*(sqrt(1+|z+t*a|^2)-1) twice gives
+lambda*w*(|a|^2/s-(a dot z)^2/s^3), s=sqrt(1+|z|^2).
+The two-dimensional identity
+|a|^2*|z|^2-(a dot z)^2=(a1*z2-a2*z1)^2 gives exactly the stated
+nonnegative stable numerator. The existing normalized fused weights and total
+coefficient .2 are retained; no second confidence normalization is introduced.
+The Dirichlet five-point block is positive definite on the interior unknowns,
+and each remaining weighted sampling block is positive semidefinite, so the
+sum is SPD in exact arithmetic. This is a metric claim, not a guarantee about
+finite-precision PCG or global optimization.
+
+Independent numerical checks use hand-assembled fine-ac P1 rows and a literal
+five-point matrix, not the production interpolation/stiffness implementations
+as their own reference. Boundary query rows have zero interior norm where
+appropriate. Forward/transpose products, explicit H, symmetry, positive
+eigenvalues, boundary-excluded trace gamma and the shifted sine-transform
+preconditioner all agree. Tiny H errors are at most `4.45e-16`; minimum
+eigenvalues are `7.50195` and `8.52317`; the shifted-inverse comparison error
+is at most `1.39e-17`. This verifies the preconditioner for 3K+gamma*I, NOT an
+exact inverse of spatially varying H.
+
+A full per-output sampler Jacobian confirms zero cross-query coupling and
+reconstructs D_I within `5.69e-14`. A separately written zero-padded bilinear
+slope formula at the rounded grid agrees with the actual AD slopes to
+`3.74e-7`; its resulting D_I differs by at most `1.36e-7` after scaling by
+max(1,|D_I|), reflecting float32 arithmetic rather than a claimed bitwise
+classical derivative through quantization. Both coordinate axes, boundary
+sampling, far-outside zeros, nonuniform masks and nontrivial affine coupling
+are exercised. Point curvature agrees with the alternate closed formula to
+`2.85e-14` and with the complete production point Hessian after hand-built L
+assembly. The OOB Hessian agrees with the literal masked factor2 construction;
+the production zero derivative convention at exactly0and1 is checked.
+
+For the tiny actual metrics, PCG takes four iterations and independently
+recomputed relative residuals are `.0486194` and `.0628311`, agreeing with the
+reported recursive residuals to floating-point precision. One-step capped
+solves remain explicitly nonconverged and yield finite descent directions.
+Production reports now label the residual as recursive; these tests do not
+prove an arbitrary ill-conditioned finite-precision solve meets its true
+residual tolerance. A cap or stop reason is not silently replaced by another
+solver or equated with stationarity.
+
+The physical-metric acceptance test correctly rejects a constructed rounded
+equal-objective case despite a negative AD slope and rounded-equal Armijo
+right-hand side: all13 trials fail, exactly12 halvings occur and the unchanged
+last accepted map is returned. Successful tiny steps satisfy actual strict
+contracted floors, original-boundary equality and actual strict E decrease.
+An incoming map exactly at the original .001 floor is rejected. Conversely,
+the original Adam active-contraction case is retained: its original minimum
+Q is `.05095000000000027` with contracted slack only `2.71e-16`. Imposing
+strict contracted slack on Adam would change the control; the amended card
+and metadata correctly distinguish original Adam Q>.001 from the new metric's
+Q>Q_floor. This remains an optimizer-package comparison.
+
+Completed work remains visible after an injected fourth-channel VJP failure:
+one attempted refresh, one descriptor forward and three completed VJPs.
+`trial_evaluations` counts objective-called trials; geometry-only rejected
+attempts remain in the trial trace. An injected three-second setup exhausts
+the nominal two-second metric clock before any gradient and reports the
+overrun. A separate actual CPU-clock smoke with a .02-second nominal budget
+finishes its in-progress iteration at `.031449s`, reporting `.011449s` overrun;
+this is not a two-second GPU performance measurement.
+
+Production configuration checks require the unchanged257 controls,512 raster,
+frozen fused objective and original learning rate. An isolated tiny wrapper
+test bypasses that SIZE guard only for its small synthetic case, using injected
+clocks; it does not relax production. Its raw eighth accepted map is exactly
+the ordinary optimizer's eighth map, distinct from the separately retained
+best-prefix role. Both timed arms receive exactly the same saved numerical
+start and initial E. Every complete objective call is counted, the final Adam
+rate is preserved, and selection is the minimum over common best prefix and
+accepted suffix states with valid exports. Source review confirms that shared
+prefix cost, suffix loading/features and per-axis setup/gradient/solve/trial
+time have explicit scopes; arm order alternates by case parity. All50 attempts
+terminate before scoring adapters are written. Early stops remain visible and
+are not mislabelled as fixed300-gradient completion.
+
+The independent probe completes its checks in `2.64s` of CPU computation.
+A fresh focused run of the core, application and batch tests passes `12/12`
+in `7.89s` after setting the normal src/tests import paths. No GPU production
+optimization or manual annotation scoring was performed by this precheck.

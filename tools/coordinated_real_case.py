@@ -301,8 +301,10 @@ def load_registration_evidence(fixed_path,moving_path,image_side,*,preprocessing
     return fixed.to(device=device,dtype=dtype),moving.to(device=device,dtype=dtype),mask,metadata
 
 
-def optimize(args, accepted_stage_callback=None, *, terminal_evidence=None):
+def optimize(args, accepted_stage_callback=None, *, terminal_evidence=None, maximum_stages=None):
     overall_start = time.perf_counter()
+    if maximum_stages is not None and (isinstance(maximum_stages,bool) or not isinstance(maximum_stages,int) or maximum_stages<1):
+        raise ValueError('maximum_stages must be None or a positive accepted-stage count')
     source_image_side=args.image_side
     terminal_metadata=None
     if terminal_evidence is not None:
@@ -644,7 +646,9 @@ def optimize(args, accepted_stage_callback=None, *, terminal_evidence=None):
             full_best_map=current.detach().clone()
             full_best_loss,full_best_stage=capture_record["accepted_total"],-1
     for cycle in range(args.cycles):
+        if maximum_stages is not None and len(stages)>=maximum_stages:break
         for level_index,level in enumerate(args.levels):
+            if maximum_stages is not None and len(stages)>=maximum_stages:break
             stage_inner_steps=inner_steps_by_level[level_index]
             if nested and current.shape[1]!=level:
                 from qcopt.neural_bijection.dense.coordinated_refinement import refine_p1_vertices
@@ -669,6 +673,7 @@ def optimize(args, accepted_stage_callback=None, *, terminal_evidence=None):
             directions = (("joint_xy",) if joint else
                 (((1., 0.), (0., 1.)) if args.method not in ("f1","f2") else (None,)))
             for direction in directions:
+                if maximum_stages is not None and len(stages)>=maximum_stages:break
                 anchor = current.detach()
                 channels = 2 if joint or direction is None else 1
                 coefficients = torch.nn.Parameter(torch.zeros(1, channels, level-2, level-2,
@@ -968,6 +973,10 @@ def optimize(args, accepted_stage_callback=None, *, terminal_evidence=None):
                   terminal_full_total=terminal_full_loss,best_accepted_full_total=full_best_loss,
                   acceptance_objective=("same complete simultaneous multiscale objective at every stage and final selection" if simultaneous else "original complete objective at current image resolution; full-resolution trajectory may not be monotone"),
                   oob="zero padding, fixed denominator, explicit quadratic excess penalty; no query dropping")
+    if maximum_stages is not None:
+        report['partial_prefix']=dict(requested_maximum_stages=maximum_stages,accepted_stages=len(stages),
+            scope='ordinary optimizer stopped after accepted stages; output still selected by configured selector',
+            full_schedule_completed=len(stages)==args.cycles*len(args.levels)*(1 if joint or args.method in ('f1','f2') else 2))
     if terminal_evidence is not None:
         report.update(terminal_evidence=terminal_metadata,pyramid_source_image_side=source_image_side,
             point_pixel_scale=source_image_side,query_image_side=args.image_side)
