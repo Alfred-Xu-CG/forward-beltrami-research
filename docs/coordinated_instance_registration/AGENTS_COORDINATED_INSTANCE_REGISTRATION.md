@@ -1,5 +1,13 @@
 # AGENTS.md — Coordinated Instance Registration
 
+Current restart override (2026-10-02): the user extended this window by five
+hours, to 2026-10-02 16:26:23 UTC. Keep the original start time. Every delegated
+agent uses the actual `gpt-6-astra` model; older Sol routing in archived copies
+is superseded. Routine extraction/implementation uses medium, difficult
+numerical implementation and independent checking high, and a specific
+unresolved conceptual decision xhigh. Do not claim to switch the root runtime
+model through a prompt. No installed skill workflow is used in this phase.
+
 ## Current objective
 
 Read `docs/coordinated_instance_registration/PLAN.md` as the current project plan.
@@ -53,9 +61,9 @@ continue/change/pause decision. No meeting-style report is required.
 
 ## Models and delegation
 
-Use only `gpt-6.1-sol` and `gpt-6-astra` when actually supported by this runtime.
-Coordinator and routine implementation: Sol medium.
-Mechanical extraction: Sol low. Complex implementation/debug: Sol high.
+Use only `gpt-6-astra` for delegated work under the current user restart.
+Routine implementation and extraction: Astra medium.
+Complex implementation/debug and independent checks: Astra high.
 New load-bearing geometry and ambiguous scientific pivots: Astra high.
 Use Astra xhigh only for a specific unresolved decision; max is exceptional.
 Verify the actual role configuration once. Never pretend that a prompt switched
@@ -170,5 +178,4 @@ Window start 2026-10-01 11:26:23 UTC; deadline 2026-10-02 11:26:23 UTC.
     followed in this round, per the user; use direct code, derivations and primary sources.
 11. Time tables are adaptable; don't abandon a decisive high-information test merely to meet
     an intermediate slot. Use actual elapsed time; no premature closure after a successful pilot.
-
 

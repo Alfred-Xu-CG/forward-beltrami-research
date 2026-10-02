@@ -103,6 +103,36 @@ def load_manifest(path):
     return value,path.parent
 
 
+def _analytic_map(record,directory,a,b):
+    """Only an explicitly declared joint analytic export may change its affine."""
+    if record.get("pose_mode")!="joint_positive_affine":
+        return _safe_map(record,directory,a,b)
+    from tools.coordinated_joint_pose import validate_joint_export
+    from tools.digital_q1_real_eval import load_effective_vertices
+    resolve=lambda value:Path(value) if Path(value).is_absolute() else directory/value
+    path=resolve(record["output"]);report_path=resolve(record["report"])
+    report=json.loads(report_path.read_text(encoding="utf-8"))
+    config=report.get("configuration",{})
+    if (config.get("interpolation")!="p1_ac" or config.get("pose_mode")!="joint_positive_affine"
+            or config.get("minimum_jacobian")!=.001 or report.get("landmarks_used") is not False):
+        raise ValueError("explicit image-only joint P1ac report with original .001 floor required")
+    with np.load(path,allow_pickle=False) as archive:
+        if (str(archive["interpolation"].item())!="p1_ac"
+                or not np.array_equal(archive["original_post_affine_matrix"],a)
+                or not np.array_equal(archive["original_post_affine_offset"],b)):
+            raise ValueError("joint export must retain the exact original common affine")
+    validation=validate_joint_export(path,minimum_jacobian=.001)
+    if validation.get("valid") is not True:raise ValueError("joint combined-affine export validation failed")
+    vertices,certificate=load_effective_vertices(path)
+    if not certificate["composite_representation_valid"] or not np.isfinite(vertices).all():
+        raise ValueError("joint saved residual/combined-affine certificate invalid")
+    return vertices,dict(path=str(path),report=str(report_path),interpolation="p1_ac",
+        pose_mode="joint_positive_affine",certificate=certificate,joint_export_validation=validation,
+        certificate_scope="original affine retained; actual joint pose/combined affine/floors validated; independent P1 query evaluation",
+        **{key:report.get(key) for key in ("gradient_steps","failed_trials","objective_evaluations",
+            "optimize_seconds","output_selection","selected_stage")})
+
+
 def score(predictions: Path, source_data: Path, *, allow_missing_inf=False):
     manifest,directory = load_manifest(predictions)  # MUST precede coordinate access.
     resolve = lambda name: Path(name) if Path(name).is_absolute() else directory/name
@@ -128,7 +158,7 @@ def score(predictions: Path, source_data: Path, *, allow_missing_inf=False):
                     continue
                 try:
                     prepared[method] = (_native(record,directory,a,b) if method=="dhr" else
-                        _safe_map(record,directory,a,b))
+                        _analytic_map(record,directory,a,b) if method=="analytic" else _safe_map(record,directory,a,b))
                 except Exception as error:
                     row["methods"][method]=dict(status="failed",error=f"{type(error).__name__}: {error}")
             points = {}

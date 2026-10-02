@@ -704,3 +704,81 @@ not rerun optimization or matching. No production correction was needed.
 Reproduction: run the same independent fusion probe with `--postrun`; it reuses
 the existing literal saved-map/CSV checks with strictly declared configuration
 deltas, then adds table, comparison and cost checks.
+
+### Joint-pose candidate: independent schedule review
+
+The approved schedule in `JOINT_POSE_FORMULATION.md` has no mathematical
+blocker: the six chart columns are normalized by their original-moving-canvas
+RMS displacement under the CURRENT residual and rebased pose. The lower-bound
+chart derivative must include `ds/dr=sigmoid(r)`. Scales are frozen for the ten
+pose steps and recomputed at the next block; a nonfinite or degenerate scale
+is a reported numerical failure. The learning rates
+`2.048, 1.024, .512, .256, .128` are local coordinate calibration, not fixed
+actual displacement, monotone descent or equal runtime. Frozen250 and
+joint50-plus250 share the residual step budget; the archived frozen300 arm
+answers the separate total-gradient-budget comparison.
+
+The mathematical review identified and the formulation now records: uniqueness
+of the affine function rather than its periodic angle coordinates; only
+piecewise differentiability of the image functional; fixed physical B during
+residual differentiation rather than fixed softplus coordinate r; and the
+absence of an informative-support guarantee even with the full determinant
+floor and fixed denominator. The all-zero prewarp/all-ones descriptor example
+does not prove a lower COMPLETE objective because points and OOB still count.
+
+Independent probe source:
+`outputs/coordinated_instance_registration/check_sources/independent_joint_pose_probe_20261002.py`.
+Its reference uses NumPy eigendecomposition for the symmetric exponential,
+literal triangle solves, bilinear pixel weights and an independent descriptor
+implementation. Oracle-only composition/corner scaling and the two support
+examples pass.
+
+### Joint-pose implementation: independent tiny checks and correction
+
+The corrected `tools/coordinated_joint_pose.py` passes the independent probe
+with `--implementation` (CPU, about six seconds; no registration or matching
+rerun). At identity pose, the full objective and vertex VJP exactly equal the
+existing Evidence implementation, both for all-float64 inputs and for the
+production float32-image/float64-geometry convention. Under nonzero translation,
+rotation, scale and shear, the independently implemented image, robust point,
+OOB and prepared descriptor values agree. All six physical-pose derivatives
+agree with the NumPy objective finite differences to `1.14e-8`; halving the
+step changes those estimates by at most `1.78e-8`. This fixture avoids the
+piecewise-differentiable kinks rather than asserting differentiability there.
+
+Changing the residual minimum changes the lower chart bound without moving
+the recovered physical pose. All six mask-weighted RMS scales, including the
+softplus scale derivative, agree with independent chart perturbations to
+`1.33e-8`. Cached and uncached PHYSICAL-pose-frozen residual VJPs agree, while
+a trainable pose with a cached descriptor is rejected. Original point targets,
+weights and queries remain unchanged, including when a large pose change
+moves predictions outside the original image. The point formula continues
+to use the original static eligibility and original A.
+
+The original-raster reconstruction is checked on a separate translation case:
+96 raster locations lie outside the old aligned canvas but inside the original
+moving image. The implementation retains their nonzero original intensities
+and matches the literal rebuilt-descriptor objective. Affine/P1 commutation
+agrees to `2.22e-16`, with the expected corner determinant scaling.
+
+Claim/finding/fix: the export must represent a float64 unit-square-boundary
+residual, not merely some ordered rectangle. Independent review found that the
+first validator delegated this restriction to the generic binary certificate,
+which permits other rectangle references, and normalized by the supplied
+reference. The author confirmed a shifted-reference failing regression and
+corrected the validator to require the exact generated float64 unit reference
+and use its corner determinants. The independent final probe now rejects
+shifted and rescaled references and float32 residuals. It also rejects a
+positive affine whose full normalized floor is below `.001`, a changed boundary,
+inconsistent pose/composite metadata and a negative combined affine. The valid
+stored-affine floor agrees with the literal determinant ratio. The certificate
+concerns the stored residual and exact binary affine parameters, not a newly
+rounded materialized composite table.
+
+The optimizer source review confirms that each residual block freezes the
+physical pose, stage/final selection saves both G and Y, current/full objectives
+rebuild descriptors for the corresponding G, and the joint runner records all
+50 outcomes before exposing scorer adapters. Actual prewarped texture
+diagnostics were also added by the author; original moving-image variance alone
+could not detect the zero-prewarp example. These tests establish the stated
+functional, derivatives and representation checks, not anatomical gain.

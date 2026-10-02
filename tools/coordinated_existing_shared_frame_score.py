@@ -20,7 +20,9 @@ from tools.digital_birl_landmark_score import original_pixel_to_canvas_unit, can
 from tools.digital_q1_real_eval import load_effective_vertices
 
 
-def score(predictions,data_root):
+def score(predictions,data_root,expected_gradient_steps=300):
+    if isinstance(expected_gradient_steps,bool) or not isinstance(expected_gradient_steps,int) or expected_gradient_steps<=0:
+        raise ValueError("positive integer expected_gradient_steps required")
     path=Path(predictions).resolve()
     if path.is_dir():path=path/"predictions.json"
     manifest=json.loads(path.read_text(encoding="utf-8"))
@@ -38,8 +40,8 @@ def score(predictions,data_root):
         if record["status"]=="failed":
             row["error"]=record.get("error");continue
         try:
-            if record["configuration"].get("mind_frame")!="shared_affine" or record.get("gradient_steps")!=300 or record.get("failed_trials")!=0:
-                raise ValueError("declared corrected-frame analytic300 output required")
+            if record["configuration"].get("mind_frame")!="shared_affine" or record.get("gradient_steps")!=expected_gradient_steps or record.get("failed_trials")!=0:
+                raise ValueError(f"declared corrected-frame analytic{expected_gradient_steps} output required")
             archive=(path.parent/record["output"]).resolve()
             vertices,certificate=load_effective_vertices(archive)
             with np.load(archive,allow_pickle=False) as saved:
@@ -68,6 +70,7 @@ def score(predictions,data_root):
                for key in ("mean_pair_mean","mean_pair_p90")}
     return dict(prediction_manifest=str(path),scope="same22 directions from three previously viewed specimens; corrected-frame A control",
                 pair_denominator=22,scored_pairs=sum(r["status"]=="ok" for r in rows),rows=rows,
+                expected_gradient_steps=expected_gradient_steps,
                 lung_all20=lung,histo=histo,rat_kidney=kidney,equal_specimen_canvas=equal,
                 units="original512 moving-canvas pixels; native pixels separate, no cross-specimen native averaging",
                 label_policy="same80/77/69 readers, kidneyfixedonly70/71; no prediction-dependent label filtering",
@@ -77,9 +80,10 @@ def score(predictions,data_root):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     for key in ("predictions","data-root","output"):parser.add_argument("--"+key,type=Path,required=True)
+    parser.add_argument("--expected-gradient-steps",type=int,default=300)
     args=parser.parse_args()
     if args.output.exists():raise FileExistsError(args.output)
-    result=score(args.predictions,args.data_root)
+    result=score(args.predictions,args.data_root,args.expected_gradient_steps)
     args.output.write_text(json.dumps(result,indent=2,allow_nan=False)+"\n",encoding="utf-8")
     print(json.dumps(dict(scored_pairs=result["scored_pairs"],equal_specimen_canvas=result["equal_specimen_canvas"])))
 

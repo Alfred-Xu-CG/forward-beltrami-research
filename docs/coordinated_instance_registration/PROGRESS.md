@@ -7,6 +7,38 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### Joint global pose experiment started — 2026-10-02 10:30 UTC
+
+The exact bounded design is in JOINT_POSE_FORMULATION.md. One global fused
+SG+MA recipe is retained; the fresh pair is frozen250 versus joint300
+(50 pose +250 residual gradients), with archived frozen300 as a reference.
+All 25 existing directions are attempted in both arms before landmark scoring.
+The positive affine acts after the same boundary-fixed257-square P1 residual;
+both the residual and original-affine-normalized complete-map corner floors
+remain strictly above .001. Pose gradients rebuild features from original
+moving rasters. This changes the prior/output polygon, not just the optimizer.
+
+Root's52 focused tests and an independent literal numerical probe pass. The
+checker found that a generic rectangle certificate did not enforce this
+protocol's unit-square reference; the author reproduced the failure and fixed
+the new export validator before GPU execution. Seven adversarial exports now
+fail appropriately. The identity-pose objective and vertex VJP agree bitwise
+with the old mixed-precision objective; all six pose derivatives are checked.
+
+The actual257/512 GPU smoke has300gradients,347objective calls, zero failed
+trials, .465370 complete-map minimum ratio and249.5MB allocated peak. Its9.22s
+complete call is not a registration-accuracy result. The full50-job batch starts
+on freshly checked idle AI GPU5, output `joint_pose_all50_t24`; no evaluation
+landmarks enter either arm. Root confirmed and synchronized milestone a0c7bb8
+for the preceding fusion result.
+
+Read-only tail illustration `match_fusion_all50_t23/miit_tail_context.png`
+shows a concrete observation conflict: the worst MIIT7 point needs aligned
+delta(-4.42,+50.95)px, while32 nearby MA matches average(+.75,-1.41)px and
+the final residual follows that small proposal. This is not proof of an
+incorrect annotation or an excuse to drop it, and does not predict that a
+global pose change can resolve it. All107 available pair labels remain scored.
+
 ### Complement result retained globally — 2026-10-02 10:03 UTC
 
 All50SG2/fusion attempts complete in222.466s, no failures. Independent

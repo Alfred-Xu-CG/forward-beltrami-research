@@ -25,8 +25,12 @@ experiment, not an equal-functional comparison of two geometry solvers.
 
 ## 2. Variables and the exact output map
 
-Let Omega=[0,1]^2. Its fixed 257-by-257 vertex grid is triangulated with the
-same southwest-to-northeast diagonal in every cell. A vertex table Y defines
+Let Omega=[0,1]^2. Reference vertex (i,j), with row i and column j from 0 to256,
+has coordinates (j/256,i/256). Each cell uses the diagonal from (i,j) to
+(i+1,j+1); its two triangles have index triples
+((i,j),(i,j+1),(i+1,j+1)) and ((i,j),(i+1,j+1),(i+1,j)). Thus the convention
+does not depend on whether a display draws its vertical axis up or down.
+A vertex table Y defines
 the continuous piecewise affine (P1) function f_Y by barycentric interpolation
 on those SOURCE triangles. Boundary vertices equal their reference positions.
 The existing coordinated updates keep all four oriented corner determinants
