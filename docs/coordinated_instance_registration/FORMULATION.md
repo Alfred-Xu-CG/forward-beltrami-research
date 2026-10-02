@@ -3221,3 +3221,165 @@ prewarp/setup timing. Different E_A/E_R values are different functionals and
 must not be compared as matched energies. If mixed/negative, retire thisEXACT
 variant without a masking/weighting/descriptor sweep. Positive results would
 retain a hypothesis, not establish independent generalization or neural training.
+
+## 52. One exploratory frozen-affine feature-frame pilot
+
+### 52.1 Inputs, output, and the changed variable
+
+This experiment uses the SAME three known MIIT section pairs, not a new test
+cohort. Their available evaluation-center counts are 123, 107 and 98. The
+same 328 centers informed the preceding diagnostic and therefore the choice
+of this variant: this is explicitly **label-informed development**. The
+optimizer itself never reads those coordinates. Prediction precedes scoring.
+
+Let the fixed and moving intensity rasters be G_f and G_m on [0,1]^2, with
+pixel centers ((j+1/2)/W,(i+1/2)/H). Let T_A(p)=Ap+b be the original frozen,
+positive-determinant, image-derived affine initialization. Let f_Y be the
+residual continuous P1 map on the fixed 257-by-257 source triangulation,
+using the a-c diagonal in every cell and an identity rectangle boundary.
+The exported image map remains F_Y(q)=T_A(f_Y(q)). There are 66,049 actual
+control vertices, 131,072 source triangles and 262,144 protected corner
+determinants per output. No control topology or output interpolation changes.
+
+Let D be the eight-channel self-similarity descriptor defined in Section 50
+and in the source code: offset distance two raster pixels, local 3-by-3
+squared-difference averaging, followed by the stated variance normalization
+and exponential. Let B denote bilinear intensity sampling, with zero padding
+and align_corners=False. At EACH image-pyramid raster scale, compute ONCE
+
+    G_A(p_ij) = B[G_m](T_A(p_ij)),
+    D_A = D(G_A).
+
+The original image term samples D(G_m) at T_A(f_Y(q)). The new term instead
+samples D_A at f_Y(q), comparing it with D(G_f) at q. Thus it changes the
+reference frame in which moving descriptor offsets and windows are defined;
+it is not another affine application to the output map. The affine is applied
+exactly once in F_Y, in machine-correspondence residuals and in OOB checks.
+
+For fixed foreground weights w_q from the ORIGINAL fixed image, the image term
+is the weighted average of mean absolute channel differences:
+
+    I_A(Y) = sum_q w_q * mean_c |D(G_f)_c(q)-B[D_A]_c(f_Y(q))| / sum_q w_q.
+
+The weights and denominator do not depend on the predicted map. No difficult
+queries or invalid descriptor neighborhoods are removed. The remaining terms
+are unchanged: E_A=I_A+3*ARAP+.0001*shape+.1*machine_points+OOB. In particular,
+the machine points, their robust eight-canvas-pixel scale, the original affine,
+the 300-gradient budget and the full-512-objective prefix selection remain
+identical. E_A and the original E_R are DIFFERENT functions: numerical totals
+cannot be compared as a matched-energy improvement.
+
+This preparation cannot perfectly correct arbitrary nonlinear local feature
+frames. Raster resampling also changes smoothing and boundary behavior. Outside
+the original moving raster, G_A is zero, and descriptors of a constant-zero
+region can be ones; this differs from zero padding a precomputed descriptor.
+Those effects are retained and disclosed, not repaired after seeing results.
+
+### 52.2 Geometry, gradients, support, and numerical precision
+
+Both optimizers retain their original safe operators. Analytic entry alternates
+x/y over coefficient levels 17,33,65,129,257; F2 uses its original two-cycle
+schedule and explicit .95 floor reserve. Geometry is float64, intensities,
+features and normalized feature-sampling grids are float32. Each call executes
+300 gradient evaluations, 310 trials and 332 objective calls, with zero failed
+trials. All six actual outputs pass the boundary, original-affine and strict
+eta=.001 four-corner checks; the minimum observed ratio is .2280698108.
+Gradient differentiation goes through descriptor sampling and the existing
+safe proposal operator, not through a trainable affine or the whole optimizer.
+
+Support metadata are setup-time REPORTS, not a new mask. For each undeformed
+pixel-center query p, include the bilinear descriptor footprint plus the offset
+two and pooling radius one, i.e. indices floor(R*p-.5)-3 through ceil(R*p-.5)+3.
+An aligned footprint is reported supported if it lies inside the aligned raster
+and all its affine-mapped extremal pixel centers have moving bilinear support
+inside the original raster. Affine extrema bound the full rectangular footprint.
+Define full-domain fraction as the mean of these Boolean flags, and foreground
+fraction as their ORIGINAL fixed-mask-weighted mean. Flags use nominal float64
+coordinates; they do not certify exact float32 accesses near rounding thresholds
+and do not describe later deformed queries f_Y(q).
+
+| Pair | Aligned foreground support at raster sides 32 / 64 / 128 / 256 / 512 |
+|---|---|
+| 2-to-3 | .525407 / .730078 / .819268 / .852397 / .867635 |
+| 7-to-8 | .492489 / .689484 / .791897 / .828407 / .844044 |
+| 10-to-11 | .677672 / .857679 / .970348 / .997261 / 1.000000 |
+
+At side 512, aligned full-domain fractions are .797020, .796810 and .884811.
+The corresponding original-frame foreground fractions are .871497, .848084
+and 1.000000. Every original mask weight remains active regardless of support.
+The low coarse-level support is a limitation of this exact variant, not a
+license to add a support-mask variant or shrink the evaluation denominator.
+
+### 52.3 Actual registration measurements
+
+For each available anatomical center, TRE is the Euclidean error between the
+predicted and annotated moving positions, in the saved 512-canvas pixel frame.
+The reported mean and p90 are computed WITHIN each pair, and aggregate scores
+are unweighted averages over the three pairs. Missing (+inf,+inf) annotation
+IDs are declared unavailable before prediction scoring, identically for all
+methods; all available 123/107/98 IDs remain. Physical micrometers and official
+challenge performance are not inferred from these pixel scores.
+
+| Pair | Original analytic mean / p90 | Pilot analytic mean / p90 | Original F2 mean / p90 | Pilot F2 mean / p90 |
+|---|---:|---:|---:|---:|
+| 2-to-3 | 3.552917 / 6.222618 | 2.932138 / 5.454812 | 3.567807 / 6.215242 | 2.953446 / 5.558875 |
+| 7-to-8 | 3.265901 / 4.932224 | 3.267212 / 4.879342 | 3.250616 / 4.890629 | 3.264067 / 4.873610 |
+| 10-to-11 | 4.873803 / 7.713744 | 4.446906 / 7.389719 | 5.074458 / 8.039234 | 4.445470 / 7.396343 |
+| Mean of pairs | 3.897540 / 6.289529 | 3.548752 / 5.907957 | 3.964294 / 6.381702 | 3.554328 / 5.942943 |
+
+Native DHR is an unchanged archived reference, NOT rerun: aggregate mean/p90
+4.050615/7.181205. It still has the better 7-to-8 p90, 4.649195. The pilot
+analytic maxima are 13.871725, 53.026547 and 30.385543 pixels; the first and
+third exceed DHR's 13.553944 and 28.963421. On 7-to-8 analytic mean worsens
+by .001311 and maximum worsens from 52.713426 to 53.026547. F2 mean worsens
+by .013451. These harms remain visible despite better aggregate means/tails.
+Relative to the original maps, 120/328 analytic and 118/328 F2 individual errors
+worsen. The largest analytic harm is 10-to-11 Pt49, .286251 to 2.662848 pixels;
+the largest F2 harm is Pt67, 3.278195 to 5.960927. Labels are not patients.
+
+### 52.4 Cost and decision
+
+AI GPU 6 was freshly checked idle before launch (RTX A6000). Single serial
+complete optimizer-call times are analytic 5.8402/4.0573/4.0531 seconds and
+F2 13.4096/12.4549/13.5548 seconds. They include image loading, per-scale
+prewarp/descriptor/support construction, all optimization and output checks,
+but do NOT repeat the already available initialization or machine matching.
+Feature-setup times are .4652/.1985/.1959 seconds for analytic and approximately
+.196-.200 for F2; first-call setup differences are not a matched speed estimate.
+Allocated CUDA peaks are analytic 218.87-222.88 MiB and F2 479.30-480.34 MiB.
+They retain the application's post-feature reset scope, not whole-process RAM,
+driver memory, cold compilation or a newly trained encoder's memory. No warm
+paired speedup claim is made from these six serial calls.
+
+Independent source review found two pilot-wrapper defects BEFORE real launch:
+trusting a claimed certificate without checking the actual eta floor, and
+nonfinite diagnostic serialization aborting later cases. Both were fixed and
+regression-tested. Focused root tests: 40 passed; independent wrapper plus
+original-transfer tests: 23 passed. Original/default scientific outputs remain
+bitwise unchanged in independent pre-change comparisons. Independent actual
+audit checks all 1,572,864 saved corners and all boundaries, original float32
+affine factors, 300/310/332/0 budgets and correct E_A prefix selection. A
+separate literal CSV/native half-pixel transform and generic triangle-affine
+solve reproduce all 328 errors to 9.63e-13 pixels and summaries to 4.83e-13.
+Enumerating all 49 footprint pixels reproduces all 15 scale/support summaries
+exactly. Serialized configs additionally materialize the unchanged diagnostics
+default `existing`, absent in older reports; this is not a mode change.
+Independent NumPy/PIL intensity preparation, eight-offset descriptors and
+manual float32-grid bilinear lookup reproduce initial/final image costs to
+4.47e-8; original-coordinate OOB differences are at most 1.08e-19. Thus actual
+dispatch is checked numerically, not only through metadata.
+
+The archived six reports contain a stale loader metadata flag saying no affine
+feature prewarp. Their explicit mind_frame and per-resolution records correctly
+show shared_affine execution. A subsequent METADATA-ONLY code correction sets
+that feature flag false and separately records that the raw loader raster stays
+unwarped. Archived reports are not silently rewritten or the computations rerun.
+
+Decision under the predeclared mixed/negative mean/tail/worst-harm criterion:
+**retire this EXACT variant from main-line adoption**. Retain its positive
+aggregate findings and the broader feature-frame hypothesis as research evidence;
+do not change the success criterion after seeing them or launch neighboring
+mask/weight/descriptor variants. It is not a new clinical/generalization result,
+an untouched confirmation, or a learned image-to-map network. Data are in
+outputs/coordinated_instance_registration/miit_shared_affine_pilot_t17, with
+the unchanged original cohort in its sibling miit_three_rotations_t153.

@@ -2,7 +2,7 @@
 
 This is a working synthesis, NOT the final24-hour review. The authorized window
 started2026-10-01 11:26:23UTC and ends2026-10-02 11:26:23UTC. Conclusions below
-describe evidence available aroundT+16h and will be revised after later checks.
+describe evidence available around T+17h and will be revised after later checks.
 The detailed derivations and experiment definitions are in FORMULATION.md;
 chronology and negative interventions are in PROGRESS.md. This report introduces
 the main objects without requiring knowledge of those earlier discussions.
@@ -376,6 +376,23 @@ margin changes-.002027to+.008449, but7-to8's mean margin gets worse. All
 nominal support flags are valid, and an independent implementation reproduces
 every ranking sign. This is weak/mixed representation evidence, not a registration
 improvement. It is not a true-neighborhood ground-truth experiment.
-One optional six-configuration pilot is being prepared; it will be explicitly
-label-informed development because these same IDs influenced choosing it.
-The original transport recipe remains primary. See FORMULATION51.
+The one six-configuration pilot is now complete and independently checked.
+Analytic aggregate mean/p90 improves from 3.897540/6.289529 to
+3.548752/5.907957 canvas pixels; F2 changes from 3.964294/6.381702 to
+3.554328/5.942943. However, BOTH methods worsen 7-to-8 mean, whose maximum
+stays around 53 pixels; 120/328 analytic and 118/328 F2 individual errors worsen.
+Under the predeclared mixed-result condition the EXACT variant is retired from
+main-line adoption, while its positive aggregate evidence is retained. These
+same labels influenced choosing it: no untouched confirmation is claimed.
+All six 257-square outputs pass strict topology checks, minimum corner ratio
+.228070. Serial optimizer calls are about 4.05-5.84 seconds analytic and
+12.45-13.55 seconds F2, with allocated peaks about 219-223 and 479-480 MiB;
+no paired speed claim follows. See FORMULATION52 for definitions, support
+limitations, all pair scores and the archived metadata correction.
+
+The next bounded diagnostic is explicitly a manual-label ORACLE, not registration:
+fit ALL 107 available 7-to-8 centers with the same fixed-boundary/affine/257-square
+P1 class and exact safe operator, starting from the archived original map.
+It tests simultaneous sparse representational capacity, which individual
+affine-range inclusion cannot establish. Its map may not be used as production
+initialization or a training teacher. The 24-hour goal remains active.

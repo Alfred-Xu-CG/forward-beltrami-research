@@ -2406,3 +2406,40 @@ trajectory selfcontained figure andexactquarterturn probe; currentfeatureprobe
 milestone follows. Buildernowowns ONLYminimaloptional shared_affine Evidence
 path+focusedtests; rootwillown sixexploratoryconfigs/remotejobs. No objective
 pilot hasstarted yet andoriginaldefault/results haveNOTchanged.
+
+### T+17h: exploratory frame pilot completed; next capacity question
+
+The six shared-affine-frame runs completed with 300 gradients, 310 trials,
+332 objective calls and no failed trials each. Aggregate mean/p90 TRE improve,
+but both methods worsen the 7-to-8 mean; its worst error remains approximately
+53 canvas pixels. The predeclared mixed-result condition therefore retires this
+EXACT variant from main-line adoption. Positive aggregate findings are retained,
+not hidden or reclassified as an independent confirmation. Original-frame
+results remain primary. A metadata-only fix distinguishes the unwarped loader
+raster from the affine-prepared descriptor; original archived reports retain
+their stale preprocessing flag and must be read with this explicit correction.
+
+Research card — one labelled sparse-capacity witness, NOT registration:
+Question: can the actual fixed 257-by-257, fixed-boundary, P1-ac, four-corner
+eta=.001 class simultaneously fit ALL 107 available anatomical centers in 7-to-8?
+Individual targets being inside the affine output range does not answer this.
+Start from the archived original analytic map; freeze its original A and b.
+For native annotations converted using the saved pixel-center canvas layout,
+minimize J(Y)=(1/107) sum_k ||512*(A*f_Y(q_k)+b-y_k)||^2.
+Use the existing analytic safe operator, 17/33/65/129/257 raw proposal levels,
+x then y at each level, 30 Adam gradients per stage: exactly 300 gradients.
+No image or landmark term changes in production; this separate oracle consumes
+manual labels explicitly and may never become an initializer or teacher.
+Assumptions: annotation IDs/frame are meaningful; frozen boundary and affine
+are retained; actual saved four-corner ratios remain strictly above eta.
+Smallest decisive test: identity/exact small target and gradient fixtures,
+then this ONE real labelled fit. Report every point, mean/p90/max, distortion,
+displacement and unchanged ORIGINAL image objective components afterward.
+A valid witness with every error <=1 canvas pixel proves only simultaneous
+sparse capacity at these centers. If original E1 also falls, it is an observed
+same-objective optimization opportunity; if E1 rises, it quantifies this
+witness's anatomical-fit cost, not unavoidable incompatibility of all good maps.
+Falsifier/stop: after the one fixed budget, failure to fit is inconclusive;
+do not infer impossibility or sweep mesh, boundary, weights or optimizer budgets.
+Prior work: the repository's analytic coordinated update and P1 evaluation;
+this is a diagnostic application, not a new registration or approximation theorem.

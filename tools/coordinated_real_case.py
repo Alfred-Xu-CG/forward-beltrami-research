@@ -54,7 +54,7 @@ def require_nested_fine_margin(vertices,reference_corners,minimum_jacobian,conte
 class Evidence:
     """Fixed mask, original evidence, and explicitly penalized out-of-bounds."""
 
-    def __init__(self, fixed, moving, matrix, offset, loss, strain_weight, oob_weight, shape_weight=0., fixed_mask=None, interpolation="q1", matches=None, match_weight=0., strain_model="displacement_gradient", mind_order="transport", joint_prior_backend="eager", image_weight=1.):
+    def __init__(self, fixed, moving, matrix, offset, loss, strain_weight, oob_weight, shape_weight=0., fixed_mask=None, interpolation="q1", matches=None, match_weight=0., strain_model="displacement_gradient", mind_order="transport", joint_prior_backend="eager", image_weight=1., mind_frame="original"):
         self.fixed, self.moving = fixed, moving
         self.matrix, self.offset = matrix, offset
         self.loss, self.strain_weight, self.oob_weight = loss, strain_weight, oob_weight
@@ -83,6 +83,18 @@ class Evidence:
         if mind_order not in ("transport","after_warp") or (mind_order=="after_warp" and loss!="mind"):
             raise ValueError("after_warp descriptor order requires MIND; otherwise use transport")
         self.mind_order=mind_order
+        if mind_frame not in ("original","shared_affine"):
+            raise ValueError("mind_frame must be original or shared_affine")
+        if mind_frame=="shared_affine" and (loss!="mind" or mind_order!="transport"
+                or matrix.requires_grad or offset.requires_grad):
+            raise ValueError("shared_affine requires transport MIND and a frozen affine")
+        self.mind_frame=mind_frame
+        self.mind_frame_metadata=None
+        if mind_frame=="shared_affine":
+            # Frozen setup features and original-coordinate OOB/points must use
+            # the SAME lifetime constant, even if a caller mutates its inputs.
+            self.matrix=matrix.double().clone()
+            self.offset=offset.double().clone()
         self.fixed_p1_evaluator=None
         self.nested_priors=None
         self.mask = (fixed > .04).to(fixed.dtype) if fixed_mask is None else fixed_mask.to(fixed)
@@ -93,7 +105,12 @@ class Evidence:
         self.denominator = self.mask.sum()
         if loss == "mind":
             self.fixed_feature, _ = self_similarity(fixed)
-            self.moving_feature = moving if mind_order=="after_warp" else self_similarity(moving)[0]
+            if mind_frame=="shared_affine":
+                from tools.coordinated_shared_affine_features import prepare_shared_affine_intensity
+                prepared,self.mind_frame_metadata=prepare_shared_affine_intensity(moving,self.matrix,self.offset,self.mask)
+                self.moving_feature=self_similarity(prepared)[0]
+            else:
+                self.moving_feature = moving if mind_order=="after_warp" else self_similarity(moving)[0]
         else:
             self.fixed_feature, self.moving_feature = fixed, moving
 
@@ -131,8 +148,11 @@ class Evidence:
             query = p1_map_at_pixel_centers(vertices,*self.fixed.shape[-2:],diagonal=self.interpolation[-2:])
         else:
             query = self.fixed_p1_evaluator(vertices)
+        if self.mind_frame=="shared_affine":query=query.double()
+        residual_query=query if self.mind_frame=="shared_affine" else None
         query = query @ self.matrix.T + self.offset
-        warped = F.grid_sample(self.moving_feature, (2 * query - 1).to(self.moving_feature.dtype),
+        image_query=residual_query if self.mind_frame=="shared_affine" else query
+        warped = F.grid_sample(self.moving_feature, (2 * image_query - 1).to(self.moving_feature.dtype),
                                mode="bilinear", padding_mode="zeros", align_corners=False)
         if self.loss == "mind":
             if self.mind_order=="after_warp":
@@ -362,6 +382,15 @@ def optimize(args, accepted_stage_callback=None):
             or getattr(args,"interpolation","q1")!="p1_ac" or args.precision!="float64"
             or args.loss!="mind" or mind_order!="transport" or image_weight!=1.):
         raise ValueError("packed diagnostics currently require fixed global analytic stage_cache, P1-ac float64 transport MIND/E1, without proposal variants")
+    mind_frame=getattr(args,"mind_frame","original")
+    if mind_frame not in ("original","shared_affine"):
+        raise ValueError("mind_frame must be original or shared_affine")
+    if mind_frame=="shared_affine" and (args.method not in ("analytic","f2") or nested or joint
+            or fine_patch_cells or filter_steps or capture_prefix!="none" or trial_diagnostics!="existing"
+            or args.loss!="mind" or mind_order!="transport" or image_weight!=1.
+            or args.precision!="float64" or getattr(args,"image_precision","same")!="float32"
+            or getattr(args,"interpolation","q1")!="p1_ac"):
+        raise ValueError("exploratory shared_affine needs fixed alternating analytic/F2, P1ac float64 geometry/float32 transport MIND/E1, without proposal/packed variants")
     device = torch.device(args.device)
     torch.set_num_threads(args.threads)
     dtype = torch.float64 if args.precision == "float64" else torch.float32
@@ -375,6 +404,12 @@ def optimize(args, accepted_stage_callback=None):
     fixed,moving,fixed_mask,preprocessing_metadata=load_registration_evidence(
         args.fixed,args.moving,args.image_side,preprocessing=getattr(args,"preprocessing","raw_inverted"),
         device=device,dtype=image_dtype)
+    if mind_frame=="shared_affine":
+        preprocessing_metadata={**preprocessing_metadata,
+            "original_moving_features_no_affine_prewarp":False,
+            "original_moving_raster_no_affine_prewarp":True,
+            "moving_descriptor_frame":"shared_affine",
+            "moving_descriptor_prewarp_scope":"once per raster scale; construction/support metadata in mind_frame_by_resolution"}
     reference = identity_vertices(args.grid_side, device=device).to(dtype)
     reference_corners = q1_corner_determinants(reference.double())
     current = (identity_vertices(args.levels[0],device=device).to(dtype)
@@ -396,7 +431,7 @@ def optimize(args, accepted_stage_callback=None):
     evidence = Evidence(fixed, moving, torch.from_numpy(a).to(device=device, dtype=dtype),
                         torch.from_numpy(b).to(device=device, dtype=dtype), args.loss,
                         args.strain_weight, args.oob_weight, getattr(args,"shape_weight",0.),
-                        fixed_mask=fixed_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model,mind_order=mind_order,joint_prior_backend=joint_prior_backend,image_weight=image_weight)
+                        fixed_mask=fixed_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model,mind_order=mind_order,joint_prior_backend=joint_prior_backend,image_weight=image_weight,mind_frame=mind_frame)
     evidence_by_resolution={args.image_side:evidence}
     for image_resolution in sorted(set(image_levels)):
         if image_resolution not in evidence_by_resolution:
@@ -405,7 +440,7 @@ def optimize(args, accepted_stage_callback=None):
             reduced_mask=F.interpolate(evidence.mask,size=(image_resolution,image_resolution),mode="area")
             evidence_by_resolution[image_resolution]=Evidence(reduced_fixed,reduced_moving,evidence.matrix,
                 evidence.offset,args.loss,args.strain_weight,args.oob_weight,getattr(args,"shape_weight",0.),
-                reduced_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model,mind_order=mind_order,image_weight=image_weight)
+                reduced_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model,mind_order=mind_order,image_weight=image_weight,mind_frame=mind_frame)
             # The prior sees the SAME control shape, not the raster resolution.
             # Share its callable, never an energy/graph tied to a current map.
             evidence_by_resolution[image_resolution].joint_prior_backend=joint_prior_backend
@@ -722,7 +757,7 @@ def optimize(args, accepted_stage_callback=None):
                                  "match_p1_sampling":match_p1_sampling,
                                  "inner_steps_by_level":inner_steps_by_level,
                                  "image_weight":image_weight,"capture_prefix":capture_prefix,
-                                 "trial_diagnostics":trial_diagnostics},
+                                 "trial_diagnostics":trial_diagnostics,"mind_frame":mind_frame},
                   representation=evidence.interpolation+" residual then frozen positive affine; exact declared interpretation",
                   initial=initial_record, final=dict(total=float(final), **{k: float(v) for k,v in parts.items()}),
                   control_vertices=args.grid_side**2, cells=(args.grid_side-1)**2,
@@ -746,6 +781,8 @@ def optimize(args, accepted_stage_callback=None):
                   joint_prior_backend=joint_prior_backend,
                   f2_floor_safety_fraction=f2_floor_safety_fraction,
                   mind_order=mind_order if args.loss=="mind" else None,
+                  mind_frame=mind_frame,
+                  mind_frame_by_resolution={str(side):item.mind_frame_metadata for side,item in evidence_by_resolution.items()} if mind_frame=="shared_affine" else None,
                   image_levels=image_levels,
                   image_weight=image_weight,
                   capture_prefix=capture_prefix,capture_record=capture_record,
@@ -836,6 +873,8 @@ def main():
                    help="one finite-displacement existing-MIND proposal, strict analytic x/y attempts then unchanged optimizer; extra search/calls counted")
     p.add_argument("--trial-diagnostics",choices=("existing","packed"),default="existing",
                    help="optional one detached trial logging transfer; fixed global analytic stage_cache/P1-ac only")
+    p.add_argument("--mind-frame",choices=("original","shared_affine"),default="original",
+                   help="exploratory frozen affine intensity prewarp before MIND; original remains primary/default")
     p.add_argument("--match-p1-sampling",choices=("existing","frozen"),default="existing",
                    help="optional immutable P1 machine-point query cache; fixed control hierarchy only")
     p.add_argument("--match-robust-scale",type=float,default=8.,help="pseudohuber error scale in full moving-canvas pixels")
