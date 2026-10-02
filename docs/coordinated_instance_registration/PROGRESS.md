@@ -7,6 +7,73 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### Engineering transfer independently checked — 2026-10-02 15:20 UTC
+
+All56 predeclared fusion-dispatch calls completed. Independent reconstruction
+passes all56 geometry/objective exports,4,886 originalCSV errors,364 saved-map
+contrasts and timing arithmetic. Warm A/B median seconds: MIIT5.009888/2.995192;
+HE-Ki676.137639/4.589150; Histo5.937168/4.332392; kidney5.407580/4.300306.
+All12 ABBA-group ratios favor B (range1.049807--1.757174), but the first compiled
+MIIT call costs15.147076s versus original5.191018s. No cold single-use win or
+full-pipeline speedup is claimed. Wholeworkload298.493039s includes separate
+probes7.479081s. Full-Evidence identity/incumbent five-level probes pass fixed
+value/VJP tolerances; maxima6.106e-16/1.155e-14. Histo accumulated map differences
+crossbackend6.87350e-5 versus samebackend6.87034e-5 unit exclude a bitwise claim;
+corresponding landmark-error differences are only2.174e-7/2.148e-7 canvas pixels.
+
+Warmallocated211.6--212.3MB A versus194.8--196.5MB B; coldcompiled382.54MB;
+reserved490.73MB reflects allocator reuse, not summed percall usage. GPU5 is
+released after exit. All117 primary result files and log are on D; caches stay
+remote. Root read bothnewhelpers fully and fresh focused25tests pass24.65s.
+The independent injected failure path caught and fixed a wrapper-only duplicate
+status-keyword bug before launch; all56 dispositions now survive outer exceptions.
+One checker-only bitwise anchor/step-zero assumption was changed to RECORD its
+1.110e-16 discrepancy, not to relax any production equivalence bound. Final
+review awaits the separately justified missing current-fusion F2 control.
+
+### Closing the missing current-fusion F2 control — 2026-10-02 15:17 UTC
+
+Question: does the retained coordinated optimizer provide a useful endpoint
+accuracy/cost tradeoff versus the existing F2 optimizer when BOTH use the current
+SG+MA fusion evidence? The historical matched F2 comparison used SG1. Compiler
+transfer against our own implementation cannot answer this comparison. Astra
+xhigh approved this bounded missing control after the56-call engineering run,
+not a new optimizer hypothesis or an attempt to fill the remaining window.
+
+Before execution fix all25 original development directions and50 fresh calls.
+Within each case run analytic/F2, reversing that order on alternating case indices.
+No extra warmup, rematching, parameter tuning, accuracy-based retry or per-case
+winner selection. Both start identity with the same saved positive affine,
+accepted512 images, frozen fused point JSON, mask, shared-affine features, exact
+fusion objective, fixed257/P1-AC output, .001 corner floor, physical learning-rate
+calibration and best-full selector. Both use eager priors and existing samplers;
+the newly benchmarked compiler package is excluded from this comparison.
+
+Analytic uses one cycle of five levels, horizontal/vertical30-step stages. F2
+uses its established two cycles of five30-step two-component stages, eight-cell
+staggered patches, gain1, original.75 geometry safety and corrected.95 strict
+floor reserve. Both nominally have300 gradients, ten stages,310 trials and332
+full objective calls. Their continuation ordering, coefficient dimensionality,
+internal patch passes and compute per gradient differ. This compares two existing
+optimizer recipes, NOT only one decoder, equal wall-time work, or a complete
+time-to-accuracy curve. One paired timing per case is descriptive rather than
+an ABBA repeated-speed estimate.
+
+The current analytic recipe retains its cached scalar geometry operator
+(`geometry_backend=stage_cache`). F2 must use its established `existing` geometry
+backend: the core correctly rejects the scalar-only cache for F2. This additional
+configuration difference is explicit and approved; no validation is bypassed.
+
+The falsifying outcome is that coordinated optimization loses its useful
+accuracy/cost tradeoff under the now-common evidence. Preserve failed calls,
+partial budgets, actual corner certificates, complete synchronized call time
+and reset-aware allocated/reserved peaks. Only after all50 are terminal, score
+every available original annotation ID and compare mean/p90/maximum, final full
+objective and cost by specimen. Independent actual-output checking precedes any
+conclusion. Reuse existing solvers and scoring conventions; no core edits or
+additional mechanism. Budget about30minutes including checking; if prerequisites
+fail, leave the missing control explicit rather than extending or weakening it.
+
 ### Bounded transfer of existing exact-functional acceleration — 2026-10-02 14:47 UTC
 
 New measured bottleneck: optimization/export consumes136.1803 of149.5177 seconds

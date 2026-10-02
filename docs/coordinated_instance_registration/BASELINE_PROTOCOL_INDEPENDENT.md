@@ -1769,3 +1769,56 @@ compiled call, equivalence probe and later warm call. They respectively retain
 terminal and an existing output remains byte-for-byte unchanged. This is a
 source/lifecycle PASS for the bounded experiment, not approval of a speed or
 accuracy result. Numerical transfer and actual56 saved maps remain to check.
+
+### Actual four-case engineering transfer: independent closure
+
+The completed `fusion_dispatch4_t31` artifact contains56 successful calls and
+allfour passing actual-Inductor probes. The independent postrun checker reads
+every saved257-square float64 P1-ac map, all budgets/stage traces, complete
+initial/final objectives, original CSV coordinates and364 pairwise map contrasts.
+All56 original affines and identity boundaries agree; actual minimum corner
+ratio is `.00611689017`, with valid saved binary-sign certificates. Literal
+NumPy objective reconstruction differs by at most `2.93990515e-8`, attributable
+to float32 image computation; all4,886 available per-run CSV errors are retained.
+No label was read before all56 slots were terminal.
+
+| Fixed development case | Eager warm median s | Compiled+prepared warm median s | Ratio |
+|---|---:|---:|---:|
+| MIIT2->3 |5.009888|2.995192|1.672643|
+| HE->Ki67 |6.137639|4.589150|1.337424|
+| HistoReg |5.937168|4.332392|1.370413|
+| Kidney |5.407580|4.300306|1.257487|
+
+Each median uses six complete calls. All12 paired A/B/B/A group ratios exceed1,
+range1.049807--1.757174; this is repeated evidence for this dispatch PACKAGE
+on four fixed development tasks, not separate attribution to either switch.
+The first fresh-local-cache call costs5.191018s eager versus15.147076s compiled.
+Subsequent first cases reuse those caches. No pure compiler-cost, independent
+cold-launch distribution, measured amortization crossover or raw-WSI pipeline
+speedup follows. Matcher extraction and affine/input preparation are excluded.
+The complete workload is298.493039s, including287.062995s application calls and
+7.479081s equivalence wrappers. Per-call maximum allocated/reserved peaks over
+the workload are382,542,336/490,733,568 bytes; allocator reservations can persist
+between calls and are not a method-independent physical-memory requirement.
+
+At identical identity/incumbent states on allfive levels, recorded cross-arm
+maximum component/VJP differences are `6.106e-16`/`1.155e-14`; same-arm repeats
+are0/`1.735e-18`. The original fixed probe bounds pass unchanged. Actual optimized
+maps are NOT bitwise equal: Histo's largest warm cross-arm coordinate difference
+is `6.87350e-5` unit, versus `6.87034e-5` for same-arm repeats. Its largest
+individual landmark-TRE differences are `2.17369e-7` versus `2.14765e-7` pixels.
+Other three cross-arm map differences are at most `1.643e-9` unit. These measured
+repetitions support numerical transfer at observed accuracy, not an exact-map
+identity theorem. Historical GPU gradients/clocks were not replayed locally;
+the checker audits their source and records, and independently recomputes saved
+map geometry, full objectives, annotations and timing arithmetic.
+
+One checker-only adjustment is disclosed: an inherited eager-only trace check
+incorrectly required separately evaluated anchor and step0 totals to be bitwise
+equal. Compiled requires-grad paths differ by at most `1.110e-16`; the checker
+now records that difference and verifies it below `1e-12`. This changes no
+production tolerance or run. The result establishes an engineering gain, not
+new anatomy, a trained encoder, or superiority to F1/F2. No default is switched.
+Reproducer and compact audit are the existing check_sources helper
+`independent_fusion_dispatch_postrun_20261002.py` and the run's
+`independent_check.json`.

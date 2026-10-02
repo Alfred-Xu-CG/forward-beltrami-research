@@ -12,6 +12,60 @@ For the current result and its limits, start with
 current mathematical objects; sections 6--7 preserve dated development evidence
 and are not a list of all simultaneously active choices.
 
+### Same-functional engineering transfer: faster warm calls, slower first compilation
+
+On four predeclared development cases, compare A: original eager ARAP/shape
+priors and point interpolation; B: existing Inductor-compiled priors plus
+prepared fixed-source P1 point indices/weights. No objective coefficient,
+input, initializer, update schedule or output selector changes. Each call still
+solves the full257-control/512-query problem from identity with300 gradients.
+This tests the combined dispatch package, not the contribution of each switch.
+
+First A/B calls were timed before numerical probes. Only the first MIIT case
+encountered new empty task-local Inductor/Triton caches; subsequent cases reused
+them. Then three A/B/B/A groups per case gave six warm calls per backend.
+All56 calls completed with zero failed trials. Complete-call time includes
+loading, feature construction, point preparation, optimization, export and
+geometric checking, but no matcher inference or initial-affine estimation.
+
+| Case identifier | Warm A median seconds | Warm B median seconds | Ratio of medians A/B | Three paired-group ratios, range |
+|---|---:|---:|---:|---:|
+| miit_2_to_3 | 5.009888 | 2.995192 | 1.672643 | 1.271568--1.757174 |
+| he_to_ki67 | 6.137639 | 4.589150 | 1.337424 | 1.270983--1.426679 |
+| histo | 5.937168 | 4.332392 | 1.370413 | 1.225457--1.455535 |
+| rat_kidney | 5.407580 | 4.300306 | 1.257487 | 1.049807--1.327614 |
+
+The first fresh-cache MIIT call costs5.191018s for A and15.147076s for B.
+Thus compilation can lose on a single use; warm results cannot replace this
+cost. The difference includes runtime/cache effects, not an isolated compiler
+timer. The entire56-call workload costs298.493039s, including7.479081s of
+separate probes and comparison/report overhead. All12 paired A/B/B/A ratios
+favor B, but variation is material. No raw-WSI or full conditional-pipeline
+speedup, amortization crossover, or speed advantage over a different optimizer
+is measured by this experiment. No production default was changed.
+
+The probes evaluate every full objective component and the full vertex gradient
+at both identity and the saved deformed incumbent, at allfive raster levels.
+Maximum cross-backend discrepancies are6.106e-16 in values and1.155e-14 in
+gradient entries; all comparisons meet the fixed predeclared tolerances.
+This is numerical evidence at those states, not a global error theorem.
+End-of-optimization maps are not bitwise identical: Histo's warm cross-backend
+maximum component difference is6.87350e-5 unit coordinates, versus6.87034e-5
+between repeats of the SAME backend. Maximum individual landmark-error changes
+are2.17369e-7 and2.14765e-7 canvas pixels respectively. The otherthree cases'
+cross-backend map differences are below1.65e-9. Small local evaluation differences
+can therefore coexist with larger accumulated map-repeat differences.
+
+Independent reconstruction verifies all56 saved P1 maps, fixed boundaries,
+affines, full objectives,4,886 original-CSV errors and364 pairwise map contrasts;
+the minimum saved normalized corner is.00611689, above.001. Warm allocated peaks
+are211.6--212.3MB for A and194.8--196.5MB for B. The first compiled call reaches
+382,542,336 allocated bytes. Reserved peak490,733,568 bytes persists through
+allocator caching and is not additional memory to sum across calls. These are
+reset-aware PyTorch peaks, not CPU memory or total board use. Source, tests,
+allmaps/reports/probes and independent results are under
+`fusion_dispatch4_t31/`; compiler caches remain on the remote host.
+
 ### Fixed-recipe reverse-direction robustness: small, mixed benefit
 
 The three MIIT tasks were reversed to moving3/fixed2, moving8/fixed7, and
