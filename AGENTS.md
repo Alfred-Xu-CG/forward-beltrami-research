@@ -1,5 +1,31 @@
 # AGENTS.md — Coordinated Instance Registration
 
+## User-approved restart and extension — 2026-10-02
+
+This section overrides older model routing and duration text, including the
+archived phases. The user resumed the paused goal and added FIVE hours to the
+original window: start 2026-10-01 11:26:23 UTC, extended deadline
+2026-10-02 16:26:23 UTC (29 hours total; 2026-10-03 00:26:23 Asia/Shanghai).
+Do not restart the old clock or silently add agent time to elapsed wall time.
+
+ALL newly launched or resumed research agents must actually use `gpt-6-astra`.
+Use medium for bounded extraction/routine implementation, high for protocol,
+numerical implementation and independent checking, and xhigh for the present
+unresolved optimizer redesign. Max requires a specific additional justification.
+The coordinator cannot change its own runtime model through a role prompt; do
+not claim that it did. Old Sol agents must not resume under this instruction.
+
+The restart priority is: define comparison methods and metrics; verify the
+actual preprocessing/evaluation against original methods; then implement and
+measure a justified optimizer improvement on real images. Separate matched
+mechanism ablations from full native-pipeline comparisons. A 512-pixel reduced
+configuration is not automatically a faithful RegWSI reproduction. Keep this
+review bounded and actionable; do not substitute further oracle diagnostics or
+an audit framework for real registration work. The pending nullspace oracle is
+deferred. Existing negative results remain evidence, not permanent prohibitions
+on scientifically justified redesign. Report accuracy/cost tradeoffs and paired
+case results; tiny per-case changes alone do not justify a universal rejection.
+
 ## Current objective
 
 Read `docs/coordinated_instance_registration/PLAN.md` as the current project plan.
@@ -53,11 +79,9 @@ continue/change/pause decision. No meeting-style report is required.
 
 ## Models and delegation
 
-Use only `gpt-6.1-sol` and `gpt-6-astra` when actually supported by this runtime.
-Coordinator and routine implementation: Sol medium.
-Mechanical extraction: Sol low. Complex implementation/debug: Sol high.
-New load-bearing geometry and ambiguous scientific pivots: Astra high.
-Use Astra xhigh only for a specific unresolved decision; max is exceptional.
+Use only `gpt-6-astra` for delegated research work under the current restart.
+Routine implementation/extraction: medium; protocol and complex implementation:
+high; the current unresolved optimizer redesign: xhigh; max is exceptional.
 Verify the actual role configuration once. Never pretend that a prompt switched
 the model or created an independent agent. Do not silently use another family.
 
@@ -90,7 +114,7 @@ manual landmarks. Include all eligible failures and timeouts.
 
 ## Time, compute, and safety
 
-Use the runtime's actual goal duration; default to the PLAN's 24-hour window.
+Use the user's latest authorized duration: the extended 29-hour window above.
 Record real UTC start/deadline/end in an existing simple run record. Do not invent
 T+24 labels, add token times to wall time, sleep to fill the window, or mark an
 interrupted session complete. A Markdown file cannot extend a host's execution

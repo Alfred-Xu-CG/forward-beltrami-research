@@ -2,9 +2,49 @@
 
 Started: 2026-10-01 11:26:23 UTC (Asia/Shanghai 19:26:23).
 Initial deadline: 2026-10-02 11:26:23 UTC. Goal ACTIVE.
+Extended by the user on restart: 2026-10-02 16:26:23 UTC (29-hour total window).
 Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
+
+### Current restart decision — recorded 2026-10-02 06:18 UTC
+
+The user resumes after the SSH pause and explicitly adds five hours, with ALL
+agents Astra. Actual new agents: protocol/baselines high, optimizer redesign
+xhigh, independent protocol checker high. No old Sol worker resumed. Timing
+record and current PLAN/AGENTS updated; pending nullspace oracle deferred.
+All three research aliases respond using ClearAllForwardings=yes; AI GPUs
+0/1/5/6/7 idle at 06:21 UTC, turing/element GPU processes occupied and preserved.
+
+First material protocol finding: `coordinated_dhr_common.py` overrides native
+initialization and uses a custom512/150-iteration schedule, versus released
+fast2048/700 and standard4096/900. Previous results remain correct for their
+declared files but "native DHR" was too broad a label. Add released preset runs
+on the same original MIIT image pairs; retain shared-init reduced512 as a
+different diagnostic. Native-coordinate scoring requires checking actual
+padding/loading/resampling, not just reusing the square512 assumption.
+
+Research card — simultaneous multiscale image objective (image-only):
+Observed failure: on existing MIIT trajectories finer E512 decreases while
+anatomical TRE worsens, and the original-frame descriptor is strongly affected
+by large rotations. Shared-affine features improve aggregate TRE but not the
+large tail. Tested coarse revisits, joint xy, fine budget and L-BFGS variants do
+not justify simply repeating them; low roughness alone did not predict anatomy.
+Hypothesis: discarding coarse descriptor evidence during later optimization
+and selecting by E512 loses structural constraints, even with ample capacity.
+Test ONE alternative: average normalized MIND errors at32/64/128/256/512 under
+the SAME actual map and shared-affine feature frame, at every stage. Keep
+ARAP3,shape1e-4,machine .1 and512OOB exactly once. Compare baseline and this
+objective for both A/F2, all three MIIT pairs,300 gradients, same image-only
+initialization, priors, safety, rates and output geometry. This changes the
+objective AND continuation, not a pure same-functional optimizer ablation.
+No manual labels enter optimization, calibration or stopping. Check the
+value/gradient as an explicit sum and avoid duplicated priors. Report aggregate,
+per-case and tail TRE plus extra time/memory, including deterioration; no
+automatic rejection for arbitrarily tiny single-case changes. This is an
+established multiscale-data-term idea, not a claimed new registration principle.
+
+### Original startup facts
 
 - User approved review amendments, 24h execution and idle remote compute.
 - Existing 17 transfer bundles remain preserved, unrelated untracked files.

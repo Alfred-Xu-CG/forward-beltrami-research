@@ -1,6 +1,35 @@
 # 下一轮 Goal：多尺度协同的严格保拓扑逐实例配准
 ## 从“安全但可能低效的更新”走向“能求到好配准的优化算法”
 
+## 当前执行修订：2026-10-02 恢复，延长 5 小时，全 Astra
+
+本节覆盖下文旧的模型和时间安排，其余适用的科学与安全约束保留。
+用户明确恢复目标，并在原 24 小时窗口上增加 5 小时。原始开始时间不变：
+2026-10-01 11:26:23 UTC；新截止时间 2026-10-02 16:26:23 UTC，
+即北京时间 2026-10-03 00:26:23。总窗口 29 小时，不把多 agent 时间累加。
+
+当前三位新 agent 均通过实际模型参数启动为 `gpt-6-astra`：
+
+- `astra_protocol_baselines`，high：原方法配置、数据预处理、比较方法和指标；
+- `astra_optimizer_redesign`，xhigh：当前优化的系统性诊断和一个有依据的改进；
+- `astra_independent_protocol`，high：独立检查坐标、采样、地标和评价口径。
+
+后续常规实现/提取用 Astra medium，困难数值实现和复核用 high；不恢复 Sol
+worker。协调者自身模型由客户端控制，不以文字指令冒充实际切换。
+
+先核对流程，然后改进算法，但核对必须直接改变实验决定，不能占据整个延长窗口。
+明确分开 (i) 同初始化、同证据、同目标的 A/F2 机制消融与 (ii) 原方法推荐配置的
+完整实用基线。原先 512²、共同初始化的 DHR 结果保留为受控诊断，不能自动解释为
+完整 RegWSI 的性能。主要结论使用相同病例上的解剖 TRE、尾部、失败和实际运行成本；
+图像代理目标是诊断量，拓扑为硬可行性条件。不同原生方法不必强行采用我们的损失。
+本轮仍不允许评价地标进入图像优化或停止选择。保留全部失败和开发集身份。
+
+尚未完成的 nullspace oracle 暂缓。首先检查预处理、配置和优化假设，选一个最有
+信息量的真实配准实验实际执行。旧的严格 pilot 判据及其失败不得改写，但新设计应
+报告逐病例和总体的精度—成本权衡，不把任意微小单例退化当成路线永久禁令。
+
+---
+
 **交付对象：Codex。默认窗口：24 个真实小时；若用户在启动时指定其他时长，以最新时长为准。**
 
 **仓库：** `Alfred-Xu-CG/forward-beltrami-research`。不要假设 `master` 就包含最新工作；先用当前 worktree、用户指定分支和必要的远端读取确认，禁止为追求“最新”而覆盖未提交修改。
@@ -926,5 +955,4 @@ Separate: geometry established; useful instance optimizer; evidence bottleneck;
 real-data competitiveness; formal SOTA not established. Never equate tests passed,
 wall time consumed, or a theorem alone with successful registration. Finish with
 actual results, the strongest adverse result, and at most three next actions.
-
 

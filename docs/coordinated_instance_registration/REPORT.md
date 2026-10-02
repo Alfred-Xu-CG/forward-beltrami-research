@@ -1,11 +1,27 @@
 # Coordinated registration: self-contained living research report
 
-This is a working synthesis, NOT the final24-hour review. The authorized window
-started2026-10-01 11:26:23UTC and ends2026-10-02 11:26:23UTC. Conclusions below
+This is a working synthesis, NOT the final review. The authorized window
+started2026-10-01 11:26:23UTC. On 2026-10-02 the user resumed the paused goal
+and extended the deadline by five hours to 2026-10-02 16:26:23UTC. Conclusions below
 describe evidence available around T+17h and will be revised after later checks.
 The detailed derivations and experiment definitions are in FORMULATION.md;
 chronology and negative interventions are in PROGRESS.md. This report introduces
 the main objects without requiring knowledge of those earlier discussions.
+
+### Restart correction: scope of the earlier DHR comparison
+
+The tables below retain their original measured values, but the method previously
+called "native DHR" is more accurately **DHR shared-affine reduced-512**. Its
+objective and nonrigid implementation are DHR's; its full configuration is NOT
+the released complete pipeline. `tools/coordinated_dhr_common.py` substitutes our
+supplied affine and sets a 512 raster, five levels and 30 iterations per level.
+The released fast preset uses 2048 and seven levels of 100 iterations; the
+standard preset uses 4096 and eight levels (seven times 100 plus 200). The old
+0.690-second timing excludes native image-based initialization. Thus the earlier
+comparison is useful for a shared-initialization diagnostic, not evidence of
+superiority over recommended full RegWSI/DeeperHistReg. The restart adds genuine
+released-preset runs, with native preprocessing and all configuration differences
+disclosed. Those new results are not yet available here.
 
 ## 1. What is implemented, and what is not
 
