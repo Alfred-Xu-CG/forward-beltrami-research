@@ -16,7 +16,7 @@ from tools.coordinated_miit_transfer import _finite_json,_actual_ratio
 from tools.coordinated_real_case import optimize
 
 
-def configuration(report,output,objective,*,device=None,threads=None,inputs=None,fixed_mask=None):
+def configuration(report,output,objective,*,device=None,threads=None,inputs=None,fixed_mask=None,data_term="mind"):
     values=copy.deepcopy(report["configuration"])
     if values.get("method") not in ("analytic","f2") or values.get("output_selection")!="best_full":
         raise ValueError("original analytic/F2 best-full recipe required")
@@ -25,6 +25,11 @@ def configuration(report,output,objective,*,device=None,threads=None,inputs=None
             value=Path(values[key])
             values[key]=Path(inputs)/value.name if inputs is not None else value
     values.update(output=Path(output),mind_frame="shared_affine",image_objective=objective)
+    if data_term not in ("mind","ngf"):raise ValueError("mind or ngf data term required")
+    if data_term=="ngf":
+        if objective!="continuation" or fixed_mask is not None or values.get("fixed_mask") is not None:
+            raise ValueError("NGF pilot requires original raw support and ordinary continuation")
+        values.update(loss="ngf",mind_frame="original",mind_order="transport")
     if fixed_mask is not None:
         if objective!="continuation":raise ValueError("fixed-support pilot changes support only; continuation objective required")
         values["fixed_mask"]=Path(fixed_mask)
@@ -33,9 +38,12 @@ def configuration(report,output,objective,*,device=None,threads=None,inputs=None
     return argparse.Namespace(**values)
 
 
-def run(source,output,objective,*,device=None,threads=None,inputs=None,fixed_supports=None):
+def run(source,output,objective,*,device=None,threads=None,inputs=None,fixed_supports=None,data_term="mind"):
     source=Path(source);output=Path(output)
     manifest,directory=load_manifest(source)
+    if data_term not in ("mind","ngf") or (data_term=="ngf" and
+            (objective!="continuation" or fixed_supports is not None)):
+        raise ValueError("NGF requires ordinary continuation and original raw support")
     support_paths=None
     if fixed_supports is not None:
         if objective!="continuation":raise ValueError("fixed-support pilot changes support only; continuation objective required")
@@ -75,6 +83,13 @@ def run(source,output,objective,*,device=None,threads=None,inputs=None,fixed_sup
             changed_variable="fixed support changes from original grayscale threshold to released semi-manual tissue; no moving overlap filter",
             objective_caution="ROI evidence ablation, not novel optimizer evidence; evaluation labels unchanged",
             annotation_flag_scope="annotations_read=False refers to evaluation correspondence coordinates; supplied tissue masks ARE annotations")
+    if data_term=="ngf":
+        report.update(protocol="ONE FAIR-style postwarp intensity NGF pilot",data_term="ngf",
+            shared_frame="same original affine; NGF samples original intensity ONCE then takes fixed-frame gradients",
+            changed_variable="shared-affine transported MIND replaced by squared-dot NGF of warped original intensity; same raster continuation",
+            objective_caution="different data functional and sampling order; not pure geometry/optimizer evidence",
+            ngf_edge_rule="frozen per-scale max(side/255, .1 fixed-mask mean gradient norm), fixed and initial-warped moving separately",
+            supplied_tissue_annotation=False)
     output.mkdir(parents=True);started=time.perf_counter()
     def persist():
         report["elapsed_seconds"]=time.perf_counter()-started
@@ -89,7 +104,7 @@ def run(source,output,objective,*,device=None,threads=None,inputs=None,fixed_sup
                 path=Path(old["report"]);path=path if path.is_absolute() else directory/path
                 cfg=configuration(json.loads(path.read_text(encoding="utf-8")),output/record["output"],objective,
                     device=device,threads=threads,inputs=inputs,
-                    fixed_mask=support_paths[original["name"]] if support_paths is not None else None)
+                    fixed_mask=support_paths[original["name"]] if support_paths is not None else None,data_term=data_term)
                 if cfg.image_levels!=[32,64,128,256,512] or cfg.levels!=[17,33,65,129,257]:
                     raise ValueError("declared production raster/control levels required")
                 result=optimize(cfg)
@@ -99,7 +114,7 @@ def run(source,output,objective,*,device=None,threads=None,inputs=None,fixed_sup
                     "initial","final","gradient_steps","evaluations","objective_evaluations","failed_trials",
                     "saved_binary_certificate","peak_allocated_bytes","feature_seconds","loading_seconds",
                     "serialization_seconds","certification_seconds","optimize_seconds","end_to_end_seconds",
-                    "mind_frame","image_objective","image_objective_scales","image_objective_weights")})
+                    "mind_frame","image_objective","image_objective_scales","image_objective_weights","ngf_by_resolution")})
                 record.update(clean)
                 if bad:raise ValueError("nonfinite optimizer diagnostics")
                 ratio=_actual_ratio(cfg.output)
@@ -124,10 +139,12 @@ def main():
     parser.add_argument("--image-objective",choices=("continuation","simultaneous_multiscale"),required=True)
     parser.add_argument("--inputs",type=Path,help="optional same-input directory relocation, basenames preserved")
     parser.add_argument("--fixed-supports",type=Path,help="optional prepared support.json; changes only fixed support, requires continuation")
+    parser.add_argument("--data-term",choices=("mind","ngf"),default="mind",
+        help="one NGF substitution with original raw support/continuation; default keeps previous pilots")
     parser.add_argument("--device",choices=("cpu","cuda"),default="cuda")
     parser.add_argument("--threads",type=int,default=2)
     args=parser.parse_args()
-    result=run(args.predictions,args.output,args.image_objective,device=args.device,threads=args.threads,inputs=args.inputs,fixed_supports=args.fixed_supports)
+    result=run(args.predictions,args.output,args.image_objective,device=args.device,threads=args.threads,inputs=args.inputs,fixed_supports=args.fixed_supports,data_term=args.data_term)
     if any(row["status"]!="ok" for row in result["rows"]):raise SystemExit(1)
 
 

@@ -58,6 +58,8 @@ class Evidence:
         self.fixed, self.moving = fixed, moving
         self.matrix, self.offset = matrix, offset
         self.loss, self.strain_weight, self.oob_weight = loss, strain_weight, oob_weight
+        if loss not in ("mind","local_ncc","ngf"):
+            raise ValueError("declare mind, local_ncc or postwarp ngf data term")
         if isinstance(image_weight,bool) or not isinstance(image_weight,(int,float)) or not math.isfinite(image_weight) or image_weight<0:
             raise ValueError("image_weight must be a finite nonnegative number")
         self.image_weight=float(image_weight)
@@ -90,7 +92,11 @@ class Evidence:
             raise ValueError("shared_affine requires transport MIND and a frozen affine")
         self.mind_frame=mind_frame
         self.mind_frame_metadata=None
-        if mind_frame=="shared_affine":
+        self.ngf=None
+        self.ngf_metadata=None
+        if loss=="ngf" and (matrix.requires_grad or offset.requires_grad):
+            raise ValueError("postwarp NGF edge calibration requires a frozen affine")
+        if mind_frame=="shared_affine" or loss=="ngf":
             # Frozen setup features and original-coordinate OOB/points must use
             # the SAME lifetime constant, even if a caller mutates its inputs.
             self.matrix=matrix.double().clone()
@@ -113,6 +119,15 @@ class Evidence:
                 self.moving_feature = moving if mind_order=="after_warp" else self_similarity(moving)[0]
         else:
             self.fixed_feature, self.moving_feature = fixed, moving
+        if loss=="ngf":
+            from tools.coordinated_ngf import FrozenPostwarpNGF
+            from qcopt.neural_bijection.dense.q1_image_sampling import fixed_pixel_centers
+            initial_query=fixed_pixel_centers(*fixed.shape[-2:],dtype=torch.float64,device=fixed.device)
+            initial_query=initial_query@self.matrix.T+self.offset
+            initial_warp=F.grid_sample(moving,(2*initial_query-1).to(moving.dtype),
+                mode="bilinear",padding_mode="zeros",align_corners=False)
+            self.ngf=FrozenPostwarpNGF(fixed,initial_warp,self.mask)
+            self.ngf_metadata=self.ngf.metadata
 
     def prepare_fixed_p1_sampling(self,rows,columns,*,dtype,device):
         """Cache ONLY immutable source pixel-query geometry, before timing trials."""
@@ -149,7 +164,7 @@ class Evidence:
             query = p1_map_at_pixel_centers(vertices,*self.fixed.shape[-2:],diagonal=self.interpolation[-2:])
         else:
             query = self.fixed_p1_evaluator(vertices)
-        if self.mind_frame=="shared_affine":query=query.double()
+        if self.mind_frame=="shared_affine" or self.loss=="ngf":query=query.double()
         residual_query=query if self.mind_frame=="shared_affine" else None
         query = query @ self.matrix.T + self.offset
         image_query=residual_query if self.mind_frame=="shared_affine" else query
@@ -159,6 +174,8 @@ class Evidence:
             if self.mind_order=="after_warp":
                 warped=self_similarity(warped)[0]
             errors = (self.fixed_feature - warped).abs().mean(1, keepdim=True)
+        elif self.loss=="ngf":
+            errors=self.ngf.errors(warped)
         else:
             count = 49
             sums = lambda image: F.avg_pool2d(image, 7, stride=1, padding=3) * count
@@ -410,6 +427,14 @@ def optimize(args, accepted_stage_callback=None):
             or args.precision!="float64" or getattr(args,"image_precision","same")!="float32"
             or getattr(args,"interpolation","q1")!="p1_ac"):
         raise ValueError("exploratory shared_affine needs fixed alternating analytic/F2, P1ac float64 geometry/float32 transport MIND/E1, without proposal/packed variants")
+    if args.loss=="ngf" and (args.method not in ("analytic","f2") or nested or joint
+            or fine_patch_cells or filter_steps or capture_prefix!="none" or trial_diagnostics!="existing"
+            or mind_frame!="original" or mind_order!="transport" or simultaneous or image_weight!=1.
+            or args.precision!="float64" or getattr(args,"image_precision","same")!="float32"
+            or getattr(args,"interpolation","q1")!="p1_ac" or strain_model!="p1_arap"
+            or getattr(args,"preprocessing","raw_inverted")!="raw_inverted"
+            or getattr(args,"fixed_mask",None) is not None):
+        raise ValueError("postwarp NGF pilot requires original raw intensities/support, fixed alternating analytic/F2, P1ac float64 geometry/float32 raster continuation and ARAP")
     device = torch.device(args.device)
     torch.set_num_threads(args.threads)
     dtype = torch.float64 if args.precision == "float64" else torch.float32
@@ -429,6 +454,11 @@ def optimize(args, accepted_stage_callback=None):
             "original_moving_raster_no_affine_prewarp":True,
             "moving_descriptor_frame":"shared_affine",
             "moving_descriptor_prewarp_scope":"once per raster scale; construction/support metadata in mind_frame_by_resolution"}
+    if args.loss=="ngf":
+        preprocessing_metadata={**preprocessing_metadata,
+            "moving_data_term":"FAIR-style NGF of original intensity warped ONCE through complete map",
+            "moving_gradient_frame":"fixed image frame after intensity warp",
+            "moving_gradient_transport":False,"candidate_intensity_prewarp_count":0}
     reference = identity_vertices(args.grid_side, device=device).to(dtype)
     reference_corners = q1_corner_determinants(reference.double())
     current = (identity_vertices(args.levels[0],device=device).to(dtype)
@@ -810,6 +840,7 @@ def optimize(args, accepted_stage_callback=None):
                   mind_order=mind_order if args.loss=="mind" else None,
                   mind_frame=mind_frame,
                   mind_frame_by_resolution={str(side):item.mind_frame_metadata for side,item in evidence_by_resolution.items()} if mind_frame=="shared_affine" else None,
+                  ngf_by_resolution={str(side):item.ngf_metadata for side,item in evidence_by_resolution.items()} if args.loss=="ngf" else None,
                   image_levels=image_levels,
                   image_objective=image_objective,
                   image_objective_scales=sorted(evidence_by_resolution) if simultaneous else None,
@@ -868,7 +899,7 @@ def main():
     p.add_argument("--regional-cells",type=int,default=32)
     p.add_argument("--regional-min-level",type=int,default=3,
                    help="Use unwindowed global updates below this coefficient level")
-    p.add_argument("--loss", choices=("mind", "local_ncc"), default="mind")
+    p.add_argument("--loss", choices=("mind", "local_ncc", "ngf"), default="mind")
     p.add_argument("--mind-order",choices=("transport","after_warp"),default="transport")
     p.add_argument("--preprocessing",choices=("raw_inverted","native_dhr"),default="raw_inverted",
                    help="Frozen native PIL/normalization/grayscale/CLAHE option; mask stays original, not native optimizer equivalence")

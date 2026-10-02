@@ -182,3 +182,29 @@ area weights, malformed input rejection, unchanged default image tensors/mask,
 masked value/map-gradient finite difference, unchanged priors, and exclusion of
 simultaneous MS plus support changes in this pilot. The author did not run a
 real GPU support experiment; the coordinator owns the decision and execution.
+
+## Native standard initializer versus final field
+
+The completed native standard run permits a posthoc decomposition without
+rerunning registration or transferring its initializer to our optimizer.
+`tools/coordinated_dhr_initial_score.py` evaluates only the stored initial
+theta through native loading/padding/preprocessing pixel-center coordinates.
+It reads no dense field. The same 123/107/98 paired labels yield equal-pair
+mean/p90 of **4.887064/8.282913** canvas pixels at native initialization, versus
+the common initializer's **4.904193/8.897884** and native final field's
+**3.672192/6.432444**.
+
+The native initializer changes aggregate mean by only .017129 pixels; its
+nonrigid stage then lowers mean by 1.214872 pixels. Thus the principal measured
+mean benefit of the full native run occurs during nonrigid registration. This
+is a sequential decomposition, not the counterfactual result of running that
+stage from our common initializer. Pair 7→8 retains an adverse tail: its native
+maximum rises from 50.448319 at initialization to 53.497967 after nonrigid.
+
+Initial scores are saved in
+`outputs/coordinated_instance_registration/miit_dhr_released_standard_t19/initial_landmark_scores.json`.
+The analytic scorer evaluates saved float32 theta in float64; it does not claim
+bitwise equality to rasterizing an initial displacement in float32. Three
+focused tests pass, including hand-calculated rectangular, unequal-padding,
+nonunit-loading coordinates and an independent Torch affine-grid/displacement
+path. Separate-context formula review remains the coordinator's responsibility.

@@ -129,8 +129,8 @@ minimum residual-boundary distances for its three pairs are 17.8877,31.7836,
   Do not elevate small per-pair advantages above the unverified origin convention.
 
 Reproduction scripts (read-only scientific calculations, no report overwrites):
-`D:/QC_optimization_data/tmp/independent_protocol_probe_20261002.py` and
-`D:/QC_optimization_data/tmp/independent_protocol_mask_boundary_20261002.py`.
+`outputs/coordinated_instance_registration/check_sources/independent_protocol_probe_20261002.py`
+and `outputs/coordinated_instance_registration/check_sources/independent_protocol_mask_boundary_20261002.py`.
 Inputs are `miit_three_rotations_t153`, `lung_all20_fixedrecipe_t123`, the
 existing `lung_lesion3_eval` native annotations/canvases and its saved all20
 affines. F2 numbers above refer to that older fixed-recipe run, not the corrected
@@ -144,3 +144,54 @@ reserve run. No new claim about current F2 ranking is made.
    label the existing threshold as an intensity mask rather than verified tissue.
 3. Carry the six-direction lung range restriction into interpretation of tails
    and boundary comparisons; any changed domain must be a separately declared arm.
+
+## Subsequent bounded MS objective check
+
+No production-code defect found in `coordinated_multiscale_evidence.py` and its
+`coordinated_real_case.py` hook. An independent literal P1 evaluation, five image
+rasters, fractional/zero masks, float32 evidence and float64 geometry reproduce
+the complete scalar to `5.55e-17` and every vertex gradient to `4.44e-16`.
+Separately adding each term's VJP differs by at most `2.22e-16`. Active
+`3*ARAP + 1e-4*shape + .1*matches + finest OOB` occurs exactly once. Coarse OOB
+is computed as an unused intermediate, not added to the objective or its VJP.
+An instrumented tiny optimizer gave 18 complete objective calls in either arm:
+continuation raster counts `{8:6,16:12}`, MS `{8:18,16:18}`. Each MS stage's
+accepted scalar equals its full accepted scalar; final selection uses the same MS.
+
+Work accounting: five scales mean five times the image-term call count, not
+five times measured runtime. For the actual 300-gradient/332-objective recipe,
+MS samples 115,929,088 raster queries versus continuation's 25,493,504,
+**4.547397 times**. The backward raster-query count is five times. Legacy
+`query_count=512**2` is not the total MS query count per objective, which is
+`32**2+64**2+128**2+256**2+512**2=349184`.
+Source: `outputs/coordinated_instance_registration/check_sources/independent_multiscale_probe_20261002.py`.
+This is a correctness check, not evidence that MS improves anatomy; its observed
+negative registration result remains separate.
+
+## Subsequent bounded NGF objective check
+
+Current `coordinated_ngf.py`, Evidence hook and pilot selector match the stated
+postwarp-intensity functional. Explicit finite-difference matrices independently
+verify central interiors and both one-sided endpoints, including two-pixel axes;
+maximum transpose inner-product error is `5.33e-15`.
+With `c=a dot b`, `A=|a|^2+eps_f^2`, `B=|b|^2+eps_m^2`, the independent derivative
+is `-2*m/Z*(c*a/(A*B)-c^2*b/(A*B^2))`. Passing this through an explicit `G^T`
+and the actual image sampler/P1 map reproduces the implementation's entire vertex
+VJP to `3.33e-16`; literal image scalar difference is zero. A directional check
+gives AD `0.0865108486398` versus finite difference `0.0865108484849`.
+
+A nonuniform, identity-boundary spatial-map fixture separates `G(warped I)`
+from `warp(G I)` by `0.0349583`; the implementation follows the former.
+Independent initial-affine epsilon calibration agrees, epsilon stays frozen
+across candidates, fixed-epsilon contrast sign reversal is symmetric, and a
+flat moving image has loss one and zero image gradient. No zero identity-loss
+or zero identity-gradient assumption was imposed with finite epsilon.
+
+Runner review confirms raw moving intensity is sampled once through
+`A*f_P1+b`, then differentiated. Original raw fixed-mask support remains; no
+supplied tissue support or MS mode is accepted in this pilot. Stage acceptance
+uses that stage's NGF; prefix/best-full/final selection uses complete NGF512.
+ARAP3, shape1e-4, match.1 and OOB remain single-counted in the shared complete
+objective. No MIND-based final selector leaks into the NGF arm.
+Source: `outputs/coordinated_instance_registration/check_sources/independent_ngf_probe_20261002.py`.
+No production edits or repeated broad test suite were needed for this check.

@@ -101,13 +101,14 @@ gradients with valid outputs. The tested recipe is a nonsurviving main candidate
 no neighboring image-weight or scale sweep follows. This does not show that all
 coarse information or all multiscale objectives are ineffective.
 
-## Contingent next recommendation: postwarp intensity NGF
+## Approved bounded experiment: postwarp intensity NGF
 
-This is a proposal ONLY, contingent on completing the already-running fixed
-released-tissue-mask experiment. No NGF code or new experimental branch is
-authorized by this note. Targeted searches across current tools/source/tests,
-coordinated documents and Phase VI/VII/digital-topology archives found no existing
-NGF implementation.
+The fixed released-tissue-mask experiment did not improve aggregate mean TRE,
+so this experiment retains the original raw-grayscale fixed support. The
+coordinator approved this exact card and one paired all-three-case analytic/F2
+pilot. Targeted searches across current tools/source/tests, coordinated documents
+and Phase VI/VII/digital-topology archives found no existing NGF implementation
+before the isolated module and objective hook added for this experiment.
 
 Choose one conventional squared-dot NGF data term over a new coupled discrete
 matcher. The official [FAIR NGFdot implementation](https://raw.githubusercontent.com/C4IR/FAIR.m/master/kernel/distances/NGFdot.m)
@@ -174,13 +175,21 @@ or guarantee correction of the persistent 53-pixel outlier.
 Smallest test: first check literal stencil/transpose, a generic full-map finite
 difference, positive/negative contrast, constant images and an exact known
 rotation/shear frame fixture. Then one paired all-three-case analytic/F2 run
-with the same selected fixed-mask support, frozen affine and points, ARAP3,
+with the original raw-grayscale fixed-mask support, frozen affine and points, ARAP3,
 shape1e-4, match.1, existing stage OOB, rates, 32..512 continuation and 300
 gradients. Replace ONLY the data functional; final prefix selection uses the
 complete NGF512 objective of that arm. Keep native DHR as an archived comparator.
 No manual labels enter prediction or epsilon calibration, no sweep, and no new
 geometry operator. Per-case mean/p90/maximum plus cost decide whether this exact
 recipe survives; a negative result remains a negative result.
+
+Implementation: `tools/coordinated_ngf.py` contains the explicit stencils and
+frozen edge thresholds; `Evidence(..., loss="ngf")` samples the original moving
+intensity before differentiating the warped raster. The existing paired pilot
+accepts `--data-term ngf --image-objective continuation`. Its default MIND arm is
+unchanged. Relative to the archived shared-affine MIND control, both the data
+functional and descriptor/sampling order differ; this is not a pure optimizer
+or geometry ablation. No conclusion is drawn before the six-case pilot results.
 
 Why not coherent matching next: the previous capture prefix used 81 INDEPENDENT
 labels on a 128-square feature raster, only +/-16 full-canvas pixels. The

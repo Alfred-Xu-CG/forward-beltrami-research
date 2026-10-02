@@ -7,6 +7,32 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### Restart measurements — 2026-10-02 07:18 UTC
+
+Released full DHR standard is now actually reproduced: equal-pair mean/p90
+3.672192/6.432444 canvas pixels, complete native calls30.56–32.95s. Fast's
+two anatomical failures are retained (aggregate119.044162/173.029174), not
+dropped because the software returned successfully. Independent native
+coordinate/saver tests pass. Initial-only standard gives4.887064/8.282913;
+the nonrigid stage, not an aggregate initializer improvement, provides most
+of its observed gain. Details and scopes are in REPORT and baseline review.
+
+Three fixed image-driven interventions have completed all six A/F2/pair
+predictions with300gradients each and valid saved maps. Simultaneous five-scale
+MIND worsens both aggregate means; released tissue support gives no material
+gain; postwarp NGF worsens A mean from3.548752to4.060915 and F2 from3.554327to
+3.982225. The last implementation passes52focused root tests in7.30s and an
+independently derived VJP check. No geometric correctness claim substitutes
+for the negative anatomical results. All predictions precede their posthoc
+landmark scoring, although the specimen remains previously viewed development.
+
+Decision: stop neighboring objective/epsilon/support sweeps. Astra optimizer
+xhigh examines actual convergence and a prior-aware coordinated optimizer;
+Astra baseline high diagnoses high-resolution information loss versus coherent
+correspondence and inventories available confirmation specimens. No oracle or
+competitor dense field enters inference. The goal remains ACTIVE through the
+user-extended deadline; this is not a final handoff.
+
 ### Current restart decision — recorded 2026-10-02 06:18 UTC
 
 The user resumes after the SSH pause and explicitly adds five hours, with ALL

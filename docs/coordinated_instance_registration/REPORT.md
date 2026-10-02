@@ -94,6 +94,28 @@ gradients with valid outputs. Thus the background-support observation is real,
 but it is not supported as the main cause of the registration plateau. Keep the
 image-only threshold baseline; do not require extra annotations without benefit.
 
+The next six-run pilot substitutes postwarp-intensity NGF for MIND, using the
+same geometry, frozen affine/matches, priors, original support, continuation and
+300 gradients. It also fails to improve registration: A mean/p90 becomes
+4.060915/6.914149 and F2 becomes3.982225/7.187874, versus the shared-affine MIND
+control3.548752/5.907957 and3.554327/5.942943. All six runs finish without failed
+trials and all exported maps pass the strict stored-binary certificate. A takes
+5.60–7.06s and179–180MiB allocated peak; F2 takes12.82–15.95s and438–441MiB.
+These are descriptive complete optimizer calls excluding the frozen common
+initializer, not clean repeated end-to-end speed ratios. Outputs and all328
+posthoc point errors are in `miit_ngf_t19`. The NGF derivative is independently
+verified, but correctness of a derivative is not evidence of anatomical benefit.
+This exact recipe is retired without an epsilon sweep. Its finite epsilon can
+favor larger warped gradient magnitudes, and flat moving regions have zero
+image derivative; no global-capture or true-map optimality theorem was claimed.
+
+After these three distinct negative interventions (simultaneous multiscale loss,
+released tissue support, NGF), further small objective substitutions are not the
+next priority. The next decision separates lost high-resolution image evidence
+from the local optimizer's inability to establish coherent correspondences.
+Native standard DHR's stage decomposition above makes a purely better affine
+initializer an insufficient explanation for its nonrigid gain on these cases.
+
 ## 1. What is implemented, and what is not
 
 Implemented: a differentiable local forward decoder which takes learnable
