@@ -7,6 +7,65 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### Next bounded measurement: conditional full pipeline (2026-10-02)
+
+Question: what does the retained recipe actually cost when frozen match tables
+are NOT already supplied? Start from the same accepted512 image canvases and
+their supplied positive A/b; execute the original rawSG extractor, unchanged
+MA, independent-mass fusion and unchanged retained300 optimizer/export for all25.
+This measures a CONDITIONAL image-plus-initializer-to-map pipeline, not an
+original-WSI-to-map pipeline. Original rendering/heterogeneous initializer
+generation and process import/model download are separate, not free.
+
+Keep the SG implementation's real per-case model construction; MA is loaded
+once for the25-case batch. Report first case versus later cases and one setup,
+not25 independent cold latencies or an invented warm speed distribution. Fresh
+tables are compared numerically with their archived counterparts before claims
+of exact recipe replay; any difference is recorded and all new maps remain
+distinct artifacts. No accuracy-based output selection is introduced.
+
+An external CUDA allocated-peak collector must record the current segment peak
+BEFORE each existing nested reset and finally take their maximum; an outer
+reset alone misses setup transients. Preserve/restore the original reset API
+within this isolated measurement process. Report allocated versus reserved
+memory separately and do not sum peaks. The decision changed by this test is
+whether optimizer-only time substantially understates practical conditional
+latency/memory. This is performance evidence, not another anatomical variant.
+
+### Full learned confidence probe and initializer correction — 2026-10-02 13:59 UTC
+
+All25 unchanged MatchAnything forwards reproduce the original fine points,
+coarse confidences and affine values bitwise. The full4096-by4096 float32
+confidence matrices are saved on D and AI (1.678GB); code and compact reports
+will be versioned without treating a1.678GB tensor dump as a new source file.
+This post-hoc probe does not train, optimize, choose maps or filter labels.
+Of2,074 IDs,2,054 lie in all three native coarse-center hulls;20 remain explicit
+unsupported rows. Bilinear scores prefer the true target707times and the
+retained prediction1,347times. The optimistic target-footprint sensitivity
+gives74/333 preferences and1,647 ties;1,682 ordering outcomes differ between
+the definitions. Allfour specimen mean rank advantages are nonpositive.
+This is no affirmative evidence for a new coarse assignment solver; many
+errors are below the8pixel coarse lattice's discriminatory scale. It does NOT
+prove that all fine features lack information or that anatomical truth is wrong.
+Independent actual-matrix/CSV review now passes all25 matrices and all2,074 IDs,
+with maximum score disagreement1.17e-14 and TRE disagreement3.60e-14px.
+The1,682 ordering differences include ties, not1,682 strict reversals.
+Checker caught and root fixed
+an unremoved saved-map batch dimension and missing-denominator edge cases in
+the new probe before its actual score run; five focused tests pass.
+
+Separately, initializer source reconstruction corrected a historical description:
+MIIT3 uses four-rotation SG similarity and lung20 direct SG similarity, but
+Histo/kidney use historical DHR INITIAL-ONLY outputs. Histo's native-to-canvas
+converted A is not an exact similarity. ActualHistoA/b and allfivekidneyarchive
+arrays reproduce bitwise from their located initial-only fields/configurations;
+nonrigid=False and nonrigidtime0 in both sources. Raw SG point evidence is a
+separate object. All comparisons keep the same saved A/b and scores unchanged.
+Current reports/source metadata now say supplied positive affine, while the
+old archived SG provenance labels are explicitly corrected, not silently
+rewritten. Complete pipeline speed cannot be inferred from the4.566s optimizer
+call without paying these heterogeneous initializers and matcher preparation.
+
 ### Fixed incumbent distortion budget: complete all25 result — 2026-10-02 13:34 UTC
 
 Process disclosure: root read verification-before-completion once for this
@@ -79,7 +138,7 @@ card precedes implementation and names the Pareto-stationarity limitation.
 
 ### Actual refresh smoke and complete native shared-init run — 2026-10-02 12:51 UTC
 
-Native STANDARD with the supplied shared SG initializer completes all25 calls
+Native STANDARD with the supplied shared positive affine completes all25 calls
 in190.551s, and the ordinary scorers retain all2,074 available labels. The
 same-init replay is not uniformly better than native initialization: mean/p90
 are MIIT3.712720/6.260251, lung6.240578/14.626331,

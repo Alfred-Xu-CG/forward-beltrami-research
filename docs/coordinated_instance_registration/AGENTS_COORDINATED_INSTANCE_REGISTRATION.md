@@ -6,7 +6,10 @@ agent uses the actual `gpt-6-astra` model; older Sol routing in archived copies
 is superseded. Routine extraction/implementation uses medium, difficult
 numerical implementation and independent checking high, and a specific
 unresolved conceptual decision xhigh. Do not claim to switch the root runtime
-model through a prompt. No installed skill workflow is used in this phase.
+model through a prompt. The user's rule is to avoid installed skill workflows.
+Two actual systematic-debugging reads and one milestone verification read were
+required by higher-priority environment routing and are disclosed in PROGRESS;
+do not describe the execution record as zero skill reads.
 
 ## Current objective
 
@@ -178,4 +181,3 @@ Window start 2026-10-01 11:26:23 UTC; deadline 2026-10-02 11:26:23 UTC.
     followed in this round, per the user; use direct code, derivations and primary sources.
 11. Time tables are adaptable; don't abandon a decisive high-information test merely to meet
     an intermediate slot. Use actual elapsed time; no premature closure after a successful pilot.
-

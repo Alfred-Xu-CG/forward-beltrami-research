@@ -11,7 +11,7 @@ existing scorer establishes implementation consistency, not publication equivale
 
 | Comparison | Held common | Important difference | Legitimate inference |
 |---|---|---|---|
-| A versus matched F2 | Same images/canvases, shared positive similarity, raw MIND and frozen image matches, P1 output, regularizers and label set | Decoder/update class, schedule, actual runtime; F2 uses its declared .95 reserve | Geometry/optimizer comparison at the disclosed gradient budget; not automatically equal-time |
+| A versus matched F2 | Same images/canvases, same saved positive affine, raw MIND and frozen image matches, P1 output, regularizers and label set | Decoder/update class, schedule, actual runtime; F2 uses its declared .95 reserve | Geometry/optimizer comparison at the disclosed gradient budget; not automatically equal-time |
 | A/F2 versus archived DHR shared-affine reduced-512 | Same 512 inputs, exact initializer and evaluation labels | DHR native CLAHE/NCC/diffusion, affine intensity prewarp, unconstrained field, 5×30 updates | Application diagnostic under a common initialization; cannot isolate geometry |
 | A/F2 versus released DHR fast/standard on native images | Same original cases and all available paired labels, evaluation units | Native initialization, native higher-resolution evidence, native regularization, full schedule, resource cost | Complete application comparison with cost/resolution disclosed; not a matched-geometry ablation |
 | Our three MIIT directions versus publication tables | Only dataset family/context | Cohort, number of subjects, units, aggregation, annotations, release protocol | No numerical ranking against published table values |
@@ -442,7 +442,7 @@ Research card, 2026-10-02, before implementation. This is a supporting baseline,
 not a new research mechanism and not an unmodified released complete pipeline.
 
 **Question.** How does the released STANDARD nonrigid stage behave when it starts
-from the exact same previously frozen SG affine used by the safe methods, while
+from the exact same previously frozen positive affine used by the safe methods, while
 retaining its native images, preprocessing and complete nonrigid configuration?
 The existing STANDARD25 uses its own native initializer. The existing shared
 affine DHR uses reduced512 evidence and five levels of30 steps. Neither answers
@@ -492,7 +492,7 @@ subclass does not alter the installed package or the archived native-init runner
 **What would falsify the implementation claim.** A wrong source/target order,
 half-pixel shift, padded-axis error, use of rounded extent ratios, theta applied
 twice, nonrigid/preset difference, or sampled initializer inconsistent with the
-declared transformed SG affine. Wrong initialization does not become acceptable
+declared transformed supplied affine. Wrong initialization does not become acceptable
 because final TRE looks good.
 
 **Smallest decisive tests.** Non-square synthetic native frames with unequal
@@ -521,7 +521,7 @@ Observed existing full STANDARD25 complete-call time is777.7915s, of which
 skipped native initializer suggests roughly189.23s before conversion overhead;
 allow5–10minutes serial as an estimate, not a performance guarantee. The prior
 maximum allocation is7,709,164,544bytes and all25 final fields total491,480,185bytes.
-Record supplied-SG initialization as a shared historical cost, not a free new
+Record supplied initialization as a shared historical cost, not a free new
 algorithm; separately report complete replay and nonrigid costs.
 
 **Hypothesis and interpretation.** A change versus native-init STANDARD measures
@@ -583,7 +583,7 @@ worst landmark in17/25. Per-specimen mean regressions versus own-init are
 comparison for our retained method: native shared-init is better in mean/p90
 and worst error. Own-init native DHR also remains better than fusion300 in
 kidney mean/p90. Do not choose the stronger native initialization per case or
-replace the original baseline. This result says the common SG initializer does
+replace the original baseline. This result says the common supplied initializer does
 not improve this native DHR package globally; it is not evidence that its native
 initializer was unfair, or that the safe optimizer is universally superior.
 
@@ -593,7 +593,7 @@ versus0.071818s, native nonrigid time121.043309s versus125.345216s, and preproce
 1.967333s versus1.687901s. Shared initialization audits add4.780044s inside its
 complete-call scope. Fusion300's archived optimizer calls total114.162324s, but
 omit its historical affine/SG/MA preparation. Shared-native also omits the
-historical supplied-SG cost; only own-init includes its own native initializer.
+historical supplied-initializer cost; only own-init includes its own native initializer.
 These are measured component scopes, not a cold end-to-end speed comparison.
 Peak allocated memory maxima are7,709,164,544bytes own-init,
 5,677,745,664bytes shared-init and214,255,616bytes fusion300; do not add peaks or
@@ -634,3 +634,117 @@ tables also pass. `native_standard_shared25_t27/independent_check.json` records
 this check. The online initial-field audit remains a recorded production audit;
 the independent final-field re-read does not pretend that an unexported initial
 field was separately re-read.
+
+## Additional specimen reconnaissance (metadata only, 2026-10-02)
+
+The local MIIT release is ONE actual sample, not nine independent specimens.
+The opening "Note on the test data" in the
+[author's example notebook](https://github.com/mwess/miit/blob/master/examples/notebooks/04_analysis_from_paper.ipynb)
+explicitly describes test data for one sample. Its next dataset-description
+cell lists serial-section IDs `1,2,3,6,7,8,9,10,11`, exactly matching
+`D:/QC_optimization_data/miit_v4/extracted/test_data/test_data/source_data/`
+and the [current Zenodo release](https://zenodo.org/records/14931377).
+Unused sections or new directions can test within-specimen robustness, but do
+not supply independent-specimen confirmation. Only notebook Markdown and file
+metadata were inspected; no additional target landmark coordinates were read.
+
+The author-owned [Borda landmark repository](https://github.com/Borda/dataset-histology-landmarks)
+contains other tissue annotation folders but only the already-used
+`dataset/lung-lesion_3/scale-5pc` images. Its linked original CIMA image page
+returned HTTP404 during this check. The [CBICA HistoReg repository](https://github.com/CBICA/HistoReg/tree/master/Data)
+contains only the already-used CD4/CD68 image/landmark pair. Neither repository
+therefore supplies another immediately usable specimen in its current file tree.
+
+[HyReCo's official publication endpoint](https://doi.org/10.21227/pzj5-bs61)
+does document independent labelled histology: nine consecutive-section cases
+plus additional H&E/PHH3 re-stained cases. TIFF images and CSV landmarks are
+paired; CSV rows correspond across a case, and `(x,y,z)` coordinates are in mm
+with an upper-left image origin. However, the endpoint explicitly requires
+login, the base ZIP is233.36GB, and no account or download was initiated.
+The title specifies CC-BY-SA4.0 while its JSON-LD license field specifies
+CC-BY4.0; this discrepancy needs resolution before acquisition/reuse. Individual
+image dimensions and TIFF physical-coordinate conversion remain unverified.
+
+The [Warpy example record](https://zenodo.org/records/5675686) has accessible
+metadata, CC-BY4.0 API licensing, and a1,074,844,732-byte example project ZIP.
+Its listing does not establish independent evaluation landmarks; an included
+example registration is not independent ground truth. No ZIP was downloaded.
+This bounded check found no new specimen with both unrestricted acquisition and
+verified independent registration labels ready for the present benchmark; it
+does not assert that no such public dataset exists.
+
+## Initializer provenance correction (2026-10-02, exact archive audit)
+
+The shared initializer must be called the **saved image-only positive affine**,
+not uniformly "our SG similarity". All25 cases use the same numerical saved
+`A,b` across the compared shared-initializer arms, but they do not all use the
+same initializer recipe. The raw SG correspondence term is a separate later
+input and is indeed SG-derived on all25; it does not identify the origin of A.
+This correction changes no map, score, case denominator, or initializer.
+
+| Cases | Provenance of the actual saved A,b | Scope |
+|---|---|---|
+| MIIT3 | Existing four-quarter-turn image-only SG matching, fixed RANSAC and positive-similarity selection | Our direct initializer recipe |
+| Lung20 | Existing single-orientation image-only SG matching, fixed RANSAC and positive-similarity fit | Our direct initializer recipe |
+| HistoReg1 | Historical CPU DHR initial-only native-image field, sampled/factored and conjugated into the physical512 canvas | Not the direct SG/RANSAC recipe; saved canvas A is not an exact similarity |
+| Kidney1 | Historical GPU DHR initial-only run directly on the accepted physical512 canvases, sampled/factored at257 vertices | Not the direct SG/RANSAC recipe; exactly identified below |
+
+For HistoReg, the original local archive is
+`D:/QC_optimization_data/digital_topology_wsi/DHR_CD68_CD4_initial_only/`.
+Its configuration disables nonrigid registration. CPU resampling of its saved
+`HistoReg_CD68_to_CD4_initial_only/Results_Final/displacement_field.mha`
+with the archived postprocessing parameters, followed by the existing
+`factor_affine_teacher`, reproduces the native affine in
+`docs/digital_topology_wsi/q1_dhr_initial_affine_histo_257_float32.npz`
+exactly. `tools/digital_histo_canvas_affine.py` and the saved
+`birl_anhir_dev/canvas/histo_initial_affine.json` specify its exact native-to-canvas
+conjugation; rounding its result to float32 reproduces the actual current A,b.
+The canvas matrix is
+`[[.9684233069419861,.11542077362537384],[-.11578276753425598,.9676365256309509]]`
+with offset `[-.03893144428730011,.0453045628964901]`. Its unequal diagonal
+entries and unequal-magnitude opposite off-diagonals prohibit calling this
+stored matrix an exact similarity. Positive affine is the valid general scope.
+
+For kidney, the exact original source remains on AI under
+`/home/ET/zhxu/codex_runs/digital_topology_wsi_20260929/`:
+
+- `birl_rat_initial/config.json`, `runtime.json`, and `deeperhistreg.log`;
+- `birl_rat_initial/birl_rat_initial/Results_Final/displacement_field.mha`
+  and its `postprocessing_params.json`;
+- `birl_rat_initial_affine.npz`, whose five arrays are bitwise identical to
+  the current project's `data/rat_kidney_initial_affine.npz`.
+
+The original fixed/moving `rat_kidney_*512.png` pixels are also bitwise equal
+to the current accepted canvases. A read-only CPU replay of only field sampling
+and affine factorization, using `dhr_map_at_unit_queries` on the257-square
+identity grid and then `factor_affine_teacher`, reproduces **all five NPZ arrays
+exactly**, maximum absolute difference0: raw sampled map, residual teacher,
+reference, matrix and offset. This is stronger provenance evidence than a
+filename or an approximate matrix match. The saved matrix is
+`[[.9442551732063293,-.03775688260793686],[.03775688260793686,.9442551732063293]]`
+and offset `[.046108126640319824,.02435700222849846]`.
+The historical configuration explicitly has `run_nonrigid_registration=false`,
+runtime has `initial_only=true` and `nonrigid_seconds=0`, and the log ends
+after initial registration and field export. The helper's generic
+"teacher" array names therefore do **not** imply use of a full nonrigid teacher
+in this initializer. The archived whole-call time4.06799258s is historical,
+not a current end-to-end measurement.
+
+Both DHR initial-only recipes use their multi-feature initial stage with
+SuperPoint/SuperGlue enabled, SIFT/SP-RANSAC disabled, feature sizes
+150/200/250/300/350/400, angle step180, keypoint threshold.005, matching
+threshold.3 and50 Sinkhorn iterations. HistoReg uses original images at
+loader ratio.1 on CPU; kidney uses physical512 canvases at ratio1 on GPU.
+Thus SG is an underlying component but these are not interchangeable with the
+direct initializer used in the other23 cases. Both identified paths are
+image-only initial registration, not anatomical-landmark or full-nonrigid-field
+inputs. A current raw-raster-to-map timing must reconstruct and charge each
+actual case's recipe, or explicitly declare a changed initializer; replaying
+one common direct-SG recipe would not reproduce the frozen experiment.
+
+Earlier shorthand in this review (including the opening comparison table and
+native shared-initializer sections) is superseded by this provenance correction.
+The native shared-A counterfactual still compares the same mathematical A,b;
+its scientific conclusion does not require identical initializer algorithms
+across specimens. Neither that counterfactual nor the conditional optimizer
+times alone constitute full-pipeline timing.

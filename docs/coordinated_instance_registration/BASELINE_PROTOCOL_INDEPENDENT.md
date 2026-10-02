@@ -1524,3 +1524,63 @@ not a held-out, neural-training or general anatomical improvement claim.
 Reproduction: `independent_distortion_budget_postrun_20261002.py --scores` and
 `independent_distortion_budget_comparison_20261002.py`. Combined output is
 `distortion_budget_all25_t28/independent_check.json`.
+
+### Full-confidence posthoc diagnostic: independent precheck and actual PASS
+
+Read the complete bounded card and released local coarse/fine matching source.
+The coarse centers are literal pixel indices8i, flattening is x-fast, and the
+saved `conf_matrix` is not modified by threshold/border removal: those operations
+modify a separate boolean mask. Fine matching stores `conf_matrix_f` separately.
+Literal independent two-axis tests verify source-row/target interpolation,
+closed native-center support, no clamping, strict all4096-cell ranks and ties.
+Four-footprint maxima intentionally include zero-weight neighboring corners
+at exact centers; they are a coarse-localization sensitivity, not bilinear
+equivalence. Five focused author tests also pass.
+
+Precheck found a blocking scorer error: a batch-one saved map was passed to an
+unbatched P1 evaluator. The author added validated unbatching before scoring.
+It also corrected cohort aggregation so a failed or zero-supported case cannot
+silently reduce expected denominators or cause `mean(None)`; case/ID denominators
+and computed/support counts are now distinct, with unavailable cohort means null.
+Both corrections were reread before validating the actual output.
+
+`independent_confidence_probe_20261002.py --actual` reads all25 saved4096-square
+float32 C matrices (1,677,724,800 file bytes), verifies finite[0,1] entries and
+bitwise equality of every newly extracted original MA point/confidence/affine
+array. It then reloads original CSVs and uses a separate vectorized P1 formula,
+explicit2-by-2 affine inverse and literal coarse-grid sampler. All2074 IDs,
+coordinates, current TREs, both confidence scores, strict ranks/orderings,
+support flags and case/cohort/full aggregates agree. Maximum coordinate,
+confidence-score and TRE differences are `2.22e-16`, `1.166e-14` and `3.60e-14`.
+
+Exactly2054 IDs are supported;20 unsupported IDs remain explicitly present.
+Coordinate-specific unsupported counts are8 source,15 true-target and8
+prediction (overlapping sets). Bilinear scores prefer truth707 times and the
+current prediction1347 times, with no ties. Footprint maxima prefer truth74,
+prediction333 and tie1647 times. Every cohort's mean rank advantage is
+nonpositive under both definitions; Histo's footprint value is exactly zero.
+The1682 ordering disagreements include newly tied footprint scores and must
+not be described as1682 preference reversals. This particular posthoc probe
+does not supply robust positive evidence for an unused anatomically preferable
+alternative; it does not prove that all possible assignments or features fail.
+Saved result: `full_confidence_all25_t28/independent_check.json`. No network
+training, optimizer run, map edit or new GPU work occurred during this review.
+Original full C was not historically saved, so matching point tables do not
+prove historical bitwise equality of that formerly unavailable full matrix.
+
+### Histo initializer provenance: separate numerical reconstruction
+
+`independent_histo_initializer_provenance_20261002.py` confirms the actual Histo
+common A,b are the positive affine factored from the historical DHR INITIAL-ONLY
+field, then conjugated into the512 canvas. That saved CPU field reproduces all
+66049 archived raw sampled targets bitwise. A separate literal float64
+center-frame/border-bilinear sampler differs by at most `1.468e-7` from the
+historical float32 path. Independent NumPy all-vertex least squares reproduces
+the saved float32 native A,b bitwise; manual row/column scale-and-pad conjugation
+reproduces the current canvas A,b and fusion output's stored affine bitwise.
+The original configuration has CPU, source/target loader ratios `.1`, initial
+resolution768 and multi-feature SuperPoint/SuperGlue initialization; nonrigid
+registration is disabled and runtime nonrigid time is zero. This is numerical
+provenance, not filename inference. Calling all25 initializers a uniform direct
+SG similarity is incorrect; the valid shared-map statement is unchanged exact
+image-only positive A,b within each comparison. No benchmark map changed.

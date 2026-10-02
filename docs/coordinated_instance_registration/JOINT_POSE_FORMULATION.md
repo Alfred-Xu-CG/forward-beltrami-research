@@ -8,8 +8,12 @@ independent Astra xhigh context; it is not a new published registration theorem.
 
 ## 1. The question this changes
 
-The saved image-only initializer is a positive similarity, denoted by
+The saved image-only initializer is a positive affine, denoted by
 `A z + b`, with a nonsingular 2-by-2 matrix A and a two-component offset b.
+Correction: the MIIT/lung image estimators fit similarities, but Histo/kidney
+archives derive from historical DHR initial-only outputs. Native-to-canvas
+conversion also need not preserve the exact similarity matrix structure.
+The argument below requires only det(A)>0, not A being a similarity.
 The current residual deformation fixes the rectangle boundary. Consequently,
 remaining global motion may need to be represented by interior displacement
 and a transition back to that fixed boundary. Our residual strain penalty then

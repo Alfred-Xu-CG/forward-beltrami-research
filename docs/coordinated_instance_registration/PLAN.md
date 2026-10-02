@@ -11,7 +11,8 @@
 当前三位新 agent 均通过实际模型参数启动为 `gpt-6-astra`：
 
 - `astra_protocol_baselines`，high：原方法配置、数据预处理、比较方法和指标；
-- `astra_optimizer_redesign`，xhigh：当前优化的系统性诊断和一个有依据的改进；
+- `astra_objective_synthesis`，xhigh：当前优化的系统性诊断和一个有依据的改进
+  （继续原 `astra_optimizer_redesign` 的职责；当前活动上下文名称已更新）；
 - `astra_independent_protocol`，high：独立检查坐标、采样、地标和评价口径。
 
 后续常规实现/提取用 Astra medium，困难数值实现和复核用 high；不恢复 Sol
@@ -955,4 +956,3 @@ Separate: geometry established; useful instance optimizer; evidence bottleneck;
 real-data competitiveness; formal SOTA not established. Never equate tests passed,
 wall time consumed, or a theorem alone with successful registration. Finish with
 actual results, the strongest adverse result, and at most three next actions.
-

@@ -1409,3 +1409,49 @@ the defensible next generalization question requires new independently grouped,
 labelled real specimens under a fixed comparison protocol, not more selection
 among near-neighbor settings on the same four development specimens. No new
 specimen result or formal SOTA claim is established by this card.
+
+### One bounded full-confidence information diagnostic (2026-10-02 13:51 UTC)
+
+Question: does the unchanged released MatchAnything confidence matrix contain
+anatomically preferable alternatives that its thresholded observations did not
+exploit? This is a post-hoc information diagnostic on all25 development cases,
+not an optimizer, training objective, blind test or calibrated probability model.
+All2,074 existing evaluation IDs remain in its report. Budget: approximately
+20minutes, with no parameter, threshold, map or subset selection from results.
+
+Actual source retains all coarse pairs above.1 after its native border removal
+(mtd_spvs=True); it is NOT coarse top1. Fine TOPK1 is a separate local step.
+The unchanged forward exposes C=softmax_rows(S)*softmax_columns(S), where
+S_ij=<f_i,g_j>/(256*.1), with shape4096-by4096 at512 raster resolution.
+Full C is read before any threshold/border removal, without changing inference.
+It is not a row-normalized probability. Existing multiple retained coarse
+targets mostly occupy adjacent cells; treating them as mutually exclusive
+anatomical hypotheses without justification would be incorrect.
+
+For fixed unit landmark q, frozen fusion prediction pF=fY(q), and true moving
+unit landmark t, set pT=A^{-1}(t-b). All maps/coordinates use existing declared
+pixel-center canvas transforms. A unit coordinate u corresponds to coarse
+coordinate xi(u)=(512u-.5)/8; the actual coarse centers are pixel indices8i.
+Bilinearly interpolate C's source rows at xi(q), obtaining vq in R^4096.
+Bilinearly sample its64-by64 target raster at xi(pT),xi(pF), yielding sT,sF.
+Define rank(s)=1+count_j[vq_j>s] and delta=(rank(sF)-rank(sT))/4096.
+Positive delta favors the anatomical target. Report raw ordering, ties and
+zeros as well; score differences are not calibrated probabilities.
+
+A predeclared sensitivity repeats target scores using the maximum of the four
+bilinear-footprint corners. This is optimistic coarse-localization sensitivity,
+not subpixel accuracy. Source interpolation stays unchanged. Coordinates
+outside the native center hull xi in[0,63]^2 are NEVER clamped/extrapolated:
+retain the ID and its source/true-target/prediction support flags, with missing
+scores explicitly null. Rank uses all4096 columns, including native border
+entries; no region around previously observed tail labels is selected.
+
+Within-case summaries followed by four-specimen summaries expose all25 rows.
+Substantial consistent anatomical rank preference robust to footprint choice
+would support unused learned information, but not guarantee that a spatial
+assignment algorithm could recover it. Mixed, adverse, weak or strongly
+quantization-sensitive evidence closes this branch rather than launching a
+cost-volume optimizer speculatively. The old coupled seed used MIND costs and
+the rematching experiment generated another thresholded table, so neither
+already answered this exact question. Labels are read only by the separate
+post-extraction diagnostic, never by inference or registration.

@@ -8,6 +8,65 @@ The detailed derivations and experiment definitions are in FORMULATION.md;
 chronology and negative interventions are in PROGRESS.md. This report introduces
 the main objects without requiring knowledge of those earlier discussions.
 
+### Does the frozen matcher hide useful alternative correspondences?
+
+The unchanged MatchAnything inference exposes a4096-by4096 coarse confidence
+matrix C on a64-by64 pixel-center lattice with8pixel spacing. It is a product
+of two softmax normalizations, not a calibrated probability. The native coarse
+extractor already keeps all above-threshold pairs, not just one coarse match.
+We saved full C for all25 original affine-aligned inputs without changing any
+network parameter, threshold or map. Its output point tables match the original
+archived tables bitwise, so this is a diagnostic of the actual retained evidence.
+
+For each available manual fixed landmark q, compare the exact retained P1
+prediction pF=fY(q) with pT=A^{-1}(t-b), where t is its annotated moving-canvas
+position. Source-row bilinear interpolation of C at q defines a full-image
+target-score raster. A target's rank is1 plus the number of4096 entries with a
+strictly higher score. Positive rank(prediction)-rank(truth) favors truth.
+This examines unused information; labels are never supplied to inference,
+optimization, output selection or filtering. The coarse-coordinate conversion
+is (512u-.5)/8, not a257-mesh or image-corner convention.
+
+All2,074 IDs are retained:2,054 support both target queries and the source
+inside the coarse-center hull, while20 have explicit unsupported status and
+are not clamped. Bilinear scores favor truth707times and the retained prediction
+1,347times. An explicitly optimistic coarse-localization sensitivity takes the
+maximum score over each target's four interpolation corners:74 favor truth,
+333 favor prediction, and1,647 tie. The resulting1,682 ordering differences
+include ties, not1,682 reversals. Allfour specimen mean rank advantages are
+nonpositive under both definitions (Histo's footprint version is exactly zero).
+
+There is no affirmative evidence here to justify building another coarse
+assignment optimizer. Much of the comparison is below the8pixel coarse lattice's
+discriminatory scale, so this is NOT proof that all fine features lack useful
+information, that true annotations are wrong, or that no better matcher exists.
+The bounded branch is closed without changing the registration recipe. All25
+matrices, original CSV coordinates, exact P1 queries and rank computations were
+independently recomputed; score disagreement is at most1.17e-14. Large matrices
+remain on D and AI; source code and compact results are versioned.
+
+### Initializer provenance correction (2026-10-02)
+
+The common initializer must be described as the SAME SAVED positive affine per
+case, not uniformly as our direct SuperGlue similarity. MIIT uses the disclosed
+four-quarter-turn SG similarity selection; the20 lung directions use direct SG
+similarity. HistoReg's affine is fitted from a historical DHR INITIAL-ONLY
+output and transformed from native pixels to its512 canvas. Kidney likewise
+uses an exactly recovered historical DHR INITIAL-ONLY512-canvas output. Both
+historical configurations explicitly disable nonrigid registration; neither
+uses evaluation landmarks or a competing nonrigid field. Raw SG correspondence
+tables used in the later objective are a DIFFERENT object from these initializers.
+
+The Histo native and canvas matrices, and allfive kidney archive arrays, are
+reproduced bitwise from their located initial-only outputs. This resolves the
+source ambiguity without changing any map or score. Histo's final canvas matrix
+is not exactly a similarity, so all geometric statements require only det(A)>0.
+The native same-initializer comparison remains valid because it used these same
+actual matrices. However, historical initializer generation costs and recipes
+are heterogeneous; the4.566s retained optimizer call is not a complete
+original-image-to-map pipeline time. Older archived 'SG initializer' metadata
+is a provenance-label error; see BASELINE_PROTOCOL_REVIEW for exact sources.
+
 ### New constrained optimizer: fixed incumbent distortion budget
 
 Let Y0 be the already computed fusion300 vertex map. Let R(Y) be the original
@@ -69,7 +128,7 @@ works as specified; a substantial real-registration breakthrough is not shown.
 ### Complete native baseline and one refreshed-observation experiment
 
 The full native STANDARD DeeperHistReg baseline has now also been replayed
-with our same image-derived SG similarity, changing ONLY its initializer.
+with our same saved positive affine, changing ONLY its initializer.
 It keeps native preprocessing, the4096 registration-size setting, NCC,
 diffusion regularization and its released eight-level900-iteration schedule.
 This is a modified-initialization counterfactual, not the untouched published
@@ -88,7 +147,7 @@ worsens17/25 means versus native own initialization. The two native pipelines
 must both remain visible: our method does not universally outperform native
 DeeperHistReg, particularly on HistoReg and the own-init kidney comparison.
 The shared-native calls total190.383s, versus777.792s own-init, primarily because
-the latter includes588.564s of initialization. The historical SG preparation
+the latter includes588.564s of initialization. The historical initializer preparation
 is not included in shared-native timing, so this is not a full-pipeline speedup.
 Maximum allocated peaks are5.68GB shared-native and7.71GB own-init, versus
 the retained method's recorded .214GB optimizer scope, which excludes earlier
@@ -722,7 +781,7 @@ The complete image-sampling function is
 
     F(q)=A f_Y(q)+b0,
 
-where A is a frozen orientation-preserving2-by2 image-derived similarity and b0
+where A is a frozen orientation-preserving2-by2 image-derived affine matrix and b0
 is a frozen translation. The residual boundary is Y_ij=X_ij on all four sides.
 Hence f_Y maps the rectangle to itself; F maps it onto its affine image, not
 necessarily the entire moving-image canvas. The saved archive retains the

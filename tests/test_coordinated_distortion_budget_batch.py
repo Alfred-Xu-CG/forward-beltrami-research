@@ -61,4 +61,3 @@ def test_same_incumbent_control_and_complete_failed_denominator(tmp_path):
         assert manifest['budget_mode']=='distortion_cap' and manifest['maximum_gradient_steps']==300
     bad=copy.deepcopy(control);bad['rows'][0]['configuration']['matches']='changed.json'
     with pytest.raises(ValueError,match='changed incumbent'):batch.check_control(cases,bad)
-

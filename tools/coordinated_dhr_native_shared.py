@@ -154,7 +154,7 @@ def prepare_cases(args):
         with np.load(affine,allow_pickle=False) as saved:
             a=np.array(saved['post_affine_matrix'],dtype=float);b=np.array(saved['post_affine_offset'],dtype=float)
         if a.shape!=(2,2) or b.shape!=(2,) or not np.isfinite(a).all() or not np.isfinite(b).all() or np.linalg.det(a)<=0:
-            raise ValueError('positive frozen SG affine required')
+            raise ValueError('positive frozen supplied affine required')
         row=dict(name=case['name'],cohort=case['cohort'],status='pending',
             fixed=str(sources['fixed']),moving=str(sources['moving']),shared_affine_source=str(affine),
             shared_affine_matrix=a.tolist(),shared_affine_offset=b.tolist(),accepted512_layouts=layouts)
@@ -189,12 +189,12 @@ def run(args,*,dhr=None,transform_to_field=None):
         package_source=str(getattr(dhr,'__file__','unknown')),package_import_seconds=import_seconds,
         started_utc=datetime.now(timezone.utc).isoformat(),prediction_complete=False,annotations_read=False,
         rows=rows,pair_denominator=len(rows),source_fusion_predictions=str(Path(args.fusion_predictions).resolve()),
-        initialization='frozen SG accepted512 affine conjugated to native frame; released initializer replaced',
+        initialization='same saved positive accepted512 affine conjugated to native frame; released initializer replaced; per-case provenance is heterogeneous',
         protocol='supporting native STANDARD modified-initialization counterfactual, not unmodified published pipeline',
         algorithm_changes=['initial-registration stage replaced with the existing shared affine'],
         unchanged='native source images; full STANDARD preprocessing, nonrigid pyramid, NCC, diffusion, optimizer, interpolation, composition, export',
         io_adaptation='same PIL native ratio1 and field-only export as native own-initializer baseline',
-        cost_scope='native pipeline plus chunked initial-field audit; prior SG initializer computation excluded, not zero-cost',
+        cost_scope='native pipeline plus chunked initial-field audit; prior supplied initializer computation excluded, not zero-cost',
         topology='no hard topology guarantee; not an isolated topology/objective/preprocessing/resolution ablation',
         map_direction='fixed native pixel centers to moving native pixel centers',
         initial_field_storage='theta and audit metadata only; no second full initial-field export')

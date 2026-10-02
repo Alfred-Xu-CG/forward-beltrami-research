@@ -53,4 +53,3 @@ def test_actual_incoming_cap_legal_early_stops_and_numerical_failure(tmp_path,mo
     assert 'per original area-reduced raw raster scale' in result['image_preprocessing']['moving_descriptor_prewarp_scope']
     assert result['objective_evaluations']==count+1+count+1
     with np.load(args.output) as saved:np.testing.assert_array_equal(saved['vertices'],original_vertices)
-
