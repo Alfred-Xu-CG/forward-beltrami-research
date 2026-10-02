@@ -368,3 +368,14 @@ confirms the formulas. This isolates a mechanism, not real MIIT causality.
 Generic affine transforms need more than channel permutation. Sparse landmarks
 also do not define true neighborhood warps. Consequently no registration objective
 has been changed on the strength of this control. See FORMULATION50.
+
+A follow-up OFFLINE fixed-affine-frame comparison retains all328available
+centers. Raw descriptors prefer the annotated center over the current mapped
+center for160IDs; affine-prepared descriptors do so for174. Mean cost ranking
+margin changes-.002027to+.008449, but7-to8's mean margin gets worse. All
+nominal support flags are valid, and an independent implementation reproduces
+every ranking sign. This is weak/mixed representation evidence, not a registration
+improvement. It is not a true-neighborhood ground-truth experiment.
+One optional six-configuration pilot is being prepared; it will be explicitly
+label-informed development because these same IDs influenced choosing it.
+The original transport recipe remains primary. See FORMULATION51.

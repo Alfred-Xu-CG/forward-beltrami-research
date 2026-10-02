@@ -2358,3 +2358,51 @@ proof of superior anatomical registration; earlier negativeafter_warp remains.
 Smallest decisive test: exactquarterturn/identity rank and support fixtures,
 then offline328center calculation and independent literal-frame recomputation.
 Independent Astra approves this single diagnostic, not a new optimizer branch.
+
+### T+16.4h frame ranking: weak/mixed signal, one exploratory pilot conditionally approved
+
+Offline probe retainsALL328IDs andall328nominalcommon-support neighborhoods:
+raw vs frozen-affine margin means-.00202690/+.00844876, stricttruthpreferences
+160/328vs174/328. Perpair2-to3margin-.00260777to+.01361308,truth61to72;
+7-to8-.00243468to-.00298207(WORSE),truth49to50;10-to11-.00085264to+.01444760,
+truth50to52. This is weak/mixed development evidence, not a robust classifier
+or anatomy improvement. Nominalf64support flags are not an exactf32access proof.
+Independent17tests6.35s plus separateNumPypatch/sampling implementation agree
+costs5.96e-8/margins1.19e-7 andallsyntheticranking signs;400literal enumerated
+footprints match. Actual328source/recompute audit pending.
+
+Research card — ONE exploratory shared-affine frozen-descriptor pilot:
+Question: does the specific known-frame correction improve actual registration,
+not merely sparse descriptor ranking, under unchanged safe optimizers/priors?
+Definition: at each raster scale prewarp moving INTENSITY once byoriginal T_A,
+using bilinearzeros/alignfalse, constructD_Aonce, then compare D_f(q)withD_A(f(q)).
+Residual P1 andcompleteF=T_A composed withf, originalmachine-pointterm, fullfixed
+foreground mask/OOBpenalty, ARAP/shape weights,300gradientbudget andE1-prefix
+selection stayunchanged. Existing transport/original remainsdefault/primary.
+No masked-descriptor repair: zero prewarp intensity mayyielddescriptorones,
+unlike original descriptor zero padding; freeze anddisclose thissupport difference.
+Report full-domain/perforeground andper-scale support, notjust328landmarkflags.
+ALLthreepairs andbothanalytic/F2, six fresh configs, no method-specifictuning.
+This is explicitly exploratory ANDlabel-informed: the same328IDs influenced
+variant choice and cannotprovide untouchedconfirmation. It is motivated by
+the exact frame identity, not the weak53%preference statistic. IndependentAstra
+conditionallyapproves AFTERpendingactualprobe audit andimplementationchecks.
+Falsifier: mixed/negative mean/tail/worst harm =>retire thisEXACTvariant, no
+nearby masking/weight/descriptorforest. Positive meansretainhypothesis only,
+not newgeneralization/SOTA/finalneuraltraining success. New E_A and old E_R
+are DIFFERENTfunctionals; doNOTcompare theirnumeric totals asmatchedE.
+Smallestdecisivetest: identity/quarter-turn true-imageobjective+finite-difference
+mapgradient, default-bitwise regression andwhole tinyoptimizer; then sixreal
+unchanged-budgetregistrations. Featureprewarp/per-scaleconstruction INCLUDED
+incompleteapplication timings. No TREiterate/stoppingselection or newNN.
+
+Actual328probe nowindependentlyclosed: separateliteralCSV/PIL/NumPydescriptor/
+sampling/genericP1coordinate audit agreesfourcosts8.94e-8, margins1.3411e-7,
+coordinates2.22e-16, ALLranking signs andnominalsupportflags. Everyfootprint
+pixel enumerated independently; all328commonflags true. Root28trajectory/frame
+tests40.01s; newprobe author40PASS7.06s andindependent17PASS6.35s. FORMULATION51
+recordsweak/mixed results andconditions. Git5d6d844already pushed includes
+trajectory selfcontained figure andexactquarterturn probe; currentfeatureprobe
+milestone follows. Buildernowowns ONLYminimaloptional shared_affine Evidence
+path+focusedtests; rootwillown sixexploratoryconfigs/remotejobs. No objective
+pilot hasstarted yet andoriginaldefault/results haveNOTchanged.

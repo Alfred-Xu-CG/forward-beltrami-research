@@ -3151,3 +3151,73 @@ true-map after_warp descriptors. Earlier mixed/negative after_warp optimization
 remains contrary evidence. One frozen-known-affine feature-ranking probe is
 predeclared separately, including support flags and truth-versus-current margins;
 absolute lower descriptor cost alone is insufficient to escalate.
+
+## 51. Frozen known-affine feature ranking on328centers: mixed development evidence
+
+Let D_f=D(I_f),D_m=D(I_m),T_A(p)=Ap+b from the ORIGINAL saved shared affine.
+Let D_A=D(B_A I_m), where B_A is ONE bilinear-zero/alignfalse prewarp at the
+fixed512pixel-center raster. The same fixed feature vector is sampled at each
+manual fixed center q. The annotated original moving target y gives only its
+residual CENTER p_truth=A^{-1}(y-b); the saved residual P1 gives p_current=f(q).
+Neither center supplies the true local neighborhood warp or its Jacobian.
+
+Compute four channel-mean absolute costs:
+
+    C_R(q,p)=mean_channels|D_f(q)-D_m(T_A(p))|,
+    C_A(q,p)=mean_channels|D_f(q)-D_A(p)|,
+
+at p_truth ANDp_current. OriginalAis applied once in C_R and not again in C_A.
+The principal ranking margin is m=C(current)-C(truth); m>0strictly prefers
+the annotated center. Reducing both absolute costs does not imply better ranking.
+Use float64 coordinate arithmetic/frozen original float32A promoted faithfully,
+float32 prepared intensities/features/normalized sampling grids. No optimizer,
+argmin, warp modification, TREoutput selection or descriptor validity mask.
+
+Retain all124nominal IDs and exactly the original123/107/98annotation-only
+availability. EveryID reports its four costs, both margins, margin difference
+and support flags. A descriptor query has offset2+SSDwindow1+bilinear footprint:
+in pixel-index coordinates its bounding extrema arefloor(512p-.5)-3 through
+ceil(512p-.5)+3. Raw/fixed feature footprints must be inside their raster.
+D_A additionally needs the aligned footprint inside its raster AND the
+original moving bilinear sampling support at every affine-mapped footprint
+pixel. Four extremal corners bound an affine's entire rectangle. Common support
+requires fixed, raw truth/current and affine truth/current (two paths) all valid.
+Flags use nominalfloat64geometry, not exactfloat32access certification near
+integer/boundary rounding. Full results are always retained alongside any
+explicit-denominator common-support subset; no prediction-based ID dropping.
+
+|Pair|Available/common support|Raw mean margin|Affine mean margin|Strict truth preferences raw→affine|
+|---|---:|---:|---:|---:|
+|2-to3|123/123|-.00260777|+.01361308|61→72|
+|7-to8|107/107|-.00243468|-.00298207|49→50|
+|10-to11|98/98|-.00085264|+.01444760|50→52|
+|Pooled correlated IDs|328/328|-.00202690|+.00844876|160→174|
+
+Only185/328individual margins improve;143do not. Truth absolute cost decreases
+onall3pairs, yet7-to8meanmargin WORSENS. The48.78%to53.05%preference change
+is weak mixed development evidence, not a robust classifier or new anatomy
+accuracy. These are correlated labels from ONE known sample, not328patients.
+Current maps were optimized with the old representation, also limiting inference.
+The intervention changes orientation, scale, raster interpolation/blur and
+boundary behavior together; it does not isolate rotation causally.
+
+Author40tests pass7.06s; independent17tests6.35s, separate400footprint enumeration
+and literal descriptor/sampler implementation before actual output. Independent
+actual328literalCSV/PIL/genericP1/NumPyfeature audit reproduces coordinates2.22e-16,
+four costs8.94e-8, margins1.3411e-7, alltruth-preference/margin-improvement signs,
+and all328commonflags by exhaustive footprint enumeration. Smallest observed
+margin7.60e-6 exceeds those particular discrepancies, not a general precision bound.
+Actualcompact report miit_frozen_affine_feature_ranking_t16.json retainsallIDs.
+
+Independent decision permits ONEnew fullpilot only because of the exact frame
+mechanism plus fixed inexpensive representation, not because53%is persuasive.
+It is explicitly LABEL-INFORMED development: these same IDs helped choose the
+variant and cannotnow provide untouched transfer confirmation. Original recipe
+remains primary; sameA/matches/weights/budget/geometry/E-prefixrule in both
+analytic/F2. Zero prewarped intensity can produce descriptorones where old
+descriptor sampling padszero: freeze/disclose thisbehavior, no added mask fix.
+Report full-image/per-scale support as well as landmark support, andinclude
+prewarp/setup timing. Different E_A/E_R values are different functionals and
+must not be compared as matched energies. If mixed/negative, retire thisEXACT
+variant without a masking/weighting/descriptor sweep. Positive results would
+retain a hypothesis, not establish independent generalization or neural training.
