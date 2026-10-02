@@ -71,7 +71,13 @@ the prior continuation's raster queries; the300gradient evaluations require
 five times its image raster work. Neither count is a measured runtime ratio.
 
 Native standard has mean TRE3.087571/3.280505/4.648501 on the three pairs
-and still a roughly53.5pixel worst error on7-to8. Its actual saved bilinear
+and still a roughly53.5pixel worst error on7-to8. Scoring only its stored native
+initial affine gives mean/p90=4.887064/8.282913, compared with the original
+common initializer4.904193/8.897884. Its native nonrigid stage therefore reduces
+mean by1.214872pixels (about24.9%), whereas the mean difference between initializers
+is only.017129pixels. This is an observed stage decomposition, not the unrun
+counterfactual of giving every method exactly the native initializer. The native
+7-to8 maximum actually worsens from50.448319 to53.497967. Its actual saved bilinear
 field has nonpositive local corners in all three cases; no post-hoc repair was
 applied. The scorer checks its own pixel-center field cells and does not claim
 a global boundary theorem or an equivalent257P1 representation. Independent
