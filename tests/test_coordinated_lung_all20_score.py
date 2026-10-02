@@ -155,6 +155,23 @@ def test_manifest_rejected_before_any_label_open(cohort, monkeypatch, change):
     with pytest.raises(ValueError): scorer.score(canvas, labels, predictions)
 
 
+def test_relocated_artifact_path_is_canonical_before_open(tmp_path):
+    archive = tmp_path / "archive"
+    run = tmp_path / "run"
+    archive.mkdir()
+    run.mkdir()
+    artifact = archive / "metadata.json"
+    artifact.write_text("{}", encoding="utf-8")
+    # The same existing archive is traversed repeatedly, as can happen when
+    # several prediction manifests reuse previously archived comparators.
+    spelling = "../" + "archive/../" * 40 + "archive/metadata.json"
+    resolved = scorer._path(spelling, run)
+    assert resolved == artifact.resolve()
+    assert ".." not in resolved.parts
+    assert scorer._json(resolved) == {}
+    assert scorer._path(str(artifact), run) == artifact.resolve()
+
+
 def test_missing_manifest_before_labels(tmp_path, monkeypatch):
     monkeypatch.setattr(scorer, "scaled_landmarks", lambda *args: pytest.fail("labels read"))
     with pytest.raises(FileNotFoundError): scorer.score(tmp_path, tmp_path, tmp_path)

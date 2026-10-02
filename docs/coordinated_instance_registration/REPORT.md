@@ -116,6 +116,50 @@ from the local optimizer's inability to establish coherent correspondences.
 Native standard DHR's stage decomposition above makes a purely better affine
 initializer an insufficient explanation for its nonrigid gain on these cases.
 
+### T+20h: same-functional convergence control and stiffness preconditioner
+
+This experiment changes the optimizer, not the corrected shared-affine MIND
+objective. All original masks, affine, machine points, priors, source P1 grid,
+coefficient/raster levels and full512 prefix selection stay fixed. The new
+direction uses the inverse of the frozen-rotation ARAP majorizer's exact scalar
+Galerkin stiffness, followed by analytic feasible-step bounds and complete-loss
+Armijo acceptance. A sine transform applies this particular inverse exactly in
+real arithmetic; it IS a global structured linear solve, not a new solve-free
+decoder or a learned network. Its full definition and independent dense-matrix
+checks are in OPTIMIZER_REDESIGN and BASELINE_PROTOCOL_INDEPENDENT.
+
+| Optimizer | Mean pair mean / p90 TRE | Actual gradients | Complete objective calls per pair | Complete optimizer call |
+|---|---:|---:|---:|---|
+| Corrected-frame Adam control | 3.548752 / 5.907957 | 300 | 332 | 4.14–6.13s |
+| Same Adam with threefold budget | 3.559354 / 5.904981 | 900 | 932 | 11.48–12.80s |
+| Exact-stiffness physical-fiber descent | 3.584154 / 5.936919 | 300 | 1877 / 1967 / 1886 | 9.27–11.26s |
+
+Each new arm actually finishes all three cases before manual-coordinate scoring.
+All six maps pass the saved topology check. Longer Adam lowers the complete
+objective on every pair but does not improve aggregate mean anatomy. The
+stiffness method does not even beat Adam300's final complete objective in this
+budget. Its allocated peaks are about142MiB versus200–203MiB for Adam900, but
+the lower-memory implementation does not make this an accuracy/speed success.
+These are single complete calls excluding the common initializer/matches,
+not repeated end-to-end benchmarks or intermediate time-to-accuracy curves.
+
+All900 stiffness directions start with feasible trial scale1: geometry never
+reduces that initial scale. Nevertheless complete-objective Armijo requires
+1265/1355/1274 halvings, with accepted scales down to1/128. All stages finish
+their gradient budget; none claims a stationary point. Thus the observed cost
+is associated with objective acceptance, not a folding-bound failure. The
+prior-only majorizer is not the curvature of the entire image/point objective;
+more detailed attribution requires further evidence. No neighboring regularizer
+or initial-step sweep is promoted from this failure.
+
+Artifacts: `miit_adam900_t20/landmark_scores.json` and
+`miit_stiffness300_t20/landmark_scores_complete.json`. The first stiffness score
+retains an archive-only DHR read failure: uncollapsed nested relative paths
+exceeded the Windows path limit although the canonical files existed. Resolving
+artifact paths before opening fixes this;58scorer tests pass, and rescoring
+recovers the unchanged archived DHR values without changing ANY new map or A/F2
+score. The failed first score is preserved, not reported as registration failure.
+
 ## 1. What is implemented, and what is not
 
 Implemented: a differentiable local forward decoder which takes learnable

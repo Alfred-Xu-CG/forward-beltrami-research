@@ -195,3 +195,129 @@ ARAP3, shape1e-4, match.1 and OOB remain single-counted in the shared complete
 objective. No MIND-based final selector leaks into the NGF arm.
 Source: `outputs/coordinated_instance_registration/check_sources/independent_ngf_probe_20261002.py`.
 No production edits or repeated broad test suite were needed for this check.
+
+## Same-functional stiffness optimizer: independent pre-run check
+
+The batch-one, unit-square actual `p1_arap_energy` equals half the area integral
+of the squared distance to proper rotations. Freezing the current face rotations
+gives a touching upper quadratic. For a unit scalar direction its fine-interior
+Hessian is the standard P1 stiffness `K`, not `2*K`: diagonal four and four
+axis-neighbor entries minus one. The factor three comes only from the existing
+ARAP weight. Multiple-batch averaging or a nonunit direction would change this
+normalization and is outside the proposed specialized implementation.
+
+Independent assembly from triangle shape gradients, not the production stencil,
+checks fine grids with 2, 3, 4 and 8 intervals. Maximum touching-value error is
+`1.1e-18`, touching-gradient error `2.13e-16`, frozen-Hessian/FE error `1.78e-15`,
+and FE/five-point error `1.78e-15`. These are arithmetic checks of the stated
+majorizer, not a Hessian claim for the complete nonlinear image objective.
+
+The proposal prolongation is raw tensor-bilinear interpolation with zero coarse
+boundary, NOT nested P1 interpolation of a map. For integer refinement `r`,
+the independently constructed one-dimensional hat matrix satisfies
+`S=B^T*T_f*B=T_c/r` and `M=B^T*B`, with diagonal `(2*r*r+1)/(3*r)` and adjacent
+entry `(r*r-1)/(6*r)`. Consequently `P^T*K*P=S tensor M+M tensor S`.
+Orthonormal sine modes diagonalize both factors; this gives exactly the spectral
+denominator stated in `OPTIMIZER_REDESIGN.md`. For 2, 3 and 4 coarse intervals
+and refinements 1, 2 and 4, explicit dense Galerkin error is at most `2.67e-15`,
+and the weighted-three spectral inverse differs from a dense solve by at most
+`2.22e-16`. Every nonzero test gradient has negative gradient/direction pairing.
+
+The existing analytic safety scale with theta `.95` reaches the closed
+contracted polytope `Q >= eta+.05*(Q0-eta)`. The proposed strict-interior search
+is not a larger deformation class; it excludes exact saturation of that face.
+The floor must remain tied to the original directional-stage anchor, not be
+refreshed after accepted inner steps. This subsection currently verifies the
+mathematical proposal and the subsequent implementation checks below.
+
+The production `DirichletGalerkinStiffness` inverse agrees with the independent
+dense FE/Galerkin solve to `1.67e-16`, its operator action to `1.78e-14`, and its
+raw prolongation with independently sampled hat functions to `3.89e-16`.
+A nonidentity-anchor fixture computes corner determinants independently using
+2-by-2 matrix determinants: the first active bound is `0.4203232650592689`
+versus production `0.4203232650592685`. Eight accepted steps preserve the
+ORIGINAL contracted floor, physical-coefficient reconstruction and exact fixed
+boundary. Literal recorded Armijo inequalities pass. A deliberately high-curvature
+nearby target, with zero backtracking allowance, produces `line_search_exhausted`
+and preserves the original anchor and coefficients; no rejected trial is exported.
+
+An instrumented tiny complete application builds the old analytic and new
+stiffness per-raster Evidence on identical inputs. At a common nonidentity map,
+all objective parts, the complete scalar and every vertex gradient are bitwise
+equal at raster sizes 8 and 16. The new path makes 15 observed complete objective
+calls, exactly its reported count: four gradients, four accepted steps and one
+backtrack, plus initial/prefix/final calls. Final selection equals the minimum
+full-raster objective across the initial map and all accepted directional-stage
+prefixes; the exported binary certificate passes. The same frozen matches loader
+and prior weights are retained by direct integration inspection (this tiny fixture
+has no point-match term). No production correction was required by this bounded
+check. GPU performance and anatomical usefulness are not established here.
+
+Reproducible source:
+`outputs/coordinated_instance_registration/check_sources/independent_stiffness_probe_20261002.py`.
+
+### Actual optimizer experiment: bounded independent postrun check
+
+All six saved maps (Adam900 and stiffness300 on the three MIIT directions) have
+finite float64 vertices, exactly unchanged saved boundary and positive affine
+determinant. Independently evaluated normalized corner minima are
+`.363924/.327949/.309700` for Adam900 and `.652874/.750933/.678257` for stiffness300,
+all above `.001`. Independent triangle selection plus explicit barycentric solves
+reproduce every available landmark error: 123/107/98 labels, 328 per arm, with
+maximum discrepancy `1.21e-13` canvas pixels and `9.65e-13` native moving pixels.
+Equal-pair means independently reproduce `3.55935383115` and `3.58415412845`.
+The complete stiffness score file is authoritative; the earlier score file's
+archived-path failure is not an analytic-prediction failure.
+
+Adam logs contain 900 gradients and 910 evaluated inner iterates per case;
+stiffness logs contain 300 gradients and 300 accepted steps per case. Every
+stiffness initial alpha is one: the feasible-bound fraction is not limiting
+these initial trials. Backtracks are genuinely complete-objective Armijo
+rejections, not geometry failures: independently recounting trials gives
+1265/1355/1274 halvings and 1877/1967/1886 complete objective evaluations.
+Each trial alpha is the recorded power of one half, earlier trials fail Armijo,
+and the final trial passes. Best-full prefix selection agrees with each saved
+report. Independently taking the median directional secant ratio
+`2*(Eaccepted-Ecurrent-alpha*g_dot_d)/(alpha^2*(-g_dot_d))` across all 60 accepted
+level-257 steps gives `149.3379108/179.8851258/118.4886769`; accepted-alpha medians
+are `1/128,1/128,1/64`. These are finite-step remainder ratios, not Hessian
+eigenvalues. The weighted-ARAP contribution is at most one by its touching
+quadratic bound, using its own component-gradient subtraction. The author's
+separate fresh-final-map component probes were not independently rerun here.
+Prediction configurations contain only image, affine and machine-match
+input paths; reviewed prediction code has no evaluation-annotation reads.
+The manifest's label-free prediction flag does not erase the explicitly declared
+label-informed development history. These checks support the negative reported
+comparison, not anatomical equivalence or a general impossibility conclusion.
+Run the same probe with `--postrun`; no GPU or prediction rerun is needed.
+
+### Native DHR existing-22 expansion: bounded pre-run review
+
+No blocking coordinate or cohort defect found in the new existing-input/scoring
+wrapper and the small released-runner extension. The 20 lung rows enumerate all
+ordered distinct fixed/moving stain pairs once; the two other directions remain
+fixed CD4 to moving CD68 and fixed HE to moving PanCytokeratin. Nine native images
+are used, with no external affine, masks, machine matches or annotation inputs.
+The runner still invokes DHR as `(moving/source, fixed/target)`, preserves its
+released STANDARD algorithm settings, and keeps the original MIIT default rows.
+All 22 attempts must be terminal before the scorer opens any manual labels.
+
+Independent NumPy border-bilinear sampling of a nonuniform saved field checks
+the native center conversion, unequal rectangular images, asymmetric padding,
+noninteger initial ratios 1.37/1.19 and unequal load ratios .73/.61. The formula is
+`z=((p_fixed+.5)*s_fixed+pad_fixed)/r-.5`, followed by
+`p_moving=((z+d(z)+.5)*r-pad_moving)/s_moving-.5`.
+The wrapper uses native image extents here, not 512; only the final comparison
+uses the existing moving-image per-axis 512 layout. Maximum oracle differences
+are `7.99e-6` native pixels and `1.44e-5` canvas pixels on these small fixtures.
+The previously verified nominal-ratio resampling convention remains unchanged.
+
+Inspection confirms the original 80/77/69 paired-ID policies, including kidney's
+two fixed-only IDs, and the existing lung 50%-to-5% center convention. Failure
+rows remain in denominators, lung is summarized over all 20 correlated directions,
+and equal-specimen aggregation weights lung/Histo/kidney once each only when
+all succeed. There is no cross-specimen native-pixel average or topology-based
+accuracy exclusion. This is the declared bilinear saved-field evaluation, not
+proof of equality with DHR's optional cubic landmark/image-export path.
+Source: `outputs/coordinated_instance_registration/check_sources/independent_native22_probe_20261002.py`.
+No registration, broad duplicate test suite or real-label access was performed.

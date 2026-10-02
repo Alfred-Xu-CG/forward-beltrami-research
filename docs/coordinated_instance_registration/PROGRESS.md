@@ -7,7 +7,35 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
-### Restart measurements — 2026-10-02 07:18 UTC
+### Same-functional optimizer result — 2026-10-02 07:39 UTC
+
+All six approved predictions now complete: corrected Adam900 and exact ARAP
+Galerkin-stiffness physical-fiber300, each on all three MIIT pairs. Both are
+negative as accuracy improvements. Aggregate mean/p90: Adam9003.559354/5.904981,
+stiffness3.584154/5.936919, versus corrected Adam3003.548752/5.907957. Longer
+Adam lowers every pair's complete E but not aggregate mean TRE. Stiffness is
+worse than Adam300 in final E as well;1877/1967/1886 actual objective calls and
+1265/1355/1274 Armijo halvings show why equal gradients are not equal compute.
+All900 initial trial scales are1; no geometric bound reduction or failed trial.
+All outputs are valid, all30stages complete budgets. Root20focused tests pass;
+independent triangle assembly, exact Galerkin inverse, full Evidence/VJP,
+fixed-stage bound and objective-call counting checks pass. No accuracy claim
+is inferred from those checks. Source/read-only analysis continues without a
+nearby rate/regularizer sweep.
+
+A concrete archive-path bug was also fixed: repeated ../references made the
+old DHR-context JSON path too long on Windows. Canonical paths work.58focused
+scorer regressions pass; complete rescoring leaves new A/F2 metrics unchanged.
+The original failure record remains beside the complete score.
+
+Approved comparator expansion: actual released STANDARD on all20 existing lung
+directions plus the existing HistoReg and kidney directions,22image-only native
+registrations. Reuse original images and native-coordinate evaluator, not the
+old512DHR wrapper. These are previously viewed specimens, not22independent
+patients. Astra baseline high owns minimal setup/scoring reuse; no retinal
+heldout branch and no optional different lesions crop are added.
+
+### Restart measurements — 2026-10-02 07:12 UTC
 
 Released full DHR standard is now actually reproduced: equal-pair mean/p90
 3.672192/6.432444 canvas pixels, complete native calls30.56–32.95s. Fast's

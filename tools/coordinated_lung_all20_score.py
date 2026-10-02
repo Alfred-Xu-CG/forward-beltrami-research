@@ -43,7 +43,10 @@ def _path(value, directory: Path) -> Path:
     if not isinstance(value, str) or not value:
         raise ValueError("nonempty artifact path required")
     path = Path(value)
-    return path if path.is_absolute() else directory / path
+    # Relocated manifests can chain ../archive/../ references. Canonicalize
+    # before opening: their uncollapsed spelling can exceed Windows MAX_PATH
+    # even when the actual existing artifact has a short enough native path.
+    return (path if path.is_absolute() else directory / path).resolve()
 
 
 def _load_predictions(predictions: Path) -> tuple[dict, Path]:
