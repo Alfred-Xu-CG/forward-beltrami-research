@@ -2475,3 +2475,51 @@ advantage; F2 matching/beating analytic narrows that claim. Either outcome
 does NOT improve production image registration or justify an image-loss change.
 Falsifier/stop: finish this ONE paired block and stop regardless of result;
 no oracle map becomes a production initializer, training teacher or inference score.
+
+### T+17.7h: paired oracle collection retained a real F2 protocol failure
+
+One warmup each and the declared ABBA collection finished. Analytic completes
+300/310/322 and reaches the first CERTIFIED all107<=1px accepted state at stage4,
+150 gradients/155 trials. The two measured threshold times are1.0783/1.1226s.
+F2 attempts stop individual inner loops at actual rounded eta-floor rejections:
+warm180/190/202, measured165/175/187 and188/198/210 gradients/trials/J calls.
+Their retained endpoints are legal, but maximum errors remain37.0--37.5px;
+no threshold is attained. All three incomplete budgets are marked FAILED,
+not discarded or rerun with a weaker floor. This is an implemented-protocol
+task-specific motion-efficiency result, NOT completed equal-budget comparison,
+general F2 incapacity, image-only registration, or a finite speedup ratio.
+Independent endpoint/threshold and failure-source checking is underway.
+
+Research card — ONE label-free initializer restriction diagnostic:
+Question: does the current four-parameter positive SIMILARITY force global
+shear/anisotropic scaling into the fixed-boundary residual and its ARAP prior?
+All current saved 'affine' initializers are similarities by source construction.
+Use ONLY the same original frozen image-machine correspondences, not manual
+labels, oracle maps, or a rematcher. Convert targets to original moving units
+y_j=A_old*p_j+b_old; freeze original confidence and original-domain eligibility.
+Fit a similarity and an unconstrained six-parameter affine with the SAME loss
+sum_j w_j [sqrt(1+||512*(A*q_j+b-y_j)/8||^2)-1]/sum_j w_j.
+This is a small convex robust regression in4 or6 coefficients, not a large
+mesh solve. Verify rank, stationarity and positive rounded determinants; a
+nonpositive affine fails rather than being projected or silently replaced.
+Smallest decisive test: exact similarity/full-affine synthetic fits, analytic
+gradient/IRLS stationary checks and degenerate/failure fixtures, then ONE fixed
+two-fold spatial split parity=(floor(4*qx)+floor(4*qy)) mod2 across all3pairs.
+Train each model on one parity and evaluate all eligible opposite-parity points;
+reverse once. No split/grid/ridge/loss/threshold sweep. Machine confidences are
+not anatomical truth and this is not independent-patient validation.
+Advance only if full-affine held-out robust loss improves BOTH directions on
+ALL three pairs, with full-rank fits and positive float32 stored determinants.
+Otherwise stop this EXACT branch. Training loss alone cannot justify it.
+If supported, compare RE-FITTED similarity versus full affine, both fitted once
+on all same eligible points, across analytic/F2/nativeDHR with the original
+transport features, weights,300safe-gradient recipe, declared geometry and
+identical initializer within each arm. Re-express the SAME world correspondences
+under the new affine, with no rematching, point dropping, or manual selection;
+report any residual-target-domain incompatibility rather than silently excluding
+points. This would change initialization and residual-prior interpretation,
+not be an equal-functional geometry ablation. Original results remain archived.
+Prior work: ordinary positive Procrustes similarities/full-affine robust fitting;
+new contribution, if any, would be useful integration, not a novel affine solver.
+This is the only next alternative application branch, approved by the independent
+decision agent after excluding already retired neighboring interventions.

@@ -211,3 +211,139 @@ true anatomical match, or that the oracle's surrounding dense warp is correct.
 No label is relabelled/excluded and no output selection changes. The plot is
 reproducible with tools/coordinated_miit_tail_plot.py; it is not another numerical
 benchmark or a clinical assessment.
+
+## 8. The predeclared matched-motion attempt, including its failed control
+
+This is a SECOND, different question: how efficiently do the two IMPLEMENTED
+mechanisms realize the same large sparse motion when correspondence is given?
+The fitting loss J, all107 centers, original incoming analytic257-square table,
+original A,b, fixed boundary, P1-ac interpolation and eta=.001 are identical.
+No image evidence or prior enters fitting. All runs restart from that same
+incoming table; they do not restart from a previous oracle output.
+
+### 8.1 What differs between the two decoders
+
+Analytic uses the scalar decoder of Section3, x then y at each of five levels,
+30 gradients per stage. F2 uses the existing production patch decoder, with
+TWO cycles of those five levels and30 vector gradients per stage. For F2 the
+raw variable z_l has TWO channels. Bilinearly prolong its zero-boundary raw
+field to257-square; denote it r_i in R^2. This is proposal interpolation, not
+composition/resampling of a certified map. Let c_i count how many of the four
+staggered patch passes update interior vertex i. With patch side P=8 cells and
+material spacing h=1/256, each pass receives the same calibrated logit
+
+    ell_i = r_i / ((.5*P*h)*max(c_i,1)).
+
+Its suggested vector is d_i=.5*P*h*tanh(ell_i), componentwise. Within a pass,
+each nonconflicting patch scales its entire vector suggestion together while
+holding that patch's boundary fixed. The four staggered passes run sequentially
+on the current table; shared vertices are not duplicated. This is the ORIGINAL
+fixed_h F2 mechanism, not a new current-edge or larger-patch variant.
+
+For one affected corner, the determinant along a patch proposal is exactly
+a+t*L+t^2*Q. Its conservative adverse-change bound is
+B=max(-L,0)+max(-Q,0). The implementation's allowance is
+min(.75*a,.95*max(a-floor,0)), where floor=eta*q_ref. It chooses a common patch
+scale at most allowance/B over all affected corners, with its existing zero-B
+guard and scale cap1. Accepted gain is1. The reserve.95 is explicit.
+This protects the real-arithmetic path but does not provide an absolute
+floating-point cushion when an existing slack is extremely small.
+
+Both planned schedules therefore contain300 gradients,310 trials,322 J calls,
+but they are NOT equal-dimensional or equal-cost operations. Analytic allocates
+172,618 scalar coefficients across its ten stages; F2 allocates345,236. One
+analytic trial has one geometry pass, whereas one F2 trial has four. These
+parameter totals count the SUM across separately optimized stages, not all
+parameters simultaneously resident or the number of distinct final vertices.
+
+### 8.2 Threshold and timing, without an error-driven early stop
+
+After each accepted stage, compute ALL107 physical errors. Record the FIRST
+accepted stage with maximum<=1 canvas pixel only after actual eta/boundary
+checks and filtered-sign binary certification. Copy that vertex table once
+to CPU, serialize it in memory and certify it; all that work is INCLUDED in
+the reported threshold time. Persist that one snapshot separately afterward.
+Ten accepted-stage metric queries and two export metric queries are disclosed,
+in addition to J calls. No full optimization trajectory is retained.
+
+Continue the full planned fitting schedule after a threshold is reached.
+One warmup per method is followed by the fixed measured order
+analytic,F2,F2,analytic. No rate, patch, floor or budget is retuned. All six
+attempts are declared pending beforehand and retained, including failures.
+The collection is complete, but a FAILED arm is not a completed-budget run.
+
+### 8.3 Actual six-attempt result on the idle A6000 GPU6
+
+| Attempt | Actual gradients / trials / J | Failed trials | Fit seconds | Allocated peak MiB | Final mean / p90 / max pixels |
+|---|---:|---:|---:|---:|---:|
+| Warm analytic |300 /310 /322|0|3.03928|115.066|.015168 /.021693 /.026773|
+| Warm F2, incomplete |180 /190 /202|5|10.50330|378.634|.578565 /.095504 /37.212929|
+| Measured analytic |300 /310 /322|0|2.14449|115.559|.015168 /.021693 /.026773|
+| Measured F2, incomplete |165 /175 /187|5|8.50380|380.511|.584650 /.061112 /37.484976|
+| Measured F2, incomplete |188 /198 /210|4|9.45028|378.634|.554303 /.027693 /37.038191|
+| Measured analytic |300 /310 /322|0|2.19696|115.559|.015168 /.021693 /.026773|
+
+All three analytic attempts first meet the certified threshold at stage4
+(zero-based),150 gradients/155 trials: maximum about.620375 pixel and minimum
+corner ratio.00241128944. Measured threshold times are1.078299 and1.122595s,
+including approximately.038716/.041092s of copy/serialization/certification.
+Its final maximum is.02677253 pixel. These two samples are descriptive timings
+on ONE known task, not a population estimate or an amortized neural inference.
+
+No F2 attempt reaches the threshold. All retain legal endpoints and fit104/107
+centers within1 pixel. The remaining Pt121,Pt122,Pt19 dominate squared error;
+the worst remains about37 pixels. F2 repeats are not bitwise identical: their
+actual counts and maps differ near the strict-floor numerical threshold.
+
+F2's first-cycle accepted slacks become exceptionally small. For measured
+attempt3 the minimum ratios at levels17/33/65/129 are
+.098625159/.001386472/.001000003251/.001000000000038376.
+Second-cycle rejected trials have FINITE loss and coordinates, exact boundary,
+but the computed ratio is just BELOW.001. The generic failure message mentions
+nonfinite values OR geometry; here it is the geometry-floor branch, NOT a NaN
+and NOT an orientation reversal. The actual saved endpoint remains above eta.
+
+Why the reserve is insufficient in this case: one active pass can retain only
+.05 times its incoming area slack; four passes can multiply that lower bound
+by(.05)^4=6.25e-6. Repeated accepted stages can exhaust a fractional reserve.
+The measured attempt3 normalized endpoint slack is3.84e-14, corresponding to
+absolute determinant slack about5.86e-19 on this mesh. Coordinate subtraction,
+addition and cross-product rounding need not be smaller than that. Real-arithmetic
+strict positivity does not imply an implementable absolute separation forever.
+No floor relaxation, map repair or replacement run was used to hide this.
+
+The final saved F2 maps have positive EXACT binary-rational gaps above eta:
+warm2.31128e-15, measured3 3.83752e-14, measured4 9.85434e-16, in normalized units.
+Rejected intermediate arrays were NOT saved; their reported near-floor minima
+are source/trace evidence, not independently certified binary counterexamples.
+Archived image-only MIIT F2 outputs have minimum ratios around.20 and complete
+budgets; this particular numerical failure did not affect those outputs.
+
+### 8.4 Independent recomputation and the conclusion actually supported
+
+A separate checker reconstructs the native coordinates from CSV, evaluates
+generic P1 triangles, and checks ALL nine saved tables: six endpoints and three
+analytic thresholds. Their2,359,296 corner determinants, boundaries and affines
+agree; all107 errors agree within1.06e-12 canvas pixels. Sixteen near-floor
+F2 corners are additionally recomputed using exact rational arithmetic on the
+stored binary coordinates. Counts/failures are reconciled with all ten stages.
+
+This supports an IMPLEMENTED-PROTOCOL motion-efficiency advantage on one
+label-oracle task: analytic attains the stated threshold; F2 does not attain it
+before strict-floor rejections and incomplete termination. It is NOT a completed
+equal300-gradient accuracy comparison, general F2 incapacity, or an automatic
+registration result. There is NO finite time-to-threshold speedup ratio because
+the control never reached that threshold. Smaller F2 p90 than its maximum must
+not be presented as fitting all centers.
+
+Actual F2 geometry-pass counts are760/700/792, not the planned1240; all ten
+stages still allocate the stated cumulative coefficient totals. Peaks include
+resident full512 original evidence and are allocator measurements, not process
+RSS or encoder training memory. Setup/export scope is unchanged from Section6;
+the NEW threshold/metric instrumentation means historical2.8979s is not the
+paired baseline. No manual-label output enters production manifests.
+
+Reproducible code is `tools/coordinated_miit_oracle_compare.py` plus the capacity
+witness module. The complete attempt collection, per-call reports, all point
+errors, final maps and threshold maps are in
+`outputs/coordinated_instance_registration/miit_oracle_abba_t18/`.

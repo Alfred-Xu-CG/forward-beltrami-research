@@ -423,3 +423,15 @@ recomputation confirms the map, all point errors and objective decomposition.
 See [ORACLE_CAPACITY.md](ORACLE_CAPACITY.md) for its complete inputs, equations,
 units, budget, timing and interpretation. A separately predeclared matched F2
 oracle control now tests motion efficiency; no oracle map enters production.
+
+The declared warmup+ABBA oracle collection is now complete, including three
+FAILED/incomplete F2 attempts. Analytic first certifies all107 errors<=1pixel
+after150 gradients (measured1.0783/1.1226s including snapshot certification),
+then completes300 gradients and reaches maximum.026773pixel. F2 retains legal
+outputs but reaches only165/188 measured gradients before strict rounded-floor
+rejections; maximum remains37.48/37.04pixels. This is an implemented-protocol
+advantage on one sparse labelled task, NOT a completed equal-budget comparison,
+finite speedup ratio, general F2 impossibility or automatic image registration.
+Independent recomputation confirms all nine endpoint/threshold maps, including
+exact binary-rational near-floor F2 corners. ORACLE_CAPACITY Section8 gives
+the full method, counts, timing/memory scopes and failure interpretation.
