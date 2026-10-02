@@ -3045,3 +3045,109 @@ trial indices coincide:0HECC/113HEK active. Saved MIIT ALL930scale/mean_scale
 values equal1, with largest gauge below.655, so no actual clipping there.
 Memory differences are~3.5KiB at equal allocator baselines, not process RSS.
 Actual maps/reports remain on D under results/*packed_diagnostics_application_t16*.
+
+## 49. Six unchanged-recipe MIIT stage replays: objective is not anatomy
+
+After all predictions were terminal, reuse the original six analytic/F2
+configurations and the existing accepted-stage callback. Each recording reads
+images, affine and machine matches only, and copies10accepted257²maps to CPU.
+No objective, regularization, boundary, backend, initialization or iteration
+budget is changed. New explicit trial_diagnostics=existing equals its historical
+omitted default. Offline scoring uses exactly the original123/107/98annotation
+availability, all124nominal IDs and same P1ac/native-to-canvas frames.
+
+At prefix n (one-based accepted stage) each method has30nbackwards,31ntrials
+and1+33nobjective evaluations. The final export evaluation gives332overall.
+The full512objective E1 is separately recomputed at every accepted stage; lower
+stage-resolution values are not compared across resolutions. Prefix selection
+keeps the strict minimum full E1 among identity and accepted maps, never TRE.
+Show accepted and E1-selected-prefix TRE separately. Snapshot-copy times are
+instrumented and must not replace clean application timing.
+
+All60snapshots independently pass15,728,640corners>.001, globalmin.162259263,
+exact fixed boundaries/affines; all six runs have300/310/332/0. Final exported
+maps are bitwise their own E1-selected snapshots. Replays themselves are NOT
+bitwise originals: analyticmax differences≤3.77358e-10unit; F2max/RMS2-to3
+2.21720e-6/1.65215e-8,7-to8 7.71918e-5/6.53120e-7,10-to11
+9.41381e-11/8.15900e-13. No unmeasured GPU repeat tolerance is invented.
+Final landmark mean/p90 deltas are≤4.003e-8/1.645e-8pixels, but that does
+not turn all vertex trajectories into exact reproducibility.
+
+Independent generic-triangle/literal-CSV calculation reproduces ALL26,240
+per-ID error entries: max2.16938e-13canvas/1.30207e-12nativepixels;
+all20aggregateprefixrows agree within2.84217e-14. Author41affectedtests pass;
+independent14focused tests pass36.03s before actual scoring.
+
+Decisive examples:
+
+* Analytic2-to3 from stages2to9 (90to300gradients): full E1 decreases
+  .38233410to.37475776 while mean TRE worsens3.34619004to3.55291671pixels.
+  There are six individual E1-down/mean-up transitions on this trajectory.
+* F2 10-to11 selects stage4 by E1 .29073872346, mean/p905.07445796/8.03923382.
+  Its terminal stage9 has slightly worse E1 .29077374222 but better mean/p90
+  4.92470989/7.79628456. The prefix selector is correct, not a selection bug.
+
+|Gradients|Analytic E1-prefix mean/p90|F2 E1-prefix mean/p90|
+|---:|---:|---:|
+|60|3.921983/6.325422|4.047158/6.958180|
+|90|3.877734/6.298182|3.966002/6.536946|
+|150|3.890574/6.250889|3.947121/6.351666|
+|300|3.897540/6.289528|3.964294/6.381702|
+
+These are equal-pair512pixel summaries for ONE known prostate specimen.
+The table is diagnostic, NOT an instruction to stop at90/150gradients by TRE.
+F2 final ACCEPTED-terminal aggregate is3.914378/6.300719, distinct from the
+actual E1-selected output3.964294/6.381702. Falling E1 and worsening anatomy
+demonstrate observed ranking discordance, not global optimizer adequacy or
+inherent impossibility of obtaining useful image evidence.
+
+Actual data: results/miit_trajectory_t16/trajectory_scores.json plus six compact
+trajectory archives and reports; figure trajectory_summary.png/svg is computed
+only from scored paths. No labels enter recording or prefix selection.
+
+## 50. Directional descriptor frame: exact mechanism, not MIIT causal proof
+
+Let I be a scalar raster, W={-1,0,1}² its3x3window, and R the eight offsets
+(±2,0),(0,±2),(±2,±2). Away from finite image boundaries define
+
+    S_I(x,r;W)=mean_{w in W} [I(x+w)-I(x+w+r)]².
+
+The descriptor is exp(-(S_I(x,r)-min_R S_I(x,.))/(mean_R S_I(x,.)+1e-4)).
+For a known affine T(x)=Ax+b and I_f=I_m composed with T, direct substitution
+gives S_f(x,r;W)=S_m(T(x),Ar;AW), retaining the same transformed sample weights.
+Thus transporting ORIGINAL moving features by location alone while preserving
+channel r generally compares DIFFERENT neighborhood directions and windows.
+This is a limitation of the declared transport objective, not automatically a
+programming bug. Generic A also changes scale/footprint; eight-channel permutation
+cannot correct arbitrary rotations/scales exactly.
+
+For exact quarter-turns, AW=W and AR=R. The code's replicate shift boundaries
+and valid-count square pooling also commute with quarter-turns. If fixed is
+torch.rot90(moving,k), inverse source-pixel coordinates at k1 are
+(x,y)->(N-1-y,x), hence r=(dx,dy)->(-dy,dx). Channel permutation k1 is
+[2,3,1,0,6,4,7,5],k2[1,0,3,2,7,6,5,4],k3[3,2,0,1,5,7,4,6].
+Min/mean normalization is permutation invariant. Compare spatially rotated
+moving descriptor with fixed descriptor, once without and once WITH that
+mathematically required channel permutation. There is no unknown deformation,
+rotation interpolation, landmark, optimizer or OOB ambiguity in this control.
+
+Known64anisotropic texture unpermuted mean absolute channel errors k1/2/3 are
+.445782/.244055/.445782; corrected maxima≤3.33e-16. Existing prepared512MIIT
+texture under exact rotations gives.262289/.240584/.262289; corrected maxima
+≤2.22e-16. Identity errors are exactly zero. This is NOT an experiment on the
+actual MIIT inter-section ground-truth neighborhood deformation.
+Root10tests pass4.36s; independent Astra10pass4.01s and a separate NumPy literal
+pixel-loop implementation agrees (correctedmax≤4.44e-16 on independent19texture).
+Optional loader can resize input; the exact no-interpolation assertion concerns
+ROTATING THE PREPARED raster only. Actual compact probeJSON is
+mind_frame_exact_rotations_t16.json. Prior definition:
+https://ora.ox.ac.uk/objects/uuid%3A90c69bfd-a3b1-4868-93b4-ccc4375c468d
+(Heinrich etal2012,MIND). The affine/window identity and diagnostics here are
+direct derivations from the actual implemented descriptor, not claimed novelty.
+
+This mechanism alone does not authorize changing the optimizer. Sparse manual
+centers provide no true Jacobians/local neighborhood warps, so cannot supply
+true-map after_warp descriptors. Earlier mixed/negative after_warp optimization
+remains contrary evidence. One frozen-known-affine feature-ranking probe is
+predeclared separately, including support flags and truth-versus-current margins;
+absolute lower descriptor cost alone is insufficient to escalate.

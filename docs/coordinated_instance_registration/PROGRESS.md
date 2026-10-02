@@ -2306,3 +2306,55 @@ reuses existing recording for ALLsixMIIT analytic/F2configs unchanged. First
 record2-to3analytic completes300/10,10.57MBsnapshots;remainingfive running on
 idleAI GPU6. Manual labels are not on remote/record inputs. Independent reader
 will compare snapshot anatomy ONLY offline after terminal recording.
+
+Research card — directional descriptor coordinate-frame diagnostic:
+Question: does channelwise transport of our eight directional MIND-like channels
+give a nonzero error even at a KNOWN exact affine image correspondence?
+Exact claim: for I_f(x)=I_m(Ax+b), patch SSD with offset r/window W transforms
+to offset Ar/window AW. A quarter-turn preserves the eight offsets and square
+3x3window, but permutes their CHANNEL identities; arbitrary rotation/scale does
+not generally have an exact eight-channel permutation. This is a limitation
+of the declared transport objective, not automatically an implementation bug.
+Assumptions: same scalar image under an exact quarter-turn, identical finite
+boundary/pooling conventions; normalization min/mean is permutation invariant.
+Smallest decisive test: identity and k=1,2,3exact torch.rot90 of seeded anisotropic
+texture, then one existing512real texture; independent literal channel indices.
+Compare fixed descriptors with spatially rotated original moving descriptors
+WITH and WITHOUT the mathematically required permutation. No image interpolation,
+OOB ambiguity, optimizer, landmarks, learned model or registration retuning.
+Falsifier: corrected channels fail to match within numerical reduction rounding,
+identity fails, or non-permuted directional mismatch is absent on the chosen
+non-isotropic texture. Mechanism evidence does not establish responsibility for
+MIIT errors. Sparse manual centers do NOT supply true local Jacobians/neighborhood
+warps, so cannot define a true-map after_warp descriptor experiment. Any shared-A
+local-neighborhood probe would require explicit approximation wording. Prior
+mixed/negative after_warp optimization results remain contrary evidence.
+Prior work: MIND self-similarity descriptor (Heinrich etal2012,
+doi10.1016/j.media.2012.05.008); actual repository implementation OFFSETS and
+pooling definitions. Independent Astra approves ONLY diagnostic before any
+new objective pilot; no after_warp optimizer experiment authorized by this card.
+
+Research card — ONE frozen-affine-frame feature-ranking diagnostic:
+Question: does computing the moving descriptor AFTER the known shared affine
+give better truth-versus-current ranking on the same328MIIT available centers?
+Define T_A(p)=Ap+b, fixed descriptor D_f=D(I_f), original D_m=D(I_m),
+affine-frame D_A=D(I_m composed with T_A), computed once on the512pixel raster.
+Costs C_R(q,p)=mean_channels|D_f(q)-D_m(T_A(p))| and
+C_A(q,p)=mean_channels|D_f(q)-D_A(p)|. Evaluate BOTH at known landmark residual
+p_truth=A^{-1}(y_truth-b) and saved analytic p_current=f(q). No optimizer call,
+map/affine/weight/matcher change, or ground-truth local warp/Jacobian claim.
+Main observable: margin C(current)-C(truth), fraction strictly preferring truth,
+paired per-case distributions, not simply lower absolute C_A. Preserve ALL328
+IDs and original123/107/98availability. Flag descriptor/bilinear neighborhood
+support separately: center inclusion alone is insufficient. Common-support
+subset, if shown, needs explicitdenominator alongside retained full cohort.
+This changes fixed affine orientation/scale AND raster interpolation/smoothing/
+boundary effects; not a pure rotation causal ablation. Exactquarterturn controls
+already establish channel mechanism but do not prove MIIT responsibility.
+Falsifier: no better truth-vs-current ranking, or benefits confined to invalid/
+border support, removes rationale for escalation. Lower absolute cost alone
+does NOT trigger an optimizer pilot. Even positive ranking is diagnostic, not
+proof of superior anatomical registration; earlier negativeafter_warp remains.
+Smallest decisive test: exactquarterturn/identity rank and support fixtures,
+then offline328center calculation and independent literal-frame recomputation.
+Independent Astra approves this single diagnostic, not a new optimizer branch.

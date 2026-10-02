@@ -2,7 +2,7 @@
 
 This is a working synthesis, NOT the final24-hour review. The authorized window
 started2026-10-01 11:26:23UTC and ends2026-10-02 11:26:23UTC. Conclusions below
-describe evidence available aroundT+15h and will be revised after later checks.
+describe evidence available aroundT+16h and will be revised after later checks.
 The detailed derivations and experiment definitions are in FORMULATION.md;
 chronology and negative interventions are in PROGRESS.md. This report introduces
 the main objects without requiring knowledge of those earlier discussions.
@@ -332,3 +332,39 @@ and valid28actualGPUoutputs, its paired real timing was not robust: HECC warm
 median2.906to2.738s, HEK2.731to2.757s (regression), with~.4swithin-arm ranges.
 The predeclared two-pair condition fails; the default remains unchanged. This is
 a retained negative result, not a speed benefit. See FORMULATION48.
+
+### 7.1 Why more iterations are not an automatic solution
+
+Six unchanged-recipe MIIT replays save ten accepted maps each. All60snapshots
+pass strict geometry checks. Prefix outputs are selected by the complete512
+objective E1, never landmarks. On2-to3 the analytic E1 falls.382334to.374758
+from90to300gradients, but mean TRE increases3.34619to3.55292pixels. On10-to11,
+F2 correctly chooses stage4 by E1 although terminal stage9 has better anatomy.
+This is an observed objective-anatomy disagreement, not a prefix-selection bug.
+It does not prove optimization globally adequate or image evidence impossible.
+Snapshot times include copying overhead; no clean speed claim uses them.
+Replays are not bitwise originals: the largest F2 vertex difference is7.72e-5
+unit coordinates, although final landmark scores differ by only~4e-8pixels.
+
+![Full E1 and anatomical error along unchanged-recipe development paths](../../outputs/coordinated_instance_registration/results/miit_trajectory_t16/trajectory_summary.png)
+
+Each column is one correlated pair from the same sample. Horizontal axis is
+cumulative gradient evaluations, NOT time. Top: complete512E1 of accepted maps.
+Middle/bottom: mean/p90TRE; solid is the accepted state, dashed the E1-selected
+prefix. All available123/107/98points remain. Different stages use different
+coefficient/image resolutions, but the plotted objective is ALWAYS full512E1.
+These curves do not authorize TRE-based stopping or early-checkpoint selection.
+
+### 7.2 A feature-frame limitation with an exact controlled example
+
+Our eight MIND-like channels measure directional patch self-similarity.
+Under a known affine image transform, both offset directions and patch windows
+transform. Merely moving a precomputed descriptor field leaves channel identities
+unchanged and is generally not equivariant. For exact90-degree rotation the
+necessary correction is a known channel permutation. On an existing512texture,
+the uncorrected true-map mean channel error is.26229, while the corrected maximum
+is2.22e-16; identity error is zero. A separate independent pixel-loop calculation
+confirms the formulas. This isolates a mechanism, not real MIIT causality.
+Generic affine transforms need more than channel permutation. Sparse landmarks
+also do not define true neighborhood warps. Consequently no registration objective
+has been changed on the strength of this control. See FORMULATION50.
