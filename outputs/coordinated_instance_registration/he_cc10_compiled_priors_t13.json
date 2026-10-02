@@ -1,0 +1,3061 @@
+{
+  "status": "complete",
+  "question": "Does one unchanged joint P1 AC ARAP + corner-shape closure gain value/VJP throughput with fullgraph default Inductor?",
+  "torch_version": "2.5.1+cu124",
+  "device": "cuda:0",
+  "device_name": "NVIDIA RTX A6000",
+  "threads": 2,
+  "compile_backend": "inductor",
+  "compile_settings": {
+    "fullgraph": true,
+    "dynamic": false,
+    "mode": "default"
+  },
+  "evidence_scope": "Inductor operator evidence only; not end-to-end optimizer evidence",
+  "weights": {
+    "arap": 3.0,
+    "shape": 0.0001
+  },
+  "warmup_pairs": 3,
+  "timed_pairs": 10,
+  "annotations_images_matcher_read": false,
+  "production_dispatch_modified": false,
+  "cold_scope": "First observed forward and first weighted VJP recorded separately for eager and compiled, in eager-then-compiled order. Prior process/disk compiler caches are not cleared. Costs include runtime initialization and execution; difference is NOT exclusively compilation cost. Later cases may reuse compilation caches.",
+  "timing_scope": "Synchronized host elapsed for grad-enabled joint forward and VJP seeded (3,1e-4), separately. Input clone, output CPU copies, correctness checks and input validation excluded. F+VJP sums two separately synchronized intervals; no speedup claim for trial-only no_grad forward.",
+  "memory_scope": "CUDA allocator allocated peaks per phase plus phase-start baselines/increments; forward graph stays live at VJP baseline. Not reserved/process/compiler-host memory or isolated graph-save size.",
+  "geometry_candidate_selection": [
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/cc10_to_cd31_analytic.npz",
+      "qmin": 0.3789850022727339,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/cc10_to_he_analytic.npz",
+      "qmin": 0.4098398145097592,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/cc10_to_ki67_analytic.npz",
+      "qmin": 0.6785431034857762,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/cc10_to_prospc_analytic.npz",
+      "qmin": 0.47546103869746137,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/cd31_to_cc10_analytic.npz",
+      "qmin": 0.46042891737460473,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/cd31_to_he_analytic.npz",
+      "qmin": 0.6110762555723535,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/cd31_to_ki67_analytic.npz",
+      "qmin": 0.009171835513231918,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/cd31_to_prospc_analytic.npz",
+      "qmin": 0.5300005852974676,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/he_to_cd31_analytic.npz",
+      "qmin": 0.50672032347459,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/he_to_ki67_analytic.npz",
+      "qmin": 0.006557348618139225,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac",
+      "selection": "smallest positive qmin among explicitly supplied candidate maps; no labels read"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/he_to_prospc_analytic.npz",
+      "qmin": 0.008239260473652948,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/ki67_to_cc10_analytic.npz",
+      "qmin": 0.4057577060170615,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/ki67_to_cd31_analytic.npz",
+      "qmin": 0.17691918036150348,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/ki67_to_he_analytic.npz",
+      "qmin": 0.008354016856145896,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/ki67_to_prospc_analytic.npz",
+      "qmin": 0.37241120633306246,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/prospc_to_cc10_analytic.npz",
+      "qmin": 0.6508557722296837,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/prospc_to_cd31_analytic.npz",
+      "qmin": 0.39277086768819,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/prospc_to_he_analytic.npz",
+      "qmin": 0.37477437938457947,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    },
+    {
+      "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/prospc_to_ki67_analytic.npz",
+      "qmin": 0.5882354320625394,
+      "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+      "shape": [
+        1,
+        257,
+        257,
+        2
+      ],
+      "input_side": [
+        257,
+        257
+      ],
+      "control_vertices": 66049,
+      "dtype": "torch.float64",
+      "interpolation": "p1_ac"
+    }
+  ],
+  "cases": [
+    {
+      "input": {
+        "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/he_to_cc10_analytic.npz",
+        "qmin": 0.2944199667465248,
+        "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+        "shape": [
+          1,
+          257,
+          257,
+          2
+        ],
+        "input_side": [
+          257,
+          257
+        ],
+        "control_vertices": 66049,
+        "dtype": "torch.float64",
+        "interpolation": "p1_ac",
+        "selection": "predeclared HE->CC10 anchor supplied by caller; identity not inferred from geometry"
+      },
+      "compiled_factory_seconds": 0.6332214698195457,
+      "cold": [
+        {
+          "forward_seconds": 0.06117875128984451,
+          "weighted_vjp_seconds": 0.02880161628127098,
+          "forward_plus_vjp_seconds": 0.0899803675711155,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "cold",
+          "repeat": 0,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 0,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 6.534094642847776,
+          "weighted_vjp_seconds": 2.970273770391941,
+          "forward_plus_vjp_seconds": 9.504368413239717,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 270715904,
+          "cuda_forward_peak_increment_bytes": 268600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 283282432,
+          "cuda_vjp_peak_increment_bytes": 268582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "cold",
+          "repeat": 0,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 1,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        }
+      ],
+      "warmups": [
+        {
+          "forward_seconds": 0.0015804916620254517,
+          "weighted_vjp_seconds": 0.0070924945175647736,
+          "forward_plus_vjp_seconds": 0.008672986179590225,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "warmups",
+          "repeat": 0,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 0,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.0008736029267311096,
+          "weighted_vjp_seconds": 0.0010468363761901855,
+          "forward_plus_vjp_seconds": 0.0019204393029212952,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "warmups",
+          "repeat": 0,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 1,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.0005270242691040039,
+          "weighted_vjp_seconds": 0.0007419101893901825,
+          "forward_plus_vjp_seconds": 0.0012689344584941864,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "warmups",
+          "repeat": 1,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 0,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.0012766867876052856,
+          "weighted_vjp_seconds": 0.005427975207567215,
+          "forward_plus_vjp_seconds": 0.006704661995172501,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "warmups",
+          "repeat": 1,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 1,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.0013166926801204681,
+          "weighted_vjp_seconds": 0.0033581294119358063,
+          "forward_plus_vjp_seconds": 0.004674822092056274,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "warmups",
+          "repeat": 2,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 0,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.00047122687101364136,
+          "weighted_vjp_seconds": 0.0009347684681415558,
+          "forward_plus_vjp_seconds": 0.0014059953391551971,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "warmups",
+          "repeat": 2,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 1,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        }
+      ],
+      "repeats": [
+        {
+          "forward_seconds": 0.0012518391013145447,
+          "weighted_vjp_seconds": 0.005710732191801071,
+          "forward_plus_vjp_seconds": 0.006962571293115616,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 0,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 0,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.0004440881311893463,
+          "weighted_vjp_seconds": 0.001072663813829422,
+          "forward_plus_vjp_seconds": 0.0015167519450187683,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 0,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 1,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.0005647316575050354,
+          "weighted_vjp_seconds": 0.0005935654044151306,
+          "forward_plus_vjp_seconds": 0.001158297061920166,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 1,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 0,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.0015988275408744812,
+          "weighted_vjp_seconds": 0.0032621845602989197,
+          "forward_plus_vjp_seconds": 0.004861012101173401,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 1,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 1,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.0012494884431362152,
+          "weighted_vjp_seconds": 0.0038846582174301147,
+          "forward_plus_vjp_seconds": 0.00513414666056633,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 2,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 0,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.00046231597661972046,
+          "weighted_vjp_seconds": 0.0008959099650382996,
+          "forward_plus_vjp_seconds": 0.00135822594165802,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 2,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 1,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.00048214197158813477,
+          "weighted_vjp_seconds": 0.0007095858454704285,
+          "forward_plus_vjp_seconds": 0.0011917278170585632,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 3,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 0,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.0012562200427055359,
+          "weighted_vjp_seconds": 0.0037659108638763428,
+          "forward_plus_vjp_seconds": 0.005022130906581879,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 3,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 1,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.0012593120336532593,
+          "weighted_vjp_seconds": 0.004096332937479019,
+          "forward_plus_vjp_seconds": 0.0053556449711322784,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 4,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 0,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.00044886767864227295,
+          "weighted_vjp_seconds": 0.000932592898607254,
+          "forward_plus_vjp_seconds": 0.001381460577249527,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 4,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 1,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.00045222416520118713,
+          "weighted_vjp_seconds": 0.000668596476316452,
+          "forward_plus_vjp_seconds": 0.0011208206415176392,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 5,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 0,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.001261487603187561,
+          "weighted_vjp_seconds": 0.003482639789581299,
+          "forward_plus_vjp_seconds": 0.00474412739276886,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 5,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 1,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.0012470334768295288,
+          "weighted_vjp_seconds": 0.0037600547075271606,
+          "forward_plus_vjp_seconds": 0.0050070881843566895,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 6,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 0,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.00044446438550949097,
+          "weighted_vjp_seconds": 0.0007664971053600311,
+          "forward_plus_vjp_seconds": 0.001210961490869522,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 6,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 1,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.0004352070391178131,
+          "weighted_vjp_seconds": 0.0008079558610916138,
+          "forward_plus_vjp_seconds": 0.0012431629002094269,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 7,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 0,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.0012702904641628265,
+          "weighted_vjp_seconds": 0.0038376152515411377,
+          "forward_plus_vjp_seconds": 0.005107905715703964,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 7,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 1,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.0012599416077136993,
+          "weighted_vjp_seconds": 0.0037493444979190826,
+          "forward_plus_vjp_seconds": 0.005009286105632782,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 8,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 0,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.0004404783248901367,
+          "weighted_vjp_seconds": 0.0009518712759017944,
+          "forward_plus_vjp_seconds": 0.0013923496007919312,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 8,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 1,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.0004468560218811035,
+          "weighted_vjp_seconds": 0.0006179735064506531,
+          "forward_plus_vjp_seconds": 0.0010648295283317566,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 9,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 0,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.0012499727308750153,
+          "weighted_vjp_seconds": 0.0033522509038448334,
+          "forward_plus_vjp_seconds": 0.004602223634719849,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 9,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 1,
+          "implementation": "eager",
+          "compiled_backend": null
+        }
+      ],
+      "comparisons": [
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 8.673617379884035e-19,
+            "rms": 6.133173666733496e-19,
+            "relative_l2": 2.3594058391364815e-17
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 1.734723475976807e-18,
+            "rms": 6.372917025932258e-20,
+            "relative_l2": 1.1757966646333317e-16
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.004416753382991729,
+            0.03649558152582426
+          ],
+          "compiled_values_arap_shape": [
+            0.00441675338299173,
+            0.03649558152582426
+          ],
+          "phase": "cold",
+          "repeat": 0
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 8.673617379884035e-19,
+            "rms": 6.133173666733496e-19,
+            "relative_l2": 2.3594058391364815e-17
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 1.734723475976807e-18,
+            "rms": 6.372917025932258e-20,
+            "relative_l2": 1.1757966646333317e-16
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.004416753382991729,
+            0.03649558152582426
+          ],
+          "compiled_values_arap_shape": [
+            0.00441675338299173,
+            0.03649558152582426
+          ],
+          "phase": "warmups",
+          "repeat": 0
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 8.673617379884035e-19,
+            "rms": 6.133173666733496e-19,
+            "relative_l2": 2.3594058391364815e-17
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 1.734723475976807e-18,
+            "rms": 6.372917025932258e-20,
+            "relative_l2": 1.1757966646333317e-16
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.004416753382991729,
+            0.03649558152582426
+          ],
+          "compiled_values_arap_shape": [
+            0.00441675338299173,
+            0.03649558152582426
+          ],
+          "phase": "warmups",
+          "repeat": 1
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 8.673617379884035e-19,
+            "rms": 6.133173666733496e-19,
+            "relative_l2": 2.3594058391364815e-17
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 1.734723475976807e-18,
+            "rms": 6.372917025932258e-20,
+            "relative_l2": 1.1757966646333317e-16
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.004416753382991729,
+            0.03649558152582426
+          ],
+          "compiled_values_arap_shape": [
+            0.00441675338299173,
+            0.03649558152582426
+          ],
+          "phase": "warmups",
+          "repeat": 2
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 8.673617379884035e-19,
+            "rms": 6.133173666733496e-19,
+            "relative_l2": 2.3594058391364815e-17
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 1.734723475976807e-18,
+            "rms": 6.372917025932258e-20,
+            "relative_l2": 1.1757966646333317e-16
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.004416753382991729,
+            0.03649558152582426
+          ],
+          "compiled_values_arap_shape": [
+            0.00441675338299173,
+            0.03649558152582426
+          ],
+          "phase": "repeats",
+          "repeat": 0
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 8.673617379884035e-19,
+            "rms": 6.133173666733496e-19,
+            "relative_l2": 2.3594058391364815e-17
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 1.734723475976807e-18,
+            "rms": 6.372917025932258e-20,
+            "relative_l2": 1.1757966646333317e-16
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.004416753382991729,
+            0.03649558152582426
+          ],
+          "compiled_values_arap_shape": [
+            0.00441675338299173,
+            0.03649558152582426
+          ],
+          "phase": "repeats",
+          "repeat": 1
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 8.673617379884035e-19,
+            "rms": 6.133173666733496e-19,
+            "relative_l2": 2.3594058391364815e-17
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 1.734723475976807e-18,
+            "rms": 6.372917025932258e-20,
+            "relative_l2": 1.1757966646333317e-16
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.004416753382991729,
+            0.03649558152582426
+          ],
+          "compiled_values_arap_shape": [
+            0.00441675338299173,
+            0.03649558152582426
+          ],
+          "phase": "repeats",
+          "repeat": 2
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 8.673617379884035e-19,
+            "rms": 6.133173666733496e-19,
+            "relative_l2": 2.3594058391364815e-17
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 1.734723475976807e-18,
+            "rms": 6.372917025932258e-20,
+            "relative_l2": 1.1757966646333317e-16
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.004416753382991729,
+            0.03649558152582426
+          ],
+          "compiled_values_arap_shape": [
+            0.00441675338299173,
+            0.03649558152582426
+          ],
+          "phase": "repeats",
+          "repeat": 3
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 8.673617379884035e-19,
+            "rms": 6.133173666733496e-19,
+            "relative_l2": 2.3594058391364815e-17
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 1.734723475976807e-18,
+            "rms": 6.372917025932258e-20,
+            "relative_l2": 1.1757966646333317e-16
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.004416753382991729,
+            0.03649558152582426
+          ],
+          "compiled_values_arap_shape": [
+            0.00441675338299173,
+            0.03649558152582426
+          ],
+          "phase": "repeats",
+          "repeat": 4
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 8.673617379884035e-19,
+            "rms": 6.133173666733496e-19,
+            "relative_l2": 2.3594058391364815e-17
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 1.734723475976807e-18,
+            "rms": 6.372917025932258e-20,
+            "relative_l2": 1.1757966646333317e-16
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.004416753382991729,
+            0.03649558152582426
+          ],
+          "compiled_values_arap_shape": [
+            0.00441675338299173,
+            0.03649558152582426
+          ],
+          "phase": "repeats",
+          "repeat": 5
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 8.673617379884035e-19,
+            "rms": 6.133173666733496e-19,
+            "relative_l2": 2.3594058391364815e-17
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 1.734723475976807e-18,
+            "rms": 6.372917025932258e-20,
+            "relative_l2": 1.1757966646333317e-16
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.004416753382991729,
+            0.03649558152582426
+          ],
+          "compiled_values_arap_shape": [
+            0.00441675338299173,
+            0.03649558152582426
+          ],
+          "phase": "repeats",
+          "repeat": 6
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 8.673617379884035e-19,
+            "rms": 6.133173666733496e-19,
+            "relative_l2": 2.3594058391364815e-17
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 1.734723475976807e-18,
+            "rms": 6.372917025932258e-20,
+            "relative_l2": 1.1757966646333317e-16
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.004416753382991729,
+            0.03649558152582426
+          ],
+          "compiled_values_arap_shape": [
+            0.00441675338299173,
+            0.03649558152582426
+          ],
+          "phase": "repeats",
+          "repeat": 7
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 8.673617379884035e-19,
+            "rms": 6.133173666733496e-19,
+            "relative_l2": 2.3594058391364815e-17
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 1.734723475976807e-18,
+            "rms": 6.372917025932258e-20,
+            "relative_l2": 1.1757966646333317e-16
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.004416753382991729,
+            0.03649558152582426
+          ],
+          "compiled_values_arap_shape": [
+            0.00441675338299173,
+            0.03649558152582426
+          ],
+          "phase": "repeats",
+          "repeat": 8
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 8.673617379884035e-19,
+            "rms": 6.133173666733496e-19,
+            "relative_l2": 2.3594058391364815e-17
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 1.734723475976807e-18,
+            "rms": 6.372917025932258e-20,
+            "relative_l2": 1.1757966646333317e-16
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.004416753382991729,
+            0.03649558152582426
+          ],
+          "compiled_values_arap_shape": [
+            0.00441675338299173,
+            0.03649558152582426
+          ],
+          "phase": "repeats",
+          "repeat": 9
+        }
+      ],
+      "status": "complete",
+      "steady_summary": {
+        "eager": {
+          "forward_seconds_median": 0.0012577660381793976,
+          "weighted_vjp_seconds_median": 0.0037629827857017517,
+          "forward_plus_vjp_seconds_median": 0.00501570850610733,
+          "cuda_forward_peak_allocated_bytes_max": 30427648,
+          "cuda_vjp_peak_allocated_bytes_max": 38816768,
+          "cuda_forward_peak_increment_bytes_max": 28312064,
+          "cuda_vjp_peak_increment_bytes_max": 14680064
+        },
+        "compiled": {
+          "forward_seconds_median": 0.00044786185026168823,
+          "weighted_vjp_seconds_median": 0.0007872264832258224,
+          "forward_plus_vjp_seconds_median": 0.0012270621955394745,
+          "cuda_forward_peak_allocated_bytes_max": 14715904,
+          "cuda_vjp_peak_allocated_bytes_max": 27282432,
+          "cuda_forward_peak_increment_bytes_max": 12600320,
+          "cuda_vjp_peak_increment_bytes_max": 12582912
+        },
+        "eager_over_compiled_median_ratios": {
+          "forward_seconds_median": 2.8083794979288315,
+          "weighted_vjp_seconds_median": 4.780051060124598,
+          "forward_plus_vjp_seconds_median": 4.087574798033923
+        }
+      }
+    },
+    {
+      "input": {
+        "path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/lung_all20_fixedrecipe_t123/he_to_ki67_analytic.npz",
+        "qmin": 0.006557348618139225,
+        "qmin_definition": "minimum of all four Q1 corner determinants divided by uniform source cell area; geometry selection only, not global certification",
+        "shape": [
+          1,
+          257,
+          257,
+          2
+        ],
+        "input_side": [
+          257,
+          257
+        ],
+        "control_vertices": 66049,
+        "dtype": "torch.float64",
+        "interpolation": "p1_ac",
+        "selection": "smallest positive qmin among explicitly supplied candidate maps; no labels read"
+      },
+      "compiled_factory_seconds": 0.0007125698029994965,
+      "cold": [
+        {
+          "forward_seconds": 0.0012441165745258331,
+          "weighted_vjp_seconds": 0.0062043145298957825,
+          "forward_plus_vjp_seconds": 0.007448431104421616,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "cold",
+          "repeat": 0,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 0,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.00046250224113464355,
+          "weighted_vjp_seconds": 0.001123681664466858,
+          "forward_plus_vjp_seconds": 0.0015861839056015015,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "cold",
+          "repeat": 0,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 1,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        }
+      ],
+      "warmups": [
+        {
+          "forward_seconds": 0.001273561269044876,
+          "weighted_vjp_seconds": 0.006160639226436615,
+          "forward_plus_vjp_seconds": 0.007434200495481491,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "warmups",
+          "repeat": 0,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 0,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.000533226877450943,
+          "weighted_vjp_seconds": 0.0009199641644954681,
+          "forward_plus_vjp_seconds": 0.0014531910419464111,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "warmups",
+          "repeat": 0,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 1,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.0005129054188728333,
+          "weighted_vjp_seconds": 0.0006343573331832886,
+          "forward_plus_vjp_seconds": 0.0011472627520561218,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "warmups",
+          "repeat": 1,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 0,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.001267712563276291,
+          "weighted_vjp_seconds": 0.005266983062028885,
+          "forward_plus_vjp_seconds": 0.006534695625305176,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "warmups",
+          "repeat": 1,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 1,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.0012472718954086304,
+          "weighted_vjp_seconds": 0.0036446601152420044,
+          "forward_plus_vjp_seconds": 0.004891932010650635,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "warmups",
+          "repeat": 2,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 0,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.0004283301532268524,
+          "weighted_vjp_seconds": 0.0007881373167037964,
+          "forward_plus_vjp_seconds": 0.0012164674699306488,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "warmups",
+          "repeat": 2,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 1,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        }
+      ],
+      "repeats": [
+        {
+          "forward_seconds": 0.0012672096490859985,
+          "weighted_vjp_seconds": 0.003666006028652191,
+          "forward_plus_vjp_seconds": 0.00493321567773819,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 0,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 0,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.00043239817023277283,
+          "weighted_vjp_seconds": 0.0006334781646728516,
+          "forward_plus_vjp_seconds": 0.0010658763349056244,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 0,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 1,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.00043851137161254883,
+          "weighted_vjp_seconds": 0.0006589405238628387,
+          "forward_plus_vjp_seconds": 0.0010974518954753876,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 1,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 0,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.00124305859208107,
+          "weighted_vjp_seconds": 0.0035426653921604156,
+          "forward_plus_vjp_seconds": 0.004785723984241486,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 1,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 1,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.0012643635272979736,
+          "weighted_vjp_seconds": 0.0037367120385169983,
+          "forward_plus_vjp_seconds": 0.005001075565814972,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 2,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 0,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.0004363991320133209,
+          "weighted_vjp_seconds": 0.0007640644907951355,
+          "forward_plus_vjp_seconds": 0.0012004636228084564,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 2,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 1,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.00045128539204597473,
+          "weighted_vjp_seconds": 0.0009139031171798706,
+          "forward_plus_vjp_seconds": 0.0013651885092258453,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 3,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 0,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.0012459047138690948,
+          "weighted_vjp_seconds": 0.0036616139113903046,
+          "forward_plus_vjp_seconds": 0.004907518625259399,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 3,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 1,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.0012518391013145447,
+          "weighted_vjp_seconds": 0.004190284758806229,
+          "forward_plus_vjp_seconds": 0.005442123860120773,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 4,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 0,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.00045279040932655334,
+          "weighted_vjp_seconds": 0.000828523188829422,
+          "forward_plus_vjp_seconds": 0.0012813135981559753,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 4,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 1,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.00045711174607276917,
+          "weighted_vjp_seconds": 0.00074009969830513,
+          "forward_plus_vjp_seconds": 0.0011972114443778992,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 5,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 0,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.0013064295053482056,
+          "weighted_vjp_seconds": 0.0031403638422489166,
+          "forward_plus_vjp_seconds": 0.004446793347597122,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 5,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 1,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.0012581013143062592,
+          "weighted_vjp_seconds": 0.0068216025829315186,
+          "forward_plus_vjp_seconds": 0.008079703897237778,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 6,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 0,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.0004709474742412567,
+          "weighted_vjp_seconds": 0.0005035512149333954,
+          "forward_plus_vjp_seconds": 0.0009744986891746521,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 6,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 1,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.0004618503153324127,
+          "weighted_vjp_seconds": 0.0005121119320392609,
+          "forward_plus_vjp_seconds": 0.0009739622473716736,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 7,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 0,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.0012620911002159119,
+          "weighted_vjp_seconds": 0.005125835537910461,
+          "forward_plus_vjp_seconds": 0.006387926638126373,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 7,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 1,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.001250196248292923,
+          "weighted_vjp_seconds": 0.003314696252346039,
+          "forward_plus_vjp_seconds": 0.004564892500638962,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 8,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 0,
+          "implementation": "eager",
+          "compiled_backend": null
+        },
+        {
+          "forward_seconds": 0.00043427571654319763,
+          "weighted_vjp_seconds": 0.0005837343633174896,
+          "forward_plus_vjp_seconds": 0.0010180100798606873,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 8,
+          "order": [
+            "eager",
+            "compiled"
+          ],
+          "order_position": 1,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.00044853612780570984,
+          "weighted_vjp_seconds": 0.0005886070430278778,
+          "forward_plus_vjp_seconds": 0.0010371431708335876,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 14715904,
+          "cuda_forward_peak_increment_bytes": 12600320,
+          "cuda_vjp_baseline_bytes": 14699520,
+          "cuda_vjp_peak_allocated_bytes": 27282432,
+          "cuda_vjp_peak_increment_bytes": 12582912,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 9,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 0,
+          "implementation": "compiled",
+          "compiled_backend": "inductor"
+        },
+        {
+          "forward_seconds": 0.0012771934270858765,
+          "weighted_vjp_seconds": 0.0038356855511665344,
+          "forward_plus_vjp_seconds": 0.005112878978252411,
+          "cuda_baseline_bytes": 2115584,
+          "cuda_forward_peak_allocated_bytes": 30427648,
+          "cuda_forward_peak_increment_bytes": 28312064,
+          "cuda_vjp_baseline_bytes": 24136704,
+          "cuda_vjp_peak_allocated_bytes": 38816768,
+          "cuda_vjp_peak_increment_bytes": 14680064,
+          "device": "cuda:0",
+          "input_side": [
+            257,
+            257
+          ],
+          "control_vertices": 66049,
+          "dtype": "torch.float64",
+          "phase": "repeats",
+          "repeat": 9,
+          "order": [
+            "compiled",
+            "eager"
+          ],
+          "order_position": 1,
+          "implementation": "eager",
+          "compiled_backend": null
+        }
+      ],
+      "comparisons": [
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 6.106226635438361e-16,
+            "rms": 4.3177542613803813e-16,
+            "relative_l2": 2.565585180563989e-15
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 9.769962616701378e-15,
+            "rms": 3.922177404613402e-17,
+            "relative_l2": 8.201111566908832e-15
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248674
+          ],
+          "compiled_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248735
+          ],
+          "phase": "cold",
+          "repeat": 0
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 6.106226635438361e-16,
+            "rms": 4.3177542613803813e-16,
+            "relative_l2": 2.565585180563989e-15
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 9.769962616701378e-15,
+            "rms": 3.922177404613402e-17,
+            "relative_l2": 8.201111566908832e-15
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248674
+          ],
+          "compiled_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248735
+          ],
+          "phase": "warmups",
+          "repeat": 0
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 6.106226635438361e-16,
+            "rms": 4.3177542613803813e-16,
+            "relative_l2": 2.565585180563989e-15
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 9.769962616701378e-15,
+            "rms": 3.922177404613402e-17,
+            "relative_l2": 8.201111566908832e-15
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248674
+          ],
+          "compiled_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248735
+          ],
+          "phase": "warmups",
+          "repeat": 1
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 6.106226635438361e-16,
+            "rms": 4.3177542613803813e-16,
+            "relative_l2": 2.565585180563989e-15
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 9.769962616701378e-15,
+            "rms": 3.922177404613402e-17,
+            "relative_l2": 8.201111566908832e-15
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248674
+          ],
+          "compiled_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248735
+          ],
+          "phase": "warmups",
+          "repeat": 2
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 6.106226635438361e-16,
+            "rms": 4.3177542613803813e-16,
+            "relative_l2": 2.565585180563989e-15
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 9.769962616701378e-15,
+            "rms": 3.922177404613402e-17,
+            "relative_l2": 8.201111566908832e-15
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248674
+          ],
+          "compiled_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248735
+          ],
+          "phase": "repeats",
+          "repeat": 0
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 6.106226635438361e-16,
+            "rms": 4.3177542613803813e-16,
+            "relative_l2": 2.565585180563989e-15
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 9.769962616701378e-15,
+            "rms": 3.922177404613402e-17,
+            "relative_l2": 8.201111566908832e-15
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248674
+          ],
+          "compiled_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248735
+          ],
+          "phase": "repeats",
+          "repeat": 1
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 6.106226635438361e-16,
+            "rms": 4.3177542613803813e-16,
+            "relative_l2": 2.565585180563989e-15
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 9.769962616701378e-15,
+            "rms": 3.922177404613402e-17,
+            "relative_l2": 8.201111566908832e-15
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248674
+          ],
+          "compiled_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248735
+          ],
+          "phase": "repeats",
+          "repeat": 2
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 6.106226635438361e-16,
+            "rms": 4.3177542613803813e-16,
+            "relative_l2": 2.565585180563989e-15
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 9.769962616701378e-15,
+            "rms": 3.922177404613402e-17,
+            "relative_l2": 8.201111566908832e-15
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248674
+          ],
+          "compiled_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248735
+          ],
+          "phase": "repeats",
+          "repeat": 3
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 6.106226635438361e-16,
+            "rms": 4.3177542613803813e-16,
+            "relative_l2": 2.565585180563989e-15
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 9.769962616701378e-15,
+            "rms": 3.922177404613402e-17,
+            "relative_l2": 8.201111566908832e-15
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248674
+          ],
+          "compiled_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248735
+          ],
+          "phase": "repeats",
+          "repeat": 4
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 6.106226635438361e-16,
+            "rms": 4.3177542613803813e-16,
+            "relative_l2": 2.565585180563989e-15
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 9.769962616701378e-15,
+            "rms": 3.922177404613402e-17,
+            "relative_l2": 8.201111566908832e-15
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248674
+          ],
+          "compiled_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248735
+          ],
+          "phase": "repeats",
+          "repeat": 5
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 6.106226635438361e-16,
+            "rms": 4.3177542613803813e-16,
+            "relative_l2": 2.565585180563989e-15
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 9.769962616701378e-15,
+            "rms": 3.922177404613402e-17,
+            "relative_l2": 8.201111566908832e-15
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248674
+          ],
+          "compiled_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248735
+          ],
+          "phase": "repeats",
+          "repeat": 6
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 6.106226635438361e-16,
+            "rms": 4.3177542613803813e-16,
+            "relative_l2": 2.565585180563989e-15
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 9.769962616701378e-15,
+            "rms": 3.922177404613402e-17,
+            "relative_l2": 8.201111566908832e-15
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248674
+          ],
+          "compiled_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248735
+          ],
+          "phase": "repeats",
+          "repeat": 7
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 6.106226635438361e-16,
+            "rms": 4.3177542613803813e-16,
+            "relative_l2": 2.565585180563989e-15
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 9.769962616701378e-15,
+            "rms": 3.922177404613402e-17,
+            "relative_l2": 8.201111566908832e-15
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248674
+          ],
+          "compiled_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248735
+          ],
+          "phase": "repeats",
+          "repeat": 8
+        },
+        {
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "values": {
+            "passed": true,
+            "shape": [
+              2
+            ],
+            "finite": true,
+            "max_abs": 6.106226635438361e-16,
+            "rms": 4.3177542613803813e-16,
+            "relative_l2": 2.565585180563989e-15
+          },
+          "full_vertex_gradient": {
+            "passed": true,
+            "shape": [
+              1,
+              257,
+              257,
+              2
+            ],
+            "finite": true,
+            "max_abs": 9.769962616701378e-15,
+            "rms": 3.922177404613402e-17,
+            "relative_l2": 8.201111566908832e-15
+          },
+          "passed": true,
+          "eager_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248674
+          ],
+          "compiled_values_arap_shape": [
+            0.010736471303123524,
+            0.23776293361248735
+          ],
+          "phase": "repeats",
+          "repeat": 9
+        }
+      ],
+      "status": "complete",
+      "steady_summary": {
+        "eager": {
+          "forward_seconds_median": 0.0012600962072610855,
+          "weighted_vjp_seconds_median": 0.0037013590335845947,
+          "forward_plus_vjp_seconds_median": 0.004967145621776581,
+          "cuda_forward_peak_allocated_bytes_max": 30427648,
+          "cuda_vjp_peak_allocated_bytes_max": 38816768,
+          "cuda_forward_peak_increment_bytes_max": 28312064,
+          "cuda_vjp_peak_increment_bytes_max": 14680064
+        },
+        "compiled": {
+          "forward_seconds_median": 0.0004499107599258423,
+          "weighted_vjp_seconds_median": 0.0006462093442678452,
+          "forward_plus_vjp_seconds_median": 0.001081664115190506,
+          "cuda_forward_peak_allocated_bytes_max": 14715904,
+          "cuda_vjp_peak_allocated_bytes_max": 27282432,
+          "cuda_forward_peak_increment_bytes_max": 12600320,
+          "cuda_vjp_peak_increment_bytes_max": 12582912
+        },
+        "eager_over_compiled_median_ratios": {
+          "forward_seconds_median": 2.8007692180306694,
+          "weighted_vjp_seconds_median": 5.727801781910524,
+          "forward_plus_vjp_seconds_median": 4.592133132660828
+        }
+      }
+    }
+  ]
+}

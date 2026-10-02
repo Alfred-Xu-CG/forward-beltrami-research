@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import math
 from pathlib import Path
 import time
 
@@ -53,7 +54,7 @@ def require_nested_fine_margin(vertices,reference_corners,minimum_jacobian,conte
 class Evidence:
     """Fixed mask, original evidence, and explicitly penalized out-of-bounds."""
 
-    def __init__(self, fixed, moving, matrix, offset, loss, strain_weight, oob_weight, shape_weight=0., fixed_mask=None, interpolation="q1", matches=None, match_weight=0., strain_model="displacement_gradient", mind_order="transport"):
+    def __init__(self, fixed, moving, matrix, offset, loss, strain_weight, oob_weight, shape_weight=0., fixed_mask=None, interpolation="q1", matches=None, match_weight=0., strain_model="displacement_gradient", mind_order="transport", joint_prior_backend="eager"):
         self.fixed, self.moving = fixed, moving
         self.matrix, self.offset = matrix, offset
         self.loss, self.strain_weight, self.oob_weight = loss, strain_weight, oob_weight
@@ -67,6 +68,15 @@ class Evidence:
         if strain_model not in ("displacement_gradient","p1_arap") or (strain_model=="p1_arap" and interpolation=="q1"):
             raise ValueError("declare displacement_gradient or actual P1 p1_arap strain model")
         self.strain_model=strain_model
+        if joint_prior_backend not in ("eager","inductor"):
+            raise ValueError("joint_prior_backend must be eager or inductor")
+        if joint_prior_backend=="inductor" and (strain_model!="p1_arap" or interpolation!="p1_ac" or shape_weight<=0):
+            raise ValueError("compiled joint priors require P1 ac ARAP and positive shape weight")
+        self.joint_prior_backend=joint_prior_backend
+        self.joint_p1_priors=None
+        if joint_prior_backend=="inductor":
+            from tools.coordinated_compiled_priors import make_joint_priors
+            self.joint_p1_priors=make_joint_priors("inductor")
         if mind_order not in ("transport","after_warp") or (mind_order=="after_warp" and loss!="mind"):
             raise ValueError("after_warp descriptor order requires MIND; otherwise use transport")
         self.mind_order=mind_order
@@ -138,12 +148,15 @@ class Evidence:
         outside = (F.relu(-query) + F.relu(query-1)).square().sum(-1)[:, None]
         oob = (outside*self.mask).sum()/self.denominator
         if self.nested_priors is None:
-            if self.strain_model=="displacement_gradient":
-                strain = strain_penalty(vertices)
+            if self.joint_p1_priors is not None:
+                strain,shape=self.joint_p1_priors(vertices)
             else:
-                from qcopt.neural_bijection.dense.coordinated_arap import p1_arap_energy
-                strain = p1_arap_energy(vertices,diagonal=self.interpolation[-2:],validate=False)
-            shape = corner_symmetric_dirichlet(vertices) if self.shape_weight else None
+                if self.strain_model=="displacement_gradient":
+                    strain = strain_penalty(vertices)
+                else:
+                    from qcopt.neural_bijection.dense.coordinated_arap import p1_arap_energy
+                    strain = p1_arap_energy(vertices,diagonal=self.interpolation[-2:],validate=False)
+                shape = corner_symmetric_dirichlet(vertices) if self.shape_weight else None
         else:
             strain,nested_shape = self.nested_priors(vertices)
             shape = nested_shape if self.shape_weight else None
@@ -233,6 +246,12 @@ def optimize(args, accepted_stage_callback=None):
         raise ValueError("coefficient levels must fit output grid")
     if args.inner_steps < 1 or args.cycles < 1 or args.learning_rate <= 0:
         raise ValueError("positive optimization budget required")
+    f2_floor_safety_fraction=getattr(args,"f2_floor_safety_fraction",1.)
+    if (isinstance(f2_floor_safety_fraction,bool) or
+            not isinstance(f2_floor_safety_fraction,(int,float)) or
+            not math.isfinite(f2_floor_safety_fraction) or not 0<f2_floor_safety_fraction<=1):
+        raise ValueError("f2_floor_safety_fraction must be finite and in (0,1]")
+    f2_floor_safety_fraction=float(f2_floor_safety_fraction)
     image_levels=getattr(args,"image_levels",None) or [args.image_side]*len(args.levels)
     if len(image_levels)!=len(args.levels) or min(image_levels)<8 or max(image_levels)>args.image_side or image_levels[-1]!=args.image_side:
         raise ValueError("one image resolution per coefficient level, ending at full image_side")
@@ -286,6 +305,13 @@ def optimize(args, accepted_stage_callback=None):
     if strain_model not in ("displacement_gradient","p1_arap") or (strain_model=="p1_arap" and
             getattr(args,"interpolation","q1")=="q1"):
         raise ValueError("p1_arap needs declared P1")
+    joint_prior_backend=getattr(args,"joint_prior_backend","eager")
+    if joint_prior_backend not in ("eager","inductor"):
+        raise ValueError("joint_prior_backend must be eager or inductor")
+    if joint_prior_backend=="inductor" and (strain_model!="p1_arap" or
+            getattr(args,"interpolation","q1")!="p1_ac" or getattr(args,"shape_weight",0.)<=0 or
+            args.precision!="float64" or nested):
+        raise ValueError("compiled joint priors currently require fixed P1 ac controls, ARAP, positive shape weight and float64 geometry")
     if nested and (args.method not in ("radial","analytic") or args.cycles!=1 or
             getattr(args,"interpolation","q1") not in ("p1_ac","p1_bd") or
             args.levels[-1]!=args.grid_side or
@@ -322,7 +348,7 @@ def optimize(args, accepted_stage_callback=None):
     evidence = Evidence(fixed, moving, torch.from_numpy(a).to(device=device, dtype=dtype),
                         torch.from_numpy(b).to(device=device, dtype=dtype), args.loss,
                         args.strain_weight, args.oob_weight, getattr(args,"shape_weight",0.),
-                        fixed_mask=fixed_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model,mind_order=mind_order)
+                        fixed_mask=fixed_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model,mind_order=mind_order,joint_prior_backend=joint_prior_backend)
     evidence_by_resolution={args.image_side:evidence}
     for image_resolution in sorted(set(image_levels)):
         if image_resolution not in evidence_by_resolution:
@@ -332,6 +358,10 @@ def optimize(args, accepted_stage_callback=None):
             evidence_by_resolution[image_resolution]=Evidence(reduced_fixed,reduced_moving,evidence.matrix,
                 evidence.offset,args.loss,args.strain_weight,args.oob_weight,getattr(args,"shape_weight",0.),
                 reduced_mask,interpolation=getattr(args,"interpolation","q1"),matches=matches,match_weight=match_weight,strain_model=strain_model,mind_order=mind_order)
+            # The prior sees the SAME control shape, not the raster resolution.
+            # Share its callable, never an energy/graph tied to a current map.
+            evidence_by_resolution[image_resolution].joint_prior_backend=joint_prior_backend
+            evidence_by_resolution[image_resolution].joint_p1_priors=evidence.joint_p1_priors
     p1_sampling=getattr(args,"p1_sampling","existing")
     if p1_sampling not in ("existing","frozen"):
         raise ValueError("P1 sampling must be existing or frozen")
@@ -411,7 +441,8 @@ def optimize(args, accepted_stage_callback=None):
                     else:
                         layer = StaggeredPatchQ1Layer(args.grid_side,args.patch_cells,proposal_mode="fixed_h",
                             raw_span=.5,safety_fraction=.75,minimum_jacobian=args.minimum_jacobian,
-                            accepted_gain=args.f2_accepted_gain).to(device)
+                            accepted_gain=args.f2_accepted_gain,
+                            floor_safety_fraction=f2_floor_safety_fraction).to(device)
                         coverage = f2_coverage(layer,args.grid_side,dtype)
                 else:
                     mode = "analytic" if "analytic" in args.method else "radial"
@@ -591,7 +622,9 @@ def optimize(args, accepted_stage_callback=None):
     new_query_buffers={id(buffer):buffer for item in coarse_evidence.values()
         for buffer in item.fixed_p1_evaluator.buffers() if id(buffer) not in base_query_buffers}
     nested_prior_bytes=sum(item.nested_priors.resident_bytes for item in coarse_evidence.values())
-    report = dict(configuration={k: str(v) if isinstance(v, Path) else v for k,v in vars(args).items()},
+    report = dict(configuration={**{k: str(v) if isinstance(v, Path) else v for k,v in vars(args).items()},
+                                 "f2_floor_safety_fraction":f2_floor_safety_fraction,
+                                 "joint_prior_backend":joint_prior_backend},
                   representation=evidence.interpolation+" residual then frozen positive affine; exact declared interpretation",
                   initial=initial_record, final=dict(total=float(final), **{k: float(v) for k,v in parts.items()}),
                   control_vertices=args.grid_side**2, cells=(args.grid_side-1)**2,
@@ -609,6 +642,8 @@ def optimize(args, accepted_stage_callback=None):
                   final_corner_shape=float(corner_symmetric_dirichlet(current.double())),
                   geometry_dtype=str(dtype),evidence_dtype=str(image_dtype),
                   strain_model=strain_model,
+                  joint_prior_backend=joint_prior_backend,
+                  f2_floor_safety_fraction=f2_floor_safety_fraction,
                   mind_order=mind_order if args.loss=="mind" else None,
                   image_levels=image_levels,
                   continuation_scope=continuation_scope,
@@ -653,6 +688,8 @@ def main():
     p.add_argument("--fine-patch-backend",choices=("ordinary","manual"),default="ordinary",
                    help="Final patch cascade only: ordinary AD or connected first-order full-Y/proposal VJP; manual diagnostics are non-differentiable")
     p.add_argument("--f2-accepted-gain",type=float,default=1.)
+    p.add_argument("--f2-floor-safety-fraction",type=float,default=1.,
+                   help="fraction of remaining F2 area-floor slack; historical1 permits contact, <1 reserves strict real-arithmetic slack")
     p.add_argument("--regional-cells",type=int,default=32)
     p.add_argument("--regional-min-level",type=int,default=3,
                    help="Use unwindowed global updates below this coefficient level")
@@ -693,6 +730,8 @@ def main():
     p.add_argument("--lr-calibration", choices=("physical", "edge"), default="physical")
     p.add_argument("--strain-weight", type=float, default=.05)
     p.add_argument("--strain-model",choices=("displacement_gradient","p1_arap"),default="displacement_gradient")
+    p.add_argument("--joint-prior-backend",choices=("eager","inductor"),default="eager",
+                   help="Optional fullgraph default Inductor joint ARAP+shape prior; fixed P1 ac/float64 only. First-call compilation is part of execution time.")
     p.add_argument("--shape-weight", type=float, default=0.)
     p.add_argument("--oob-weight", type=float, default=1.)
     p.add_argument("--minimum-jacobian", type=float, default=.001)

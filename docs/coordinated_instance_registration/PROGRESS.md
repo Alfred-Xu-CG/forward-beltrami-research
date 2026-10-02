@@ -1733,3 +1733,165 @@ rebrandrecachingasnewgain. SelectONEpure-tensor speed intervention onlyafter
 measured attribution; doNOTstartnewCNN/distillation ononeviewedspecimen.
 Decision independently recommended by Astra; builder owns boundedprofiletool,
 root executes, raw-arraychecker works separately. Remainingwindow~11.5h.
+
+### T+12.6h concrete F2 floor/strict-acceptance mismatch
+
+Question: can the existing F2 safetyfraction.75 nevertheless hiteta exactly?
+Independent Astra source derivation and executable side3/patch2 fixture sayYES.
+Identityboundary, center(.001,.5), centerlogit(-1,0), sf=.75,rawspan=.5,gain1:
+inputminimumratio.002 → outputcenter(.0005,.5), minimumratio EXACT.001.
+Thus positiveorientation/thehistorical nonstrictfloor theorem holds, but the
+instanceoptimizer'sSTRICTextra-floor guard rejects. Realfixed257reference is
+exactdyadic1/65536; no resampling/refinement occurs in the two failedcohortcases.
+The actual failed tensors were not saved, so those exactsevenroundedtrials are
+not independently replayed from logs. This is a reproducedstructural mismatch,
+not evidence that exportedF2maps folded or a missing-factor-of-two convention.
+
+Research card — minimal explicit strict-floor reserve, not a newregistrationroute:
+For a protectedcorner, q(t)=q0+t*L+t²*Q. Let B=max(-L,0)+max(-Q,0),
+f=eta*h², q0>f, and choose sigma<=1 with sigma*B<=theta_f*(q0-f),
+0<theta_f<1. For0<=t<=sigma, q(t)>=q0-t*B>=f+(1-theta_f)*(q0-f)>f.
+Retain existingfraction-of-total-area bound aswell, acceptedgain<=1, fixedpatch
+perimeter/nonconflictcoverage, originalactualrounded-outputstrictguard unchanged.
+Candidatechange: optional namedfloor_safety_fraction withhistoricaldefault1;
+explicitresearchvariant.95 uses min(sf*q0,theta_f*(q0-f)) allowance. Noη
+relaxation, no tolerance-basedacceptance, no repair or addedgeometrylinesearch.
+Falsifier: linearfixture stillhitsfloor, nonlinearpath violatesbound, localVJP
+disagrees, existingdefault changes, or the preservedroundedguard stillrejects
+meaningfullyoften inactualmatchedcases. Tinyfixtures first, then threefixed
+directions HE→CC10(control),HE→Ki67,Ki67→HE, same300gradientrecipes/rawpoints.
+Onlythen decidewhetherall20comparisonneeds a corrected F2 version. This is a
+baseline strictnesscorrection alongsideperformanceprofile, not aparameter sweep.
+
+Independent literal all20 actual-array/frame check completes (separate formulas,
+no production scorer/map/certifier helper):40safemaps/10,485,760cornerdets,
+0nonpositive, exactunitreference/boundary andidenticalpositiveaffines. All3200
+safeper-IDcanvaserrors agree≤1.27e-13px; originalmovingpixelerrors≤2.53e-13.
+Nativefield affine alreadyincluded independentlytraced ininstalledbaseline;
+literalfloat64 bilinear sampling HE→CC10 andHE→Ki67 agrees≤2.60e-5canvaspx
+with productionfloat32queries. A mistaken secondaffine giveslarge discrepancies,
+not the recorded scores. All20nativecornercounts independentlytotal196916.
+MinratioA.00655735/F2.01479939. Noindependentpatient/globalnativecertificateclaim.
+
+CPUbenchmark and completeall20 code/reports/tests synchronizedas ba79a55.
+Largeactualmaps/rawmatches/archives remainonD, no files deleted. Profilingtool
+underimplementation; concreteF2strictreserve authorizedafterindependentproof,
+separatebounded3casecomparison, originalcohort preserved.
+
+### T+12.8h complete application profile observed on idleGPU6
+
+Rootprofilefocused5testsPASS10.98s; deploymentonlynewprofiletool, GPU6idle
+48GiBfree verified beforejob, external600stimeout,2CPUthreads. Actualprofile
+complete with CUDAcapture; threeunchanged300gradient/0failure registrations.
+Unprofiled5.44376/7.47894s,profiled9.39967s,session16.3213s; bracketvariation
+37.4%notnegligible. Mapsnormalrepeatmax4.91e-9/profile7.52e-10unit; allcounter/
+frame matches, finalEorder1e-12difference. ActualCUDAevents190271including
+168105kernel launches; deviceeventdurations939.648ms(includesmemcpy/memset),
+CPUlinked940.034msSEPARATE. CPUself13266ms>wall viaoverlappingthreads/scopes.
+Backwardinclusive4713.76ms,Evidence2150.68,decoder1224.69,matchprior623.77,
+ARAP415.41,shape374.52. Scalarinclusive114.11ms,streamsyncself28.48,devicesync17.27;
+doNOTlabelallwaitasavoidablecost. RangeintervalsNESTED/nonadditive.
+FORMULATION38 explicitlystates limitsandexactv2.5.1primarysources. Actualall3
+maps/reports/profileJSONfetchedtoD. Independentchecker reviewsactualprofile
+beforechoosingONEpuretensor fusion test, coldcompilecostmustbecounted.
+
+IndependentAstra raw-profile-map review:all3literalcornerminima.294420,
+exactboundary/affine, mapmax/RMS differences reproduceexactly. Profiler backward
+"self"4.684s is callerthreadenvelope, NOTexclusivecomputation; work onautograd
+threads overlaps. FullCUDA totals cannotberesummedfromcompacttop25JSONalone;
+summationcodeverifiedagainstexactPyTorch2.5.1source. No duplicateprofilingjob
+foranartifact-onlyaudit. Allcounts/objective/framecomparisonverified.
+
+Research card — ONE joint pure P1 prior compilation:
+Question: can fusion reduce genuineexisting ARAP/shape forward/VJP dispatchcost
+without changingtheregistrationfunctional? Closure returns existingp1_arap_energy
+(validate=False,ac) ANDexistingcorner_symmetric_dirichlet; weightedVJPuses3/1e-4.
+UseexistingTorch2.5.1 Inductor/defaultmode, fullgraph=True/staticshape; noautotune
+sweep, noCUDAgraph first, no weakercorners/precision/loss. Same257² inputshape
+acrossallimagelevels. Firstforward ANDfirstbackward compilelatency counted
+separately, then3warmups/10pairedrepetitions; comparevaluesandfullvertexVJP on
+actualsavedHE→CC10map (andactualgeometry-hardmap, selectedwithoutlandmarks).
+Falsifier: fullgraphcapturefails, values/gradientsdisagree, coldcostcannot
+amortize, or measuredwarmgainfails totransfer tooneunchanged300stepapplication.
+After successfullocal/operatorchecks, optionalappbackendintegration ONLYfor
+thisjointprior, keepimage/matches/decoder/optimizer/guards unchanged; rootowns
+integrationafterF2builderfile isstable. No completeEvidence/decodercompile
+untilthisoneinterventionisdecided. Primarysource exactTorch2.5.1compilefunction
+andprofiler_util.py; no newmathematicalmethod orNNgeneralizationclaim.
+
+### T+13h F2 reserve completed; measured joint-prior fusion positive at operator level
+
+NewF2focused25tests(root9.22s) and90prioraffectedtests(root24.99s) pass;
+independentAstra23coretests/proofreview plus statusguardreadcheck pass. Original
+rootinvocation usedonewrongtestfilename/no testsran; correctedaffectedrun is
+the recorded90pass, notthefailed invocation. Noinvalidfixtures countedvalid.
+Actualpredeclared3pairs×2arms6validexports, independentfraction.95 each300grad/
+0failedtrials. HistoricalHEK217grad/3fails,KH252/2; earlierprimarycohort242/158
+differs because CUDAnear-floor trajectories/earlyexits are notdeterministic.
+ControlHECC300both. Primary20unchanged; post-prediction80-IDscoringpending.
+The strictreservefixedbudgetbehavior, not yetanatomy. CorrectedALL20F2 next
+forfairbaselinecoverage, notjustsubstitute2favorablecaseoutputs.
+
+ActualGPU7 purejointpriorbench complete2real257maps,3warm/10pairedrep:
+H F+VJP5.01571→1.22706ms; geometry-hardHEK4.96715→1.08166ms. All14comparisons
+permap agreevalues≤6.11e-16/fullvertexgradient≤9.77e-15. IndependentAstra
+recomputes12medians exactly; factory.6332s ALSOcosts beyondfirstF6.5341/VJP2.9703s.
+Secondmapsharedcodecache, notindependentcold. Noimage/neural/application
+speedclaim fromthis4.09--4.59xoperator result. FORMULATION39 fullscope.
+
+Rootoptionalapplicationintegration retains eagerdefault/completefunctional/
+actualguards and sharesONEcompiledpriorcallable amongimagelevels; root86
+affectedtestsPASS14.27s, Astrareadreviewapproved. Test compilerbackend'eager'
+capture is declared correctness-only, notInductortiming. Next14freshfullcase
+optimizations: observedcoldE/compiled, then3E/C/C/Ewarmgroups; cachepolicyand
+firstconstant-input/gradient-enabledspecializations counted, nohiddenwarmup.
+Two builders ownonlynewcomparison/scorerfiles, rootownsproductionintegration.
+
+Post-prediction3pairscore complete, root12scorerfixturesPASS6.87s. All80IDs
+retained perarm, validmaps, nostatisticdrop: meanTRE historicalrepeat7.24058→
+reserved7.15148canvaspx; meanofpairp90 13.84972→13.87533 (slightly WORSE).
+PerpairmeansHECC5.76437→5.76437,HEK8.18505→8.00298,KH7.77230→7.68710;
+no anatomysuperiorityclaim fromsmall mixed result. The successfulstrict-budget
+correction warrants ALL20fairbaselineclosure irrespectiveoflabelperformance;
+newall20F2usesonlyfrozenimages/matches/affines andoriginal300budget.
+
+### T+13.5h measured whole-application fusion, next bounded dispatch question
+
+Actual14freshHE-to-CC10applications completed on idleGPU6: all300gradients,
+310trials,332completeobjectiveevaluations,zero failures,validsavedP1-acmaps.
+Warm complete-callmedians eager4.04864s/Inductor2.95093s (27.1%less); three
+ABBA meanratios1.36144/1.38280/1.40429. Observedcold6.49489/13.93556s counts
+factoryandconstant/gradient specializations; noone-shotwin. Warmcrossbackend
+mapmax1.21e-8/unitRMS8.13e-11 versus samebackendrepeatmax8.25e-9/RMS5.49e-11;
+finalEcrossdifference<=5.28e-12. Independent actual14mapreview pending.
+Rootnewharness/integration/F2all20 tests28PASS38.83s; initialGPUsetup rejected
+unindexedcuda beforeanymapwork, correctedvisibleindex0 (or suppliedindex)
+and9harness testsPASS20.02s. No invalid execution counted completed.
+F2all20 correctedrunner ongoing separatelyGPU7; originalcohort unchanged.
+
+Research card — frozen machine-point P1 evaluation (ONE follow-on dispatch test):
+Question: can immutable point-query indices/weights remove repeated point
+location and duplicate gather work without changing image/match evidence?
+Exactclaim: forfixed source queries q_j andfixed source triangulation,
+f_Y(q_j)=sum_(k=1)^3 w_jk Y_(i_jk), withweights/indices independentofcurrentY.
+Weightedrobustmatchloss andfullvertexVJP remain unchanged inreal arithmetic;
+rounded summation neednotbebitwise identical. Assumptions: detachedfixedquery
+buffers, declaredfixed grid/diagonal, same affine/targets/confidence/robustscale,
+newsetup fornewcontrolshape; doNOTfreeze deformedgeometry or detach gradients.
+Falsifier: value/fullvertexVJP disagreement, stalegrid/diagonalbuffer use, or
+setup+warmfullapplication costfails toshowusefulgain. Smallesttest: optional
+FrozenP1Evaluator reuse inside ImageCorrespondences on actualHECC frozen203
+points and257²map, bothdiagonals/edgequeries tested before application.
+Priorwork: ordinary barycentricP1 finite-elementevaluation andexistingrepo
+FrozenP1Evaluator (already usedforrasterqueries); no newgeometry/noveltyclaim.
+Do notcompilefullEvidence/decoder orchange matcher/robustfunctional forthis.
+
+IndependentAstra completed14-map/91-comparison review: all3,670,016 actual
+corners exceedeta, exactidentityboundary/commonpositiveaffine/P1ac,300/310/332/0
+each. Warm27.1129%reduction andthreeABBA ratiosreproduceexactly. Crossmapmax
+1.215e-8 is sameorder BUTlargerthanwithinrepeat8.251e-9; no bitwiseclaim.
+Warmpeak217.854→194.393MiB, coldcompiled364.564MiB; excludescompilerhost/RSS.
+Coldextra7.44067s predictssevenadditionalwarmcalls underconstantmedianmodel,
+NOTmeasuredcrossover. FORMULATION39.1 definesactualinput/output/clocks/caveats.
+Independent3pairF2 score review also complete:1,572,864cornersstricteta,
+80IDs eachliteralCSV/frame/P1matches<=2.27e-13px; difficultpairp90bothworsen.

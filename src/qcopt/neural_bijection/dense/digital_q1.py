@@ -358,15 +358,24 @@ class SafePatchQ1Pass(SafePatchFieldPass):
     bounds the complete quadratic determinant path, not just its endpoint.
     The exact-arithmetic guarantee assumes strictly positive input corners
     and a fixed bijective outer boundary. An optional normalized area floor
-    is preserved only if the input already meets that floor.
+    is preserved only if the input already meets that floor. The historical
+    ``floor_safety_fraction=1`` permits floor contact; a fraction below one
+    reserves strict real-arithmetic slack when the input is strictly above
+    the floor. Actual rounded-output checks remain the caller's responsibility.
     """
 
     def __init__(self, side: int, patch_cells: int, *,
-                 accepted_gain: float = 1.0, **kwargs: float | None) -> None:
+                 accepted_gain: float = 1.0, floor_safety_fraction: float = 1.0,
+                 **kwargs: float | None) -> None:
         if not math.isfinite(accepted_gain) or not 0 < accepted_gain <= 1:
             raise ValueError("accepted_gain must be in (0,1]")
+        if (isinstance(floor_safety_fraction, bool)
+                or not isinstance(floor_safety_fraction, (int, float))
+                or not math.isfinite(floor_safety_fraction) or not 0 < floor_safety_fraction <= 1):
+            raise ValueError("floor_safety_fraction must be finite and in (0,1]")
         super().__init__(side, patch_cells, **kwargs)
         self.accepted_gain = accepted_gain
+        self.floor_safety_fraction = float(floor_safety_fraction)
 
     def _raw_displacement(self, patch: torch.Tensor,
                           selected: torch.Tensor) -> torch.Tensor:
@@ -427,7 +436,11 @@ class SafePatchQ1Pass(SafePatchFieldPass):
         allowance = self.safety_fraction * areas
         if self.minimum_jacobian is not None:
             floor = self.minimum_jacobian / (side - 1) ** 2
-            allowance = torch.minimum(allowance, (areas - floor).clamp_min(0))
+            remaining = (areas - floor).clamp_min(0)
+            # Preserve the historical default's forward arithmetic exactly.
+            if self.floor_safety_fraction != 1.0:
+                remaining = self.floor_safety_fraction * remaining
+            allowance = torch.minimum(allowance, remaining)
         guard = math.sqrt(torch.finfo(base.dtype).eps) / (side - 1) ** 2
         quotient = allowance / torch.maximum(
             torch.maximum(bounds, allowance), bounds.new_tensor(guard),

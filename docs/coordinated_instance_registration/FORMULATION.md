@@ -5,6 +5,16 @@ The first real experiments optimize each image pair's own coefficients. They do
 not yet deliver a trained image-to-map network. Operator gradients are tested
 locally; stages intentionally detach accepted anchors in instance optimization.
 
+Current reading guide (T+13h; the research window is still active): the main real
+comparison outputs a257x257 CONTROL-vertex P1-ac map, evaluated on512x512 image
+pixel centers. It is a per-pair optimizer, not a newly trained image encoder.
+Sections1--2 introduce Q1 to derive the four digital corner constraints; they
+do not change the current P1 declaration. Read sections3--5 for latent updates,
+7 for the actual P1 interpolation,9 and25 for the frozen machine-point/ARAP
+objective,36 for the20-direction protocol and limitations,37 for the F2 baseline
+strict-floor correction, and38--39 for measured runtime diagnostics. Earlier
+objective variants are documented as experiments, not all simultaneously enabled.
+
 A homeomorphism is a continuous bijection with a continuous inverse. A P1 map
 is continuous and affine on each triangle of a declared source triangulation.
 A Q1 map is continuous and bilinear on each declared source quadrilateral.
@@ -2035,3 +2045,257 @@ cohort aggregate from stored per-ID errors, agreeing within1.25e-14. Literal
 raw-map/frame checks are separately recorded in PROGRESS when complete.
 No blind independent-specimen generalization, full image-to-latent training,
 clinical validity or official challenge competitiveness follows from this cohort.
+
+## 37. F2 strict-floor reserve: what the correction does and does not prove
+
+### 37.1 A reproduced mismatch, not a negative-orientation claim
+
+Consider one patch update on a uniform grid of side n and cell width h=1/(n-1).
+Its outer vertices remain fixed; its interior vertices receive proposed vectors
+v_i. For every protected digital corner, its unnormalized determinant along
+the simultaneous motion is the quadratic polynomial
+
+    q(t)=q0+t*L+t²*Q,  0<=t<=1.
+
+Here q0 is the determinant of the current corner, L is the sum of the two
+cross-products containing one current edge and one proposed edge difference,
+and Q is the cross-product of the two proposed edge differences. The configured
+floor is f=eta*h². The input assumption is q0>f for every affected corner.
+Define negative part x_minus=max(-x,0), and B=L_minus+Q_minus. Because t²<=t,
+
+    q(t)>=q0-t*B.
+
+The historical F2 allowance is A_old=min(s*q0,q0-f), with total-area safety
+fraction s=.75. Its scale can use ALL q0-f when the second branch controls.
+Thus its exact-arithmetic floor conclusion is q(t)>=f, not strictly q(t)>f.
+This differs from the instance optimizer's actual strict extra-floor test.
+
+A concrete boundary-fixed3x3 example uses center(.001,.5), rawspan.5,
+centerlogit(-1,0), eta=.001 and accepted_gain1. The current minimum normalized
+determinant is.002; the historical pass returns center(.0005,.5), whose minimum
+is exactly.001. No face has negative area. The input/output contrast exposes
+the strictness mismatch without relying on a complex optimizer trajectory.
+
+### 37.2 Optional strict reserve, with historical default preserved
+
+Introduce a separately named floor_safety_fraction theta_f in(0,1]. Use
+
+    A_new=min(s*q0,theta_f*(q0-f)).
+
+The existing per-corner quotient divides A_new by max(B,A_new,guard), where
+guard is the existing positive numerical denominator safeguard. For B>0 this
+quotient is <=1 and its product with B is <=A_new. For B=0 take quotient1,
+because neither polynomial coefficient is adverse. The patch scale sigma is
+the minimum of all its corner quotients. The accepted gain gamma is in(0,1],
+so the actual endpoint parameter t=gamma*sigma also satisfies these inequalities.
+For theta_f<1,
+
+    q(t)>=q0-t*B>=q0-theta_f*(q0-f)
+          =f+(1-theta_f)*(q0-f)>f.
+
+The same conclusion holds along the full accepted path. Fixed patch perimeters
+and nonconflicting simultaneous patches retain the shared mesh/boundary; each
+of the four sequential staggered passes uses its newly updated current map.
+In exact arithmetic, four passes retain at least (1-theta_f)^4 of the input's
+minimum normalized slack above eta. This lower bound is not a promised measure
+of typical distortion or optimizer quality.
+
+Historical default theta_f=1 preserves the original arithmetic/weak-floor
+meaning. The predeclared new research variant uses theta_f=.95, the already
+used analytic reserve, not a fraction fitted to landmark performance. Reports
+must say which version ran. The original all20 cohort is not overwritten.
+
+This is an exact-arithmetic strictness statement. A sub-ulp input slack can
+still be lost to rounded coordinate addition or determinant evaluation. Keep
+the actual rounded-output strict guard, boundary checks and exported-map
+certificate unchanged. The denominator guard alone is NOT an endpoint rounding
+certificate. No tolerance relaxation, new geometry line search or post-hoc
+repair follows from this derivation. Local gradients are tested separately;
+the minimum/max branches make the decoder piecewise differentiable, not smooth
+at every tied active constraint.
+
+## 38. Unchanged application profile: diagnosis, not a speedup result
+
+Use the first predeclared all20 direction HE-to-CC10, its saved image-only affine
+and its203 frozen raw machine correspondences. The input images, functional,
+257² control mesh, coefficient/image levels,300gradient budget and actual-map
+guards are unchanged. A process-local wrapper calls each original function
+once inside a profiler annotation and restores it afterward, including inherited
+methods. No human annotation, matcher rerun or optimizer replacement is used.
+
+Three fresh registrations run in order: unprofiled before, CPU/CUDA profiled,
+unprofiled after. Complete-call times are5.44376,9.39967,7.47894s; respective
+inner optimization times are5.09,9.24,7.35s approximately. Allcomplete300gradients
+with0failedtrials and identical evaluation counters. Boundary/affine/interpolation
+archives match. Normal repeated maps differ at most4.91e-9 in unitcoordinates;
+before-to-profile difference is7.52e-10. Final objective differences are order
+1e-12; CUDA sampling backward is not claimed bitwise deterministic.
+
+The profiler records190271 CUDA device events, including168105 kernel launches.
+The sum of device event durations is939.648ms. This includes computation,
+memcpy and memset, not compute-only time or floating-point operation count.
+Separate CPU-linked operator self-device attribution sums940.034ms; it is NOT
+added to the device-event sum. Kernel sums are not automatically GPU wall time
+when execution overlaps. Summed CPU self-events are13266.1ms, larger than the
+complete-call wall time because threads/annotation scopes can overlap.
+
+|Profiler annotation|Calls|Inclusive CPU interval sum (ms)|
+|---|---:|---:|
+|Backward|300|4713.76|
+|Complete evidence|332|2150.68|
+|Decoder|310|1224.69|
+|Machine-point prior|332|623.77|
+|ARAP prior|332|415.41|
+|Corner shape prior|333|374.52|
+|Adam step|300|193.93|
+|Frozen P1 map evaluation|332|121.78|
+|Raster sampling|332|37.82|
+
+These rows are NESTED and NONADDITIVE. A host annotation interval is not an
+exclusive GPU phase duration. In particular, backward CPU self-time includes
+dispatch/wait around autograd activity on other threads. CUDA launch host
+self-events sum1539.61ms over168105calls. Scalar extraction has7161calls,
+114.11ms inclusive; stream synchronization5971calls/28.48ms hostself, and
+device synchronization926calls/17.27ms hostself. Waiting can represent genuine
+device work, so not every synchronization duration is removable overhead.
+
+The profiled complete call is1.455times the mean unprofiled bracket, and the
+whole profiler session including startup/finalization is16.3213s. Before/after
+normal times themselves differ by37.4%; this is NOT a precise isolated hardware
+speed comparison. PyTorch warns that profiling adds operation overhead; the
+deployed2.5.1 source distinguishes CPU-linked events from actual device events:
+[profiler source](https://github.com/pytorch/pytorch/blob/v2.5.1/torch/autograd/profiler.py),
+[event aggregation source](https://github.com/pytorch/pytorch/blob/v2.5.1/torch/autograd/profiler_util.py).
+
+The diagnosis is a testable launch/autograd-granularity hypothesis, not proof
+of a particular compiler's speedup. A bounded tensor-subgraph intervention must
+retain the same mathematical functional and actual-map checks, test values and
+VJPs, and measure cold compilation separately from cached execution. It cannot
+use the0.94s event sum as a promised achievable complete-call time.
+
+## 39. Joint-prior fusion operator and restricted application integration
+
+The two unchanged functions are E_ARAP(Y), the P1 face-average squared distance
+of its Jacobian to a proper rotation, and E_shape(Y), the existing four-corner
+symmetric-Dirichlet average. Their definitions are given above. The isolated
+closure returns BOTH scalar values. Its reverse test applies scalar seeds
+(3,1e-4), so the compared full vertex derivative is
+
+    G(Y)=d/dY [3*E_ARAP(Y)+1e-4*E_shape(Y)].
+
+Inputs are actual saved float64 tables in R^(1x257x257x2), not image features
+or a neural prediction. The first is predeclared HE-to-CC10; the second is the
+smallest positive four-corner minimum among the19 other supplied analytic
+outputs, HE-to-Ki67. Selection uses geometry only, not human landmarks. Their
+minimum normalized corners are.294420 and.00655735. Three warmup pairs and ten
+alternating eager/compiled timed pairs follow one observed cold pair per map.
+
+The compiled closure uses existing PyTorch2.5.1 Inductor with default mode,
+fullgraph=True and dynamic=False. It calls the ORIGINAL functions, with no new
+epsilon, determinant clamp, rotation detachment or rewritten energy. Fullgraph
+capture failure is an error, not silent eager fallback. Float64 remains unchanged.
+No autotuning or CUDA-graph mode sweep was performed.
+
+|Actual map|Eager forward (ms)|Compiled forward (ms)|Eager weighted VJP (ms)|Compiled weighted VJP (ms)|Eager F+VJP (ms)|Compiled F+VJP (ms)|
+|---|---:|---:|---:|---:|---:|---:|
+|HE-to-CC10|1.25777|0.44786|3.76298|0.78723|5.01571|1.22706|
+|Geometry-selected HE-to-Ki67|1.26010|0.44991|3.70136|0.64621|4.96715|1.08166|
+
+Columns are independently recomputed medians of ten stored synchronized samples.
+Median F+VJP is computed from each paired sum, not necessarily the sum of the
+two separate medians. All14 value/gradient comparisons per map pass: maximum
+value difference6.11e-16 and full vertex-gradient difference9.77e-15.
+This supports throughput of THIS operator, not a4times faster registration.
+Fullfloat64 vertex derivatives are tested; higher-order derivatives are not.
+
+The first compiled factory costs.6332s, first observed forward6.5341s and
+first weighted reverse2.9703s. These costs are separate and additive observed
+intervals, not isolated pure compiler time. The second map reuses code/disk
+caches and is NOT an independent cold replicate. Input cloning, validation,
+CPU output transfers and numerical comparisons are excluded from the operator
+timing. The forward is gradient-enabled, not a no-gradient inference-only test.
+
+Warm observed CUDA allocated peaks: forward30427648→14715904bytes and reverse
+38816768→27282432bytes, eager→compiled. Phase baselines and increments are
+recorded separately; the forward graph is already live at the reverse baseline.
+These are neither CPU compiler memory nor whole-application memory claims.
+Actual GPU7/A6000 resources were idle before the job; two CPU/compiler threads
+were used, with research-local compiler caches and no package installation.
+
+The restricted production optimizer now has an optional joint_prior_backend:
+historical eager remains default; Inductor changes ONLY the joint ARAP/shape
+dispatch. The complete original image/OOB/machine-point functional, coefficients,
+weights, optimization and actual topology guards remain. Production rejects
+non-AC interpolation, float32 geometry, absent shape weight, non-ARAP strain or
+nested control hierarchy for this experiment. The generic Evidence class is
+broader; these are restrictions of the production route, not a new theorem
+about every possible class caller.
+
+One prior-only callable is constructed and shared across the five image-level
+Evidence objects, whose CONTROL shape is identical. It never caches an energy,
+current vertex value or gradient. The initial constant-input path and the first
+gradient-enabled trial may specialize differently. A complete first-call clock
+starts before factory creation and counts both, followed by separately reported
+warm ABBA applications. CPU eager-backend compiler-capture fixtures test dispatch
+correctness only; they are not evidence for CPU or GPU Inductor speed.
+
+### 39.1 Actual complete registration, not just an isolated prior benchmark
+
+The input is the same frozen HE-to-CC10 image pair, positive affine and203
+machine correspondences from section36. Each attempt starts with the identity
+residual vertex table. The output is a fresh float64 table with257x257 control
+vertices, declared P1-ac interpolation, and its unchanged affine. No saved map,
+human annotation, matcher rerun or neural warm start enters any attempt.
+The optimization uses the same300 coefficient-gradient steps,310 evaluated
+trial maps and332 complete-objective evaluations. Only evaluation of the two
+regularizers changes from separate eager operations to the joint compiled
+closure. Every other image, point, boundary and feasibility operation is retained.
+
+The measured order is one observed-cold eager call, one observed-cold compiled
+call, then three groups E/C/C/E, where E means eager and C means compiled.
+Thus each backend has six warm calls, and all14 attempts have distinct output
+archives. GPU context initialization is separately recorded and excluded.
+The synchronized complete-call clock begins BEFORE the compiler factory and
+includes input loading, feature creation, initial no-gradient evaluation,
+gradient-enabled trial evaluation/backward, optimization, saving and actual
+saved-map certification. No application warmup is hidden before the cold pair.
+Research-local cache paths were new for this application test; this does not
+prove every system/global compiler cache was pristine.
+
+|Measurement|Eager|Joint-prior Inductor|
+|---|---:|---:|
+|Observed cold complete call (s)|6.494887|13.935558|
+|Median of six warm complete calls (s)|4.048639|2.950935|
+|Warm reported peak CUDA allocation (MiB)|217.854|194.393|
+|Cold reported peak CUDA allocation (MiB)|217.004|364.564|
+
+The warm reduction is1-2.950935/4.048639=27.1129%, not the4x isolated-prior
+speedup. The three ABBA groups' ratios of eager/compiled mean complete time
+are1.3614,1.3828,1.4043. Every compiled warm call is faster than every eager
+warm call in this bounded test. The allocator counter is reset inside the
+optimizer after feature setup; it excludes complete compiler/host memory and
+is not a process-RSS or physical-GPU-capacity measurement.
+
+Independent recomputation reads all14 actual saved tables: all3,670,016
+four-corner determinants exceed the same eta=.001 floor; the boundary is
+exactly identity, the original affine remains positive and unchanged, and
+the interpolation declaration is P1-ac. The normalized corner minimum spans
+.2944199667463492 to.2944199667468752. All14 runs complete the full budget with
+zero failed trials; no rejected/incomplete run was removed from timing.
+
+Warm cross-backend coordinate differences have maximum1.21476e-8 in unit
+coordinates and RMS8.13321e-11; same-backend repeat maxima are8.25076e-9 and
+5.48869e-11. Cross differences are of the same order, but are NOT strictly
+bounded by repeat variation. Final-objective differences are at most5.27e-12
+cross-backend versus7.19e-12 within-backend; initial parts match and image terms
+match. This supports negligible observed numerical change for this experiment,
+not bitwise equivalence, equality of every future trajectory, higher-order
+derivatives, or a clinical/anatomical benefit.
+
+The cold compiled call is7.44067s slower. If all future calls cost the measured
+warm medians, recovering this penalty would require ceil(7.44067/(4.04864-
+2.95093))=7 additional warm calls, approximately8 calls total. This is a simple
+amortization estimate, NOT a measured crossover or pure compilation cost.
+Different control shapes, devices, guards or cache states may recompile.
+The experiment demonstrates useful warm execution on ONE known development
+pair/A6000, not all20 directions, unseen specimens or a trained neural encoder.

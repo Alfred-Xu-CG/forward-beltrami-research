@@ -1,10 +1,13 @@
 # Initial declared development protocol
 
 This protocol precedes new confirmation selection. The first matrix contains three
-already viewed specimens: HistoReg CD68→CD4, ANHIR/BIRL lung lesion proSPC→HE,
+already viewed specimens: HistoReg CD4→CD68, ANHIR/BIRL lung lesion proSPC→HE,
 and rat kidney PanCytokeratin→HE. These are development evidence, not three human
 patients or untouched tests. All pair metrics retain every shared landmark ID:
 77 HistoReg, 78 lesion, 69 kidney. Kidney's two fixed-only IDs are separately disclosed.
+The HistoReg direction above corrects earlier reversed descriptive wording:
+the actual scorer has always used fixed Landmarks_CD4.csv and moving
+Landmarks_CD68.csv. This is not a reversal or rerun of the saved maps/scores.
 
 All methods use the existing jointly scaled/padded 512-square canvases and EXACT
 same stored positive image-only initial affine. Initializers were not fitted with
