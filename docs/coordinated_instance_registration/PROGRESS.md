@@ -1,11 +1,38 @@
 # Coordinated instance registration — progress
 
 Started: 2026-10-01 11:26:23 UTC (Asia/Shanghai 19:26:23).
-Initial deadline: 2026-10-02 11:26:23 UTC. Goal ACTIVE.
+Initial deadline: 2026-10-02 11:26:23 UTC (subsequently extended).
 Extended by the user on restart: 2026-10-02 16:26:23 UTC (29-hour total window).
+Goal PAUSED BY USER after handoff; pause recorded 2026-10-02 16:11:57 UTC.
+This is an explicitly authorized early pause, not expiry or scientific completion.
 Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
+
+### User-approved handoff and pause — 2026-10-02 16:11 UTC
+
+The user explicitly answered: "同意，收尾后暂停本轮". No new experimental
+branch is started. All registration/benchmark jobs have terminated; the last
+worker's bounded metadata-only handoff check is also complete. Reports, current
+maps, compact measurements, source and focused tests are preserved on D and
+synced by explicit-path milestone commits. Larger native fields and matcher
+matrices remain on D and the research host outside Git, as already documented.
+
+The final independent review answers PLAN section19. Its status remains:
+declared fixed-mesh topology/local operators supported; broad repeated
+matched-time optimization superiority unclosed; modest development-only anatomy
+gains without independent-specimen confirmation; no SOTA or completed trained
+neural-layer claim. F2's lower SAME objective on24/25 and the approximately53px
+MIIT tail remain the strongest adverse results. Ending this window is not a
+technical success declaration. Resume only on a new explicit user instruction.
+
+Final data-readiness clarification: no further ready labelled histology specimen
+was established in the bounded inventory. Cached COph100 retinal data have
+separate patient groups and available images/annotation entries, but are a
+different imaging domain and their historical label exposure is unaudited.
+They are NOT silently substituted for independent histology or blind validation.
+See BASELINE_PROTOCOL_REVIEW's added handoff note. No held-out coordinates,
+new images or new registration scores were consumed for this metadata check.
 
 ### Final source clarification, no new experiment — 2026-10-02 16:02 UTC
 

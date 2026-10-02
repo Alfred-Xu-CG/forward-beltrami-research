@@ -1,5 +1,9 @@
 # AGENTS.md — Coordinated Instance Registration
 
+Current state: PAUSED BY USER after handoff, recorded2026-10-02 16:11:57 UTC.
+No new research jobs or next-phase implementation without explicit resumption.
+The scientific objective remains unachieved; see RESTART_SYNTHESIS.md.
+
 Current restart override (2026-10-02): the user extended this window by five
 hours, to 2026-10-02 16:26:23 UTC. Keep the original start time. Every delegated
 agent uses the actual `gpt-6-astra` model; older Sol routing in archived copies

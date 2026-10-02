@@ -2,8 +2,9 @@
 
 ## Current dense-homeomorphism research
 
-The active October 2026 work is **coordinated, topology-preserving instance
-registration**. Start with the [current synthesis](docs/coordinated_instance_registration/RESTART_SYNTHESIS.md),
+The October 2026 work is **coordinated, topology-preserving instance
+registration**, now paused by the user's explicit instruction after handoff.
+Start with the [current synthesis](docs/coordinated_instance_registration/RESTART_SYNTHESIS.md),
 then the [self-contained mathematical and experimental report](docs/coordinated_instance_registration/REPORT.md).
 Its main real-image experiments use **257×257 actual control vertices**, a fixed
 piecewise-affine triangulation, and separately recorded 512×512 image queries.
@@ -18,7 +19,8 @@ The [baseline protocol review](docs/coordinated_instance_registration/BASELINE_P
 corrects the earlier reduced-DHR comparison and distinguishes actual native
 STANDARD runs, same-initializer runs, preprocessing conventions and timing scopes.
 The [progress record](docs/coordinated_instance_registration/PROGRESS.md) preserves
-failed interventions and the active research deadline. No SOTA, blind validation,
+failed interventions, the extended deadline and the user-approved early pause.
+No SOTA, blind validation,
 raw-WSI end-to-end speedup or completed original neural-layer goal is claimed.
 
 For current local numerical tests, use the clean Windows interpreter

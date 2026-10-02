@@ -1,5 +1,9 @@
 # AGENTS.md — Coordinated Instance Registration
 
+Current state: PAUSED BY USER after handoff, recorded2026-10-02 16:11:57 UTC.
+Do not launch new research jobs until the user explicitly resumes or authorizes
+a next phase. This is not a claim that the scientific objective was achieved.
+
 ## User-approved restart and extension — 2026-10-02
 
 This section overrides older model routing and duration text, including the

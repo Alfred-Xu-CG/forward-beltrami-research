@@ -685,6 +685,31 @@ This bounded check found no new specimen with both unrestricted acquisition and
 verified independent registration labels ready for the present benchmark; it
 does not assert that no such public dataset exists.
 
+### Final cached-data handoff, metadata only (2026-10-02)
+
+The bounded recheck found no additional ready labelled histology specimen.
+ACROBAT training's missing anatomical labels are already recorded in
+`docs/digital_topology_wsi/EVIDENCE.md`; the older BIRL `lesions_` crops share
+specimen identifier `Izd2-29-041-w35`, so another crop is not established
+independent-patient evidence.
+
+A separate cached option is COph100 retinal registration at
+`D:/QC_optimization_research/direct_registration/7cac/datasets/COph100/`.
+`prepared_v3/manifest.json` records56patients/100eyes with disjoint34/11/11
+development/validation/test patient groups. Validation eye001 has three JPEGs
+under `prepared_v3/inputs/validation/001/images/`, with corresponding annotation
+entries in `COph100.zip`. Its README attributes COph100 to Hu et al., derived
+from Timkovic et al.'s RIDIRP. The worker checked metadata/file accessibility,
+and root confirmed the manifest and image directory exist; neither opened new
+held-out coordinate values. Earlier exposure of validation/test labels is
+unaudited, so this is NOT a blind-cohort claim. Retinal cross-domain testing must
+not be relabelled as additional histology confirmation.
+
+If independent histology remains the required confirmation, the next acquisition
+action is authorized access to a complete labelled HyReCo case, with the login
+and license ambiguity above resolved first. This is handoff information, not a
+download, data-access request, new benchmark or automatic next-phase instruction.
+
 ## Initializer provenance correction (2026-10-02, exact archive audit)
 
 The shared initializer must be called the **saved image-only positive affine**,

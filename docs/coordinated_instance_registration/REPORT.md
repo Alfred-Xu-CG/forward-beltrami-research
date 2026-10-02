@@ -7,6 +7,9 @@ The authorized window
 started2026-10-01 11:26:23UTC. On 2026-10-02 the user resumed the paused goal
 and extended the deadline by five hours to 2026-10-02 16:26:23UTC. Historical
 sections retain their dated scopes; newer restart measurements are added below.
+The user subsequently approved pausing after handoff, recorded at
+2026-10-02 16:11:57 UTC, before that deadline. The goal is paused rather than
+marked achieved; the unmet scientific targets remain in RESTART_SYNTHESIS.md.
 The detailed derivations and experiment definitions are in FORMULATION.md;
 chronology and negative interventions are in PROGRESS.md. This report introduces
 the main objects without requiring knowledge of those earlier discussions.

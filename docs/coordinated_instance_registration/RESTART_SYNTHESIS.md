@@ -2,8 +2,10 @@
 
 Written 2026-10-02 by the Astra synthesis role using actual results and the
 focused independent final review linked below; not original-goal completion.
-The authorized window ends at
-2026-10-02 16:26:23 UTC. [REPORT](REPORT.md) contains full experiments;
+The user explicitly approved a pause after handoff; recorded at
+2026-10-02 16:11:57 UTC (2026-10-03 00:11:57 Asia/Shanghai), before the extended
+deadline of 2026-10-02 16:26:23 UTC. The research goal is paused, not achieved.
+[REPORT](REPORT.md) contains full experiments;
 [BASELINE_PROTOCOL_REVIEW](BASELINE_PROTOCOL_REVIEW.md) resolves comparison and
 provenance details.
 
@@ -282,6 +284,10 @@ objective remain unestablished. Technical closure is not a registration breakthr
 1. Obtain genuinely new, independently grouped labelled specimens with verified
    access and provenance. Freeze fusion and native baselines before evaluation;
    more directions from the current samples cannot provide this confirmation.
+   The bounded cache inventory established no additional ready labelled histology
+   specimen. COph100 retinal images/labels are cached with patient-grouped splits,
+   but are cross-domain and not automatically blind; historical label exposure
+   remains unaudited. They are not a substitute for histology confirmation.
 2. Test a concrete finer-evidence hypothesis before opening another optimizer
    branch. One next-phase option is to expose frozen MA fine feature fields before
    coarse-gated window selection and use a dense feature-distance loss. This
