@@ -247,3 +247,26 @@ Then compare real TRE, tails, failures and cost on all four specimens without
 manual labels in optimization. Lower new objective alone is not anatomical
 progress. A negative result limits this specific pose/prior hypothesis; it
 does not establish that all legal maps or all affine formulations are inadequate.
+
+## Completed experiment, 2026-10-02 10:35--10:50 UTC
+
+All50fresh attempts completed. Joint300 improves lung mean/p90 from
+4.471007/9.342538 (Frozen300) to4.299372/9.022772; the Frozen250 control is
+4.465445/9.327422. The gain is therefore not explained simply by50fewer
+residual updates. Other specimens are mixed: MIIT and Histo mean worsen versus
+Frozen300; kidney mean improves slightly but p90 and worst error worsen.
+Joint calls average7.653s versus archived Frozen3004.566s, with244--249MB
+allocated peak versus210--214MB. All are512-equivalent metric units and
+257-square controls, on the same four repeatedly viewed development specimens.
+
+Independent saved-result evaluation verifies all4148errors, complete objectives,
+positive actual binary affine determinants, residual/unit-boundary certificates,
+physical-pose freezing and paired-state selection. The minimum full normalized
+corner ratio is.00359920>.001. Reported ideal versus numerical matrix-exponential
+differences and the stale preprocessing metadata erratum are recorded in
+BASELINE_PROTOCOL_INDEPENDENT, not concealed by rewriting production reports.
+Full tables and per-pair regressions are in `joint_pose_all50_t24/comparison.json`.
+
+Decision: retain this as a concrete lung benefit with cross-specimen cost/tail
+tradeoffs; it does not replace the single frozen-pose fused300 default. No
+per-case selection or coefficient/budget sweep follows this experiment.

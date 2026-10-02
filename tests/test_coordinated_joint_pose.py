@@ -151,5 +151,8 @@ def test_tiny_optimizer_budget_pose_metadata_and_stored_pair(tmp_path):
     assert result['gradient_steps']==6 and result['pose_gradient_steps']==2 and result['residual_gradient_steps']==4
     assert result['failed_trials']==0 and result['saved_binary_certificate']['valid']
     assert result['pose_mode']=='joint_positive_affine' and jp.validate_joint_export(args.output)['valid']
+    assert result['image_preprocessing']['original_moving_features_no_affine_prewarp'] is False
+    assert result['image_preprocessing']['original_moving_raster_no_affine_prewarp'] is True
+    assert 'A G' in result['image_preprocessing']['moving_descriptor_prewarp_scope']
     assert result['final']['total']<=result['initial']['total']+1e-12
     assert json.loads(args.output.with_suffix('.json').read_text())['landmarks_used'] is False

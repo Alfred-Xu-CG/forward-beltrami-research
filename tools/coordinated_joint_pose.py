@@ -260,6 +260,11 @@ def optimize_joint_pose(args):
     A,offset = torch.tensor(a,dtype=torch.float64,device=device),torch.tensor(b,dtype=torch.float64,device=device)
     fixed,moving,mask,preprocessing = load_registration_evidence(args.fixed,args.moving,args.image_side,
         preprocessing='raw_inverted',device=device,dtype=torch.float32)
+    preprocessing={**preprocessing,
+        'original_moving_features_no_affine_prewarp':False,
+        'original_moving_raster_no_affine_prewarp':True,
+        'moving_descriptor_frame':'shared_joint_positive_affine',
+        'moving_descriptor_prewarp_scope':'original moving raster prewarped by A G before descriptors at each pose evaluation; physical-pose-frozen cache during residual blocks'}
     matches,match_metadata = None,None
     if args.match_weight:
         matches,match_metadata = load_image_matches(Path(args.matches),a,b,fixed_path=Path(args.fixed),moving_path=Path(args.moving),

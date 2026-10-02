@@ -782,3 +782,87 @@ rebuild descriptors for the corresponding G, and the joint runner records all
 diagnostics were also added by the author; original moving-image variance alone
 could not detect the zero-prewarp example. These tests establish the stated
 functional, derivatives and representation checks, not anatomical gain.
+
+### Joint pose: independent all-50 saved-result check
+
+`joint_pose_all50_t24` passes the independent saved-result check. The outer
+manifest and both 25-case manifests are complete before any evaluation CSV is
+read. Frozen250 uses 250 residual gradients and 282 objective calls; Joint300
+uses 50 pose plus 250 residual gradients and 347 objective calls. All 50
+complete without failed trials. Configuration differences are precisely the
+declared budget/output/pose fields. Original affines, fixed/moving input paths,
+fused point-table paths, point eligibility/weights and raw-gray mask source
+remain unchanged. Joint exports separately retain the original affine.
+
+All 4,148 landmark errors are recomputed from original CSV coordinates and
+literal source-triangle interpolation followed by the STORED affine. Maximum
+differences are `1.14e-13` canvas pixels and `1.72e-12` native pixels. Exact unit
+boundaries, float64 source P1 tables, actual saved binary residual certificates
+and exact binary affine determinant signs pass. Minimum normalized determinant
+is `0.00577563` for Frozen250; Joint300 has residual minimum `0.00395089` and
+original-affine-normalized complete-map minimum `0.00359920`, all above `.001`.
+
+The saved physical pose equals the pose in the selected stage, its residual
+minimum agrees with that stage, and the selected full objective is the minimum
+over initial and all accepted paired states. All joint cases select stage 14,
+the final accepted pair. Every pose block has the predeclared RMS-normalized
+rate and rebased floor; its following two residual blocks retain exactly that
+physical pose and adjusted floor. Independently recomputing the final complete
+objective from the saved pair, original images and fused points agrees to
+`2.50e-8` (float32 image arithmetic); the static point term agrees to `2.50e-16`.
+This check uses literal image/descriptor interpolation and SVD-based ARAP,
+not the production objective implementation.
+
+One finite-arithmetic qualification is retained: the saved affine agrees with
+the implemented `torch.matrix_exp` composition, while an independent symmetric
+eigendecomposition/exponential differs by at most `8.79e-11` in the combined
+affine coefficients; the ideal `exp(2s)` determinant identity differs by at
+most `9.32e-11`. A worst-case check finds NumPy eig and SciPy expm agreeing to
+`2.22e-16` while the implemented Torch exponential differs by `8.12e-11`.
+This is not machine-precision reproduction of the ideal parameter formula.
+The checked floors and topology concern the authoritative stored binary affine
+and residual, so this small approximation does not invalidate those checks.
+
+Actual final outside fractions independently agree to `7.21e-9`; all 25 final
+nominal descriptor-footprint fractions agree exactly. Aligned intensity and
+descriptor variances agree to `6.85e-9`. Learned affine area ratios range from
+`0.910985` to `1.128654`, actual outside fractions from `0` to `0.149946`, nominal
+fixed-mask-weighted footprint coverage from `0.839406` to `0.997289`, and aligned
+descriptor channel variances from `0.068426` to `0.090340`. These observations
+exclude a global all-zero descriptor-collapse explanation here; they do not
+certify valid support at every deformed query or anatomical correspondence.
+
+| Cohort | Joint mean | Joint - Frozen300 mean | Joint - Frozen250 mean | Joint - Frozen300 mean pair-p90 | Joint - Frozen250 mean pair-p90 |
+|---|---:|---:|---:|---:|---:|
+| MIIT, 3 directions | 3.56510797 | +0.03038961 | +0.02859604 | +0.09441900 | +0.05001610 |
+| Lung, 20 directions | 4.29937213 | -0.17163501 | -0.16607247 | -0.31976672 | -0.30465065 |
+| Histo | 0.86401889 | +0.02195455 | -0.00339447 | +0.01789019 | -0.11306335 |
+| Kidney | 2.23728354 | -0.00632293 | -0.03337851 | +0.32294918 | -0.13187285 |
+
+Units are 512-canvas pixels; both frozen controls use the same fused evidence.
+All comparison rows, cohort/equal-specimen aggregates, support deltas and cost
+summaries reproduce independently. Compared with the archived Frozen300 arm,
+two cohort means and three mean pair-p90 values worsen; kidney worst error
+rises by `2.52603` pixels despite its slight mean improvement. Lung improves
+against BOTH controls, so reducing the residual budget alone does not explain
+that gain. This remains four previously viewed specimens, not independent
+held-out evidence or grounds for per-case best-arm selection.
+
+Complete calls total `93.259012s` for Frozen250, `191.325626s` for Joint300 and
+the archived `114.162324s` for Frozen300. Fresh batch wall is `285.155555s`.
+These single-run costs do not establish a controlled speed ratio, but the
+joint recipe provides no uniform accuracy/cost advantage here. Retaining the
+frozen300 fused recipe globally while preserving the lung-specific pose result
+as a research observation is consistent with these data.
+
+Reporting erratum, production revision `42a599c`: all 25 saved joint reports
+inherit `image_preprocessing.original_moving_features_no_affine_prewarp=True`
+from the raw loader. That flag is stale: actual moving descriptors ARE built
+after the original-raster A G prewarp, as the objective description, source
+review, identity test and independent image recomputation establish. Saved
+production reports are left unchanged; the future reporting flag can be fixed
+without a numerical rerun. No map, score or evaluation choice was changed.
+
+Reproduction: the independent joint-pose probe with `--postrun`; it shares the
+previous original-CSV loader and literal P1 oracle, with joint-specific saved
+affine, budget, paired selection and diagnostic checks.

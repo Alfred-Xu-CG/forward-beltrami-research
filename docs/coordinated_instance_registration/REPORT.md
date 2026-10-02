@@ -8,6 +8,63 @@ The detailed derivations and experiment definitions are in FORMULATION.md;
 chronology and negative interventions are in PROGRESS.md. This report introduces
 the main objects without requiring knowledge of those earlier discussions.
 
+### Joint positive global pose: lung benefit, not a uniform replacement
+
+The next controlled experiment changes the map from F(x)=A f_Y(x)+b to
+F(x)=A G(f_Y(x))+b. Here A,b are the same saved image-only initializer,
+f_Y is the same boundary-fixed257-square P1 map, and
+G(z)=o+t+R(theta) exp(S)(z-o), o=(.5,.5), with symmetric2-by2 S.
+Its six learned parameters permit translation, rotation, scale, anisotropy
+and shear while keeping its determinant positive in exact arithmetic. The
+actual saved affine and residual are checked numerically and with binary
+sign certificates. Both residual and complete-map corner floors remain>.001.
+JOINT_POSE_FORMULATION gives every parameter, derivative, floor and output
+convention. This changes the allowed boundary polygon and regularization
+model; it is not just a faster solver for the identical old problem.
+
+Use the same fused point evidence throughout. Joint300 alternates50global
+pose gradients with250local residual gradients. Frozen250 is a fresh control;
+Frozen300 is the previous retained recipe. Neither control receives labels.
+
+| Previously viewed specimen | Frozen300 mean / p90 | Frozen250 mean / p90 | Joint300 mean / p90 |
+|---|---:|---:|---:|
+| MIIT /3 directions | 3.534718 /5.858170 | 3.536512 /5.902573 | 3.565108 /5.952589 |
+| Lung /20 directions | 4.471007 /9.342538 | 4.465445 /9.327422 | 4.299372 /9.022772 |
+| HistoReg /1 | .842064 /1.580138 | .867413 /1.711092 | .864019 /1.598028 |
+| Kidney /1 | 2.243606 /4.643549 | 2.270662 /5.098371 | 2.237284 /4.966499 |
+
+Units remain512moving-canvas pixels; p90 is computed per pair then averaged.
+Lung improves against both controls (mean about3.84% versus Frozen300).
+Compared with Frozen300, however, two specimen means and three p90s worsen.
+Kidney's worst error rises from8.97058to11.49661pixels despite its small mean
+gain. Therefore keep Frozen300 globally as the current development default;
+do not choose pose mode separately per specimen from these labels. The lung
+result is useful evidence about the boundary/pose restriction, not a uniform
+registration breakthrough or held-out patient-level result.
+
+All50fresh attempts finish before scoring, with no failed trials. Independent
+literal interpolation of all4148errors agrees to1.14e-13canvas pixels. Joint
+outputs have minimum actual residual ratio.00395089 and complete normalized
+ratio.00359920. Independently rebuilt final image/point/prior objectives agree
+to2.50e-8; paired(G,Y) selection, masks, point eligibility and support diagnostics
+also agree. The floating-point matrix exponential is not exact: its affine
+coefficients differ from an independent exponential by at most8.79e-11.
+Topology checks use the actual stored coefficients, not the ideal formula.
+
+Fresh50wall time is285.16s. Frozen250 calls average3.730s; Joint300 averages
+7.653s (7.331--7.890s), allocated peaks.244--.249GB. Archived Frozen300 averages
+4.566s, peaks.210--.214GB. These exclude already computed initialization and
+matching and are single batches, not a repeated controlled speedup estimate.
+There is no uniform accuracy/cost advantage. All maps, scores and contrasts
+are in `joint_pose_all50_t24`.
+
+One reporting erratum is preserved: production revision42a599c inherited a
+stale `original_moving_features_no_affine_prewarp=True` flag in joint reports.
+Actual descriptors are computed AFTER the differentiable A G prewarp of the
+original moving raster, independently verified from the saved results. Old
+reports remain unchanged; future metadata is corrected. This is not a changed
+map or a reason to rerun/select results.
+
 ### Preserving sparse anchors plus pretrained points gives a modest gain
 
 The follow-up keeps the original SuperPoint/SuperGlue point term rather than

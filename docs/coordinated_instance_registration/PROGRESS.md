@@ -7,6 +7,32 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### Joint comparison adjudicated; terminal-detail precheck — 2026-10-02 11:04 UTC
+
+All50joint/frozen250 attempts complete before scoring in285.156s, with no
+failures. Independent literal maps/CSV errors, objectives, pose export,
+paired-state selection and support checks pass (see BASELINE_PROTOCOL_INDEPENDENT).
+Joint mean/p90: MIIT3.565108/5.952589, lung4.299372/9.022772,
+Histo.864019/1.598028, kidney2.237284/4.966499. Compared with archived
+Frozen300, lung improves against both controls, but two specimen means and
+three p90s worsen; kidney maximum increases2.52603pixels. Mean complete call
+increases4.566to7.653s. Preserve the candidate and all results, but retain the
+single global Frozen300 fused recipe for the next test. No per-case selection.
+The stale joint preprocessing metadata flag is explicitly corrected only for
+future outputs; old reports and measurements remain unchanged.
+
+TERMINAL_DETAIL_FORMULATION defines the next bounded paired test: direct
+original1024 versus floating-point enlarged512 information at1024, SAME
+257control grid, original512-derived firstfour stages, fused points in512units,
+fixed support and300gradients. Root and Astra implement narrow optional
+terminal-evidence handling plus original-source rendering, with10focused
+tests passing. The first actual-source smoke stops BEFORE optimization because
+some accepted512RGB images are not exactly reconstructed from their saved
+layout using the initially assumed PIL BILINEAR renderer. Independent checker
+reproduces the failure. Investigate historical rendering, do not relax the
+guard or misclassify preprocessing differences as accuracy progress. No full
+terminal-detail production job has started at this entry.
+
 ### Joint global pose experiment started — 2026-10-02 10:30 UTC
 
 The exact bounded design is in JOINT_POSE_FORMULATION.md. One global fused
