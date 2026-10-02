@@ -83,6 +83,34 @@ def test_actual_14_point_sampling_applications_hold_compiled_priors_fixed(tmp_pa
                                          frozen=dict(joint_prior_backend="inductor",match_p1_sampling="frozen"))
 
 
+def test_actual_14_packed_diagnostic_applications_hold_priors_and_points_fixed(tmp_path,monkeypatch):
+    args=args_for(tmp_path);args.comparison_kind="trial_diagnostics"
+    capture_factory(monkeypatch)
+    report=comparison.run(args,production=False,test_backend_label="TEST MOCK: CPU eager capture, NOT GPU performance evidence")
+    assert report["status"]=="complete" and report["speed_evidence_eligible"] is False
+    assert [row["backend"] for row in report["runs"]]==["existing","packed"]+["existing","packed","packed","existing"]*3
+    assert all(row["joint_prior_backend"]=="inductor" and row["match_p1_sampling"]=="frozen" for row in report["runs"])
+    assert all(row["trial_diagnostics"]==row["backend"] for row in report["runs"])
+    assert all(row["map_bitwise_equal"] and row["counters_equal"] and row["trial_structure_equal"]
+               and row["selected_stage_equal"] and row["failures_equal"]
+               and row["max_abs_trial_total_delta"]==0 for row in report["comparisons"])
+    assert "existing_over_packed_median" in report["warm_summary"]
+    assert "existing_over_frozen_median" not in report["warm_summary"]
+    assert "packing" in report["warm_summary"]["diagnostic_cold_scope"].lower()
+
+
+def test_wrong_packed_reported_dispatch_stops_comparison(tmp_path,monkeypatch):
+    args=args_for(tmp_path);args.comparison_kind="trial_diagnostics"
+    capture_factory(monkeypatch)
+    original=comparison.application.optimize
+    def wrong(config):
+        result=original(config);result["trial_diagnostics"]="wrong";return result
+    monkeypatch.setattr(comparison.application,"optimize",wrong)
+    report=comparison.run(args,production=False,test_backend_label="TEST MOCK incorrect diagnostic dispatch")
+    assert report["status"]=="incomplete_comparison_no_speed_claim" and len(report["runs"])==1
+    assert any("trial_diagnostics" in reason for reason in report["runs"][0]["invalid_reasons"])
+
+
 @pytest.mark.parametrize("field",["joint_prior_backend","match_p1_sampling"])
 def test_points_wrong_reported_dispatch_stops_comparison(tmp_path,monkeypatch,field):
     args=args_for(tmp_path);args.comparison_kind="frozen_points"

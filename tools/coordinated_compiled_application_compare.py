@@ -1,7 +1,8 @@
 """Frozen explicitly selected known-pair dispatch comparison, with observed cold cost.
 
-Compare joint priors (eager/Inductor), or frozen points (existing/frozen with
-Inductor priors in BOTH arms). Two cold runs precede three warm A/B/B/A groups.
+Compare joint priors, frozen points, or detached trial diagnostics. The last
+comparison holds Inductor priors AND frozen points fixed in both arms.
+Two cold runs precede three warm A/B/B/A groups.
 Every call starts from identity
 inside the unchanged optimizer and writes a fresh map/report. No labels, new
 matches, warm-start map, graph profiler, or silent fallback are used.
@@ -27,10 +28,11 @@ from tools import coordinated_real_case as application
 
 
 def schedule(comparison_kind="joint_priors"):
-    if comparison_kind not in ("joint_priors","frozen_points"):
-        raise ValueError("comparison_kind must be joint_priors or frozen_points")
-    arms=("eager","inductor") if comparison_kind=="joint_priors" else ("existing","frozen")
-    cold_names=("cold_eager","cold_compiled") if comparison_kind=="joint_priors" else ("cold_existing","cold_frozen")
+    if comparison_kind not in ("joint_priors","frozen_points","trial_diagnostics"):
+        raise ValueError("comparison_kind must be joint_priors, frozen_points or trial_diagnostics")
+    arms={"joint_priors":("eager","inductor"),"frozen_points":("existing","frozen"),
+          "trial_diagnostics":("existing","packed")}[comparison_kind]
+    cold_names=("cold_eager","cold_compiled") if comparison_kind=="joint_priors" else tuple("cold_"+arm for arm in arms)
     rows = [dict(name=name,backend=backend,phase="observed_cold",group=None,position=position)
             for position,(name,backend) in enumerate(zip(cold_names,arms))]
     for group in range(3):
@@ -40,7 +42,10 @@ def schedule(comparison_kind="joint_priors"):
     for row in rows:
         row.update(comparison_kind=comparison_kind,
             joint_prior_backend=row["backend"] if comparison_kind=="joint_priors" else "inductor",
-            match_p1_sampling="existing" if comparison_kind=="joint_priors" else row["backend"])
+            match_p1_sampling=("existing" if comparison_kind=="joint_priors" else
+                               row["backend"] if comparison_kind=="frozen_points" else "frozen"))
+        if comparison_kind=="trial_diagnostics":
+            row["trial_diagnostics"]=row["backend"]
     return rows
 
 
@@ -108,6 +113,8 @@ def execute(config, plan):
                factory_calls=[], point_preparation_calls=[], status="running",
                requested_dispatch=dict(joint_prior_backend=config.joint_prior_backend,
                                        match_p1_sampling=config.match_p1_sampling))
+    if plan["comparison_kind"]=="trial_diagnostics":
+        row["requested_dispatch"]["trial_diagnostics"]=config.trial_diagnostics
     profile._sync(device)
     started = time.perf_counter()
     try:
@@ -125,7 +132,7 @@ def execute(config, plan):
                 "failed_trials", "failures", "optimize_seconds", "loading_seconds", "feature_seconds",
                 "serialization_seconds", "certification_seconds", "end_to_end_seconds", "peak_allocated_bytes",
                 "saved_binary_certificate", "joint_prior_backend", "match_p1_sampling",
-                "image_match_evidence", "landmarks_used", "selected_stage"):
+                "image_match_evidence", "landmarks_used", "selected_stage", "trial_diagnostics"):
         row[key] = result.get(key)
     reasons = []
     for key, wanted in expected_budget(config).items():
@@ -140,6 +147,8 @@ def execute(config, plan):
     for key in ("joint_prior_backend","match_p1_sampling"):
         if row[key] != plan[key]:
             reasons.append(f"optimizer did not report requested {key}")
+    if plan["comparison_kind"]=="trial_diagnostics" and row["trial_diagnostics"]!=plan["trial_diagnostics"]:
+        reasons.append("optimizer did not report requested trial_diagnostics")
     wanted_factories = 1 if plan["joint_prior_backend"] == "inductor" else 0
     if len(row["factory_calls"]) != wanted_factories:
         reasons.append("unexpected number of joint-prior factories")
@@ -178,6 +187,18 @@ def compare_runs(runs):
             same_backend=left["backend"]==right["backend"],
             both_warm=left["phase"]==right["phase"]=="warm_ABBA",
             initial_part_deltas={key:right["initial"][key]-value for key,value in left["initial"].items()})
+        if left["comparison_kind"]=="trial_diagnostics":
+            reports=[json.loads(Path(row["report"]).read_text()) for row in (left,right)]
+            a,b=reports
+            structural_keys=("cycle","level","control_side","image_side","direction","step")
+            traces_equal=(len(a["trace"])==len(b["trace"]) and all(
+                all(x.get(key)==y.get(key) for key in structural_keys)
+                for x,y in zip(a["trace"],b["trace"])))
+            comparison.update(trial_structure_equal=traces_equal,
+                selected_stage_equal=a["selected_stage"]==b["selected_stage"],
+                failures_equal=a["failures"]==b["failures"],
+                max_abs_trial_total_delta=max((abs(x["total"]-y["total"]) for x,y in
+                    zip(a["trace"],b["trace"])),default=None) if traces_equal else None)
         comparisons.append(comparison)
     return comparisons
 
@@ -220,10 +241,14 @@ def warm_summary(runs):
         result.update(eager_over_compiled_median=medians[baseline]/medians[candidate],
             cold_compiled_over_cold_eager=cold[candidate]/cold[baseline],
             observed_cold_compiled_minus_warm_compiled_median_seconds=cold[candidate]-medians[candidate])
-    else:
+    elif candidate=="frozen":
         result.update(existing_over_frozen_median=medians[baseline]/medians[candidate],
             cold_frozen_over_cold_existing=cold[candidate]/cold[baseline],
             point_cold_scope="Both arms use Inductor priors. First existing cold run includes first prior compilation; second frozen cold run can reuse those caches. NOT a point-compiler comparison; inspect warm ABBA for point dispatch timing.")
+    else:
+        result.update(existing_over_packed_median=medians[baseline]/medians[candidate],
+            cold_packed_over_cold_existing=cold[candidate]/cold[baseline],
+            diagnostic_cold_scope="Both arms use Inductor priors and frozen points. Observed cold calls may reuse existing code caches. Packing/unpacking is included in every complete-call timer; no deferred optimizer guards or untimed production warmup.")
     return result
 
 
@@ -266,7 +291,7 @@ def run(args, *, production=True, test_backend_label=None):
     profile._sync(device)
     initialization_seconds = time.perf_counter()-init_start
     report = dict(status="running",pair_name=pair_name,comparison_kind=comparison_kind,
-        dispatch_arms={plan["backend"]:dict(joint_prior_backend=plan["joint_prior_backend"],match_p1_sampling=plan["match_p1_sampling"]) for plan in plans},
+        dispatch_arms={plan["backend"]:{key:plan[key] for key in ("joint_prior_backend","match_p1_sampling","trial_diagnostics") if key in plan} for plan in plans},
         source_predictions=str(args.predictions),source_matches=str(config.matches),
         source_fixed=str(config.fixed),source_moving=str(config.moving),source_affine=str(config.affine),
         configuration={key:str(value) if isinstance(value,Path) else value for key,value in vars(config).items()},
@@ -285,8 +310,9 @@ def run(args, *, production=True, test_backend_label=None):
         numerical_scope="No arbitrary GPU bitwise or tolerance gate. Actual map and objective differences must be assessed against same-backend repeat variation before interpreting a timing gain as equivalent optimization quality.",
         timing_scope="External synchronized complete-call timer starts BEFORE compiler factory and optimize; includes loading/features, initial requires_grad=False calls, trial requires_grad=True forward/backward, optimization, export and certification, plus minimal factory observer and point-preparation observer when selected. GPU context initialization, recipe validation, comparison and report persistence excluded. Each compiled-prior attempt creates a fresh factory; compiled code caches may be reused.",
         point_preparation_timing_scope="Per-call preparation seconds are host-call elapsed without an extra CUDA synchronization; setup work is included in synchronized complete-call timing. Observer counts preparation only, never query evaluation or energies.",
-        cold_scope=("Observed cold eager then observed cold compiled BEFORE any compiled application warmup in this runner. " if comparison_kind=="joint_priors" else
-                    "Both arms use Inductor joint priors. Observed-cold existing point sampling FIRST includes prior compilation; observed-cold frozen point sampling SECOND may reuse those caches. No hidden prior warmup. This is NOT a point-compiler comparison. ")+"Caches are neither cleared nor claimed pristine. Record explicit environment paths; null means framework default not resolved. No first-call-minus-baseline pure compilation claim.",
+        cold_scope={"joint_priors":"Observed cold eager then observed cold compiled BEFORE any compiled application warmup in this runner. ",
+                    "frozen_points":"Both arms use Inductor joint priors. Observed-cold existing point sampling FIRST includes prior compilation; observed-cold frozen point sampling SECOND may reuse those caches. No hidden prior warmup. This is NOT a point-compiler comparison. ",
+                    "trial_diagnostics":"Both arms use Inductor priors and frozen machine-point sampling. Existing then packed diagnostics are observed before warm ABBA. No hidden application warmup; first call can include compilation while second can reuse caches. This is NOT a pristine-cache compilation comparison. "}[comparison_kind]+"Caches are neither cleared nor claimed pristine. Record explicit environment paths; null means framework default not resolved. No first-call-minus-baseline pure compilation claim.",
         order_scope="After two observed-cold calls, three warm A/B/B/A groups in declared dispatch-arm order; no additional untimed application warmups. Fresh map outputs for all 14 attempts.",
         interpretation="One fixed known-specimen image-only pair, not a held-out generalization or clinical-validity test. CUDA grid_sample backward may be nondeterministic; inspect all pairwise differences and same-backend repeat variation.",
         memory_scope="Optimizer-reported CUDA peak allocated bytes, reset inside optimize after features. Does not include all cold compiler/host memory.")
@@ -299,6 +325,8 @@ def run(args, *, production=True, test_backend_label=None):
         attempt_config.output = paths[plan["name"]]
         attempt_config.joint_prior_backend = plan["joint_prior_backend"]
         attempt_config.match_p1_sampling = plan["match_p1_sampling"]
+        if comparison_kind=="trial_diagnostics":
+            attempt_config.trial_diagnostics=plan["trial_diagnostics"]
         row = execute(attempt_config,plan)
         report["runs"].append(row)
         persist()
@@ -315,7 +343,9 @@ def run(args, *, production=True, test_backend_label=None):
     try:
         report["comparisons"] = compare_runs(report["runs"])
         report["numerical_summary"] = numerical_summary(report["comparisons"])
-        if not all(row["affine_boundary_interpolation_equal"] and row["counters_equal"] for row in report["comparisons"]):
+        if not all(row["affine_boundary_interpolation_equal"] and row["counters_equal"] and
+                (comparison_kind!="trial_diagnostics" or (row["trial_structure_equal"] and
+                 row["selected_stage_equal"] and row["failures_equal"])) for row in report["comparisons"]):
             report["status"] = "inconsistent_comparison_no_speed_claim"
         else:
             report.update(status="complete",warm_summary=warm_summary(report["runs"]),
@@ -331,8 +361,8 @@ def main():
     parser.add_argument("--predictions",type=Path,required=True,help="original all20 predictions.json")
     parser.add_argument("--pair-name",default="he_to_cc10",help="Exact original known-pair row name; default he_to_cc10")
     parser.add_argument("--output",type=Path,required=True,help="new JSON stem; also creates 14 fresh NPZ/JSON pairs")
-    parser.add_argument("--comparison-kind",choices=("joint_priors","frozen_points"),default="joint_priors",
-                        help="frozen_points holds Inductor joint priors fixed in both arms")
+    parser.add_argument("--comparison-kind",choices=("joint_priors","frozen_points","trial_diagnostics"),default="joint_priors",
+                        help="frozen_points holds priors fixed; trial_diagnostics holds compiled priors and frozen points fixed")
     report = run(parser.parse_args())
     print(json.dumps(dict(status=report["status"],completed_attempts=len(report["runs"]),
                           warm_summary=report.get("warm_summary"))))

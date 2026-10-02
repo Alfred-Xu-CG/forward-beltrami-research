@@ -354,6 +354,14 @@ def optimize(args, accepted_stage_callback=None):
             or args.oob_weight!=1. or args.precision!="float64"
             or getattr(args,"interpolation","q1")!="p1_ac"):
         raise ValueError("mind_discrete capture needs fixed P1-ac float64 analytic alternating controls, 33 coefficient/128 image level, transport MIND weight1 and OOB1, without other proposal variants")
+    trial_diagnostics=getattr(args,"trial_diagnostics","existing")
+    if trial_diagnostics not in ("existing","packed"):
+        raise ValueError("trial_diagnostics must be existing or packed")
+    if trial_diagnostics=="packed" and (args.method!="analytic" or geometry_backend!="stage_cache"
+            or nested or joint or fine_patch_cells or filter_steps or capture_prefix!="none"
+            or getattr(args,"interpolation","q1")!="p1_ac" or args.precision!="float64"
+            or args.loss!="mind" or mind_order!="transport" or image_weight!=1.):
+        raise ValueError("packed diagnostics currently require fixed global analytic stage_cache, P1-ac float64 transport MIND/E1, without proposal variants")
     device = torch.device(args.device)
     torch.set_num_threads(args.threads)
     dtype = torch.float64 if args.precision == "float64" else torch.float32
@@ -427,6 +435,7 @@ def optimize(args, accepted_stage_callback=None):
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(device)
     stages, trace, failures, forward_seconds, backward_seconds = [], [], [], [], []
+    diagnostic_pack_calls=0
     evaluations, gradient_steps, failed_trials = 0, 0, 0
     coordinated_substeps=0
     start = time.perf_counter()
@@ -579,19 +588,30 @@ def optimize(args, accepted_stage_callback=None):
                                       else layer(anchor, proposal, validate=False))
                             scales,gauges=result.scale,result.gauge
                         candidate = result.vertices
-                        diagnostics = dict(scale=float(scales.detach().min()),mean_scale=float(scales.detach().mean()),
-                                           gauge=float(gauges.detach().max()),
-                                           margin=float(result.normalized_margin_min.detach().min()))
+                        if trial_diagnostics=="packed":
+                            diagnostics = dict(scale=scales.detach().min(),mean_scale=scales.detach().mean(),
+                                               gauge=gauges.detach().max(),
+                                               margin=result.normalized_margin_min.detach().min())
+                        else:
+                            diagnostics = dict(scale=float(scales.detach().min()),mean_scale=float(scales.detach().mean()),
+                                               gauge=float(gauges.detach().max()),
+                                               margin=float(result.normalized_margin_min.detach().min()))
                         if fine_patch_active:
                             diagnostics.update(intermediate_margin=float(result.pass_margin_min.detach().min()),
                                 intermediate_margins_finite=bool(torch.isfinite(result.pass_margin_min).all()),
                                 geometry_pass_count=result.geometry_pass_count)
                     if args.method in ("radial","analytic"):
                         with torch.no_grad():
-                            diagnostics.update(proposal_filter_steps=applied_filter_steps,
-                                raw_coefficient_rms=float(coefficients.square().mean().sqrt()),
-                                filtered_coefficient_rms=float(filtered_coefficients.square().mean().sqrt()),
-                                candidate_displacement_rms=float((candidate-anchor).square().sum(-1).mean().sqrt()))
+                            if trial_diagnostics=="packed":
+                                diagnostics.update(proposal_filter_steps=applied_filter_steps,
+                                    raw_coefficient_rms=coefficients.square().mean().sqrt(),
+                                    filtered_coefficient_rms=filtered_coefficients.square().mean().sqrt(),
+                                    candidate_displacement_rms=(candidate-anchor).square().sum(-1).mean().sqrt())
+                            else:
+                                diagnostics.update(proposal_filter_steps=applied_filter_steps,
+                                    raw_coefficient_rms=float(coefficients.square().mean().sqrt()),
+                                    filtered_coefficient_rms=float(filtered_coefficients.square().mean().sqrt()),
+                                    candidate_displacement_rms=float((candidate-anchor).square().sum(-1).mean().sqrt()))
                     fine_candidate=materialize(candidate.detach() if nested_evaluation=="coarse_exact" else candidate)
                     if nested:
                         fine_margin=(q1_corner_determinants(fine_candidate.double())/reference_corners-args.minimum_jacobian).amin()
@@ -603,8 +623,18 @@ def optimize(args, accepted_stage_callback=None):
                     evaluations += 1
                     if args.method in ("radial","analytic"):
                         coordinated_substeps+=2 if joint else (4 if fine_patch_cells and level==args.levels[-1] else 1)
-                    value = float(total.detach())
-                    legal = bool(torch.isfinite(fine_candidate).all())
+                    if trial_diagnostics=="packed":
+                        from tools.coordinated_trial_diagnostics import pack_trial_scalars
+                        logged=pack_trial_scalars({**{"diagnostic:"+key:value for key,value in diagnostics.items()},
+                            "total":total.detach(),"coordinates_finite":torch.isfinite(fine_candidate).all(),
+                            **{"part:"+key:value.detach() for key,value in parts.items()}})
+                        diagnostics={key:logged["diagnostic:"+key] for key in diagnostics}
+                        logged_parts={key:logged["part:"+key] for key in parts}
+                        value,legal=logged["total"],logged["coordinates_finite"]
+                        diagnostic_pack_calls+=1
+                    else:
+                        value = float(total.detach())
+                        legal = bool(torch.isfinite(fine_candidate).all())
                     legal = legal and np.isfinite(diagnostics["margin"]) and diagnostics["margin"] > 0
                     if joint or (fine_patch_cells and level==args.levels[-1]):
                         legal=legal and np.isfinite(diagnostics["intermediate_margin"]) and diagnostics["intermediate_margin"]>0
@@ -618,7 +648,7 @@ def optimize(args, accepted_stage_callback=None):
                         best_loss, best_map = value, candidate.detach().clone()
                         best_diagnostics = diagnostics
                     trace.append(dict(cycle=cycle, level=level, control_side=control_side, image_side=stage_resolution, direction=direction, step=step,
-                                      total=value, **{k: float(v.detach()) for k, v in parts.items()},
+                                      total=value, **(logged_parts if trial_diagnostics=="packed" else {k: float(v.detach()) for k, v in parts.items()}),
                                       **diagnostics))
                     if step < stage_inner_steps:
                         tick = time.perf_counter(); total.backward(); synchronize()
@@ -691,7 +721,8 @@ def optimize(args, accepted_stage_callback=None):
                                  "joint_prior_backend":joint_prior_backend,
                                  "match_p1_sampling":match_p1_sampling,
                                  "inner_steps_by_level":inner_steps_by_level,
-                                 "image_weight":image_weight,"capture_prefix":capture_prefix},
+                                 "image_weight":image_weight,"capture_prefix":capture_prefix,
+                                 "trial_diagnostics":trial_diagnostics},
                   representation=evidence.interpolation+" residual then frozen positive affine; exact declared interpretation",
                   initial=initial_record, final=dict(total=float(final), **{k: float(v) for k,v in parts.items()}),
                   control_vertices=args.grid_side**2, cells=(args.grid_side-1)**2,
@@ -703,6 +734,9 @@ def optimize(args, accepted_stage_callback=None):
                   serialization_seconds=serialization_seconds,certification_seconds=certification_seconds,
                   end_to_end_seconds=time.perf_counter()-overall_start,
                   median_vjp_seconds=float(np.median(backward_seconds)) if backward_seconds else None,
+                  trial_diagnostics=trial_diagnostics,
+                  diagnostic_pack_calls=diagnostic_pack_calls,
+                  diagnostic_timing_scope="packed stack/copy/unpack plus coordinate-finite flag at the original decision point; included in optimize_seconds but after existing forward clock; no additional per-trial timers",
                   peak_allocated_bytes=torch.cuda.max_memory_allocated(device) if device.type == "cuda" else None,
                   stages=stages, trace=trace, failures=failures,saved_binary_certificate=certificate,
                   landmarks_used=False, mask="fixed grayscale inversion > .04, constant denominator",
@@ -800,6 +834,8 @@ def main():
                    help="dense image contribution; zero still computes/reports it diagnostically")
     p.add_argument("--capture-prefix",choices=("none","mind_discrete"),default="none",
                    help="one finite-displacement existing-MIND proposal, strict analytic x/y attempts then unchanged optimizer; extra search/calls counted")
+    p.add_argument("--trial-diagnostics",choices=("existing","packed"),default="existing",
+                   help="optional one detached trial logging transfer; fixed global analytic stage_cache/P1-ac only")
     p.add_argument("--match-p1-sampling",choices=("existing","frozen"),default="existing",
                    help="optional immutable P1 machine-point query cache; fixed control hierarchy only")
     p.add_argument("--match-robust-scale",type=float,default=8.,help="pseudohuber error scale in full moving-canvas pixels")

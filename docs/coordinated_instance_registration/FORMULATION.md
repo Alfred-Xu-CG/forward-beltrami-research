@@ -2993,3 +2993,55 @@ The outlier cannot be blamed on this particular target being outside the map
 range. This post-hoc diagnostic does not prove boundary effects absent, that
 the optimizer can reach every interior target under its full energy, or that
 image evidence identifies the correct target. No new boundary branch is opened.
+
+## 48. Detached diagnostic transfer: correct implementation, negative timing result
+
+Research question: does consolidating already computed scalar diagnostics into
+one device-to-host transfer reduce complete application time without changing
+the mathematical optimizer? Optional trial_diagnostics=packed retains the
+same geometry/objective reductions and graph, but stacks detached total, parts,
+scale, gauge, margin, RMS diagnostics and coordinate-finite flag in float64 at
+the existing trial decision boundary, transfers once and restores Python scalar
+types. Float32 scalars embed exactly in float64. The pre-backward legal/value
+guard and immediate post-backward finite-gradient guard remain in place.
+Default existing is preserved; unsupported algorithm combinations fail explicitly.
+It is not a new geometry decoder, objective, correspondence source or training.
+
+Tests: author expanded58tests pass; root47packed/comparison/replay tests pass
+in31.28s; independent43tests32.70s plus later-step corruptions. Negative-margin,
+NaN-coordinate/objective and Inf-gradient injections after one valid Adam step
+are rejected at the same step, with identical records, counters and CPU maps.
+Tiny CPU trajectories, all Adam gradients and map values agree bitwise.
+
+Production test: the SAME original known HE-to-cc10 and HE-to-ki67 recipes on
+RTX A6000 GPU6, torch2.5.1+cu124. Both arms use compiled joint priors and frozen
+machine-point queries, identity starts and unchanged image/match/regularizer/
+geometry settings. Each pair has two observed cold calls then THREE warm
+A/B/B/A groups (14fresh300-gradient applications). Complete synchronized timers
+include loading, features, factory, optimization, pack/unpack, export and exact
+certification. No application warmup hidden; code caches are retained, not pristine.
+
+|Pair|Existing warm median(s)|Packed warm median(s)|Three paired ABBA existing/packed ratios|
+|---|---:|---:|---|
+|HE-to-cc10|2.905629|2.737756|1.072080,1.049366,.994796|
+|HE-to-ki67|2.731447|2.757498|.994568,1.050795,.996016|
+
+The first median saves5.7775%; the second is.9537% slower. Within-arm warm
+six-call ranges are.432891/.371790s and.400328/.428357s, respectively. The
+predeclared two-pair nonregression condition FAILS, and benefits are not robust
+relative to dispersion. Retire this EXACT intervention; leave the optional code
+and negative evidence but do not enable it by default or claim portable speedup.
+No nearby synchronization-policy sweep follows. Cold existing/packed calls
+7.45031/3.07375s and7.09138/2.69499s have cache/order asymmetry; not speed evidence.
+
+Independent actual-map audit covers7,340,032corners on all28exports. Every run
+has257²float64P1ac, exact identity boundaries/shared original float32A,b,
+300gradients/310trials/332E/0failure/10stages/selected9; packed has310pack calls.
+HECC min ratio.29441997; HEK.00655735. All91pairwise artifact comparisons per
+pair reproduce. Warm cross-versus-within max-map differences are1.294713e-8
+vs1.111833e-8(HECC),6.894635e-10vs7.774169e-10(HEK): same observed scale, not
+GPU bitwise equality or a proof of universal numerical equivalence. Clipping
+trial indices coincide:0HECC/113HEK active. Saved MIIT ALL930scale/mean_scale
+values equal1, with largest gauge below.655, so no actual clipping there.
+Memory differences are~3.5KiB at equal allocator baselines, not process RSS.
+Actual maps/reports remain on D under results/*packed_diagnostics_application_t16*.

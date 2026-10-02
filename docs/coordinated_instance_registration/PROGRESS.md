@@ -2259,3 +2259,50 @@ trial diagnostics while holding Inductor priors/frozen machine queries fixed.
 Root14tests31.22s, including14complete tiny CPU applications with bitwise maps
 and identical objective trajectories. Independent core/helper/runner review
 pending before production GPU pilot. Complete timers include pack/unpack cost.
+
+Research card — unchanged six MIIT accepted-stage replays:
+Question: do decreasing full-resolution E1 and the E1-selected prefix improve
+actual anatomical mean/tail errors along the already tested trajectories?
+Exact experiment: replay each of the original three amended MIIT analytic/F2
+configurations WITHOUT changing coefficients, initial affine, machine matches,
+iteration budget, evidence, proposal, objective or backend. Reuse existing
+coordinated_replay_trajectory.record to copy10accepted maps to CPU; predictions
+recording reads no labels. Then offline score the SAME123/107/98available paired
+IDs under original declared P1/ac/half-pixel frames. At each stage show accepted
+map and prefix selected ONLY by minimum complete512 E1, including identity.
+Align by cumulative gradients/trials/E evaluations, not just stage number.
+Assumptions: instrumented replay endpoints match original maps/counters within
+known GPU repeatability; all actual exported and snapshot geometry remains valid.
+Falsifiers: endpoint/selection/counter mismatch prevents interpreting a replay as
+the original trajectory. Falling full E1 with flat/worsening TRE supports ONLY
+observed objective-anatomy discordance, not global optimizer adequacy or inherent
+evidence insufficiency. If final selected E1 exceeds a visited prefix, fix the
+selection bug rather than claiming mechanism failure. No TRE stopping/selection,
+weight/schedule/initializer tuning or new alternative mechanism follows silently.
+Smallest decisive test: existing prefix-selection unit fixtures plus whole tiny
+record; then six actual unchanged257-grid replays and independent snapshot/frame
+scoring. Snapshot CPU copies and callbacks contaminate elapsed time; disclose,
+do not replace clean paired timing by instrumented time-to-accuracy claims.
+Prior work: existing repository replay/score_arrays, ordinary optimizer diagnostic
+curves. Independent Astra decision approves this bounded explanatory experiment.
+
+Live saved MIIT diagnostics additionally show930/930analytic scales exactly1:
+there was no ACTIVE uniform feasibility clipping on these observed trials. This
+does not remove fixed-boundary/representation constraints or show simultaneously
+attainable target positions. ALL328available targets inside affine range is only
+a necessary range check, not proof of a globally feasible desired correspondence.
+
+### T+16h packed extraction retired; unchanged trajectory replay started
+
+Independent actual28callaudit closes correctness, not performance: all7,340,032
+corners>.001, exact boundaries/affines, budgets300/310/332/0/10/selected9.
+HECC warm existing2.905629 vs packed2.737756s, but lastABBAregresses;
+HEK2.731447 vs2.757498s, pairedmedianratio.996016. Within-arm dispersion~.4s.
+This FAILS predeclared two-pair nonregression; retire exactintervention, legacy
+default remains. No syncpolicyretune. Actual same-scale GPU map differences
+fully disclosed, CPU bitwise fixtures/latefailureguards pass. FORMULATION48.
+Root47packed/replaytests31.28s. The independently approved next diagnostic
+reuses existing recording for ALLsixMIIT analytic/F2configs unchanged. First
+record2-to3analytic completes300/10,10.57MBsnapshots;remainingfive running on
+idleAI GPU6. Manual labels are not on remote/record inputs. Independent reader
+will compare snapshot anatomy ONLY offline after terminal recording.

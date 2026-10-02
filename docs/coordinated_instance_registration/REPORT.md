@@ -325,3 +325,10 @@ facewise Beltrami coefficients. No Beltrami-recovery objective is required here.
 The main unresolved tasks are robust image-derived initialization/evidence,
 cross-specimen anatomical usefulness and eventual amortization into a learned
 network. The24-hour goal remains active; this document does not mark it complete.
+
+An additional engineering test consolidated detached trial diagnostics into one
+CPU transfer while preserving guards and gradients. Despite CPU bitwise checks
+and valid28actualGPUoutputs, its paired real timing was not robust: HECC warm
+median2.906to2.738s, HEK2.731to2.757s (regression), with~.4swithin-arm ranges.
+The predeclared two-pair condition fails; the default remains unchanged. This is
+a retained negative result, not a speed benefit. See FORMULATION48.
