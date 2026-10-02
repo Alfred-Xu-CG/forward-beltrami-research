@@ -2299,3 +2299,56 @@ amortization estimate, NOT a measured crossover or pure compilation cost.
 Different control shapes, devices, guards or cache states may recompile.
 The experiment demonstrates useful warm execution on ONE known development
 pair/A6000, not all20 directions, unseen specimens or a trained neural encoder.
+
+## 40. Completed corrected F2 comparison: equal gradient counts, not equal cost
+
+The new cohort recomputes ONLY F2 with the section37 reserve theta_f=.95.
+All20 directions use exactly the original images, affine, raw machine-point
+records and300-gradient recipe. Analytic and native-DHR outputs are archive
+references to section36, not rerun results. Original files/results are retained.
+The new predictor reads no annotation; the unchanged production scorer reads
+the same80 manual IDs per direction AFTER every prediction attempt is terminal.
+
+Every new F2 run completes300 gradients with zero failed trials. All20 actual
+float64257² P1-ac tables pass independent four-corner and boundary checks:
+5,242,880 corner determinants exceed the unchanged eta=.001 floor, with minimum
+normalized determinant .0077423580. Thus the historical two short-budget
+directions no longer contaminate the nominal300-gradient baseline comparison.
+
+|Method|Mean of20 direction mean TRE (px)|Mean of20 direction p90 TRE (px)|Mean recorded complete-call time (s)|
+|---|---:|---:|---:|
+|Common positive affine|6.661222|12.234678|not timed here|
+|Analytic coordinated, archived|4.520228|9.555206|4.790985|
+|F2 with strict reserve .95, newly computed|4.551344|9.657840|14.533357|
+|Native DHR, archived|5.133593|11.552831|.729027|
+
+TRE is the Euclidean distance between a mapped fixed landmark and the matching
+moving landmark in512-canvas PIXELS, not micrometers. For each direction, mean
+and p90 are computed over all80 IDs; displayed aggregates give equal weight to
+the20 directions. The directions are correlated pairs of the SAME previously
+viewed specimen, not20 independent subjects. Formal clinical or held-out
+generalization conclusions are unavailable.
+
+Analytic is better than corrected F2 in14/20 mean scores and12/20 p90 scores,
+but its aggregate advantages are only .68% and1.06%. This does not establish
+strong anatomical/optimizer superiority. Corrected F2 attains a lower FINAL
+image-based objective in15/20 directions despite the slightly worse aggregate
+anatomy scores. Lower registration objective is not equivalent to lower TRE.
+Both safe methods improve mean TRE over affine in all20 directions, but both
+worsen CC10-to-CD31 p90: analytic9.4164, F2 9.2982 versus affine8.6637.
+F2 wins notably on Ki67-to-CD31 (mean5.0678 versus5.1906; p909.3569 versus
+10.1032). Native DHR wins mean TRE in six directions, including all four
+proSPC-source directions. These adverse cases are retained, not filtered.
+
+The new F2 predictor's total elapsed time is290.810s; only new input checks,
+F2 calls and manifest saving contribute. Historical matcher/A/DHR timing
+fields are explicitly excluded. Archived analytic/new F2 mean times suggest
+approximately3.03x throughput difference, but they are separate executions,
+NOT contemporaneous paired timing. The section39.1 compiled-single-pair result
+cannot be extrapolated into this all20 table. Native DHR remains faster, with
+different evidence/objective/boundary and without the safe-output guarantee.
+
+Independent literal CSV/frame/P1 interpolation of all20x80 IDs reproduces the
+safe-map and affine scores within2.51e-13 pixels. Archived A/DHR score dictionaries
+are unchanged. This checks numerical evaluation consistency, not historical
+blindness, registration correctness at unlabelled tissue, or SOTA.
