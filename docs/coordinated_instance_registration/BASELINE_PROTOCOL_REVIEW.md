@@ -1,5 +1,17 @@
 # Baseline and data protocol review — extension audit, 2026-10-02
 
+Current reading guide: this document preserves the INITIAL restart findings
+followed by their corrections and measurements. It is not a queue of still-open
+tasks. Released native STANDARD DHR has now run on all25 directions with its own
+initializer AND separately with the same saved affine. Initializer provenance,
+canvas/native coordinates, original labels and exported fields have been
+independently checked. The current retained method uses shared-affine MIND-like
+features and SG+MA fusion, not every historical feature-frame choice described
+below. See [RESTART_SYNTHESIS](RESTART_SYNTHESIS.md) for the current comparison
+table and [REPORT sections 1--5](REPORT.md#1-what-is-implemented-and-what-is-not)
+for the actual retained mathematical formulation. The original SG1-era F2
+comparison below is distinct from the final current-fusion F2 control.
+
 The existing A-versus-F2 comparison is a useful matched development ablation.
 The archived column called “Native DHR” is **DHR shared-affine reduced-512**:
 it does not reproduce the released full fast preset, the standard preset, or

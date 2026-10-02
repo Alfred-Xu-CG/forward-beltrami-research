@@ -7,6 +7,40 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### Current-fusion matched F2 comparison completed — 2026-10-02 15:39 UTC
+
+All50 declared fresh calls complete300gradients/310trials/332objectives with
+zero failed trials, before original-label scoring. Independent all50 actual
+geometry/common-affine/boundary/certificate/full-objective and4,148 originalCSV
+checks PASS. A/F2 minimum corner.005322273/.007872332; literal fullE error
+at most5.037e-8. Both methods' initial objective components agree bitwise.
+No newGPUjob follows; the AI process exited and GPU5 returned idle.
+
+Specimen mean/p90 A versus F2: MIIT3.534718/5.858170 versus3.541998/5.869288;
+lung4.471007/9.342538 versus4.498976/9.438715; Histo.842064/1.580138
+versus.832973/1.644260; kidney2.243606/4.643549 versus2.231108/4.559938.
+A wins12/25 means,17p90s,16maxima: no uniform anatomical advantage.
+Crucially F2 obtains LOWER SAME FULL E on24/25 cases, and lower mean fullE
+and image term in every specimen. A is not the superior functional minimizer.
+Lung/kidney F2 lowers ARAP while increasing machine-point loss; this describes
+the measured objective/anatomy mismatch, not a universal causal diagnosis.
+
+Mean complete calls A5.568625/F215.616001s, total139.215628/390.400027s;
+A fasterall25, medianpairedratio3.034313 (range1.8274--4.3049). These are SINGLE
+paired calls, not repeated ABBA timing. First7.84155/16.91624s are included.
+Batch530.343949s. Allocated209.70--214.30MB versus481.87--485.35MB; shared-process
+reserved545.26MB forboth reflects cached allocator capacity, not memory parity.
+Matcher/initializer/canvas generation is excluded. All outputs are on D and AI.
+
+Decision: useful same-evidence ENDPOINT accuracy/cost tradeoff of the two existing
+recipes, not equal-walltime/same-error curves, decoder-only causality, formal
+noninferiority, a general F1/F2 theorem or anatomical breakthrough. Largest
+specimen-mean disadvantage of A is1.09%(Histo), without a prespecified noise-based
+noninferiority margin. Keep one global recipe and all tails; no hyperparameter
+response. Root readwrapper/tests and fresh focused40tests PASS13.98s. Final
+nine-question independent review now uses this actual control rather than
+declaring the comparison unavailable. Remaining work is synthesis and Git sync.
+
 ### Engineering transfer independently checked — 2026-10-02 15:20 UTC
 
 All56 predeclared fusion-dispatch calls completed. Independent reconstruction
@@ -31,6 +65,34 @@ One checker-only bitwise anchor/step-zero assumption was changed to RECORD its
 1.110e-16 discrepancy, not to relax any production equivalence bound. Final
 review awaits the separately justified missing current-fusion F2 control.
 
+Exact remote invocations (AI host, working directory
+`/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001`):
+
+```sh
+CUDA_VISIBLE_DEVICES=5 OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=src:. \
+  /home/ET/zhxu/codex_runs/digital_topology_wsi_20260929/venv_dhr_gpu/bin/python \
+  -m tools.coordinated_fusion_dispatch_benchmark \
+  --predictions results/match_fusion_all50_t23/fusion/predictions.json \
+  --output results/fusion_dispatch4_t31
+
+CUDA_VISIBLE_DEVICES=5 OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=src:. \
+  /home/ET/zhxu/codex_runs/digital_topology_wsi_20260929/venv_dhr_gpu/bin/python \
+  -m tools.coordinated_fusion_f2_control \
+  --predictions results/match_fusion_all50_t23/fusion/predictions.json \
+  --output results/fusion_f2_all50_t32
+```
+
+The actual launches used nohup with stdout/stderr in the respective sibling
+`.log` files. Replays require a NEW output path and a fresh idle-device check;
+these commands must not overwrite the recorded runs or assume GPU5 stays idle.
+Only the new wrappers/probe were uploaded from the working checkout; no core
+optimizer or matcher module was changed. t31 source/results are committed as
+`8209d11`; t32 source was uploaded before its later milestone commit. All local
+artifacts are under D-drive `outputs/coordinated_instance_registration/`.
+Remote compiler caches are task-local and were never copied into Git or cleared
+from a shared location. The frozen manifest retains remote input paths; this is
+not a claim that a data-free checkout can execute either experiment.
+
 ### Closing the missing current-fusion F2 control — 2026-10-02 15:17 UTC
 
 Question: does the retained coordinated optimizer provide a useful endpoint
@@ -46,8 +108,10 @@ No extra warmup, rematching, parameter tuning, accuracy-based retry or per-case
 winner selection. Both start identity with the same saved positive affine,
 accepted512 images, frozen fused point JSON, mask, shared-affine features, exact
 fusion objective, fixed257/P1-AC output, .001 corner floor, physical learning-rate
-calibration and best-full selector. Both use eager priors and existing samplers;
-the newly benchmarked compiler package is excluded from this comparison.
+calibration and best-full selector. Both use eager priors and the existing
+machine-point sampler; the raster-query sampler stays `frozen` in BOTH, as in
+the current accepted configuration. The newly benchmarked compiler/point-sampler
+package is excluded from this comparison.
 
 Analytic uses one cycle of five levels, horizontal/vertical30-step stages. F2
 uses its established two cycles of five30-step two-component stages, eight-cell

@@ -1822,3 +1822,179 @@ new anatomy, a trained encoder, or superiority to F1/F2. No default is switched.
 Reproducer and compact audit are the existing check_sources helper
 `independent_fusion_dispatch_postrun_20261002.py` and the run's
 `independent_check.json`.
+
+## Current-fusion analytic/F2 endpoint control: independent precheck
+
+Read the complete thin wrapper, source-cohort loader, scoring adapter and existing
+core F2 dispatch. The loader takes all25 current-fusion configurations, not their
+older SG-only parents. Analytic retains its original schedule and scalar
+`stage_cache`; F2 uses its established two-component eight-cell staggered patches,
+gain1, .75 safety, .95 strict-floor reserve and `existing` geometry backend.
+The only configuration differences are method, cycle count, floor-reserve option,
+geometry backend and output. Both remain eager/existing point dispatch, same
+current fusion energy, identity residual, saved affine and257 P1-ac map.
+Both nominally use300 gradients/310 trials/332 objectives, but continuation
+chronology and work/dimension per gradient differ: not equal wall-time or a
+decoder-only comparison. No implementation was tuned for this final control.
+
+The author's three focused tests independently pass in8.92s, including real tiny
+analytic/F2 optimization. A separate real25-configuration injected dry run verifies
+all50 slots before execution, exact alternating pair order, an optimizer exception,
+a217-gradient rounded-floor partial result and an export failure. All three are
+retained; the other47 continue without retry. Both partial counters and certificate
+are retained. Actual scoring adapters resolve new analytic and new F2 MIIT maps,
+all22 other F2 cases and only the explicitly archived DHR comparator. Annotation
+adapters are produced after all50 slots terminate, and existing outputs are
+preserved. The test fixture was placed on D to match production's single filesystem;
+the existing relative-path adapter cannot span Windows C/D drives. This did not
+alter production or the remote run. No source-level blocker was found; actual
+outcomes remain necessary before interpreting endpoint accuracy or cost.
+
+### Actual current-fusion F2 control: independent closure
+
+`fusion_f2_all50_t32` completes50/50 declared attempts, with300 gradients,
+310 trials and332 objective evaluations each. The checker independently rereads
+all actual float64 P1-ac exports, original affines/boundaries, full schedules,
+best-full output selection, literal objectives and4,148 original CSV errors.
+Minimum corner ratios are `.00532227260` analytic and `.00787233154` F2; all
+binary-sign certificates pass. Both arms' initial component dictionaries agree
+exactly. Independent full-objective error is at most `5.03672900e-8` (float32
+image computation); production-score errors agree within `1.525e-13` canvas
+pixels and `1.613e-12` native-moving pixels. Actual data are in the run's
+`independent_check.json`, with the check_sources postrun helper as reproducer.
+
+| Development specimen | Analytic mean / mean-p90 TRE | F2 mean / mean-p90 TRE | Analytic / F2 mean call s |
+|---|---:|---:|---:|
+| MIIT /3 directions |3.534718 /5.858170|3.541998 /5.869288|5.646392 /15.353443|
+| Lung /20 directions |4.471007 /9.342538|4.498976 /9.438715|5.343984 /15.789428|
+| HistoReg /1 |.842064 /1.580138|.832973 /1.644260|7.688484 /14.465047|
+| Kidney /1 |2.243606 /4.643549|2.231108 /4.559938|7.708290 /14.086099|
+
+TRE uses512-equivalent moving-canvas pixels. Analytic wins12/25 means,17 p90s
+and16 maxima, but F2 wins24/25 final values of the SAME full objective. Thus
+do not claim that the new recipe is a superior objective minimizer. Histo and
+kidney F2 means are better; the largest relative analytic mean disadvantage is
+1.0914% on Histo, an observed difference rather than a calibrated noninferiority
+result. Analytic's MIIT worst error remains53.021031 pixels; neither method
+solves this adverse case.
+
+Analytic is faster in all25 paired observations: median F2/analytic call ratio
+3.034313; all-case average calls5.568625/15.616001s. Allocated peaks are
+209.70--214.30MB analytic versus481.87--485.35MB F2 (decimal MB), with loading,
+features, optimization and export/validation inside each reset-aware call.
+No matching or initializer preparation is included. The batch is530.343949s,
+of which529.615656s is measured calls. There is one alternating-order pair per
+case, NOT replicated ABBA speed evidence or a measured equal-error time curve.
+Different continuation order, parameter dimension and geometry backends prevent
+pure-decoder attribution. This is a useful observed endpoint accuracy/cost
+tradeoff against one established F2 recipe, not universal F1/F2 dominance,
+superior anatomy, an independent cohort or a formal O/A success declaration.
+
+## Final focused independent review — PLAN section19 (2026-10-02)
+
+This review follows the actual reverse-direction, compiler-transfer and
+current-fusion F2 closures above. It reviews scientific claims, not completion
+of the original trained-neural-layer ambition or expiry of the authorized window.
+
+1. **Variables and per-case independence.** Each case starts from identity
+   residual with its saved image-derived positive affine. The optimizer learns
+   fresh scalar coefficient grids per fixed-anchor horizontal/vertical stage;
+   five levels and300 gradients produce a257-square vertex table. The frozen
+   matchers provide observations, not a newly trained encoder. Accepted anchors
+   detach between stages; local decoder VJPs are checked, not a differentiable
+   graph through all300 optimization steps.
+
+2. **Advantage versus F1/F2.** The missing current-fusion F2 control is now
+   measured: same inputs/evidence/full objective,50 successful calls, similar
+   endpoint TRE and lower analytic cost on25/25 cases (median ratio3.0343).
+   But F2 obtains lower full energy on24/25, and anatomy winners are mixed.
+   These are two existing300-gradient recipes with different schedules, work per
+   gradient and backends. They do not establish repeated equal-error curves,
+   pure-layer superiority, all-F1/F2 dominance or PLAN's three-target-class O
+   criterion. The independent1.26--1.67 compiler gain is against analytic's own
+   execution path and must remain a separate claim.
+
+3. **Special-shear limitation.** Positive evidence is not solely a one-layer
+   hand-designed shear: real pathology directions and the107-point MIIT oracle
+   exercise the actual fixed grid. The oracle's maximum.026773px establishes
+   one feasible labelled fit, not image-only registration or a general optimizer
+   ranking. The checked expressivity theorem concerns H0 with path-dependent
+   depth/floor, not arbitrary homeomorphisms at fixed depth or the fixed.001
+   floor. No broad non-shear time-to-accuracy theorem is claimed.
+
+4. **Exactly which map is legal.** The claim concerns the actual saved float64
+   NPZ vertex table on the fixed257-by257 source grid, P1 with AC diagonals,
+   identity ordered boundary, four-corner positivity and its saved positive
+   affine. The residual maps onto the unit rectangle; the complete map is a
+   homeomorphism onto A[0,1]^2+b, generally a parallelogram. Binary-sign
+   certificates and independent rounded-map checks support this declared output;
+   they do not transfer automatically to another mesh, arbitrary rasterized
+   vector field, interpolation choice, original TIFF resolution or3D map.
+
+5. **Source of anatomical changes.** Shared-affine descriptor construction and
+   SG/MA fusion were explicit evidence changes, not consequences of topology
+   alone. Fusion versus SG1 and doubled-SG controls supports complementary points:
+   four specimen mean gains about.4%,2.1%,1.2%,5.1%, with five direction means
+   worse. SG1 and fusion energies are different functionals. The final analytic/F2
+   control DOES hold the current fusion functional/evidence fixed and shows
+   small mixed anatomical differences. Native STANDARD own/shared-affine controls
+   are correctly executed application comparators, not equal-loss ablations.
+
+6. **Proxy versus anatomy and stopping.** They disagree materially. Ordinary
+   same-objective extension lowers energy25/25 without general TRE improvement;
+   the data-aware search and distortion-budget branches likewise do not yield a
+   uniform practical advance. Current F2's lower energy24/25 supplies additional
+   evidence against loss-only anatomical selection. Higher-resolution terminal
+   detail, pose and refreshed matching have recorded adverse outcomes; no further
+   nearby tuning is justified from them. These negatives do not prove a global
+   minimum, inadequate information everywhere or one universal bottleneck.
+
+7. **Data independence and selection.** Main results use25 directions from four
+   repeatedly viewed development specimens, with2,074 correlated observations.
+   The three reverse tasks reuse the same MIIT specimen. Label-free optimizers
+   are not blind development: post-run labels influenced research decisions.
+   Two original MIIT initializer failures remain disclosed; an image-only
+   quarter-turn initializer amendment is not an unseen-test result. Histo/kidney
+   initializers are recovered DHR initial-only outputs, not universally direct
+   SG or nonrigid teachers. Available released IDs are identical across methods;
+   missing annotations are not prediction failures. No all-comers or independent
+   specimen claim is supported.
+
+8. **Cost scope and baseline fairness.** The149.517736s conditional25-case
+   pipeline includes fresh matching/fusion/optimization/export, but excludes
+   historical affine generation and original-input preparation; it is not raw-WSI
+   end-to-end time. Compiler first-call costs are retained, and allocator peaks
+   are not board VRAM. F2 keeps its established safety correction, patch recipe
+   and full budget; its better objective values are retained rather than concealed.
+   The old reduced512 DHR is explicitly distinct from released FAST/STANDARD;
+   original-image STANDARD own/shared-initializer comparisons were completed.
+   Their resolutions, losses, boundaries and timing scopes differ from ours.
+   Neither their ratios nor our fixed-case engineering gain establishes SOTA.
+
+9. **Unanswered questions and next work (at most three).** (i) Obtain genuinely
+   new, independently grouped labelled specimens with known provenance; freeze
+   the retained recipe and native baseline before evaluation, include failures,
+   and measure comparable preparation-to-output costs. (ii) Establish repeated
+   time-to-error curves against established safe controls on three target classes
+   including non-directional targets; do not substitute endpoint timing or a
+   hand-designed shear. (iii) Reopen algorithm/learned-layer development only
+   around a discriminating finer-evidence or training hypothesis, with an
+   unchanged-objective control and an explicit train/test boundary. A new
+   optimizer, another lower development loss or more old-specimen directions
+   alone is not the missing result.
+
+**Strongest positive:** actual certified fixed-mesh instance registration with
+modest useful evidence fusion, an independently verified feasible difficult-case
+oracle, and a cheaper measured current-fusion endpoint than the established F2
+recipe, plus separately repeated warm dispatch acceleration.
+**Strongest adverse:** the image-only recipe still has an approximately53px MIIT
+outlier and no independent-specimen confirmation; even stronger minimization of
+the SAME objective (F2 on24/25) does not establish superior anatomy. Native
+STANDARD also wins important Histo/kidney comparisons. Hard topology and elapsed
+research time do not resolve these failures.
+
+Adjudication: T is supported for the declared discrete output and local operators;
+O has useful bounded endpoint evidence but its broad matched-time target remains
+unclosed; A is development evidence without the required independent confirmation;
+C is an honest measured comparison, not SOTA. The original fast learned neural
+layer and clinical/general registration-success claims remain unestablished.

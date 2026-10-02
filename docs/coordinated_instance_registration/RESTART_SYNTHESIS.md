@@ -1,7 +1,8 @@
 # Restart synthesis: a useful safe instance optimizer, not yet a registration breakthrough
 
-Written 2026-10-02 by the Astra synthesis role using actual results and independent
-checks; not goal completion or the final review. The authorized window ends at
+Written 2026-10-02 by the Astra synthesis role using actual results and the
+focused independent final review linked below; not original-goal completion.
+The authorized window ends at
 2026-10-02 16:26:23 UTC. [REPORT](REPORT.md) contains full experiments;
 [BASELINE_PROTOCOL_REVIEW](BASELINE_PROTOCOL_REVIEW.md) resolves comparison and
 provenance details.
@@ -35,7 +36,9 @@ The sampling map is fixed-to-moving, $F(x)=A f_Y(x)+b$: $x$ is a source unit-squ
 coordinate, $A,b$ are the saved image-derived affine with positive determinant,
 and $f_Y$ interpolates deformed vertex positions $Y$. P1 means piecewise affine,
 linear on each triangle. The fixed 257-by-257 grid uses AC diagonals connecting
-row/column $(i,j)$ to $(i+1,j+1)$. Its boundary remains identity. Five
+row/column $(i,j)$ to $(i+1,j+1)$. Its boundary remains identity. The residual
+map must exceed the normalized corner-determinant floor .001, an extra numerical
+margin beyond positivity. Five
 coefficient/image levels alternate horizontal and vertical updates, totaling
 300 objective gradients.
 
@@ -46,8 +49,8 @@ term vanishes because $\det(e,e)=0$. Corner determinants are therefore affine in
 step length. The algorithm restricts that length using every adverse corner
 change, then checks the actual candidate and complete objective. Four-corner
 positivity, consistent connectivity and the simple preserved boundary support
-the declared discrete homeomorphism; exported coefficients receive separate sign
-checks. Sampled positive Jacobians alone are insufficient. Arbitrary resampling
+the declared discrete homeomorphism onto $A[0,1]^2+b$, generally a parallelogram.
+Exported coefficients receive separate sign checks. Sampled positive Jacobians alone are insufficient. Arbitrary resampling
 or changing the interpolant does not inherit the certificate.
 
 SG means SuperPoint/SuperGlue matching; MA means frozen MatchAnything ELoFTR.
@@ -58,10 +61,12 @@ E=D+3R,\qquad D=I+O+10^{-4}C+.1P_{SG}+.1P_{MA}.
 \]
 
 Here $I$ compares affine-aligned MIND-like eight-channel neighborhood
-self-similarity descriptors; $O$ penalizes out-of-bounds image queries; $C$
-penalizes poor corner shape. $P_{SG},P_{MA}$ are separately confidence-normalized
+self-similarity descriptors; $O$ penalizes out-of-bounds image queries. Both use
+fixed foreground support and a fixed denominator; difficult nonoverlap is not
+silently removed. $C$ penalizes poor corner shape. $P_{SG},P_{MA}$ are separately confidence-normalized
 robust correspondence errors. ARAP means as-rigid-as-possible: $R$ measures
-triangle Jacobians' deviation from their closest proper rotations.
+triangle Jacobians' deviation from their closest proper rotations. $R$ and $C$
+act on residual $f_Y$, before the saved affine, not on the composed map $F$.
 
 Manual evaluation landmarks never enter these optimizations or output selectors.
 However, repeated post-run evaluation influenced development decisions, so the
@@ -79,12 +84,12 @@ point to its paired annotation. Entries are mean TRE / mean per-direction
 90th-percentile TRE, in 512-equivalent moving-canvas pixels. Directions are
 averaged within specimens. DHR abbreviates DeeperHistReg.
 
-| Specimen / directions | SG1 | Retained fusion | Native STANDARD DHR, own initialization | Native STANDARD DHR, shared saved affine |
-|---|---:|---:|---:|---:|
-| MIIT / 3 | 3.548752 / 5.907957 | 3.534718 / 5.858170 | 3.672192 / 6.432444 | 3.712720 / 6.260251 |
-| Lung / 20 | 4.568541 / 9.593679 | 4.471007 / 9.342538 | 6.046615 / 13.914145 | 6.240578 / 14.626331 |
-| HistoReg / 1 | .851903 / 1.586005 | .842064 / 1.580138 | .712328 / 1.618927 | .712976 / 1.523942 |
-| Kidney / 1 | 2.364866 / 4.756907 | 2.243606 / 4.643549 | 1.908163 / 3.178382 | 2.464310 / 5.245805 |
+| Specimen / directions | SG1 | Retained analytic fusion | F2, same fusion evidence | Native STANDARD DHR, own initialization | Native STANDARD DHR, shared saved affine |
+|---|---:|---:|---:|---:|---:|
+| MIIT / 3 | 3.548752 / 5.907957 | 3.534718 / 5.858170 | 3.541998 / 5.869288 | 3.672192 / 6.432444 | 3.712720 / 6.260251 |
+| Lung / 20 | 4.568541 / 9.593679 | 4.471007 / 9.342538 | 4.498976 / 9.438715 | 6.046615 / 13.914145 | 6.240578 / 14.626331 |
+| HistoReg / 1 | .851903 / 1.586005 | .842064 / 1.580138 | .832973 / 1.644260 | .712328 / 1.618927 | .712976 / 1.523942 |
+| Kidney / 1 | 2.364866 / 4.756907 | 2.243606 / 4.643549 | 2.231108 / 4.559938 | 1.908163 / 3.178382 | 2.464310 / 5.245805 |
 
 Fusion improves all four specimen means and p90s against both SG1 and SG2; mean
 reductions from SG1 are approximately 0.4%, 2.1%, 1.2%, and 5.1%. Simply doubling
@@ -101,6 +106,27 @@ also differ in image processing, resolution, loss, regularization and boundaries
 even shared initialization does not isolate the topology layer. Fusion wins some
 comparisons but does not uniformly beat native DHR, especially its HistoReg mean
 and own-initialization kidney result.
+
+The final current-fusion analytic/F2 comparison completes all 50 calls, with
+independent saved-map, objective and 4,148 annotation-error checks. Both use
+identical evidence, affine, full objective and 300 gradients, with eager priors
+and original point dispatch. Analytic is faster in all 25 paired observations:
+average application calls are 5.568625 / 15.616001 s, and median paired F2/analytic
+ratio is 3.034313. Allocated peaks are 209.70–214.30 / 481.87–485.35 decimal MB.
+Calls include load/features/optimization/export/validation, excluding matching
+and initializer preparation. There is only one paired observation per case,
+not repeated timing or an equal-error time curve.
+
+Anatomy is mixed: analytic wins 12/25 direction means, 17 p90s and 16 maxima;
+F2 has better HistoReg and kidney means. Analytic's largest adverse specimen-mean
+difference is about 1.09% on HistoReg, not a demonstrated noninferiority margin.
+Crucially, **F2 reaches lower values of the same full objective on 24/25 cases**.
+This supports a useful observed endpoint accuracy/cost tradeoff, not superior
+objective minimization or anatomical dominance. Analytic alternates scalar axes
+within one five-level cycle; F2 uses two five-level vector-update cycles with its
+established corrected floor reserve. Parameter dimensions, continuation order,
+patch work and geometry backends differ, preventing pure-decoder attribution.
+The separate compiler gain below is not part of this F2 comparison.
 
 ## 4. What additional interventions actually established
 
@@ -193,7 +219,7 @@ directions. Capacity witnesses establish attainable labelled point fits, not an
 image-only route to them. The defensible diagnosis is an unresolved interaction
 of evidence, regularization, boundaries and optimization, not one proven universal bottleneck.
 
-## 7. Cost status and three priorities
+## 7. Cost status and remaining priorities
 
 The independently checked conditional batch completed all 25 attempts in
 149.517736 s: 5.980709 s/attempt, .167204 maps/s, and first saved map at
@@ -205,6 +231,33 @@ is 1.414e-7 canvas pixels. These are batch/amortized measurements, not per-case
 cold latencies: historical affine generation and decoded-input preparation remain
 excluded. Memory measures PyTorch allocations/reservations, not board capacity;
 phase peaks are not summed. No equal-scope end-to-end speedup claim follows.
+
+A separate, independently checked 56-call experiment transfers existing Inductor
+prior compilation plus frozen machine-point sampling to the unchanged fusion
+objective. Warm complete-application medians, original / accelerated, are
+5.010 / 2.995 s (MIIT 2-to-3), 6.138 / 4.589 s (lung HE-to-Ki67),
+5.937 / 4.332 s (HistoReg), and 5.408 / 4.300 s (kidney). All twelve paired
+ABBA blocks favor acceleration; median-call ratios range from 1.26 to 1.67.
+The first MIIT calls with fresh local compiler/Triton caches instead cost
+5.191 / 15.147 s: a real first-call penalty, not a measurement of compiler time
+alone. Later cases reuse caches. Calls include loading, features, optimization,
+export and validation, but exclude matcher/initializer generation and input-cache
+preparation. This is dispatch engineering, not a full-pipeline speedup or evidence
+that the optimizer beats F1/F2.
+
+Full objective-component values and full vertex gradients were compared at
+identity and a saved deformation at every image level in these four cases.
+Fixed value tolerances are rtol/atol $10^{-8}/10^{-10}$ and gradient tolerances
+$10^{-5}/10^{-8}$; observed cross-backend maxima are $6.11\times10^{-16}$ and
+$1.15\times10^{-14}$. These are sampled numerical checks, not exact equality or
+a bound for every input. All 56 saved maps pass independent geometry checks;
+their objectives and all 4,886 original-CSV errors were independently recomputed.
+HistoReg's largest warm cross-backend map
+difference, $6.8735\times10^{-5}$ unit, is similar to same-backend repeat variation
+$6.8703\times10^{-5}$; corresponding maximum individual TRE differences are
+$2.1737\times10^{-7}$ and $2.1477\times10^{-7}$ pixels. Outputs are not bitwise
+identical. The independent checker recomputed saved outputs; it audited recorded
+GPU timings/VJPs rather than rerunning the performance experiment.
 
 The additional three-pair MIIT reverse-direction check completed all nine
 SG1/fusion/native STANDARD calls, sharing the inverse saved affine within each
@@ -219,14 +272,27 @@ confirmation or inverse consistency. Forward and reverse residual domains and
 fixed-boundary classes need not be inverses. The initial filename-related failed
 attempt is retained separately; it is not part of the successful rerun timing.
 
-1. Finish the pending same-functional engineering transfer check: actual Inductor
-   priors plus frozen point sampling versus original dispatch on current fusion.
-   Preserve first-call costs, require full-value/VJP agreement, and independently
-   check the resulting maps and measurements before any speed claim. Final
-   independent review remains pending.
-2. Obtain genuinely new, independently grouped labelled specimens with verified
+The [final independent review](BASELINE_PROTOCOL_INDEPENDENT.md#final-focused-independent-review--plan-section19-2026-10-02)
+answers all nine questions in [PLAN section 19](PLAN.md#19-最终验收必须直接回答的九个问题).
+Its conclusion is bounded: declared fixed-mesh topology and a useful endpoint
+cost tradeoff are supported; repeated matched-time comparisons across target
+classes, independent-specimen confirmation and the original trained-neural-layer
+objective remain unestablished. Technical closure is not a registration breakthrough.
+
+1. Obtain genuinely new, independently grouped labelled specimens with verified
    access and provenance. Freeze fusion and native baselines before evaluation;
    more directions from the current samples cannot provide this confirmation.
-3. Reopen algorithm design only around a discriminating new failure or useful
-   finer anatomical evidence. Require both accuracy and cost benefit; do not
-   substitute another lower development loss for progress toward the neural goal.
+2. Test a concrete finer-evidence hypothesis before opening another optimizer
+   branch. One next-phase option is to expose frozen MA fine feature fields before
+   coarse-gated window selection and use a dense feature-distance loss. This
+   exposure and its coordinate/gradient checks are not implemented here. Compare
+   one fixed extra-optimization budget against both an unchanged-$E$ suffix and
+   the same feature field spatially coarsened to the eight-pixel lattice, starting
+   from identical fusion incumbents. Keep masks/denominators and geometry fixed;
+   optimize and select outputs without labels, then score all available IDs and
+   retain failures and extraction/optimization costs. Unlike the negative raw-1024
+   MIND and coarse-$C$ tests, this asks whether learned fine spatial structure
+   beyond sparse coarse-gated matches is useful. Predeclare meaningful accuracy,
+   cost and tail tradeoffs, interpret them against measured variation, and retain
+   informative mixed outcomes rather than imposing a tiny-single-case veto.
+   This is an option requiring next-phase approval, not an authorized new run.

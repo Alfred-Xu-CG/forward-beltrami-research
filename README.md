@@ -21,6 +21,16 @@ The [progress record](docs/coordinated_instance_registration/PROGRESS.md) preser
 failed interventions and the active research deadline. No SOTA, blind validation,
 raw-WSI end-to-end speedup or completed original neural-layer goal is claimed.
 
+For current local numerical tests, use the clean Windows interpreter
+`D:/QC_optimization_data/digital_topology_wsi/dhr_clean_venv/Scripts/python.exe`
+with `PYTHONPATH=src;.;tests` and temporary output on D. Current GPU runs use the
+existing AI-host environment and archived input paths recorded in the progress
+log; they are not runnable from a data-free clone. Code, compact measurements
+and the current P1 map outputs are versioned. Large native deformation fields
+and full matcher-confidence matrices are retained on D and the research host,
+outside Git. The Anaconda commands later in this README are historical sparse-QC
+instructions, not the current registration environment.
+
 Earlier [Phase VII](docs/research_phase7/REPORT.md) studied solve-free coarse-to-fine
 F1/F2 latent decoders and synthetic forward/VJP/training experiments up to
 4097×4097 controls. Those results do not establish complex real-image registration.

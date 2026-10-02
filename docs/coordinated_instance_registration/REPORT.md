@@ -12,6 +12,72 @@ For the current result and its limits, start with
 current mathematical objects; sections 6--7 preserve dated development evidence
 and are not a list of all simultaneously active choices.
 
+### Final missing control: current fusion versus current fusion with F2
+
+Both optimizers were freshly run on all25 original directions with exactly the
+same accepted images, saved affine, frozen SG+MA points, shared-affine feature
+frame, mask, full objective, fixed257/P1-AC output, .001 floor and full-objective
+output selector. All50 calls finished before scoring. No label, new matcher,
+new parameter sweep or selected per-case winner enters either method.
+
+Analytic retains one five-level cycle with30 horizontal then30 vertical
+gradients per level and its cached scalar-geometry operator. F2 retains its
+existing eight-cell staggered patches, two-component coefficients, gain1, .75
+geometry safety, corrected.95 floor reserve, and two five-level30-step cycles.
+F2 uses its established `existing` geometry implementation rather than the
+inapplicable scalar cache. Both use eager priors, existing machine-point
+interpolation and unchanged frozen raster-query interpolation. Each completes
+300 gradients, ten stages,310 trials and332 objectives, with zero failed trials.
+Temporal continuation order, parameter dimensionality and work per gradient
+differ. This is a comparison of existing optimizer RECIPES, not a decoder-only
+ablation or equal-wall-time budget. No additional warmup was inserted; pair
+order alternated by case before execution.
+
+Entries below are equal-direction mean TRE / mean direction-p90, in moving
+512-canvas pixels, preserving every original annotation ID:
+
+| Development specimen | Coordinated analytic, current fusion | F2, same current fusion |
+|---|---:|---:|
+| MIIT /3 directions | 3.534718 /5.858170 | 3.541998 /5.869288 |
+| Lung /20 directions | 4.471007 /9.342538 | 4.498976 /9.438715 |
+| HistoReg /1 direction | .842064 /1.580138 | .832973 /1.644260 |
+| Kidney /1 direction | 2.243606 /4.643549 | 2.231108 /4.559938 |
+
+Analytic has lower mean on12/25 directions, lowerp90 on17 and lowermaximum on16.
+It does not dominate anatomy: HistoReg and kidney means favor F2; kidney'sp90
+also favors F2. Its largest specimen-mean disadvantage is about1.09% on HistoReg,
+but this is NOT a prespecified statistical noninferiority result. Repeatedly
+viewed four-specimen development evidence cannot establish generalization.
+
+The observed mean complete-call times are5.568625s analytic and15.616001s F2;
+their25-call sums are139.215628s and390.400027s. Analytic is faster on all25,
+with median paired F2/analytic ratio3.034313 (range1.8274--4.3049). This is one
+alternating-order paired observation per case, not the replicated ABBA design
+used in the separate compiler experiment. Calls include image loading, features,
+optimization and actual export/validation; previously generated matchers,
+initializers and input canvases remain outside scope. The first calls7.84155s
+and16.91624s are included, not discarded. Wholebatch time is530.343949s.
+Allocated peaks are209.70--214.30MB analytic versus481.87--485.35MB F2.
+Both reach the same545,259,520-byte RESERVED peak in the shared allocator pool;
+this is not physical-memory parity or memory to add across calls.
+
+The strongest adverse result is that **F2 reaches LOWER SAME full objective on
+24/25 directions**. Averaged within every specimen, its full loss and raw image
+term are lower. On lung and kidney it also reduces ARAP while increasing the
+machine-point term. Lower objective therefore still does not imply better
+anatomical TRE. The result supports useful endpoint accuracy/cost behavior of
+the implemented coordinated recipe; it does not prove superior convergence,
+an equal-error stopping-time curve, a universal advantage over F1/F2, or PLAN's
+three-objective screening criterion. No default or anatomy-selected rule changes.
+
+Independent reconstruction checks all50 saved maps, affines, identity boundaries,
+certificates, full objectives and4,148 originalCSV errors. Minimum normalized
+corners are.005322273 analytic and.007872332 F2; maximum independent full-objective
+disagreement is5.037e-8, due to float32 raster arithmetic. The actual F2 output
+paths and method labels are retained in scoring; inherited native-DHR MIIT
+entries are explicitly archived references, not fresh executions. Artifacts:
+`fusion_f2_all50_t32/`; runner `tools/coordinated_fusion_f2_control.py`.
+
 ### Same-functional engineering transfer: faster warm calls, slower first compilation
 
 On four predeclared development cases, compare A: original eager ARAP/shape
@@ -20,6 +86,16 @@ prepared fixed-source P1 point indices/weights. No objective coefficient,
 input, initializer, update schedule or output selector changes. Each call still
 solves the full257-control/512-query problem from identity with300 gradients.
 This tests the combined dispatch package, not the contribution of each switch.
+
+Inductor is PyTorch's compiler, used here to execute the unchanged local prior
+formulas with fewer separate operations. Prepared point sampling has an equally
+concrete meaning: a fixed source query q has fixed source-triangle vertices
+i1,i2,i3 and fixed barycentric weights lambda1,lambda2,lambda3. These weights
+sum to1 and satisfy q=sum_k lambda_k X_ik. Consequently
+f_Y(q)=sum_k lambda_k Y_ik. Indices and weights can be computed once while Y
+continues to change and its gradients remain live. This does not freeze the
+deformation or interpolate it onto a different mesh; it removes repeated lookup
+for the SAME source queries. A moving query would require a different treatment.
 
 First A/B calls were timed before numerical probes. Only the first MIIT case
 encountered new empty task-local Inductor/Triton caches; subsequent cases reused
@@ -1049,10 +1125,10 @@ without storing or forming that entire dense Jacobian.
 This is coordinated motion: adjacent vertices may move a long common distance
 while their DIFFERENCES, not original mesh spacing, determine admissibility.
 A worst active cell can still limit the global scalar scale. This limitation is
-measured rather than denied. F2 provides the historical local-patch comparator
-under identical SG1 input evidence and objective; no matched F2 run with the
-later SG+MA fusion objective is claimed. It is not automatically worse by
-construction.
+measured rather than denied. F2 provides the local-patch comparator, first under
+the historical SG1 objective and finally under the SAME current SG+MA fusion
+objective. The final comparison above keeps existing schedules and records their
+differences; F2 is not automatically worse by construction.
 
 Successive accepted tables are on the same source triangulation. Geometrically,
 one can define an affine update h on each current deformed triangle taking its
@@ -1166,8 +1242,9 @@ per stage,300gradient steps total,310decoder trials,332complete objective calls.
 Learning-rate calibration is.004*16/(level-1), in pre-affine normalized units.
 The historical SG1-matched F2 comparison uses two five-scale cycles with30steps
 each for the same300gradients and has the corrected.95strict-floor reserve.
-Those paired runs start from the same affine plus identity residual; F2 has
-not been rerun with the current fusion objective. Native DHR has its own objective/preprocessing and is an
+Those paired runs start from the same affine plus identity residual. The final
+current-fusion control reruns both existing schedules on all25 directions with
+the shared frozen fused points. Native DHR has its own objective/preprocessing and is an
 application comparator, not an equal-objective geometry ablation.
 
 ## 6. Evidence available aroundT+15h
