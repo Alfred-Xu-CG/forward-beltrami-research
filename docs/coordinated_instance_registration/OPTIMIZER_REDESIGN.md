@@ -737,3 +737,229 @@ bytes. Independent postrun checks recompute all2074 errors (maximum discrepancy
 1.14e-13canvas pixels), all25 boundaries/corners/budgets/selection and all15unique
 input H/mask calibrations. Outputs and paired comparison are in
 stain_proxy_all25_t21. No failed attempt or label is excluded.
+
+## Proposed next card: frozen cross-modality ELoFTR correspondences
+
+Status: coordinator approved this exact card after bounded Astra-high selection.
+The inference adapter and one real512smoke are complete as recorded below;
+the full25production experiment still awaits independent integration review.
+
+Question: can pair-conditioned, detector-free correspondences pretrained for
+cross-modality matching improve the present safe registration, where changing
+local scalar evidence and its optimizer repeatedly produced little useful gain?
+Choose ONE mechanism: the released **MatchAnything ELoFTR** checkpoint replaces
+the existing frozen SuperPoint/SuperGlue point table. Retain shared-gray MIND,
+the frozen positive affine, ARAP3, shape1e-4, point weight.1, robust scale8pixels,
+OOB1, identity residual start, P1-ac257, exact boundary, eta.001, original five
+image/control levels, rates,300Adam gradients and best-full prefix selection.
+Do not add Phikon/DINO features, a new affine fit, coupled seeding, point-only
+optimization, competitor displacement supervision or network training.
+
+Why this particular intervention: ELoFTR does not require repeatable detected
+keypoints before matching; its descriptors are conditioned on BOTH images.
+MatchAnything's additional cross-modality pretraining addresses appearance
+transfer explicitly. This differs from another pointwise stain/intensity cue
+and from exchanging one sparse assignment backend while keeping SuperPoint.
+The primary [MatchAnything paper](https://arxiv.org/html/2501.07556v1), sections
+2 and4.6.1, reports ANHIR cross-stain evaluation using predicted matches followed
+by affine and B-spline fitting. That is relevant prior evidence, NOT a result
+for our fixed affine,512rasters, P1map or specimen set. Its DeepHistReg baseline
+is not the presently executed DeeperHistReg standard pipeline. We reproduce
+neither its full registration pipeline nor its published accuracy claim.
+
+Alternatives checked before this choice:
+
+* Original-detail1024/257controls already gave only modest Histo/kidney changes:
+  analytic means.793449->.756767 and2.351586->2.287044 in512-equivalent units,
+  with Histo p90 worsening (PROGRESS, T+9.7h). This is not an untested next leap.
+* Native normalization/CLAHE plus NCC7 was already tested; historical analytic
+  means.794/3.936/2.945 versus native-preprocessed MIND.808/3.713/2.468 gave no
+  consistent rescue. It did not reproduce the DHR pyramid/mask/boundary pipeline.
+  Full native DHR now wins Histo/kidney but loses lung; thus transplanting all of
+  its evidence/regularization is not an isolated, universally supported fix.
+* Frozen DINOv2-S/14 weights ARE cached on AI,88283115bytes. The earlier
+  `digital_dinov2_safe_optimize.py` used replicated grayscale448,32-square patch
+  features and old17/33/65F1 with100steps. Archived kidney/lesion native-pixel
+  means were9.477376/10.285254. These are not present-control comparisons or a
+  decisive rejection of RGB DINO; neither are they evidence to repeat it blindly.
+* [Phikon-v2's own model card](https://huggingface.co/owkin/phikon-v2) specifies
+ 20x H&E tiles and primarily tile-level downstream evidence. Our existing
+  overview rasters do not restore that nuclear-scale information merely by
+  being called histology. No demonstrated drop-in cross-stain registration
+  advantage at this scale was found in the bounded check.
+
+Exact input and coordinate contract: use each existing fixed/moving512 RGB
+canvas, convert with PIL `convert("L")` and divide by255 to ordinary grayscale
+in[0,1], white high. This follows the released ELoFTR input convention; our old
+SG extractor instead used inverted luminance, so MATCHER preprocessing changes
+as part of the model intervention and must be disclosed. Prewarp the moving
+grayscale ONCE by the SAME saved affine using `warp_moving_to_fixed`: bilinear,
+border padding, align_corners=False, fixed512pixel centers. No new affine fit,
+grayscale normalization, CLAHE, stain transform, resizing or tissue segmentation.
+The512square already satisfies the released multiple-of32 shape rule. Feed
+`image0=fixed_gray`, `image1=aligned_moving_gray` in eval/no_grad FP32 mode.
+
+Use the released `src/config/default.py` plus `configs/models/eloftr_model.py`,
+including its coarse matching threshold.1 and actual MTD all-thresholded-pairs
+policy after border removal; no additional confidence threshold. FORCE_NEAREST
+is configured true but UNUSED by the pinned CoarseMatching class. Preserve that
+released behavior, not an inferred mutual-nearest rule. Following the released inference adapter, set coarse NPE
+to[832,832,512,512] for its megadepth position-encoding convention and actual
+512input, while keeping FP16 disabled. Use MatchAnything's own LoFTR class and
+checkpoint, NOT vanilla Kornia LoFTR with incompatible weights or default config.
+Do not import or run its Gradio UI, training wrapper, ROMA or B-spline fitter.
+
+Network output is `mkpts0_f`, `mkpts1_f`, `mconf`: floating pixel-index coordinates
+in the fixed and aligned-moving rasters plus model confidence. Convert once by
+q=(mkpts0_f+.5)/512, p=(mkpts1_f+.5)/512. Store original-moving target A*p+b only
+through the existing affine convention; do not apply A twice. Do not confuse
+the adapter's resize-ratio multiplication with a normalization to unit coordinates.
+For512->512 its ratio is one. Matching itself returns point observations, not
+a dense warp for the safe method to imitate.
+
+Confidence/support/outlier policy: ANY nonfinite point/confidence output fails
+the entire extraction before domain filtering. Retain finite network matches admitted
+by the released threshold, with original confidence in[0,1]. Discard and count
+only outputs whose q or p lies outside the declared[0,1]square; never clip them.
+As in the existing point loader, assign zero eligibility to original-moving
+targets A*p+b outside[0,1]^2. Use no new fixed/moving tissue filter, no global
+RANSAC/homography, no distance-to-affine cutoff and no label-selected rejection.
+The fixed image mask remains solely the existing dense MIND support. Report
+point counts before/after eligibility, confidence mass, occupied4x4 source bins,
+and fraction of sources on original fixed gray support as diagnostics, not
+anatomical correctness estimates or selection criteria. Correlated semidense
+matches are not independent observations. Normalize by total eligible confidence,
+so a larger number of matches does not multiply point-loss strength.
+
+The exact substituted point functional is the EXISTING ImageCorrespondences:
+
+    P(Y) = sum_j w_j [sqrt(1 + ||(f_Y(q_j)-p_j) A^T *512/8||^2) - 1],
+    w_j = c_j * eligible_j / sum_k(c_k * eligible_k),
+    E(Y) = I_shared-gray-MIND(Y) +3 ARAP(Y) +1e-4 Shape(Y) +.1 P(Y) +OOB(Y).
+
+Its bounded influence is the only extra outlier resistance in this first test;
+it does not make false matches harmless. New and old E totals are different
+functionals. If fewer than8positive eligible matches remain, declare extraction
+failure and do not optimize that case; retain it in the25-attempt denominator.
+There is no silent SG fallback or per-case model/threshold selection. A failure
+can justify a later explicitly approved robustness change, not retroactive rescue.
+
+Exact claim/assumptions: only the registration's point evidence changes; the
+existing decoder's geometric guarantee remains conditional on its unchanged
+implementation and saved-map checks. Better anatomical correspondence is a
+testable hypothesis, not a theorem. It requires reliable cross-stain matches at
+overview scale and tolerable serial-section differences. The new matcher may
+still miss structures, hallucinate low-texture correspondences or overweight
+repeated gland boundaries. The point weight.1 is a first matched control, not
+a universal calibration across matcher confidence distributions. Ordinary
+subsequent global tuning is possible only as a new declared decision after
+examining actual evidence, never per-label/per-case optimization.
+
+Availability and implementation scope checked2026-10-02: the
+[official repository](https://github.com/zju3dv/MatchAnything) links to public
+HF inference source at Space revision6a7bcb589ec8da3a9e861e799122beaa5eba2193.
+The release README links to the author-hosted
+[weights.zip](https://drive.google.com/file/d/12L3g9-w8rR9K2L4rYaGaDJ7NqX1D713d/view).
+A read-only HEAD request returned200, application/octet-stream,482746196bytes
+and byte-range support; no archive contents were downloaded or verified here.
+Its model includes `matchanything_eloftr.ckpt` according to the release adapter.
+The adapter's named LittleFrog/MatchAnything_checkpoints endpoint currently
+returns401, so do not assume it works or bypass authentication. A third-party
+64.4MB ELoFTR mirror exists but was not established as the authoritative release;
+prefer the author archive. Neither MatchAnything source nor weights were found
+in the bounded AI cache checks. Cached LightGlue is not this model.
+
+Use one isolated research dependency location. The direct ELoFTR source import
+path was inspected: torch/numpy, einops, loguru, yacs/PyYAML and Kornia suffice
+for the traced inference classes; the actual compatible versions are below.
+Avoid the broad old requirements.txt, which includes unrelated training pins.
+Construct LoFTR directly from the lowercased released config, load
+`torch.load(..., map_location="cpu", weights_only=True)["state_dict"]`, and
+require complete parameter matching after the class's explicit `matcher.` prefix
+removal. A missing/unexpected model key or safe-loader failure is an integration
+failure, not permission for random missing weights or unsafe unpickling. No
+RepVGG rewrite is needed for the first inference. Preserve source notices: the
+HF package carries Apache2; current top-level GitHub PRL explicitly permits
+academic research/evaluation without registration but differs for project use.
+Do not describe every downstream use as unrestricted.
+
+Smallest decisive test and scope: after approval, one dependency/checkpoint-load
+and512forward smoke test, then literal injected-match coordinate/confidence tests
+(nontrivial affine, pixel centers, border prewarp, eligibility, insufficient
+matches, point-loss value/VJP). Independent checker verifies input conventions
+and actual configuration. No geometry-module edit is required: one extractor
+adapts outputs to the existing point JSON and a thin batch runner substitutes
+that path only in all25saved shared-gray controls. Extract all25point tables
+before any optimization or label scoring, then run the25analytic300attempts and
+score only after all attempts terminate. Report all four specimen cohorts and
+failures, not25independent patients. Include model setup, extraction, optimizer,
+serialization/certification and peak memory separately and end-to-end; do not
+inherit published ELoFTR timings. Aim to spend at most about one hour to first
+complete-cohort answer, with a bounded integration stop if dependencies block.
+
+What falsifies it: insufficient/nonfinite matches, practically prohibitive
+integration/runtime, or no useful cohort accuracy/cost gain. A harmful match
+table must not be rescued using manual landmarks or another method's dense map.
+A positive result would support this pretrained-evidence-plus-hard-P1 pipeline
+on already examined specimens, not a new matcher, anatomy guarantee, blind
+generalization claim or SOTA result. If it fails, record the failure mechanism
+before selecting another intervention; do not automatically launch a model zoo.
+
+### Approved adapter: strict real-weight load and512smoke complete
+
+The author archive downloaded successfully into the AI research project's own
+`matchanything_cache`; its ordinary ZIP listing contains the ELoFTR checkpoint
+64366723bytes and the separate ROMA checkpoint. Only ELoFTR was extracted.
+Required weights and pinned inference source are mirrored under
+`D:/QC_optimization_data/digital_topology_wsi/matchanything_eloftr/`; no images
+were uploaded to an external inference service. HF source and current upstream
+license notices are retained. No shared Python environment or service was changed.
+
+An isolated AI system-site-packages venv reuses installed torch2.5.1+cu124 and
+adds only einops0.8.1, loguru0.7.3, yacs0.1.8, PyYAML6.0.2, Kornia0.7.3 and
+kornia_rs0.1.9 with no-dependency installs. The first import exposed missing
+PyYAML; installing it in this SAME isolated venv resolved the dependency.
+The broad release training requirements were not installed. Source imports,
+weights-only loading and strict447state-entry matching succeed, with
+16025216model parameters and the declared FP32/threshold.1/NPE configuration.
+
+`tools/coordinated_matchanything.py` exposes one FrozenMatchAnything constructor
+per cohort, `.setup_report`, `.extract(fixed,moving,affine,output=...)`, and
+`.close()`. Its pure point_record helper keeps pixel-center coordinates and
+original confidences; static world eligibility and confidence normalization
+remain the existing optimizer's responsibility. The fixed-gray support diagnostic
+uses the containing pixel floor(512q); q=1 maps to pixel511 ONLY for that
+diagnostic. There is no new point-support filter.
+
+Before the actual smoke, GPU5was idle at11MiB. The real MIIT2-to-3 image-only
+512forward returned2910network matches,2908positive staticeligible matches,
+16occupied4x4bins, zero finite-domain discards and finite coordinates/confidences.
+Unweighted fixed-gray-support fraction was.999312715. Cold setup took1.01391s,
+with351160320bytes allocated peak; first extraction (including image load,
+prewarp, inference and point adaptation) took1.07034s and peaked986538496bytes.
+These are smoke measurements, not warmed throughput or anatomical evidence.
+The point JSON is `matchanything_eloftr/smoke_miit_2_to_3.json` in the D data
+cache and `matchanything_cache/smoke_miit_2_to_3.json` in the AI research tree.
+
+Twenty-one focused adapter/legacy-matcher tests pass. They cover literal half-pixel
+coordinates, endpoints, world eligibility, all-output nonfinite rejection,
+confidence bounds, insufficient evidence, ordinary PIL grayscale, border
+prewarp, existing-loader compatibility and output nonoverwrite/model closure.
+Two test-fixture mistakes were corrected: uint8-ramp reversal is not exactly
+255-minus-rounded-ramp, and load_image_matches returns a pair, not just the
+module. Neither correction changed the production adapter. Source diff-check
+passes. An independent checker now verifies injected coordinates and the actual
+smoke separately; no25case production or manual-label scoring has begun here.
+
+Independent source adjudication: CoarseMatching stores `mtd_spvs` in `self.mtd`
+and, when true, selects ALL above-threshold pairs after the ordinary border
+removal. FORCE_NEAREST appears in config but is not read by this actual class.
+The original card/setup label incorrectly inferred mutual-nearest behavior from
+that flag. Corrected metadata uses `configuration_force_nearest` and records
+the actual coarse policy explicitly. Fine matching remains the released TOPK1
+plus local regression; mconf remains coarse confidence, not a new fine-level
+anatomical confidence. No model/filter/weights were altered, so the first smoke
+point coordinates are unchanged. Exact fine-source/target unique counts and
+maximum duplicate multiplicities are now reporting-only diagnostics, with no
+deduplication or influence reweighting. The coordinator explicitly approved
+preserving the released behavior rather than imposing the mistaken description.

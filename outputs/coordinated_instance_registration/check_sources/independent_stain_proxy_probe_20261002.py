@@ -174,8 +174,8 @@ def literal_p1(vertices,query):
     return np.array(result)
 
 
-def postrun_checks():
-    base=ROOT/'outputs/coordinated_instance_registration';directory=base/'stain_proxy_all25_t21'
+def postrun_checks(directory_name='stain_proxy_all25_t21',point_substitution=False):
+    base=ROOT/'outputs/coordinated_instance_registration';directory=base/directory_name
     data=Path('D:/QC_optimization_data/digital_topology_wsi')
     read=lambda p:json.loads(Path(p).read_text(encoding='utf-8'))
     manifest=read(directory/'predictions.json')
@@ -222,13 +222,16 @@ def postrun_checks():
     cache={};output=[];weak=None
     for row in manifest['rows']:
         name=row['name'];report=read(directory/row['report']);cfg=report['configuration'];original=read(controls[name])['configuration']
-        assert set(original)==set(cfg) and {k for k in cfg if cfg[k]!=original[k]}=={'preprocessing','output'}
+        changed_keys={'matches','output'} if point_substitution else {'preprocessing','output'}
+        assert set(original)==set(cfg) and {k for k in cfg if cfg[k]!=original[k]}==changed_keys
         assert report['gradient_steps']==300 and report['failed_trials']==0 and report['objective_evaluations']==332
         assert report['saved_binary_certificate']['valid'] and not report['landmarks_used']
         assert report['final']['total']==min([report['initial']['total']]+[r['accepted_full_total'] for r in report['stages']])
         with np.load(directory/row['output'],allow_pickle=False) as saved:
             v=saved['vertices'][0];ref=saved['boundary_reference'][0];a=saved['post_affine_matrix'].astype(float);b=saved['post_affine_offset'].astype(float)
             assert str(saved['interpolation'])=='p1_ac' and v.shape==(257,257,2) and v.dtype==np.float64
+        with np.load(controls[name].with_suffix('.npz'),allow_pickle=False) as control_map:
+            assert np.array_equal(a,control_map['post_affine_matrix']) and np.array_equal(b,control_map['post_affine_offset'])
         assert np.isfinite(v).all() and np.linalg.det(a)>0
         axis=np.arange(257)/256;yy,xx=np.meshgrid(axis,axis,indexing='ij');identity=np.stack((xx,yy),-1)
         assert np.array_equal(ref,identity)
@@ -248,6 +251,13 @@ def postrun_checks():
             discrepancies[key]=max(abs(values[i]-metrics[key]['per_label'][label]) for i,label in enumerate(ids))
             assert discrepancies[key]<1e-9
             assert abs(values.mean()-metrics[key]['mean'])<1e-10 and abs(np.percentile(values,90)-metrics[key]['p90'])<1e-10
+        if point_substitution:
+            control_report=read(controls[name])
+            assert report['image_preprocessing']['name']=='raw_inverted'
+            assert report['image_preprocessing']==control_report['image_preprocessing']
+            assert report['mind_frame_by_resolution']==control_report['mind_frame_by_resolution']
+            output.append(dict(name=name,labels=len(ids),minimum_corner_ratio=minimum,score_discrepancy=discrepancies,mean=metrics['canvas_pixels']['mean'],p90=metrics['canvas_pixels']['p90']))
+            continue
         metadata=report['image_preprocessing'];assert metadata['name']=='hematoxylin_proxy'
         for role in ('fixed','moving'):
             path=image_path(name,role,cfg)
@@ -277,7 +287,7 @@ def postrun_checks():
                     assert variance_errors[-1]<2e-7 and abs(incidence-d['original_mask_weighted_fraction_at_or_below_epsilon'])<1e-7
                 weak=dict(raw_H_q99=scale,zero_fraction=zeros,normalized512_variance_median=diagnostic['unwarped_normalized_mind_by_resolution']['512']['positive_support_linear_variance_median'],normalized512_below_epsilon_fraction=diagnostic['unwarped_normalized_mind_by_resolution']['512']['original_mask_weighted_fraction_at_or_below_epsilon'],independent_variance_median_maximum_error=max(variance_errors))
         output.append(dict(name=name,labels=len(ids),minimum_corner_ratio=minimum,score_discrepancy=discrepancies,mean=metrics['canvas_pixels']['mean'],p90=metrics['canvas_pixels']['p90']))
-    assert sum(r['labels'] for r in output)==2074 and len(cache)==15
+    assert sum(r['labels'] for r in output)==2074 and (point_substitution or len(cache)==15)
     groups={'miit':output[:3],'lung20':output[3:23],'histo':output[23:24],'rat_kidney':output[24:25]}
     return dict(all25complete300=True,all25_objective_calls=332,all25_same_recipe_two_key_delta=True,total_landmarks=2074,unique_original_canvas_images=len(cache),minimum_corner_ratio=min(r['minimum_corner_ratio'] for r in output),maximum_canvas_score_error=max(r['score_discrepancy']['canvas_pixels'] for r in output),maximum_native_score_error=max(r['score_discrepancy']['native_moving_pixels'] for r in output),cohorts={k:{metric:float(np.mean([r[metric] for r in group])) for metric in ('mean','p90')} for k,group in groups.items()},weak_miit7moving=weak)
 

@@ -7,6 +7,70 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### Cross-modality point substitution completed — 2026-10-02 09:30 UTC
+
+`matchanything_all25_t22` completes all25attempts in115.67s: all25extractions
+before all25optimizations, model released between phases, no failures. Exact
+configuration deltas remain matches/output only. Independent saved-map and
+raw-CSV reconstruction verifies all2074errors,300gradients/332calls percase,
+original affine/identity boundary, and minimum corner ratio.346882746413.
+Shared-gray SG to MatchAnything mean/p90: MIIT3.548752/5.907957 to
+3.616405/6.140994; lung4.568541/9.593679 to4.839762/9.807444; Histo
+.851903/1.586005 to.873853/1.677123; kidney2.364866/4.756907 to
+2.236834/4.710601. Kidney improves, three means worsen: no general advance.
+
+New extraction costs are small relative to optimization:3.237s total25calls,
+plus1.053s coldsetup; allocated extraction peaks.971--1.030GB, optimizer
+.210--.216GB, never summed because model release precedes optimization.
+No extra confidence/geometric filtering was added after seeing scores. Next
+is bounded diagnosis of the saved observations and objective components, not
+another matcher swap or a parameter sweep. Astra high owns that mechanism
+decision; root records the complete result and independent Astra high closes
+only the concrete source/coordinate/output checks.
+
+### Released matcher experiment running — 2026-10-02 09:25 UTC
+
+The official archive and pinned inference source are available in the isolated
+AI research cache and mirrored on D. Strict weights-only loading accepts all447
+state entries (16,025,216 parameters); a real FP32 512-square forward succeeds.
+Independent source inspection caught an important configuration-versus-code
+discrepancy: the active MTD branch keeps all above-threshold coarse pairs after
+border removal, not mutual-nearest pairs, despite the unused FORCE_NEAREST flag.
+We preserve the actual released behavior, correct the metadata/card, and record
+fine-point multiplicities without filtering or reweighting. This adjudication
+precedes production. The independent literal sampler, point-value/gradient,
+source-branch and exact25-configuration checks pass.
+
+All25 production attempts started at09:25:34UTC on AI GPU5, checked idle at11MiB
+immediately beforehand; PID1594626, output `matchanything_all25_t22`. The runner
+extracts all tables before optimizing any, releases the model before optimizer
+calls, and retains every failure. Root's integrated adapter/runner/proxy test
+run passed25tests before the metadata-only correction; the author additionally
+tested the reporting-only multiplicity change. No manual scoring has begun.
+
+### Stronger existing correspondence model approved — 2026-10-02 09:08 UTC
+
+The next single mechanism is MatchAnything's released cross-modality-pretrained
+ELoFTR, replacing only the machine point table in the25 shared-gray A300
+controls. This is not a new trained matcher, DINO patch-feature rerun, new
+affine initialization or dense-field teacher. Targeted prior-work review found
+actual ANHIR matching evidence in the primary paper; its full B-spline pipeline
+and published accuracy are not being claimed as reproduced here. The exact
+ordinary-gray preprocessing, frozen affine/pixel convention, released config,
+confidence normalization, support/failure policy and unchanged point functional
+are stated in OPTIMIZER_REDESIGN. Nonfinite/insufficient extraction remains a
+declared failure, not a hidden old-matcher fallback.
+
+Astra high owns the public-source/checkpoint adapter and small model smoke;
+Astra medium owns the thin25-case runner using the existing optimizer/scorers;
+independent Astra high checks coordinates/configuration. All25 extraction
+attempts precede optimization, all25 terminal predictions precede manual
+scoring. Model/source download and dependencies stay in isolated research
+locations, local artifacts on D, with no image upload or port/shared-env change.
+Setup/extraction/optimization costs are reported separately and jointly.
+H-proxy completed evidence is committed and pushed as a1ee808; no H tuning
+or second alternative branch is running alongside this model integration.
+
 ### Shared-stain result — 2026-10-02 08:53 UTC
 
 All25 H-proxy attempts completed in121.26s before scoring; each has300gradients,

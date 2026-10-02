@@ -8,6 +8,56 @@ The detailed derivations and experiment definitions are in FORMULATION.md;
 chronology and negative interventions are in PROGRESS.md. This report introduces
 the main objects without requiring knowledge of those earlier discussions.
 
+### Cross-modality pretrained point evidence: kidney gain, no general gain
+
+We replaced the frozen SuperPoint/SuperGlue correspondence table with the
+released MatchAnything ELoFTR model. It receives the existing512-square image
+canvases in ordinary grayscale, with the moving image prewarped once by the
+same saved affine. Its pixel-index correspondences become unit-square point
+observations via `(pixel+.5)/512`. The original shared-gray MIND term, point
+weight.1, robust scale8pixels, priors, initialization,257-square P1-ac map,
+300-gradient optimizer and full-objective output selection stay unchanged.
+The matcher is frozen: this experiment does not train a new neural registration
+network or reproduce MatchAnything's published affine/B-spline pipeline.
+
+| Previously viewed specimen | Original SG points: mean / p90 | MatchAnything points: mean / p90 |
+|---|---:|---:|
+| MIIT /3 directions | 3.548752 /5.907957 | 3.616405 /6.140994 |
+| Lung /20 directions | 4.568541 /9.593679 | 4.839762 /9.807444 |
+| HistoReg /1 | .851903 /1.586005 | .873853 /1.677123 |
+| Kidney /1 | 2.364866 /4.756907 | 2.236834 /4.710601 |
+
+Units are512 moving-canvas pixels; p90 is first computed within each direction
+and then averaged. Kidney's mean improves about5.4%, but the other three
+specimen means worsen. This does not establish a generally better pipeline.
+More machine correspondences are not necessarily better anatomical evidence.
+There are1929--3158positive eligible matches per pair, all16source bins occupied;
+these are correlated observations, not thousands of independent landmarks.
+No manual labels, dense competitor fields, new RANSAC filter or per-case
+parameter selection enters prediction. Independent literal interpolation/CSV
+recalculation reproduces all2074landmark errors to1.28e-13canvas pixels.
+
+All25attempts complete, each with300gradients/332objective calls and no failed
+trials. Every actual exported residual retains its identity boundary; the
+minimum four-corner determinant ratio is.34688275, above.001. The independent
+checker caught and resolved a source/documentation mismatch BEFORE production:
+the official active coarse branch keeps thresholded candidates, not mutual-
+nearest pairs, despite an unused configuration flag. We preserve that release
+behavior and report it, rather than silently modifying the model.
+
+On the idle RTX A6000, one cold setup takes1.053s. All25extraction calls total
+3.237s (individual.077--1.062s, including the first cold forward); optimizer
+calls take4.15--4.89s each. Combined pair calls take4.23--5.85s, excluding that
+one-time setup and the previously frozen affine initialization. Whole serial
+batch wall time is115.67s. Allocated GPU peaks are.971--1.030GB(decimal) during
+extraction and.210--.216GB during optimization; the model is freed between
+phases, so these peaks are not additive. These are actual call measurements,
+not warmed-throughput or statistically repeated speedup claims. Source,
+configuration, point tables, maps and paired scores are in
+`matchanything_all25_t22`; checkpoint/source caches are on D and the research
+host. The next question concerns evidence weighting/spatial support and its
+conflict with the original objective, not another unmotivated model swap.
+
 ### Fixed shared-stain evidence: stable execution, no useful accuracy gain
 
 The single H-proxy experiment applies fixed H/E/DAB color deconvolution to

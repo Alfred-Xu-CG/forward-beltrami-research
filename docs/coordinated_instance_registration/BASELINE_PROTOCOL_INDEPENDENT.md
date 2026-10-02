@@ -472,3 +472,148 @@ No production correction was needed. The adapter's relative-path operation
 requires a common filesystem volume on Windows; the first checker fixture
 exposed this when its temporary output was on C: and inputs on D:. The fixture
 now uses D: and passes; the approved Linux same-tree production is unaffected.
+
+### H proxy: actual all25 postrun check
+
+All 25 predictions completed before scoring. The actual source controls are
+`miit_multiscale_control_t19` and `existing22_shared_affine_a300_t20`; direct
+configuration comparison confirms only preprocessing/output changed. Every
+case has 300 gradients, 332 objective calls, zero failed trials and minimum-H-
+full-objective candidate selection. Every stored float64 P1ac map has its exact
+identity rectangle boundary and positive affine. Independent four-corner
+calculations give an overall minimum ratio `0.00686149536872144 > .001`.
+
+Independent raw CSV parsing and literal triangle barycentric linear solves
+reproduce all 2,074 paired-label errors (328 MIIT, 1,600 lung, 77 Histo, 69
+kidney), with maximum discrepancies `1.14e-13` canvas pixels and `1.04e-12`
+native pixels. All 15 unique original canvases reproduce the saved grayscale
+support counts, H99 scales and zero fractions under the separate scalar oracle.
+Every per-level fixed-mask denominator equals its original support count times
+`(side/512)^2`; shared-affine setup reports one intensity warp per scale.
+
+Direct per-row aggregation also reproduces the coordinator's comparison:
+
+| Cohort | H mean | H-minus-gray mean | H-minus-gray mean pair-p90 |
+|---|---:|---:|---:|
+| MIIT, 3 directions | 3.56822147 | +0.01946957 | +0.03437110 |
+| Lung, 20 directions | 4.56755994 | -0.00098118 | +0.04273073 |
+| Histo | 0.92517151 | +0.07326804 | +0.07859755 |
+| Kidney | 2.35532726 | -0.00953920 | -0.20395749 |
+
+Units are 512-canvas pixels; these are four already-viewed specimens, not 25
+independent patients. The mixed/near-neutral mean changes and worsening tails
+in three cohorts do not establish a useful general improvement from this proxy.
+H and gray objective totals remain different functionals.
+
+The weak `miit_7_to_8` moving channel retains H99 `0.127710095311532` and zero
+fraction `0.687592053022541`. Its normalized512 MIND variance median is
+`0.00358927669003606`, but `0.273033261299133` of original support weight remains
+at or below epsilon. A separate NumPy shift/patch-average implementation checks
+all five reported variance medians to `3.00e-9` and reproduces weighted epsilon
+incidences. Scaling boosts contrast but cannot restore the clamped-zero signal.
+Run the same independent probe with `--postrun`; no optimization or GPU rerun
+was performed.
+
+### MatchAnything point substitution: independent preproduction review
+
+The bounded review found and adjudicated one concrete source/card mismatch
+BEFORE production. The pinned released `CoarseMatching` reads `mtd_spvs=True`
+and takes every coarse pair strictly above `.1` after two-cell border removal.
+Its configured `FORCE_NEAREST=True` is unused by this class. A direct small
+confidence-matrix fixture retains two deliberately non-mutual neighbors, while
+rejecting an exact-threshold entry and a border entry. The original card and
+`force_mutual_nearest` metadata incorrectly inferred behavior from the unused
+flag. The coordinator chose to preserve the released algorithm; the author
+corrected the card and metadata to distinguish configured versus active policy.
+No nearest filter, deduplication, parameter change or altered forward was added.
+The official source lineage is linked by the
+[author repository](https://github.com/zju3dv/MatchAnything) to the
+[released inference package](https://huggingface.co/spaces/LittleFrog/MatchAnything/blob/6a7bcb589ec8da3a9e861e799122beaa5eba2193/imcui/third_party/MatchAnything/README.md).
+
+The actual fine branch uses TOPK=1 plus unmasked local regression and retains
+coarse `mconf`; it is not newly calibrated fine confidence. This also means
+retained observations can share source coordinates. Multiplicity diagnostics
+are reporting-only. Independent safe CPU reading finds 447 finite checkpoint
+state tensors. The corrected actual strict-load report confirms 16,025,216
+parameters, no missing/unexpected keys, NPE `[832,832,512,512]`, threshold `.1`,
+FP32 and the active MTD branch. The author's actual MIIT2-to3 forward table
+contains 2,910 finite retained pairs and 2,908 positive eligible pairs, independently
+reproduced with the original saved affine; it has 2,903 unique source positions.
+The checker did not rerun this model forward or use a GPU.
+
+Independent injected-output/application checks pass:
+
+- Ordinary PIL grayscale agrees exactly. A separate NumPy bilinear BORDER
+  sampler under a rotated, partly outside affine matches captured model input
+  within `1.24e-7`. No inversion, resize, second affine application or clipping
+  of retained coordinates occurs.
+- The 30-output fixture retains 28 in-domain pairs and 23 positive static
+  eligible pairs; pixel-index endpoints `-.5/511.5` map to unit `0/1`. NaN,
+  infinity and invalid confidence fail even in would-be discarded entries.
+  There is no extra confidence threshold or source tissue selection, and fewer
+  than eight positive eligible pairs fail. Source-support lookup is explicitly
+  a containing-pixel diagnostic. The old loader's `eligible_matches` counts
+  geometric eligibility including zero-confidence entries; the adapter's count
+  is positive eligibility. The actual smoke has no zero-confidence entries.
+- Literal P1 barycentric solves and an analytic robust-loss derivative agree
+  with ordinary and frozen point samplers to `8.89e-16` in value and `1.34e-15`
+  in VJP; a directional finite difference agrees to `4.43e-10`. A nonsymmetric
+  affine and nonzero offset isolate the required moving-canvas units: offset
+  cancels from the point residual but not static eligibility. Tripling all
+  observations preserves total confidence-normalized point strength.
+- All 25 actual source configurations change only `matches/output`. Batch
+  inspection and author tests retain extraction failures without SG fallback,
+  complete all extraction attempts before optimization, release the model,
+  and create scorer inputs only after every prediction is terminal. New MIIT
+  point provenance is explicit while the old SG table remains archived context.
+
+Source: `outputs/coordinated_instance_registration/check_sources/independent_matchanything_probe_20261002.py`.
+After the source-fidelity correction, no numerical/coordinate blocker remains.
+These checks verify a point-evidence substitution, not anatomical correctness
+or expected registration improvement. Subsequent scoring uses P1ac triangles;
+the reused certificate's legacy Q1 representation wording describes its
+four-corner residual check, not a switch to Q1 landmark interpolation. With the
+unchanged rectangle boundary those checks also certify the scored P1ac map.
+
+### MatchAnything: actual all25 postrun check
+
+The completed `matchanything_all25_t22` run passes the bounded independent
+postrun check. All 25 extraction and optimization attempts succeeded, with one
+model setup, no SG fallback and no lost scoring denominator. Each saved map has
+300 gradients, 332 objective calls, zero failed trials, exact identity rectangle
+boundary and the unchanged positive affine; the smallest independently computed
+corner ratio is `0.34688274641299965`. Actual configurations differ only in
+`matches/output`, raw-gray preprocessing and all-scale fixed-mask/prewarp
+metadata equal their matched controls, and selected maps minimize the new full
+functional over the reported candidate set.
+
+Reusing the independent raw-CSV/P1 barycentric checker reproduces every one of
+the 2,074 errors: maximum discrepancy `1.28e-13` canvas pixels and `1.74e-12`
+native pixels. All 25 new point tables are finite and in domain, with 1,932--3,169
+retained pairs and 1,929--3,158 positive eligible pairs. Independent application
+of the saved affine reproduces eligibility, confidence mass and loader metadata;
+the optimization reports identify the new tables and the same counts/masses.
+Retained source multiplicity reaches three; target multiplicity is one. There
+is no deduplication or extra confidence/tissue rejection.
+
+Independent aggregation reproduces the paired comparison:
+
+| Cohort | New mean | New-minus-SG mean | New-minus-SG mean pair-p90 |
+|---|---:|---:|---:|
+| MIIT, 3 directions | 3.61640501 | +0.06765311 | +0.23303690 |
+| Lung, 20 directions | 4.83976232 | +0.27122120 | +0.21376458 |
+| Histo | 0.87385295 | +0.02194948 | +0.09111757 |
+| Kidney | 2.23683445 | -0.12803201 | -0.04630521 |
+
+Units are 512-canvas pixels. Kidney improves, but the other three specimen
+cohorts worsen in both mean and mean pair-p90; this does not support a general
+gain at the predeclared point weight. Extraction scarcity is not the failure
+mechanism in this run. The experiment measures the released matcher substitution
+within this fixed registration, not the quality of all possible uses of the
+matcher. Runtime totals reproduce: setup `1.052606s`, summed extraction calls
+`3.237218s`, summed optimization calls `110.825728s`, batch wall `115.669845s`.
+Download/dependency preparation is outside those inference-run numbers.
+
+Run the MatchAnything independent probe with `--postrun`; it reuses the prior
+saved-map/CSV checker and adds point-table and comparison checks. No optimization,
+network inference or GPU rerun was performed by the checker.
