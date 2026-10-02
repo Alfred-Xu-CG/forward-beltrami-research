@@ -2045,7 +2045,7 @@ entering a better basin without changing the accepted objective or topology?
 Exactalgorithm: existing128Evidence;33nodeqi=(j/32,i/32),9patchsamples
 s=(-1,0,1)^2/128,81labels k=(-4,...,4)^2 ORIGINALmoving128px. Cost_i(k)=
 sum_s m(qi+s)*[mean8ch abs(Phi_f(qi+s)-Phi_m(A(qi+s)+b+k/128))+
-sum(relu(-target)+relu(target-1))^2]/sum_s m(qi+s). SampleORIGINALmoving
+sum_components[(relu(-target_d)+relu(target_d-1))^2]]/sum_s m(qi+s). SampleORIGINALmoving
 features, zero padding/bilinear/align_corners=False; denominatorSTATICalllabels,
 nooverlapdropping. Emptyfixedpatch=>zero; zero-firstthenlexicographicties;
 coarseboundaryzero. p_i=A^{-1}(k*/128); prolongRAWscalarcomponents33→257,
@@ -2064,3 +2064,67 @@ costvolume+coupledconvex+Adam; ourL1/33basis/strictprefix is LIMITEDadaptation,
 NOTConvexAdamreplication/globalconvexity/globaloptimality theorem.
 Builderownsisolatedproposalmodule/tests; rootownscurrentoptionalcoreintegration;
 independentchecker willverifyunits/denominators/actualsafeacceptance.
+
+### T+14.6h discrete proposal correct; second-pair speed transfers
+
+Capturemodule20tests5.33s; roothelper5tests4.02s, defaultcore40tests8.73s;
+rootwholecachedzero-prefix+capture+prior affected42tests8.09s. Earlier2guard
+fixturefails were correctedtoactuallyreachcapturevalidation, no production
+guard weakened. Independentchecker25tests5.63s/module+helperread passes;
+itfoundunnecessaryexisting-onlybackendrestriction, correctedBEFOREdeployment
+so stage_cache originalstagesremainunchanged. FORM45self-contained search/
+affine conversion/costdenom/topology/acceptance/noargminVJP/overhead/criteria.
+ActualAstra confirms pilot meansTHREEsyntheticrealtexturetargets, notH/L/K:
+freshsameknownARP300baseline+prefix, atleast2/3coordinateRMSEimprove+equalcase
+meanlower+nonewfailuresbeforeall20. Search16pxcannotcoverwhole37--61pxtruth;
+it tests finitecapture followedbyoriginaloptimizer, notteacher recovery alone.
+
+Pair-selector root25tests48.11s then idleAI GPU7actualHEK14applicationscomplete.
+Independent14NPZ/reportread3,670,016corners/1,835,008P1trianglesstricteta,
+exactboundaries/commonpositiveaffine/300/310/332/0/10, selected9. Frozen157
+queriesprepareoncepercall/7536bytes, existing0. Warmmedians2.951007409→
+2.698016612s,8.5730%less, ABBA1.094499/1.087646/1.115014. Crossmapmax
+8.23423e-10vswithin7.92953e-10, E4.38427e-13vs3.68594e-13 SAMEORDER,
+NOTbitwise/notstrictbelowrepeat. Cold7.40655vs2.66280 asymmetricpriorcache
+reuseNOTpointcoldgain;peaks204834304--205915136bytes. FORM46scopes/actualdata.
+This issecondknownpairengineeringtransfer, notnewanatomicalgain/heldoutpatient.
+
+### T+14.9h discrete capture rejected; frozen-recipe transfer next
+
+All three fresh baseline/prefix synthetic applications completed. Six proposed
+axis updates are feasible (scale.474525, minimum corner ratio.05095) but raise
+the unchanged complete objective by.06532--.12143, so all are rejected.
+Appearance improves, but weighted ARAP increases. Equal-case coordinate RMSE
+1.557919913341->1.557919913420px is numerical variation, not progress.
+Independent final-map and reconstructed-candidate checks close geometry,
+direction, full-E acceptance and query errors. FORMULATION45.2 retains the
+negative result. Retire this exact recipe; no nearby parameter sweep/all20 run.
+
+Read-only availability audit finds MIIT_v4 on D:, nine released prostate serial
+sections from ONE sample,124rows in each matching-label CSV. Publisher metadata
+resolves correspondence semantics. Previous QC project already evaluated these
+pairs, and prior synthetic work used these images as textures: NOT blind,
+historically untouched, nine patients or an external clinical cohort. Pixel
+coordinates are documented; physical spacing/pixel-center convention uncertain.
+Use only explicitly declared pixel conventions, no invented micron values.
+
+Research card — frozen additional-specimen development transfer:
+Question: does the retained lung recipe improve correspondence on a different
+real tissue specimen, with common image-only initialization and matched controls?
+Exact design: metadata-selected moving->fixed2->3(HE/HES),7->8(HES/MTS),
+10->11(IHC/HES); both directions NOT added after viewing scores. Original TIFFs,
+512square aspect-preserving canvases with saved exact two-axis resize/padding,
+existing positive image-only SuperGlue similarity and raw machine matches.
+No manual coordinates before all prediction attempts finish. Analytic P1-ac257,
+original uniform300gradient recipe/E1; corrected F2 with strict-floor reserve
+.95 and same300gradients; native DHR with common affine, no topology repair.
+Report common-affine baseline, every pair mean/p90 TRE in moving native pixels
+and512canvas pixels, equal-pair mean and mean pair-p90, all failures, actual
+budgets/topology/time/memory. No micrometer or official challenge score claim.
+Assumptions: matching publisher labels; CSV x/y are native-image pixel locations,
+treated explicitly as zero-based centers for resampling (uncertainty disclosed).
+Falsifier: failure or affine-relative deterioration is retained; no landmark-based
+initializer/regularizer tuning. Result changes transfer claim, not frozen recipe.
+Smallest decisive test: three pairs, one prediction per method, then posthoc
+all-ID score and independent frame/geometry recomputation. Not three patients.
+Prior work: official MIIT Zenodo14931377 and author analysis notebook04.

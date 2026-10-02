@@ -1,0 +1,590 @@
+{
+  "question": "Known-map IMAGE recovery with the shared image-only instance optimizer.\n\nResearch card: Can the shared image objective recover an independently legal\nwarp of real histology texture when oracle correspondence capacity is known?\nThe target is an analytic shear/rotation/coarse-fine map, never a solver field.\nAssume fixed boundary, Q1 generating truth, an explicitly declared Q1/P1\nestimated function, and a single original moving raster.\nFailure of image-selected output to recover held-out queries falsifies recovery\nunder this objective/budget, NOT expressivity or the possibility of correspondence.\nSmallest tests: identity pixels, affine off-grid queries, actual target corners.\nPrior work reused: existing analytic capacity targets and shared real-case optimizer.\n",
+  "configuration": {
+    "moving": "data/histo_moving512.png",
+    "output": "results/known_discrete_capture_baseline_t14.json",
+    "inputs_from": "results/known_image257_matrix_inputs.json",
+    "prepare_only": false,
+    "score_native_dhr": false,
+    "native_dhr_root": null,
+    "record_stages": false,
+    "query_thresholds": [
+      1.0,
+      5.0,
+      10.0
+    ],
+    "targets": [
+      "wide_shear",
+      "local_rotation",
+      "coarse_fine"
+    ],
+    "methods": [
+      "analytic"
+    ],
+    "target_scale": 1.0,
+    "grid_side": 257,
+    "image_side": 512,
+    "levels": [
+      17,
+      33,
+      65,
+      129,
+      257
+    ],
+    "image_levels": [
+      32,
+      64,
+      128,
+      256,
+      512
+    ],
+    "cycles": 1,
+    "inner_steps": 30,
+    "learning_rate": 0.004,
+    "strain_weight": 3.0,
+    "strain_model": "p1_arap",
+    "shape_weight": 0.0001,
+    "matches_dir": "results",
+    "match_weight": 0.1,
+    "match_robust_scale": 8.0,
+    "minimum_jacobian": 0.001,
+    "loss": "mind",
+    "mind_order": "transport",
+    "preprocessing": "raw_inverted",
+    "interpolation": "p1_ac",
+    "p1_sampling": "frozen",
+    "coordinate_mode": "alternating",
+    "joint_backend": "cached_manual",
+    "geometry_backend": "existing",
+    "output_selection": "best_full",
+    "capture_prefix": "none",
+    "device": "cuda",
+    "threads": 2
+  },
+  "inputs": {
+    "grid_side": 257,
+    "image_side": 512,
+    "target_scale": 1.0,
+    "moving": "known_image257_matrix_moving.png",
+    "identity_affine": "known_image257_matrix_identity.npz",
+    "cases": [
+      {
+        "target": "wide_shear",
+        "fixed": "known_image257_matrix_wide_shear_fixed.png",
+        "target_archive": "known_image257_matrix_wide_shear_target.npz",
+        "target_minimum_normalized_corner": 0.6230467298880455,
+        "exact_boundary": true,
+        "maximum_target_displacement_canvas_pixels": 61.44,
+        "rms_target_displacement_canvas_pixels": 22.95035019455253,
+        "fixed_png_quantization_rmse": 0.0007037392375676891
+      },
+      {
+        "target": "local_rotation",
+        "fixed": "known_image257_matrix_local_rotation_fixed.png",
+        "target_archive": "known_image257_matrix_local_rotation_target.npz",
+        "target_minimum_normalized_corner": 0.9909913979357752,
+        "exact_boundary": true,
+        "maximum_target_displacement_canvas_pixels": 37.23337875939238,
+        "rms_target_displacement_canvas_pixels": 16.268109148029346,
+        "fixed_png_quantization_rmse": 0.0007155636187881561
+      },
+      {
+        "target": "coarse_fine",
+        "fixed": "known_image257_matrix_coarse_fine_fixed.png",
+        "target_archive": "known_image257_matrix_coarse_fine_target.npz",
+        "target_minimum_normalized_corner": 0.6888071631425887,
+        "exact_boundary": true,
+        "maximum_target_displacement_canvas_pixels": 46.079999999999984,
+        "rms_target_displacement_canvas_pixels": 17.95809569557336,
+        "fixed_png_quantization_rmse": 0.0007479627930984264
+      }
+    ],
+    "source_moving": "D:\\QC_optimization_data\\digital_topology_wsi\\birl_anhir_dev\\canvas\\histo_moving512.png",
+    "map_direction": "fixed source -> moving query",
+    "interpolation": "Q1; image centers align_corners=False; map nodes align_corners=True",
+    "optimizer_inputs": "fixed/moving PNG and identity affine only; no target archive",
+    "physical_units": "normalized unit rectangle and canvas pixels; specimen microns unavailable"
+  },
+  "results": [
+    {
+      "target": "wide_shear",
+      "method": "analytic",
+      "target_specification": {
+        "target": "wide_shear",
+        "fixed": "known_image257_matrix_wide_shear_fixed.png",
+        "target_archive": "known_image257_matrix_wide_shear_target.npz",
+        "target_minimum_normalized_corner": 0.6230467298880455,
+        "exact_boundary": true,
+        "maximum_target_displacement_canvas_pixels": 61.44,
+        "rms_target_displacement_canvas_pixels": 22.95035019455253,
+        "fixed_png_quantization_rmse": 0.0007037392375676891
+      },
+      "held_out": {
+        "query_count": 4096,
+        "query_seed": 20261001,
+        "queries_used_for_optimization": false,
+        "estimate_interpolation": "p1_ac",
+        "target_interpolation": "q1",
+        "euclidean_query_rmse_normalized": 0.0013388276158690297,
+        "euclidean_query_rmse_canvas_pixels": 0.6854797393249432,
+        "p90_query_error_canvas_pixels": 1.2652778928231223,
+        "coordinate_component_rmse_normalized": 0.0009466940860208091
+      },
+      "initial_held_out": {
+        "query_count": 4096,
+        "query_seed": 20261001,
+        "queries_used_for_optimization": false,
+        "estimate_interpolation": "p1_ac",
+        "target_interpolation": "q1",
+        "euclidean_query_rmse_normalized": 0.04531335226297122,
+        "euclidean_query_rmse_canvas_pixels": 23.200436358641266,
+        "p90_query_error_canvas_pixels": 44.6208655062745,
+        "coordinate_component_rmse_normalized": 0.03204137866344174
+      },
+      "image_error_initial": {
+        "raster_rmse_all_pixels": 0.04507299176228182,
+        "raster_rmse_fixed_tissue": 0.05182633162628569,
+        "fixed_tissue_pixel_denominator": 195878.0
+      },
+      "image_error_final": {
+        "raster_rmse_all_pixels": 0.0021528608706924044,
+        "raster_rmse_fixed_tissue": 0.0024589739949517917,
+        "fixed_tissue_pixel_denominator": 195878.0
+      },
+      "estimate_interpolation": "p1_ac",
+      "target_interpolation": "q1",
+      "target_vertex_interpolation_discrepancy": {
+        "query_count": 4096,
+        "query_seed": 20261001,
+        "queries_used_for_optimization": false,
+        "estimate_interpolation": "p1_ac",
+        "target_interpolation": "q1",
+        "euclidean_query_rmse_normalized": 9.623459176821602e-07,
+        "euclidean_query_rmse_canvas_pixels": 0.000492721109853266,
+        "p90_query_error_canvas_pixels": 0.0008586036951214737,
+        "coordinate_component_rmse_normalized": 6.804813242402466e-07
+      },
+      "target_objective_interpolation": "p1_ac vertex-table comparator, NOT original Q1 generating function",
+      "target_objective_total": 0.11698794996408417,
+      "target_objective_parts": {
+        "image": 0.056495269037796315,
+        "strain": 0.019986288400776372,
+        "oob": 0.0,
+        "outside_fraction": 0.0,
+        "shape": 0.1735030593532984,
+        "match": 0.005164654180233996
+      },
+      "target_declared_objective_total": 0.11698794996408417,
+      "target_declared_objective_parts": {
+        "image": 0.056495269037796315,
+        "strain": 0.019986288400776372,
+        "oob": 0.0,
+        "outside_fraction": 0.0,
+        "shape": 0.1735030593532984,
+        "match": 0.005164654180233996
+      },
+      "target_declared_objective_interpolation": "p1_ac",
+      "strain_model": "p1_arap",
+      "mind_order": "transport",
+      "target_corner_shape": 0.1735030593532984,
+      "final_corner_shape": 0.17419074369815324,
+      "target_raster_floor": {
+        "raster_rmse_all_pixels": 0.0007037392375676896,
+        "raster_rmse_fixed_tissue": 0.0008103411309934268,
+        "fixed_tissue_pixel_denominator": 195878.0
+      },
+      "target_raster_floor_scope": "residual at original Q1 generating map after PNG quantization, not a proved attainable-error lower bound",
+      "actual_minimum_normalized_corner": 0.540664949431664,
+      "optimize_seconds": 8.186099603772163,
+      "gradient_steps": 300,
+      "decoder_trial_evaluations": 310,
+      "failed_trials": 0,
+      "coordinate_mode": "alternating",
+      "coordinated_substep_evaluations": 310,
+      "extra_joint_diagnostic_passes": 0,
+      "capture_prefix": "none",
+      "capture_record": null,
+      "capture_objective_evaluations": 0,
+      "capture_geometry_attempts": 0,
+      "capture_search_seconds": 0.0,
+      "capture_complete_prefix_seconds": 0.0,
+      "objective_evaluations_including_stage_anchors": 332,
+      "median_forward_objective_seconds": 0.010093245655298233,
+      "median_vjp_seconds": 0.012434855103492737,
+      "peak_allocated_bytes": 279243264,
+      "initial_objective": {
+        "image": 0.19119929462605517,
+        "strain": 0.0,
+        "oob": 0.0,
+        "outside_fraction": 0.0,
+        "shape": 0.0,
+        "match": 2.0453198838003184,
+        "total": 0.395731283006087
+      },
+      "final_objective": {
+        "total": 0.11494289428226653,
+        "image": 0.054455823132924394,
+        "strain": 0.020014983613849905,
+        "oob": 0.0,
+        "outside_fraction": 0.0,
+        "shape": 0.17419074369815324,
+        "match": 0.004247012334226066
+      },
+      "accepted_full_resolution_totals": [
+        0.16504529050904285,
+        0.16834364769530855,
+        0.1611439311127723,
+        0.16255388245950952,
+        0.1434433542259414,
+        0.13787679726758081,
+        0.1246141466682032,
+        0.12018647157625932,
+        0.11637813005965972,
+        0.11494289428226653
+      ],
+      "accepted_stage_query_history": [],
+      "posthoc_time_to_query_rmse_canvas_pixels": null,
+      "stage_snapshot_cpu_bytes": 0,
+      "observer_overhead_included_in_optimize_time": false,
+      "saved_binary_certificate": {
+        "valid": true,
+        "corners": 262144,
+        "positive_corners": 262144,
+        "nonpositive_corners": 0,
+        "exact_fallback_corners": 0,
+        "nonfinite_coordinates": 0,
+        "boundary_exact": true,
+        "boundary_ordered_rectangle": true,
+        "dtype": "float64"
+      },
+      "output_map": "known_discrete_capture_baseline_t14_wide_shear_analytic.npz",
+      "landmarks_or_target_used_by_optimizer": false,
+      "image_preprocessing": {
+        "name": "raw_inverted",
+        "mask_source": "original inverted grayscale >.04",
+        "original_moving_features_no_affine_prewarp": true
+      }
+    },
+    {
+      "target": "local_rotation",
+      "method": "analytic",
+      "target_specification": {
+        "target": "local_rotation",
+        "fixed": "known_image257_matrix_local_rotation_fixed.png",
+        "target_archive": "known_image257_matrix_local_rotation_target.npz",
+        "target_minimum_normalized_corner": 0.9909913979357752,
+        "exact_boundary": true,
+        "maximum_target_displacement_canvas_pixels": 37.23337875939238,
+        "rms_target_displacement_canvas_pixels": 16.268109148029346,
+        "fixed_png_quantization_rmse": 0.0007155636187881561
+      },
+      "held_out": {
+        "query_count": 4096,
+        "query_seed": 20261001,
+        "queries_used_for_optimization": false,
+        "estimate_interpolation": "p1_ac",
+        "target_interpolation": "q1",
+        "euclidean_query_rmse_normalized": 0.006626235807250322,
+        "euclidean_query_rmse_canvas_pixels": 3.392632733312165,
+        "p90_query_error_canvas_pixels": 4.813082917251952,
+        "coordinate_component_rmse_normalized": 0.00468545627304782
+      },
+      "initial_held_out": {
+        "query_count": 4096,
+        "query_seed": 20261001,
+        "queries_used_for_optimization": false,
+        "estimate_interpolation": "p1_ac",
+        "target_interpolation": "q1",
+        "euclidean_query_rmse_normalized": 0.0316528126268812,
+        "euclidean_query_rmse_canvas_pixels": 16.206240064963175,
+        "p90_query_error_canvas_pixels": 33.583211639792594,
+        "coordinate_component_rmse_normalized": 0.022381918452094876
+      },
+      "image_error_initial": {
+        "raster_rmse_all_pixels": 0.03192791144185021,
+        "raster_rmse_fixed_tissue": 0.0368196301384661,
+        "fixed_tissue_pixel_denominator": 197076.0
+      },
+      "image_error_final": {
+        "raster_rmse_all_pixels": 0.012867273232817403,
+        "raster_rmse_fixed_tissue": 0.014839271431363482,
+        "fixed_tissue_pixel_denominator": 197076.0
+      },
+      "estimate_interpolation": "p1_ac",
+      "target_interpolation": "q1",
+      "target_vertex_interpolation_discrepancy": {
+        "query_count": 4096,
+        "query_seed": 20261001,
+        "queries_used_for_optimization": false,
+        "estimate_interpolation": "p1_ac",
+        "target_interpolation": "q1",
+        "euclidean_query_rmse_normalized": 2.305062270366011e-06,
+        "euclidean_query_rmse_canvas_pixels": 0.0011801918824273976,
+        "p90_query_error_canvas_pixels": 0.0021750163774168904,
+        "coordinate_component_rmse_normalized": 1.6299251624330651e-06
+      },
+      "target_objective_interpolation": "p1_ac vertex-table comparator, NOT original Q1 generating function",
+      "target_objective_total": 0.14974695849333763,
+      "target_objective_parts": {
+        "image": 0.07115847030021637,
+        "strain": 0.025984852851670424,
+        "oob": 0.0,
+        "outside_fraction": 0.0,
+        "shape": 0.20435608767672223,
+        "match": 0.00613494029342326
+      },
+      "target_declared_objective_total": 0.14974695849333763,
+      "target_declared_objective_parts": {
+        "image": 0.07115847030021637,
+        "strain": 0.025984852851670424,
+        "oob": 0.0,
+        "outside_fraction": 0.0,
+        "shape": 0.20435608767672223,
+        "match": 0.00613494029342326
+      },
+      "target_declared_objective_interpolation": "p1_ac",
+      "strain_model": "p1_arap",
+      "mind_order": "transport",
+      "target_corner_shape": 0.20435608767672223,
+      "final_corner_shape": 0.16433189398876785,
+      "target_raster_floor": {
+        "raster_rmse_all_pixels": 0.0007155636187881547,
+        "raster_rmse_fixed_tissue": 0.0008238010358857228,
+        "fixed_tissue_pixel_denominator": 197076.0
+      },
+      "target_raster_floor_scope": "residual at original Q1 generating map after PNG quantization, not a proved attainable-error lower bound",
+      "actual_minimum_normalized_corner": 0.44061690256146735,
+      "optimize_seconds": 6.430356591939926,
+      "gradient_steps": 300,
+      "decoder_trial_evaluations": 310,
+      "failed_trials": 0,
+      "coordinate_mode": "alternating",
+      "coordinated_substep_evaluations": 310,
+      "extra_joint_diagnostic_passes": 0,
+      "capture_prefix": "none",
+      "capture_record": null,
+      "capture_objective_evaluations": 0,
+      "capture_geometry_attempts": 0,
+      "capture_search_seconds": 0.0,
+      "capture_complete_prefix_seconds": 0.0,
+      "objective_evaluations_including_stage_anchors": 332,
+      "median_forward_objective_seconds": 0.009672235697507858,
+      "median_vjp_seconds": 0.010130910202860832,
+      "peak_allocated_bytes": 283297792,
+      "initial_objective": {
+        "image": 0.15119679647367806,
+        "strain": 0.0,
+        "oob": 0.0,
+        "outside_fraction": 0.0,
+        "shape": 0.0,
+        "match": 1.1627163628348312,
+        "total": 0.2674684327571612
+      },
+      "final_objective": {
+        "total": 0.1524326379820547,
+        "image": 0.08891105028648927,
+        "strain": 0.020523225202949365,
+        "oob": 0.0,
+        "outside_fraction": 0.0,
+        "shape": 0.16433189398876785,
+        "match": 0.019354788973184565
+      },
+      "accepted_full_resolution_totals": [
+        0.22965188599310765,
+        0.18592561907920818,
+        0.17734071853873132,
+        0.17579136800678613,
+        0.17052746647017689,
+        0.1673670679457593,
+        0.16279322377766273,
+        0.15773363477216115,
+        0.15473416047763727,
+        0.1524326379820547
+      ],
+      "accepted_stage_query_history": [],
+      "posthoc_time_to_query_rmse_canvas_pixels": null,
+      "stage_snapshot_cpu_bytes": 0,
+      "observer_overhead_included_in_optimize_time": false,
+      "saved_binary_certificate": {
+        "valid": true,
+        "corners": 262144,
+        "positive_corners": 262144,
+        "nonpositive_corners": 0,
+        "exact_fallback_corners": 0,
+        "nonfinite_coordinates": 0,
+        "boundary_exact": true,
+        "boundary_ordered_rectangle": true,
+        "dtype": "float64"
+      },
+      "output_map": "known_discrete_capture_baseline_t14_local_rotation_analytic.npz",
+      "landmarks_or_target_used_by_optimizer": false,
+      "image_preprocessing": {
+        "name": "raw_inverted",
+        "mask_source": "original inverted grayscale >.04",
+        "original_moving_features_no_affine_prewarp": true
+      }
+    },
+    {
+      "target": "coarse_fine",
+      "method": "analytic",
+      "target_specification": {
+        "target": "coarse_fine",
+        "fixed": "known_image257_matrix_coarse_fine_fixed.png",
+        "target_archive": "known_image257_matrix_coarse_fine_target.npz",
+        "target_minimum_normalized_corner": 0.6888071631425887,
+        "exact_boundary": true,
+        "maximum_target_displacement_canvas_pixels": 46.079999999999984,
+        "rms_target_displacement_canvas_pixels": 17.95809569557336,
+        "fixed_png_quantization_rmse": 0.0007479627930984264
+      },
+      "held_out": {
+        "query_count": 4096,
+        "query_seed": 20261001,
+        "queries_used_for_optimization": false,
+        "estimate_interpolation": "p1_ac",
+        "target_interpolation": "q1",
+        "euclidean_query_rmse_normalized": 0.001163373569113486,
+        "euclidean_query_rmse_canvas_pixels": 0.5956472673861049,
+        "p90_query_error_canvas_pixels": 1.1174374832997924,
+        "coordinate_component_rmse_normalized": 0.0008226293397733427
+      },
+      "initial_held_out": {
+        "query_count": 4096,
+        "query_seed": 20261001,
+        "queries_used_for_optimization": false,
+        "estimate_interpolation": "p1_ac",
+        "target_interpolation": "q1",
+        "euclidean_query_rmse_normalized": 0.03539126671801432,
+        "euclidean_query_rmse_canvas_pixels": 18.12032855962333,
+        "p90_query_error_canvas_pixels": 35.302306726465915,
+        "coordinate_component_rmse_normalized": 0.025025404691089694
+      },
+      "image_error_initial": {
+        "raster_rmse_all_pixels": 0.040432715291763725,
+        "raster_rmse_fixed_tissue": 0.04647396751586049,
+        "fixed_tissue_pixel_denominator": 196329.0
+      },
+      "image_error_final": {
+        "raster_rmse_all_pixels": 0.002136781127084577,
+        "raster_rmse_fixed_tissue": 0.002447455348831026,
+        "fixed_tissue_pixel_denominator": 196329.0
+      },
+      "estimate_interpolation": "p1_ac",
+      "target_interpolation": "q1",
+      "target_vertex_interpolation_discrepancy": {
+        "query_count": 4096,
+        "query_seed": 20261001,
+        "queries_used_for_optimization": false,
+        "estimate_interpolation": "p1_ac",
+        "target_interpolation": "q1",
+        "euclidean_query_rmse_normalized": 9.44093025566177e-07,
+        "euclidean_query_rmse_canvas_pixels": 0.00048337562908988264,
+        "p90_query_error_canvas_pixels": 0.0008533153786316734,
+        "coordinate_component_rmse_normalized": 6.675745804487683e-07
+      },
+      "target_objective_interpolation": "p1_ac vertex-table comparator, NOT original Q1 generating function",
+      "target_objective_total": 0.10176149997110523,
+      "target_objective_parts": {
+        "image": 0.05757836906000149,
+        "strain": 0.014518609652931629,
+        "oob": 0.0,
+        "outside_fraction": 0.0,
+        "shape": 0.1229961140327976,
+        "match": 0.00615002340905567
+      },
+      "target_declared_objective_total": 0.10176149997110523,
+      "target_declared_objective_parts": {
+        "image": 0.05757836906000149,
+        "strain": 0.014518609652931629,
+        "oob": 0.0,
+        "outside_fraction": 0.0,
+        "shape": 0.1229961140327976,
+        "match": 0.00615002340905567
+      },
+      "target_declared_objective_interpolation": "p1_ac",
+      "strain_model": "p1_arap",
+      "mind_order": "transport",
+      "target_corner_shape": 0.1229961140327976,
+      "final_corner_shape": 0.12359066471981871,
+      "target_raster_floor": {
+        "raster_rmse_all_pixels": 0.000747962793098426,
+        "raster_rmse_fixed_tissue": 0.0008608780424452826,
+        "fixed_tissue_pixel_denominator": 196329.0
+      },
+      "target_raster_floor_scope": "residual at original Q1 generating map after PNG quantization, not a proved attainable-error lower bound",
+      "actual_minimum_normalized_corner": 0.6246739263077216,
+      "optimize_seconds": 7.069850612431765,
+      "gradient_steps": 300,
+      "decoder_trial_evaluations": 310,
+      "failed_trials": 0,
+      "coordinate_mode": "alternating",
+      "coordinated_substep_evaluations": 310,
+      "extra_joint_diagnostic_passes": 0,
+      "capture_prefix": "none",
+      "capture_record": null,
+      "capture_objective_evaluations": 0,
+      "capture_geometry_attempts": 0,
+      "capture_search_seconds": 0.0,
+      "capture_complete_prefix_seconds": 0.0,
+      "objective_evaluations_including_stage_anchors": 332,
+      "median_forward_objective_seconds": 0.009952088817954063,
+      "median_vjp_seconds": 0.012153137475252151,
+      "peak_allocated_bytes": 282240512,
+      "initial_objective": {
+        "image": 0.1852898539664806,
+        "strain": 0.0,
+        "oob": 0.0,
+        "outside_fraction": 0.0,
+        "shape": 0.0,
+        "match": 1.540202731772677,
+        "total": 0.3393101271437483
+      },
+      "final_objective": {
+        "total": 0.10005125472860153,
+        "image": 0.05577663036210346,
+        "strain": 0.014592392101004915,
+        "oob": 0.0,
+        "outside_fraction": 0.0,
+        "shape": 0.12359066471981871,
+        "match": 0.004850889970113485
+      },
+      "accepted_full_resolution_totals": [
+        0.19580359248181728,
+        0.1572806148244425,
+        0.14760500197713664,
+        0.14352651233700378,
+        0.13142142957961545,
+        0.12418808942205586,
+        0.11501676220316605,
+        0.10558687336303015,
+        0.1026280266483428,
+        0.10005125472860153
+      ],
+      "accepted_stage_query_history": [],
+      "posthoc_time_to_query_rmse_canvas_pixels": null,
+      "stage_snapshot_cpu_bytes": 0,
+      "observer_overhead_included_in_optimize_time": false,
+      "saved_binary_certificate": {
+        "valid": true,
+        "corners": 262144,
+        "positive_corners": 262144,
+        "nonpositive_corners": 0,
+        "exact_fallback_corners": 0,
+        "nonfinite_coordinates": 0,
+        "boundary_exact": true,
+        "boundary_ordered_rectangle": true,
+        "dtype": "float64"
+      },
+      "output_map": "known_discrete_capture_baseline_t14_coarse_fine_analytic.npz",
+      "landmarks_or_target_used_by_optimizer": false,
+      "image_preprocessing": {
+        "name": "raw_inverted",
+        "mask_source": "original inverted grayscale >.04",
+        "original_moving_features_no_affine_prewarp": true
+      }
+    }
+  ],
+  "selection": "shared complete stage-resolution image + cumulative strain + OOB objective; held-out map metrics computed after optimization",
+  "timing_scope": "shared optimize time excludes input generation/loading and final exact sign certificate; CPU scoring excluded; enabled capture search/safe attempts and extra objective calls are included, separately reported beyond the Adam budget",
+  "caution": "regularization can bias away from truth; full-resolution objective need not decrease across pyramid levels; capture failure does not establish impossible correspondence"
+}

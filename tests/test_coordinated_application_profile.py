@@ -95,3 +95,43 @@ def test_existing_output_is_not_overwritten(tmp_path):
     with pytest.raises(FileExistsError):
         module().run(argparse.Namespace(predictions=tmp_path/"missing.json",output=path,trace=None))
     assert path.read_text()=="preserve"
+
+
+def test_requested_pair_uses_its_exact_row_recipe_and_raw_matches(tmp_path):
+    profile=module();source=fixture_report(tmp_path)
+    default=profile.load_configuration(source,tmp_path/'default.npz',production=False)
+    explicit=profile.load_configuration(source,tmp_path/'explicit.npz',production=False,pair_name='he_to_cc10')
+    assert {key:value for key,value in vars(default).items() if key!='output'}=={
+        key:value for key,value in vars(explicit).items() if key!='output'}
+    selected=profile.load_configuration(source,tmp_path/'selected.npz',production=False,pair_name='he_to_ki67')
+    recorded=next(row for row in json.loads(source.read_text())['rows'] if row['name']=='he_to_ki67')
+    for key in ('fixed','moving','affine'):
+        assert getattr(selected,key)==Path(recorded[key])
+    assert selected.matches==source.parent/'he_to_ki67_raw_matches.json'
+    assert selected.moving.name=='ki67_moving512.png'
+    assert selected.learning_rate==recorded['methods']['analytic']['configuration']['learning_rate']
+
+
+@pytest.mark.parametrize('defect',['unknown','duplicate','row_direction','configuration','raw_direction','raw_affine'])
+def test_requested_pair_refuses_unknown_ambiguous_or_mismatched_sources(tmp_path,defect):
+    profile=module();source=fixture_report(tmp_path);value=json.loads(source.read_text())
+    row=next(row for row in value['rows'] if row['name']=='he_to_ki67')
+    requested='not_a_pair' if defect=='unknown' else 'he_to_ki67'
+    if defect=='duplicate':value['rows'].append(row)
+    elif defect=='row_direction':row['moving_stain']='cc10'
+    elif defect=='configuration':row['methods']['analytic']['configuration']['moving']=str(tmp_path/'wrong.png')
+    elif defect in ('raw_direction','raw_affine'):
+        path=source.parent/row['raw_matches']['path'];raw=json.loads(path.read_text())
+        if defect=='raw_direction':raw['moving']=str(tmp_path/'cc10_moving512.png')
+        else:raw['post_affine_offset']=[.01,0.]
+        path.write_text(json.dumps(raw))
+    source.write_text(json.dumps(value))
+    with pytest.raises(ValueError):profile.load_configuration(source,tmp_path/'new.npz',production=False,pair_name=requested)
+
+
+def test_profile_run_forwards_requested_pair_and_reports_identity(tmp_path):
+    source=fixture_report(tmp_path)
+    report=module().run(argparse.Namespace(predictions=source,output=tmp_path/'selected_profile.json',
+        trace=None,pair_name='he_to_ki67'),production=False)
+    assert report['pair_name']=='he_to_ki67' and report['source_moving'].endswith('ki67_moving512.png')
+    assert report['source_matches'].endswith('he_to_ki67_raw_matches.json')

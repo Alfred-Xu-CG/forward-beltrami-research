@@ -1,4 +1,4 @@
-"""Frozen HE->CC10 dispatch comparison, with observed cold cost.
+"""Frozen explicitly selected known-pair dispatch comparison, with observed cold cost.
 
 Compare joint priors (eager/Inductor), or frozen points (existing/frozen with
 Inductor priors in BOTH arms). Two cold runs precede three warm A/B/B/A groups.
@@ -252,7 +252,8 @@ def run(args, *, production=True, test_backend_label=None):
     for path in targets:
         if path.exists():
             raise FileExistsError(path)
-    config = profile.load_configuration(args.predictions,paths[plans[0]["name"]],production=production)
+    pair_name=getattr(args,"pair_name","he_to_cc10")
+    config = profile.load_configuration(args.predictions,paths[plans[0]["name"]],production=production,pair_name=pair_name)
     device = torch.device(config.device)
     init_start = time.perf_counter()
     if device.type == "cuda":
@@ -264,7 +265,7 @@ def run(args, *, production=True, test_backend_label=None):
         torch.cuda.init()
     profile._sync(device)
     initialization_seconds = time.perf_counter()-init_start
-    report = dict(status="running",comparison_kind=comparison_kind,
+    report = dict(status="running",pair_name=pair_name,comparison_kind=comparison_kind,
         dispatch_arms={plan["backend"]:dict(joint_prior_backend=plan["joint_prior_backend"],match_p1_sampling=plan["match_p1_sampling"]) for plan in plans},
         source_predictions=str(args.predictions),source_matches=str(config.matches),
         source_fixed=str(config.fixed),source_moving=str(config.moving),source_affine=str(config.affine),
@@ -328,6 +329,7 @@ def run(args, *, production=True, test_backend_label=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--predictions",type=Path,required=True,help="original all20 predictions.json")
+    parser.add_argument("--pair-name",default="he_to_cc10",help="Exact original known-pair row name; default he_to_cc10")
     parser.add_argument("--output",type=Path,required=True,help="new JSON stem; also creates 14 fresh NPZ/JSON pairs")
     parser.add_argument("--comparison-kind",choices=("joint_priors","frozen_points"),default="joint_priors",
                         help="frozen_points holds Inductor joint priors fixed in both arms")

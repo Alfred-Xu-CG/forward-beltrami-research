@@ -325,7 +325,24 @@ def annotate_ncc_truth_floor(path):
     return payload["local_ncc_truth_floor_diagnostic"]
 
 
+def _validate_capture_prefix(args):
+    """Reject unsupported matrices before preparation or any optimizer call."""
+    mode=getattr(args,"capture_prefix","none")
+    if mode not in ("none","mind_discrete"):
+        raise ValueError("capture_prefix must be none or mind_discrete")
+    if mode=="mind_discrete":
+        image_levels=args.image_levels if args.image_levels is not None else [args.image_side]
+        if (not args.methods or any(method!="analytic" for method in args.methods)
+                or args.grid_side!=257 or getattr(args,"interpolation","q1")!="p1_ac"
+                or getattr(args,"coordinate_mode","alternating")!="alternating"
+                or args.loss!="mind" or getattr(args,"mind_order","transport")!="transport"
+                or 33 not in args.levels or 128 not in image_levels or args.image_side<128):
+            raise ValueError("known-image capture requires analytic fixed257 P1-ac alternating controls, transport MIND, and 33 coefficient/128 image level")
+    return mode
+
+
 def run(args,manifest):
+    capture_prefix=_validate_capture_prefix(args)
     from tools.coordinated_real_case import Evidence,optimize,corner_symmetric_dirichlet,load_image_matches,load_registration_evidence
     from tools.digital_q1_real_optimize import _read_gray_thumbnail
     if args.output.exists():
@@ -389,6 +406,7 @@ def run(args,manifest):
             opt.joint_backend=getattr(args,"joint_backend","cached_manual")
             opt.geometry_backend=getattr(args,"geometry_backend","existing")
             opt.output_selection=getattr(args,"output_selection","last")
+            opt.capture_prefix=capture_prefix
             opt.strain_model=strain_model
             opt.mind_order=mind_order
             opt.matches=match_path;opt.match_weight=getattr(args,"match_weight",0.)
@@ -434,6 +452,12 @@ def run(args,manifest):
                 coordinate_mode=opt.coordinate_mode,
                 coordinated_substep_evaluations=report.get("coordinated_substep_evaluations"),
                 extra_joint_diagnostic_passes=report.get("extra_joint_diagnostic_passes"),
+                capture_prefix=report.get("capture_prefix",capture_prefix),
+                capture_record=report.get("capture_record"),
+                capture_objective_evaluations=report.get("capture_objective_evaluations",0),
+                capture_geometry_attempts=(report.get("capture_record") or {}).get("geometry_attempts",0),
+                capture_search_seconds=(report.get("capture_record") or {}).get("search_seconds",0.),
+                capture_complete_prefix_seconds=(report.get("capture_record") or {}).get("complete_prefix_seconds",0.),
                 objective_evaluations_including_stage_anchors=objective_call_count(report),
                 median_forward_objective_seconds=report["median_forward_objective_seconds"],
                 median_vjp_seconds=report["median_vjp_seconds"],
@@ -449,9 +473,11 @@ def run(args,manifest):
             row["image_preprocessing"]=preprocessing_metadata
             rows.append(row)
             print(json.dumps(row),flush=True)
-    payload=dict(question=__doc__,configuration={k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()},
+    configuration={k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()}
+    configuration["capture_prefix"]=capture_prefix
+    payload=dict(question=__doc__,configuration=configuration,
                  inputs=manifest,results=rows,selection="shared complete stage-resolution image + cumulative strain + OOB objective; held-out map metrics computed after optimization",
-                 timing_scope="shared optimize time excludes input generation/loading and final exact sign certificate; CPU scoring excluded",
+                 timing_scope="shared optimize time excludes input generation/loading and final exact sign certificate; CPU scoring excluded; enabled capture search/safe attempts and extra objective calls are included, separately reported beyond the Adam budget",
                  caution="regularization can bias away from truth; full-resolution objective need not decrease across pyramid levels; capture failure does not establish impossible correspondence")
     args.output.write_text(json.dumps(payload,indent=2)+"\n",encoding="utf-8")
     return payload
@@ -498,9 +524,15 @@ def main():
     p.add_argument("--joint-backend",choices=("ordinary","cached_manual"),default="cached_manual")
     p.add_argument("--geometry-backend",choices=("existing","stage_cache"),default="existing")
     p.add_argument("--output-selection",choices=("last","best_full"),default="last")
+    p.add_argument("--capture-prefix",choices=("none","mind_discrete"),default="none",
+                   help="optional image-only discrete initializer; analytic fixed257 P1-ac only; extra prefix calls/time reported")
     p.add_argument("--device",default="cpu")
     p.add_argument("--threads",type=int,default=2)
     args=p.parse_args()
+    try:
+        _validate_capture_prefix(args)
+    except ValueError as error:
+        p.error(str(error))
     if args.coordinate_mode=="joint" and (args.geometry_backend!="existing" or
             any(method not in ("radial","analytic") for method in args.methods)):
         p.error("joint known-image comparison needs only radial/analytic and geometry_backend existing")

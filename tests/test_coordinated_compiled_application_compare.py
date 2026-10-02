@@ -27,6 +27,7 @@ def test_actual_14_tiny_applications_cold_then_abba_capture_only(tmp_path,monkey
     factory=capture_factory(monkeypatch)
     report=comparison.run(args,production=False,test_backend_label="TEST MOCK: eager-backend graph capture only, NOT Inductor performance evidence")
     assert report["status"]=="complete"
+    assert report['pair_name']=='he_to_cc10'
     assert report["speed_evidence_eligible"] is False
     assert "TEST MOCK" in report["evidence_scope"]
     assert priors.make_joint_priors is factory
@@ -48,7 +49,7 @@ def test_actual_14_tiny_applications_cold_then_abba_capture_only(tmp_path,monkey
 
 def test_actual_14_point_sampling_applications_hold_compiled_priors_fixed(tmp_path,monkeypatch):
     from qcopt.neural_bijection.dense.coordinated_correspondence import ImageCorrespondences
-    args=args_for(tmp_path);args.comparison_kind="frozen_points"
+    args=args_for(tmp_path);args.comparison_kind="frozen_points";args.pair_name='he_to_ki67'
     factory=capture_factory(monkeypatch)
     original=ImageCorrespondences.prepare_fixed_p1_sampling
     preparations=[]
@@ -58,6 +59,9 @@ def test_actual_14_point_sampling_applications_hold_compiled_priors_fixed(tmp_pa
     monkeypatch.setattr(ImageCorrespondences,"prepare_fixed_p1_sampling",counted)
     report=comparison.run(args,production=False,test_backend_label="TEST MOCK: eager-backend capture, NOT Inductor performance evidence")
     assert report["status"]=="complete" and report["comparison_kind"]=="frozen_points"
+    assert report['pair_name']=='he_to_ki67'
+    assert report['source_moving'].endswith('ki67_moving512.png')
+    assert report['source_matches'].endswith('he_to_ki67_raw_matches.json')
     assert report["speed_evidence_eligible"] is False
     assert "No hidden prior warmup" in report["cold_scope"]
     assert "NOT a point-compiler comparison" in report["cold_scope"]

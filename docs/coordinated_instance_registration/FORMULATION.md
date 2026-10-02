@@ -13,7 +13,9 @@ do not change the current P1 declaration. Read sections3--5 for latent updates,
 7 for the actual P1 interpolation,9 and25 for the frozen machine-point/ARAP
 objective,36 for the20-direction protocol and limitations,37 and40 for the F2
 strict-floor correction/full-budget comparison,38--39 and41/43 for measured
-runtime diagnostics, and42 for the negative fixed-budget accuracy experiment. Earlier
+runtime diagnostics,42 for the negative fixed-budget accuracy experiment,
+44 for the negative dense-feature knockout,45 for the negative discrete-capture
+prefix, and46 for the second-pair frozen-point timing transfer. Earlier
 objective variants are documented as experiments, not all simultaneously enabled.
 
 A homeomorphism is a continuous bijection with a continuous inverse. A P1 map
@@ -2598,3 +2600,194 @@ outputs/coordinated_instance_registration/lung_all20_dense_knockout_t14/
 nonfinite-return handling keeps the failed direction, records invalid diagnostic
 paths, writes null instead of nonstandard NaN/Inf JSON, and continues the cohort;
 it never converts a failed numerical result into a successful map.
+
+## 45. One finite-displacement proposal before ordinary optimization
+
+This experiment changes how an initial proposal is found, NOT the accepted
+image objective, map representation, topology theorem, or subsequent Adam
+recipe. It tests capture of finite motion where a local image derivative may
+give an uninformative direction. It is not a new learned matcher or CNN.
+
+Let Phi_f,Phi_m be the existing eight-channel descriptors computed separately
+on the original128-by-128 area-reduced fixed and moving rasters; let m be the
+existing area-reduced fixed mask. Raster values are defined at pixel centers
+((j+.5)/128,(i+.5)/128). Continuous raster evaluation here means bilinear
+sampling with zero padding and align_corners=False. The separate33-by-33
+proposal lattice has nodes q_i=(j/32,i/32), INCLUDING its edges and four corners;
+these are mesh vertices, not128raster pixel centers.
+
+At the initial identity residual map, define nine source patch offsets
+s in {-1,0,1}^2/128 and81 candidate integer vectors k in {-4,...,4}^2.
+The candidate original-moving query for a patch sample is
+
+    z_is(k) = A(q_i+s)+b+k/128.
+
+Thus k is in ORIGINAL MOVING128-raster pixels, AFTER the affine: one label
+unit corresponds to4pixels on the512canvas, and the search radius is16pixels
+in each moving-canvas coordinate. It is not a pre-affine displacement or a
+change of mesh connectivity. Define componentwise outside excess
+t_a(z)=max(-z_a,0)+max(z_a-1,0) and psi(z)=sum_a t_a(z)^2.
+With a fixed patch denominator D_i=sum_s m(q_i+s), search the costs
+
+    C_i(k) = sum_s m(q_i+s) [ (1/8)||Phi_f(q_i+s)-Phi_m(z_is(k))||_1
+                              + psi(z_is(k)) ] / D_i.
+
+The SAME D_i and nine fixed mask weights apply to EVERY label. Out-of-bounds
+moving queries are zero-padded and penalized, never removed from the average.
+If D_i=0 the node proposes zero. Otherwise choose the first minimizer, with
+the zero vector first and other labels in fixed(x,y) lexicographic order.
+Every boundary node is forced to the zero label regardless of its unconstrained
+minimum. Reported chosen boundary costs are the applied zero-label costs.
+
+Let d_i=k_i*/128. Convert to pre-affine normalized displacement by solving
+the TWO-by-TWO system A p_i=d_i, i.e. p_i=A^{-1}d_i. This tiny constant-affine
+conversion is not a dense mesh linear system. Componentwise division is wrong
+for a rotated/sheared affine. The source features, moving features, mask, affine,
+and proposals are immutable instance inputs; no gradient through argmin is
+claimed. The resulting tensor p ofshape(1,33,33,2) is a RAW vector field, NOT
+a valid deformation, a teacher map, a baseline output, or a topology certificate.
+
+Prolong its scalar components to257vertices using the existing bilinear raw
+proposal interpolator with align_corners=True. This interpolates proposals
+BEFORE safe updates; it never resamples an accepted deformation under an old
+certificate. Starting from Y=X, try x then y. For the current accepted anchor
+and component u, use the original analytic operator from section3 with
+theta=.95, eta=.001 and alpha_trial=1. Recompute its constraints after an
+accepted x update. The y raw proposal stays the original frozen component,
+not a new search. Each attempt is accepted only if its ACTUAL rounded corner
+ratios exceed eta, its boundary/map checks pass, and original full-resolution
+E_1 strictly decreases. There is one attempt per axis, no extra alpha ladder,
+geometry repair, smoothing, or blending of accepted maps.
+
+Continue the unchanged uniform300-gradient optimizer from the accepted prefix.
+Ordinary stage-cache geometry remains allowed and is rebuilt on each new
+accepted anchor; the prefix uses its own existing safe operator. The full-output
+selection includes identity, accepted prefix and ordinary accepted stages,
+all ranked by the SAME complete E1. Selected-stage -1 means accepted prefix,
+None means initial identity, and nonnegative values are ordinary stage indices.
+The search and safe-prefix time is inside optimize time, and allocation peaks
+are reset BEFORE search. Its extra full-E calls and two geometry attempts are
+reported separately; the run is not claimed equal-compute to332-call baseline.
+
+### 45.1 Correctness evidence and predeclared advancement criterion
+
+The isolated proposal module passes20 tests including independent literal
+zero-padded bilinear costs, anisotropic affine conversion, half-pixel endpoint
+mask weights, exact tie ordering and immutable inputs. A fixture captures a
+positive2moving-pixel shift where the local descriptor-loss gradient is zero;
+this verifies a finite-search capability, not registration competitiveness.
+Five initial safe-prefix tests check geometry refresh, strict boundary/corners,
+unchanged-objective rejection, no ladder and nonfinite fallback.
+
+An independent checker found and corrected an integration mistake BEFORE
+deployment: disallowing subsequent stage_cache would have changed the baseline
+recipe. Both unchanged cached and ordinary stages are now supported. A whole
+cached-optimizer zero-prefix fixture preserves the final vertex table bitwise
+and all objective parts, with exactly2additional full-E calls. Affected module,
+prefix and compiled-prior tests pass42tests in8.09s. Two earlier fixture failures
+were due to intentionally unsupported inputs hitting unrelated earlier guards;
+the fixtures now isolate the capture guard, not weaken production validation.
+
+The decisive pilot uses the THREE prepared real-texture synthetic targets
+wide_shear, local_rotation andcoarse_fine with their original rasters, Q1
+generating truth, P1-ac estimate, float64 image evidence, frozen image-only
+machine points and300-gradient ARAP3 recipe. Run fresh baseline and prefix
+with the SAME4096posthoc queries (seed20261001). Advance to one all20 anatomy
+comparison ONLY if at least2/3 query-coordinate RMSEs improve, their equal-case
+arithmetic mean improves and no geometry/budget failure is added. These are
+synthetic map errors, NOT biological landmark TRE. Targets peak37--61pixels,
+outside the16pixel/axis search range: the test is basin improvement of subsequent
+optimization, not full target reconstruction by the prefix alone. On all20,
+either aggregate mean or aggregate direction-p90 worsening rejects this recipe;
+no radius/window/weight sweep follows. Actual pilot results are given below.
+
+The prior-art principle is established by
+[Siebert, Hansen and Heinrich, section2](https://arxiv.org/html/2112.03053v1):
+discrete feature-displacement costs, spatial coupling and subsequent instance
+optimization. Our fixed L1/33-basis/hard-feasible prefix omits their coupled
+optimization and is a LIMITED adaptation, not a ConvexAdam reproduction,
+globally convex algorithm, convergence theorem or new expressivity result.
+Files: coordinated_discrete_capture.py, tools/coordinated_capture_prefix.py,
+and the optional capture_prefix path in tools/coordinated_real_case.py.
+
+### 45.2 Actual pilot: feasible proposals, but no registration improvement
+
+All six fresh applications finish300gradients,310ordinary decoder trials,
+zero failed ordinary trials and10stages. Baseline uses332complete-E calls;
+prefix uses334, plus the two separately reported safe attempts. Both axis
+proposals are rejected in every case. No map is silently repaired or replaced.
+
+|Known synthetic target|Baseline query-coordinate RMSE (512px)|With prefix (512px)|
+|---|---:|---:|
+|wide_shear|0.685479739325|0.685479739318|
+|local_rotation|3.392632733312|3.392632733311|
+|coarse_fine|0.595647267386|0.595647267632|
+
+The equal-case mean increases from1.557919913341 to1.557919913420px.
+The differences are numerical variation, not useful improvement: no prefix
+is accepted. All six candidate scales are0.474525 and minimum corner ratios
+are0.05095, above eta. Candidate full-E increases span0.0653225--0.1214337.
+Although the MIND term decreases in all six candidates, weighted ARAP increases
+by0.103655--0.124061 and dominates the appearance gain; shape also increases.
+Machine-point loss improves in five candidates, but this does not overcome
+the original complete objective. The test therefore rejects this EXACT
+independent-label prefix, not every discrete search or coupled correspondence
+method. Its coherence with the declared objective is insufficient. No radius,
+window, weight, alpha or coupling sweep follows, and no all20 run is launched.
+
+Independent review checks all six final maps and1,572,864 digital corners,
+exact boundaries, common affines, all budgets, and generic triangle-affine
+evaluation of4096queries per case. Stored RMSE agrees within4.44e-16px.
+Separately, the checker reconstructs all six raw proposals on CPU, independently
+prolongs33-to257 components, computes determinant changes without the safe
+operator, derives the analytic scale and checks another1,572,864 candidate
+corners. Scales and minimum ratios agree exactly; complete-E values agree
+within5.55e-17 and all six rejections are reproduced. This latter check reuses
+the existing descriptor/proposal/full-E implementations, but not the critical
+safe scaling or determinant formulas. Candidate arrays were not archived;
+these geometry results are reconstructed, not saved-candidate inspection.
+
+Prefix additional times are0.112787,0.029020,0.028476s; search alone is
+0.079533,0.004243,0.004006s. These single cold/warm calls are not a speed
+comparison. Final map differences remain tiny (maximum1.27e-8 normalized
+coordinates); both arms otherwise execute the same unchanged optimizer.
+Reports: known_discrete_capture_baseline_t14.json and
+known_discrete_capture_prefix_t14.json in outputs/coordinated_instance_registration.
+
+## 46. Frozen-point application timing transfers to a second known pair
+
+To test whether section43's HE-to-CC10 gain was pair-specific, the same
+cold-plus-three-ABBA protocol is rerun on HE-to-Ki67. The loader now takes an
+explicit original pair_name, defaulting to HE-to-CC10 for backward compatibility;
+it verifies the selected row's direction, full original recipe and raw-match
+image/affine frame. No row is renamed, no new matcher runs, and no landmark is
+read during the14fresh optimizations. Both arms use Inductor priors; only
+existing versus frozen machine-point indices/weights differ, apart from output.
+
+Warm complete-call medians are2.951007409 versus2.698016612s, an8.5730%
+reduction. ABBA mean-time ratios are1.094499,1.087646,1.115014. Independent
+recomputation of all14actual maps checks3,670,016 digital corners and
+1,835,008 P1 triangles, with minimum normalized corner.006557348617>.001.
+All boundaries and positive original float32 affines are exact matches, P1-ac
+geometry is float64, and300gradients/310trials/332E/0failures/10stages remain.
+Each of the seven frozen runs prepares157points ONCE (7536resident bytes);
+the seven existing runs prepare none. The setup cost is inside complete-call
+time; its observed host-call median is.660ms, not a synchronized GPU subclock.
+
+Across36warm cross-backend map pairs, maximum absolute vertex difference is
+8.23423e-10, coordinate RMS4.27424e-12 and final-E difference4.38427e-13.
+Within30same-backend comparisons these are7.92953e-10,3.43497e-12 and
+3.68594e-13. Cross differences are SLIGHTLY ABOVE within maxima, but of the
+same observed scale; do not claim bitwise equality or a universal equivalence
+bound. Warm allocated peaks span204834304--205915136bytes, with the same
+feature/setup/compiler-host exclusions as section43.
+
+Cold existing7.40655s versus frozen2.66280s is NOT a cold-point speed result:
+the first run has prior compiler/runtime startup and the second reuses caches.
+CUDA sampling backward may be nondeterministic. These two
+known-pair timing experiments support a bounded warm engineering benefit, not
+clinical validation, all-dataset throughput, anatomical improvement or new
+registration-method novelty. Root pair-selector tests pass25tests in48.11s;
+the independent14-map/timing/counter review passes without production imports.
+Actual report: outputs/coordinated_instance_registration/
+he_ki67_frozen_points_application_t14.json, with all14saved map/report pairs.

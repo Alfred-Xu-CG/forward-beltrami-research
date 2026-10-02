@@ -153,6 +153,7 @@ def test_common_shape_weight_and_target_free_optimizer_interface(tmp_path,monkey
         assert opt.geometry_backend=="existing" and opt.output_selection=="best_full"
         assert opt.strain_model==strain_model
         assert opt.mind_order=="after_warp"
+        assert opt.capture_prefix=="none"
         assert not any(word in key for key in vars(opt) for word in ("target","landmark","truth"))
         assert opt.fixed.name=="fixed.png" and opt.moving.name=="moving.png"
         assert opt.affine.name=="identity.npz"
@@ -173,6 +174,93 @@ def test_common_shape_weight_and_target_free_optimizer_interface(tmp_path,monkey
     assert row["target_objective_parts"]["shape"]==pytest.approx(row["target_corner_shape"])
     assert row["strain_model"]==strain_model and row["target_declared_objective_interpolation"]==interpolation
     assert row["mind_order"]=="after_warp"
+    assert row["capture_prefix"]=="none" and row["capture_record"] is None
+    assert row["capture_objective_evaluations"]==row["capture_geometry_attempts"]==0
+
+
+def _capture_args(tmp_path):
+    from types import SimpleNamespace
+    return SimpleNamespace(output=tmp_path/"report.json",inputs_from=None,image_side=128,grid_side=257,
+        targets=["wide_shear"],methods=["analytic"],loss="mind",strain_weight=3.,strain_model="p1_arap",
+        shape_weight=1e-4,levels=[17,33,65,129,257],inner_steps=30,cycles=1,learning_rate=.004,
+        minimum_jacobian=.001,image_levels=[32,64,128,128,128],device="cpu",threads=2,
+        record_stages=False,query_thresholds=[1.,5.,10.],interpolation="p1_ac",mind_order="transport",
+        coordinate_mode="alternating",geometry_backend="stage_cache",p1_sampling="frozen",
+        output_selection="best_full",capture_prefix="mind_discrete")
+
+
+def test_capture_prefix_forwards_configuration_and_preserves_authoritative_call_count(tmp_path,monkeypatch):
+    from PIL import Image
+    import tools.coordinated_real_case as app
+    from tools.coordinated_known_image_case import run
+    torch.set_num_threads(2)
+    args=_capture_args(tmp_path)
+    raster=np.arange(128*128,dtype=np.uint8).reshape(128,128)
+    for name in ("fixed.png","moving.png"):
+        Image.fromarray(raster).save(tmp_path/name)
+    target=target_map(reference_grid(257),"wide_shear")
+    np.savez(tmp_path/"target.npz",vertices=target.numpy())
+    manifest=dict(moving="moving.png",identity_affine="identity.npz",
+        cases=[dict(target="wide_shear",fixed="fixed.png",target_archive="target.npz")])
+    capture=dict(mode="mind_discrete",geometry_attempts=2,objective_evaluations=2,accepted_axes=1,
+        search_seconds=.11,complete_prefix_seconds=.14,search_diagnostics={"labels":81},attempts=[])
+    calls=[]
+    def image_only_optimizer(opt):
+        calls.append(opt)
+        assert opt.capture_prefix=="mind_discrete"
+        assert opt.precision==opt.image_precision=="float64"
+        assert opt.strain_weight==3. and opt.strain_model=="p1_arap" and opt.shape_weight==1e-4
+        assert opt.cycles==1 and opt.inner_steps==30 and opt.levels==args.levels
+        assert opt.interpolation=="p1_ac" and opt.output_selection=="best_full"
+        assert not any(word in key for key in vars(opt) for word in ("target","landmark","truth"))
+        np.savez(opt.output,vertices=reference_grid(257).numpy())
+        return dict(optimize_seconds=.8,gradient_steps=300,evaluations=310,objective_evaluations=334,
+            stages=[{"accepted_full_total":.1} for _ in range(10)],failed_trials=0,
+            median_forward_objective_seconds=.001,median_vjp_seconds=.002,peak_allocated_bytes=None,
+            initial={},final={},saved_binary_certificate={"valid":True},capture_prefix="mind_discrete",
+            capture_record=capture,capture_objective_evaluations=2)
+    monkeypatch.setattr(app,"optimize",image_only_optimizer)
+    payload=run(args,manifest)
+    row=payload["results"][0]
+    assert len(calls)==1 and payload["configuration"]["capture_prefix"]=="mind_discrete"
+    assert row["capture_record"]==capture and row["capture_objective_evaluations"]==2
+    assert row["capture_geometry_attempts"]==2
+    assert row["capture_search_seconds"]==.11 and row["capture_complete_prefix_seconds"]==.14
+    assert row["optimize_seconds"]==.8 and row["gradient_steps"]==300
+    assert row["objective_evaluations_including_stage_anchors"]==334  # NOT 336: already includes prefix.
+    assert row["target_interpolation"]=="q1" and row["landmarks_or_target_used_by_optimizer"] is False
+
+
+@pytest.mark.parametrize("change",[
+    {"methods":["analytic","f2"]},{"grid_side":513},{"interpolation":"p1_bd"},
+    {"coordinate_mode":"joint"},{"loss":"local_ncc"},{"mind_order":"after_warp"},
+    {"levels":[17,65,129,257]},{"image_levels":[32,64,256,512,512]},
+    {"capture_prefix":"unknown"},
+])
+def test_unsupported_capture_matrix_refused_before_any_input_or_optimizer(tmp_path,monkeypatch,change):
+    import tools.coordinated_real_case as app
+    import tools.digital_q1_real_optimize as images
+    from tools.coordinated_known_image_case import run
+    args=_capture_args(tmp_path)
+    for key,value in change.items():
+        setattr(args,key,value)
+    monkeypatch.setattr(app,"optimize",lambda *a,**k:pytest.fail("optimizer must not start"))
+    monkeypatch.setattr(images,"_read_gray_thumbnail",lambda *a,**k:pytest.fail("input must not be opened"))
+    with pytest.raises(ValueError,match="capture"):
+        run(args,{})
+    assert not args.output.exists()
+
+
+def test_capture_cli_guard_runs_before_preparation(tmp_path,monkeypatch):
+    import sys
+    import tools.coordinated_known_image_case as known
+    monkeypatch.setattr(known,"prepare",lambda *a:pytest.fail("preparation must not start"))
+    monkeypatch.setattr(sys,"argv",["known","--moving",str(tmp_path/"moving.png"),
+        "--output",str(tmp_path/"report.json"),"--capture-prefix","mind_discrete",
+        "--interpolation","p1_ac","--image-levels","32","64","128","256","512"])
+    with pytest.raises(SystemExit) as error:
+        known.main()  # Default four-method matrix is incompatible, even before prepare-only.
+    assert error.value.code==2
 
 
 def test_native_posthoc_constant_translation_matches_physical_units():

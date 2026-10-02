@@ -343,6 +343,17 @@ def optimize(args, accepted_stage_callback=None):
             args.levels[-1]!=args.grid_side or
             any(b<=a or (b-1)%(a-1) for a,b in zip(args.levels,args.levels[1:]))):
         raise ValueError("nested_p1 needs one increasing nested global P1 cycle ending at grid_side")
+    capture_prefix=getattr(args,"capture_prefix","none")
+    if capture_prefix not in ("none","mind_discrete"):
+        raise ValueError("capture_prefix must be none or mind_discrete")
+    if capture_prefix=="mind_discrete" and (
+            args.method!="analytic" or nested or joint or fine_patch_cells or filter_steps
+            or args.grid_side<33 or 33 not in args.levels
+            or 128 not in image_levels or args.image_side<128
+            or args.loss!="mind" or mind_order!="transport" or image_weight!=1.
+            or args.oob_weight!=1. or args.precision!="float64"
+            or getattr(args,"interpolation","q1")!="p1_ac"):
+        raise ValueError("mind_discrete capture needs fixed P1-ac float64 analytic alternating controls, 33 coefficient/128 image level, transport MIND weight1 and OOB1, without other proposal variants")
     device = torch.device(args.device)
     torch.set_num_threads(args.threads)
     dtype = torch.float64 if args.precision == "float64" else torch.float32
@@ -428,6 +439,29 @@ def optimize(args, accepted_stage_callback=None):
     if output_selection not in ("last","best_full"):
         raise ValueError("output selection must be last or best_full")
     full_best_map, full_best_loss, full_best_stage = materialize(current).detach().clone(), float(initial), None
+    capture_record=None
+    capture_objective_evaluations=0
+    if capture_prefix=="mind_discrete":
+        from qcopt.neural_bijection.dense.coordinated_discrete_capture import discrete_capture_proposal
+        from tools.coordinated_capture_prefix import apply_capture_proposal
+        capture_evidence=evidence_by_resolution[128]
+        synchronize(); capture_start=time.perf_counter()
+        proposal_result=discrete_capture_proposal(capture_evidence.fixed_feature,
+            capture_evidence.moving_feature,capture_evidence.mask,evidence.matrix,evidence.offset,
+            geometry_dtype=dtype)
+        synchronize(); search_seconds=time.perf_counter()-capture_start
+        current,capture_record=apply_capture_proposal(current,reference,proposal_result.proposal,
+            evidence,anchor_total=float(initial),minimum_jacobian=args.minimum_jacobian)
+        synchronize()
+        capture_record.update(mode=capture_prefix,search_seconds=search_seconds,
+            complete_prefix_seconds=time.perf_counter()-capture_start,
+            search_diagnostics=proposal_result.diagnostics,
+            differentiation_scope="deterministic discrete instance initializer; no argmin VJP or neural encoder claim",
+            acceptance="strict actual geometry plus original complete full-resolution E1 decrease; no alpha ladder")
+        capture_objective_evaluations=capture_record["objective_evaluations"]
+        if capture_record["accepted_axes"]:
+            full_best_map=current.detach().clone()
+            full_best_loss,full_best_stage=capture_record["accepted_total"],-1
     for cycle in range(args.cycles):
         for level_index,level in enumerate(args.levels):
             stage_inner_steps=inner_steps_by_level[level_index]
@@ -657,13 +691,13 @@ def optimize(args, accepted_stage_callback=None):
                                  "joint_prior_backend":joint_prior_backend,
                                  "match_p1_sampling":match_p1_sampling,
                                  "inner_steps_by_level":inner_steps_by_level,
-                                 "image_weight":image_weight},
+                                 "image_weight":image_weight,"capture_prefix":capture_prefix},
                   representation=evidence.interpolation+" residual then frozen positive affine; exact declared interpretation",
                   initial=initial_record, final=dict(total=float(final), **{k: float(v) for k,v in parts.items()}),
                   control_vertices=args.grid_side**2, cells=(args.grid_side-1)**2,
                   corner_constraints=4*(args.grid_side-1)**2, query_count=args.image_side**2,
                   evaluations=evaluations, gradient_steps=gradient_steps, failed_trials=failed_trials,
-                  objective_evaluations=evaluations+2*len(stages)+2+(2*len(stages) if nested_evaluation=="coarse_exact" else 0),
+                  objective_evaluations=evaluations+2*len(stages)+2+(2*len(stages) if nested_evaluation=="coarse_exact" else 0)+capture_objective_evaluations,
                   optimize_seconds=elapsed, median_forward_objective_seconds=float(np.median(forward_seconds)),
                   loading_seconds=loading_seconds,feature_seconds=feature_seconds,
                   serialization_seconds=serialization_seconds,certification_seconds=certification_seconds,
@@ -680,6 +714,9 @@ def optimize(args, accepted_stage_callback=None):
                   mind_order=mind_order if args.loss=="mind" else None,
                   image_levels=image_levels,
                   image_weight=image_weight,
+                  capture_prefix=capture_prefix,capture_record=capture_record,
+                  capture_objective_evaluations=capture_objective_evaluations,
+                  selected_stage_scope="None=initial identity residual, -1=accepted capture prefix, nonnegative=ordinary stage index",
                   inner_steps_by_level=inner_steps_by_level,
                   continuation_scope=continuation_scope,
                   output_selection=output_selection,selected_stage=full_best_stage if output_selection=="best_full" else len(stages)-1,
@@ -761,6 +798,8 @@ def main():
     p.add_argument("--match-weight",type=float,default=0.)
     p.add_argument("--image-weight",type=float,default=1.,
                    help="dense image contribution; zero still computes/reports it diagnostically")
+    p.add_argument("--capture-prefix",choices=("none","mind_discrete"),default="none",
+                   help="one finite-displacement existing-MIND proposal, strict analytic x/y attempts then unchanged optimizer; extra search/calls counted")
     p.add_argument("--match-p1-sampling",choices=("existing","frozen"),default="existing",
                    help="optional immutable P1 machine-point query cache; fixed control hierarchy only")
     p.add_argument("--match-robust-scale",type=float,default=8.,help="pseudohuber error scale in full moving-canvas pixels")

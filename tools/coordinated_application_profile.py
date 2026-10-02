@@ -1,4 +1,4 @@
-"""Profile unchanged HE->CC10 analytic application, bracketed by normal runs.
+"""Profile an explicitly selected unchanged known pair, bracketed by normal runs.
 
 Uses the existing all20 raw-match JSON/affine/canvases. No matcher, labels,
 optimizer replacement, graph compilation, or production-source edit occurs.
@@ -109,17 +109,21 @@ def summarize_events(events,*,cuda_requested,top=25):
         cpu_total_scope="sum profiler event self CPU times including annotation self time; operator-only sum excludes annotations; multiple threads and instrumentation can differ from complete-call wall time")
 
 
-def load_configuration(path,output,*,production=True):
+def load_configuration(path,output,*,production=True,pair_name="he_to_cc10"):
+    if not isinstance(pair_name,str) or not pair_name:
+        raise ValueError("explicit nonempty original pair_name required")
     source=json.loads(path.read_text(encoding="utf-8"))
     if source.get("annotations_read") is not False or source.get("cohort_size")!=20:
         raise ValueError("original image-only all20 prediction report required")
-    rows=[row for row in source["rows"] if row["name"]=="he_to_cc10"]
+    rows=[row for row in source["rows"] if row["name"]==pair_name]
     if len(rows)!=1 or rows[0]["input_status"]!="ok" or rows[0]["raw_matches"]["status"]!="ok":
-        raise ValueError("one valid frozen HE-to-CC10 input/raw-match record required")
+        raise ValueError(f"exactly one valid frozen {pair_name} input/raw-match record required")
     row=rows[0]
+    if pair_name!=f"{row.get('fixed_stain')}_to_{row.get('moving_stain')}":
+        raise ValueError("selected original row direction does not agree with its name")
     recorded=row["methods"]["analytic"]["configuration"]
     pair={key:Path(row[key]) for key in ("fixed","moving","affine")}
-    pair["name"]="he_to_cc10"
+    pair["name"]=row["name"]
     settings=argparse.Namespace(output=output.parent,device=recorded["device"],threads=recorded["threads"])
     config=make_configuration(pair,"analytic",settings,production=production)
     config.output=output
@@ -134,6 +138,15 @@ def load_configuration(path,output,*,production=True):
     if (raw.get("global_geometric_ransac_used") is not False or
             raw.get("targets_manual_landmarks_or_dense_teacher_loaded") is not False):
         raise ValueError("original frozen raw-confidence match provenance required")
+    if raw.get("status")!="ok":
+        raise ValueError("selected original frozen raw-match record must be successful")
+    with np.load(config.affine,allow_pickle=False) as affine:
+        matrix,offset=affine["post_affine_matrix"],affine["post_affine_offset"]
+    # Reuse actual production frame checks on CPU, outside measured application
+    # calls. No new points, filtering rule, matcher or row substitution is used.
+    application.load_image_matches(config.matches,matrix,offset,fixed_path=config.fixed,
+        moving_path=config.moving,image_side=config.image_side,device="cpu",dtype=torch.float64,
+        robust_scale=config.match_robust_scale)
     return config
 
 
@@ -181,19 +194,20 @@ def run(args,*,production=True):
     if len({path.resolve() for path in targets})!=len(targets):raise ValueError("output paths must be distinct")
     for path in targets:
         if path.exists():raise FileExistsError(path)
-    config=load_configuration(args.predictions,paths[kinds[0]],production=production)
+    pair_name=getattr(args,"pair_name","he_to_cc10")
+    config=load_configuration(args.predictions,paths[kinds[0]],production=production,pair_name=pair_name)
     device=torch.device(config.device)
     cuda=device.type=="cuda"
     if cuda and not torch.cuda.is_available():raise RuntimeError("source recipe requires CUDA, unavailable on this host")
     activities=[torch.profiler.ProfilerActivity.CPU]
     if cuda:activities.append(torch.profiler.ProfilerActivity.CUDA)
     args.output.parent.mkdir(parents=True,exist_ok=True)
-    report=dict(status="running",source_predictions=str(args.predictions),source_matches=str(config.matches),
+    report=dict(status="running",pair_name=pair_name,source_predictions=str(args.predictions),source_matches=str(config.matches),
         source_fixed=str(config.fixed),source_moving=str(config.moving),source_affine=str(config.affine),
         matcher_executed=False,annotations_read=False,activities=["CPU","CUDA"] if cuda else ["CPU"],runs=[],
         torch_version=torch.__version__,cuda_device_name=torch.cuda.get_device_name(device) if cuda else None,
         configuration={key:str(value) if isinstance(value,Path) else value for key,value in vars(config).items()},
-        interpretation="unchanged HE-to-CC10 analytic recipe; brackets are repeated instance runs, not held-out accuracy tests. CUDA grid-sample backward can be nondeterministic; report actual differences and unprofiled repeat variation rather than assuming bitwise equality",
+        interpretation="unchanged explicitly selected original known-pair analytic recipe; brackets are repeated instance runs, not held-out accuracy tests. CUDA grid-sample backward can be nondeterministic; report actual differences and unprofiled repeat variation rather than assuming bitwise equality",
         timing_scope="matcher excluded: same already-frozen raw JSON every run. Complete-call timing synchronizes before/after existing optimize, includes input/features/optimizer/export/certificate; profiler session additionally includes profiler start/finalization and wrapper setup. Before can contain cold first optimizer setup; after is warmer. No cold/warm speedup claim",
         memory_scope="existing optimizer CUDA allocated peak only, reset by optimizer after features; profiler CPU event-buffer memory and process RSS are not measured. Shapes, stacks and profiler allocation recording are disabled to bound profiling overhead")
     def persist():args.output.write_text(json.dumps(report,indent=2)+"\n",encoding="utf-8")
@@ -247,6 +261,7 @@ def run(args,*,production=True):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--predictions",type=Path,required=True,help="Existing all20 predictions.json")
+    parser.add_argument("--pair-name",default="he_to_cc10",help="Exact original row name; default he_to_cc10")
     parser.add_argument("--output",type=Path,required=True,help="New compact profile JSON")
     parser.add_argument("--trace",type=Path,help="Optional new Chrome trace JSON; can be large")
     report=run(parser.parse_args())
