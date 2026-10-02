@@ -8,6 +8,53 @@ The detailed derivations and experiment definitions are in FORMULATION.md;
 chronology and negative interventions are in PROGRESS.md. This report introduces
 the main objects without requiring knowledge of those earlier discussions.
 
+### Measured conditional pipeline cost, not raw-WSI end-to-end cost
+
+On the AI host's RTX A6000, the unchanged retained recipe was rerun from all
+25 accepted 512-square image pairs and their saved positive affines. Fresh SG
+and MA matching, point-table fusion, the 300-gradient instance optimizer,
+export and geometric checks all completed. The stage-batched workload took
+149.517736 seconds: 5.980709 seconds per attempted direction, or 0.167204
+successful maps/second. The first saved map appeared at 16.337309 seconds.
+These are batch throughput and first-response latency, NOT 25 independent
+cold-start or warm-start per-case latencies.
+
+The workload constructs SG's model separately on each of 25 calls and loads MA
+once (0.628040 seconds, with 0.155470 seconds to close). SG extraction totals
+7.268114 seconds, MA extraction 2.575852 seconds, fusion 1.260888 seconds,
+and optimization plus export/validation 136.180288 seconds. Table comparisons,
+shared setup/release and batch bookkeeping make up the remainder. Imports,
+weight downloads, original-image decoding/rendering, heterogeneous initial
+affine estimation, and manual-label scoring are excluded. In particular, this
+measurement must not be divided into native DHR's original-image full-pipeline
+time and presented as a like-for-like speedup.
+
+Peak PyTorch allocation for the entire timed workload was 1,028,263,424 bytes
+(1.028 GB); reserved memory peaked at 1,837,105,152 bytes (1.837 GB). The collector
+records each peak BEFORE nested routines reset it, then takes the maximum over
+77 segments. Peaks are not added. This is allocator memory, not total board
+VRAM or CPU resident memory; matchers are released before optimization.
+The earlier roughly 0.214 GB figure described the optimizer scope only.
+
+All 75 fresh SG/MA/fused tables reproduce their archived arrays bitwise. The
+25 maps are not bitwise identical: the maximum vertex-coordinate difference
+is 2.472e-5 unit coordinates. Nevertheless, the maximum change in an individual
+evaluated landmark error is 1.414e-7 canvas pixels, and the largest per-direction
+mean change is 1.873e-9 pixels. Thus this is a numerically equivalent accuracy
+rerun at the evaluated points, not a claim of bitwise map reproducibility.
+Separate recomputation of all 25 actual maps, objectives and all 2,074 original
+CSV errors passed; no evaluation landmark was used during the timed pipeline.
+Inherited MIIT F2 and reduced-DHR score entries are explicitly archived
+comparators, not fresh executions in this run.
+
+Artifacts are `outputs/coordinated_instance_registration/conditional_pipeline25_t29/`;
+the executable is `tools/coordinated_conditional_pipeline.py`. The initial
+launch failed before creating outputs because the MA-only environment could
+not import DHR. Its log is preserved. The successful launch used the existing
+MA environment with the existing DHR site-packages appended to `sys.path`;
+no package installation, model change or data substitution occurred. The
+exact invocation and exclusions are recorded in PROGRESS.md.
+
 ### Does the frozen matcher hide useful alternative correspondences?
 
 The unchanged MatchAnything inference exposes a4096-by4096 coarse confidence
@@ -786,6 +833,12 @@ is a frozen translation. The residual boundary is Y_ij=X_ij on all four sides.
 Hence f_Y maps the rectangle to itself; F maps it onto its affine image, not
 necessarily the entire moving-image canvas. The saved archive retains the
 residual table and original affine separately. Evaluators apply A exactly once.
+
+Here "discrete" means that a finite vertex table specifies an interpolated
+continuous map. It does NOT mean an integer permutation of image pixels, or
+that bilinear intensity resampling is lossless/invertible. The certified object
+is the declared P1 coordinate map (with the stronger four-corner condition),
+not an arbitrary later resampling of that map onto another lattice.
 
 An image of width W,height H defines intensities at ((j+.5)/W,(i+.5)/H), its
 pixel centers. Map vertices instead lie at endpoints j/(N-1),i/(N-1). Map

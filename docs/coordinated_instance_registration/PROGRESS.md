@@ -7,6 +7,85 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### Last bounded robustness question: reverse the three MIIT tasks — 2026-10-02 14:32 UTC
+
+Question: does the retained SG+MA complement improve the unchanged SG1 recipe
+when the three existing image pairs exchange moving/fixed roles? Test ALL
+3->2, 8->7, and 11->10 directions; no subset chosen by image appearance,
+matches or annotation errors. This is direction robustness within the same
+already viewed prostate specimen, NOT independent/blind generalization.
+The seemingly new adjacent section pairs 1->2, 3->6, 6->7, 8->9, 9->10 were
+already evaluated in earlier project history; do not relabel them unseen.
+
+Freeze SG1 and fusion300 recipes and native STANDARD DHR with shared supplied
+initialization. Exactly swap the accepted image canvases and layout roles.
+For the original saved F0(x)=Ax+b, form reverse initializer A'=A^{-1},
+b'=-A^{-1}b in float64, then store the declared runtime precision. Verify
+the positive stored determinant, actual inverse-rounding error, and identical
+stored A',b' for all three methods. Regenerate SG/MA observations from the
+reverse images; do not reverse an optimized field or recycle forward matches.
+Native DHR still uses its original TIFF preprocessing and STANDARD parameters;
+only its initializer is conjugated from the same reversed canvas affine.
+
+All nine method attempts are declared before inference. No evaluation landmark
+is read until all nine terminate; retain every available paired ID and failure.
+Compare reverse SG1/fusion/native within each reverse task on mean/p90/maximum
+canvas TRE, time and recorded memory, with geometry checks on safe outputs.
+No parameter sweep, new selector or method change follows these three results.
+Expected implementation, execution and independent scoring budget: 45--60 min;
+preserve time for the final scientific review rather than adding more branches.
+
+For interpretation, F=A composed with f has inverse f^{-1} composed with A^{-1}.
+The reverse recipe A^{-1} composed with g, where g fixes its own unit-square
+boundary, need not represent that same inverse-domain admissible class.
+Forward/reverse error asymmetry can therefore involve boundaries, masks,
+normalization, affine-prewarp interpolation, evidence and optimization. It is
+not by itself an inverse-consistency defect or proof of a matcher bottleneck.
+Astra xhigh independently approved this bounded test; Astra high builds it
+and a distinct Astra high context checks its actual maps and coordinates.
+
+### Conditional pipeline completed and independently checked — 2026-10-02 14:29 UTC
+
+All 25 fresh SG+MA+fusion300 calls completed on AI GPU5 (RTX A6000); no other
+jobs or ports were touched. All 75 fresh tables equal the originals bitwise;
+maps have maximum component drift 2.472e-5 unit, not bitwise reproducibility.
+Largest individual TRE drift is 1.414e-7 canvas pixels. Actual saved geometry,
+objectives and all 2,074 original CSV errors passed independent recomputation.
+The retained global recipe and accuracy conclusions are unchanged.
+
+Whole stage-batched elapsed 149.517736s; 5.980709s/attempt; first saved map
+16.337309s. Allocated/reserved maxima are 1,028,263,424/1,837,105,152 bytes,
+captured over 77 nested-reset segments. Original raster decode/render and
+initial-affine estimation remain excluded, as do dependency imports, downloads
+and manual scoring. The case component sums are NOT individual response times.
+Actual SG construction count25, MA setup count1. Scoring manifests retain old
+F2/reduced-DHR references marked archived; only their analytic entries are fresh.
+Root independently reran the affected focused suite: 16 passed in 17.51s.
+
+The first launch's missing `deeperhistreg` dependency failed before output
+creation. Both original and successful logs are retained. The successful
+existing-environment invocation, from the AI research root, was:
+
+```bash
+env CUDA_VISIBLE_DEVICES=5 PYTHONPATH=src:. OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 \
+  MKL_THREADING_LAYER=SEQUENTIAL PYTHONDONTWRITEBYTECODE=1 \
+  TMPDIR=/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/tmp \
+  matchanything_cache/venv/bin/python -c \
+  "import sys,runpy; sys.path.append('/home/ET/zhxu/codex_runs/digital_topology_wsi_20260929/venv_dhr_gpu/lib/python3.10/site-packages'); runpy.run_module('tools.coordinated_conditional_pipeline',run_name='__main__')" \
+  --miit-control results/miit_multiscale_control_t19 \
+  --existing-control results/existing22_shared_affine_a300_t20 \
+  --ma-predictions results/matchanything_all25_t22 \
+  --fusion-predictions results/match_fusion_all50_t23/fusion \
+  --source-root matchanything_cache/source \
+  --checkpoint matchanything_cache/weights/matchanything_eloftr.ckpt \
+  --output results/conditional_pipeline25_t29
+```
+
+The shell launched this through `nohup` with stdout/stderr in the retained
+runtimefix log. Dependency path append happens after MA's normal dependencies;
+no installed environment or SSH configuration was changed. Outputs, both logs,
+scores and independent checker evidence have been downloaded to D.
+
 ### Next bounded measurement: conditional full pipeline (2026-10-02)
 
 Question: what does the retained recipe actually cost when frozen match tables

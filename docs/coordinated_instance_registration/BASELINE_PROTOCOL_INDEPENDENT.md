@@ -1584,3 +1584,82 @@ registration is disabled and runtime nonrigid time is zero. This is numerical
 provenance, not filename inference. Calling all25 initializers a uniform direct
 SG similarity is incorrect; the valid shared-map statement is unchanged exact
 image-only positive A,b within each comparison. No benchmark map changed.
+
+### Conditional accepted-canvas pipeline: independent pre-run check
+
+The bounded timing card and `coordinated_conditional_pipeline.py` were reviewed
+against the original SG, MA, fusion300, export and scoring-adapter paths. The
+runner retains the exact per-case supplied A,b and original extraction recipes;
+archived tables are diagnostic comparators only, never fallback inputs. All25
+cases are declared before inference, including failures. Existing output paths
+are rejected before writes. Imports, original-image rendering, supplied-A
+estimation, downloads and manual-label scoring remain outside this measurement.
+
+The checker requested first-saved-map and per-case completion timestamps because
+the workload is stage-batched: SG25, shared-MA setup/extraction25/close, then
+fusion/optimization/export25. The author added those timestamps and explicit
+scope fields. The sum of each case's components excludes shared setup/close
+and is neither response latency nor an independent warm/cold end-to-end run.
+
+`independent_conditional_pipeline_probe_20261002.py` independently exercises
+the reset-aware peak collector with distinct allocated/reserved maxima across
+nested resets, including a larger setup peak before reset. The original CUDA
+API is restored even if exit synchronization raises. Its separate fake-clock
+and event-order oracle retains25 declared cases with three different injected
+failures (22 successes), confirms fresh modified SG values reach fusion rather
+than archived values, and checks completion timestamps versus component sums,
+setup counts25/1/25 and non-overwrite behavior. This probe passes, as do eight
+focused author tests rerun by the checker (10.42 seconds). These are CPU source
+and lifecycle checks, not actual GPU timing or proof of a particular GPU peak.
+Actual saved-output and score review is pending the separately launched batch.
+
+### Conditional accepted-canvas pipeline: actual all25 closure
+
+The completed `conditional_pipeline25_t29` supersedes the pre-run pending state.
+`independent_conditional_pipeline_postrun_20261002.py --scores` independently
+checks all25 terminal successes, all75 SG/MA/fusion tables, unchanged numerical
+configuration and supplied A,b, literal all-row fusion, exact boundary and binary
+certificate, corner geometry, initial/final objective components and all2074
+original CSV errors. All75 table arrays are bitwise archived. Minimum saved
+corner ratio is `0.005322272599252831`; maximum objective discrepancy is
+`5.03673e-8` (float32 image term). Maximum independent score discrepancies are
+`1.137e-13` canvas pixels and `1.766e-12` native-moving pixels. No failure was
+dropped, no fallback table used, and all25 retain the300-gradient recipe.
+
+The rerun maps are **not bitwise identical** to retained fusion maps. Maximum
+vertex-coordinate difference is `2.47193e-5` unit (Histo); maximum individual
+landmark TRE change is `1.41386e-7` canvas pixels. Maximum absolute per-case
+mean/p90/maximum TRE changes are `1.87281e-9 / 4.93117e-12 / 1.85286e-10` pixels.
+Thus the saved scoring conclusion is numerically reproduced, not whole-map
+bitwise identity. The independent result is `conditional_pipeline25_t29/
+independent_check.json`; no optimizer or matcher was rerun by this checker.
+
+Timing arithmetic agrees: batch `149.517735783` seconds, `/25 = 5.980709431`
+seconds per attempt, first saved/certified map `16.337308567` seconds and last
+saved map `149.470963385` seconds. Per-case component sums total
+`147.858038496` seconds; shared MA setup/close is `0.783510160` seconds and
+remaining in-scope bookkeeping is `0.876187127` seconds. The reported `/25`
+is throughput amortization, not single-pair latency. SG25 plus MA25 extraction
+and their archive comparisons consume `10.248955421` component seconds before
+the optimization phase; no case can be presented as an independent warm run.
+
+Allocated/reserved maxima are separately `1,028,263,424 / 1,837,105,152` bytes
+(`980.628 / 1752 MiB`) over77 reset-delimited captures. They exceed every
+recorded component allocated peak and include pre-reset setup transients by
+the independently exercised collector lifecycle. These are PyTorch allocator
+peaks, not board VRAM, sums of component peaks or independently remeasured
+historical hardware readings. Imports, downloads, rendering accepted512
+canvases, supplied-A estimation and manual scoring are excluded as declared.
+
+The preserved `initial_environment_failure.log` shows missing `deeperhistreg`
+during dependency imports, before output-directory creation or timed workload.
+The subsequent run uses the MA environment with the existing DHR site-packages
+appended after it; no package installation is part of the reported result.
+The preserved successful log is `runtimefix.log`. This environment recovery
+is distinct from a registration-case failure and is not a26th patient case.
+
+Finally, the actual score adapters are checked: only `analytic` contains this
+fresh conditional pipeline; MIIT `dhr` and `f2` entries point to archived outputs
+and explicitly say `unchanged archived comparison; not rerun`. Fresh MIIT
+raw-match provenance points to the new fused tables. Those inherited DHR/F2
+entries must not be reported as newly run native baselines or timed by this batch.
