@@ -2150,3 +2150,112 @@ appropriate; it would be a disclosed NEW initializer protocol, never silently
 overwrite the frozen failure or call it unchanged confirmation. No image-loss,
 regularizer, decoder, annotation-based selection or nearby matcher threshold
 sweep is opened. Actual saved inputs/outputs are fetched to D.
+
+Research card — ONE initializer amendment, before any real labels:
+Question: do standard four right-angle moving-image views repair image-only
+matching eligibility without changing any deformable-registration recipe?
+Exact algorithm: k=0,1,2,3 torch.rot90 views of moving512canvas; unchanged
+SuperPoint/SuperGlue settings, confidence.3, same6pxRANSAC/minimum8inliers.
+Unrotate moving target keypoints to ORIGINAL pixel frame BEFORE existing RANSAC
+and positive-similarity fit. For k1 inverse(x,y)=(511-y_rot,x_rot); k2=(511-x_rot,
+511-y_rot); k3=(y_rot,511-x_rot). Use fixed keypoints unchanged. Select eligible
+candidate lexicographically: most RANSAC inliers, most occupied fixed4x4bins,
+lowest final positive-similarity fitRMSE, smallestk tie-break. Retain all four
+diagnostics. No labels, downstream image objective, TRE or manual orientation.
+Apply identical policy to ALL three pairs including previous successful7->8;
+samechosenfloat32positiveA,b shared byanalytic/F2/nativeDHR. All subsequent
+settings and raw point extraction unchanged. Original frozenfailures retained.
+Assumptions: orientation mismatch is at least partly matcher-limiting; right-angle
+views sufficient to provide an eligiblematch set. No anatomicalcorrectness claim.
+Falsifier: no eligiblecandidate retains failure, not identityfallback; no extra
+angle/threshold/loss sweep. Completion improvespipelinecoverage only; anatomical
+evaluation follows all terminalpredictionattempts under explicitamendedprotocol.
+Smallest decisive test: exact quarter-turn keypoint fixtures/ranking/defaultpath,
+then threeamended predictions. Priorwork: standardmulti-viewrigidinitialization,
+existing DHR SuperGlue/RANSAC; no new matcher/theorem/learnedmodel claim.
+Astra independentdecision approves thisoneboundedresponse to actual5/3 rawmatch
+failures. It is NOTunchanged-recipeconfirmation and no realcoordinates read yet.
+
+### T+15.4h all amended predictions complete; annotation availability correction
+
+Four-view initializer rescues coverage: allthree commonaffines/rawmatches valid,
+allnine registrations exported, allsixsafe300gradient/0failure. Root56focused
+tests7.65s; independentrotation39tests6.87s. Only AFTER allpredictionattempts
+complete did separate scorer FIRST openmanualcoordinates. Initial all124finite
+assumption is falsified; saved strict scoring report retains all3failures.
+First commentary incorrectly suspected out-of-native-scale; corrected immediately
+on independent diagnostic. ALLfinitecoordinates fit nativeTIFFbounds; NOscaling
+or origin correction is justified. Missingcoordinates are exclusively(+inf,+inf).
+
+Both independentcontexts verify native124nominalIDs identical inallsixsections;
+section2/3/7/8/10/11missing counts0/1/11/17/24/26. Authorprimarymetrics.py
+merges semanticlabels, replacesinf withNaN anddrops unavailableannotations before
+distances; nativeimage/Pointset loaders applyNOcoordinate scale. This is legitimate
+sourceannotation availability, not difficult prediction exclusion.
+Explicit scorer option --allow-missing-inf now requiresALL124nominalIDs but
+evaluates EVERYboth-source-finite label withSAME eligible set forALLmethods:
+123,107,98points for thethreepairs. Report unavailable labels/counts, all3pair
+denominator and EVERYpredictionfailure. NaN/partialinf/negativeinf/duplicate/
+finiteout-of-bounds stillfail; no map/parameter/annotation/source edits, no outcomes
+used tochoose eligibility. Oldstrictscore preserved; correctedscore saved separately.
+This amends scoring-input interpretation, NOTregistration; anatomicalnumbers still
+unavailable atthisdecision. Physicalspacing and exactcenter convention stayunverified.
+Prior source: https://raw.githubusercontent.com/mwess/miit/master/miit/utils/metrics.py
+
+### T+15.6h additional-specimen development transfer independently closed
+
+Explicitmissing-annotationcorrectedscore retains123/107/98availablelabels,
+all124nominalIDs/missinglists/all3pairs/ALLmethods. Equal-pair512pxmean/p90:
+affine4.90419347/8.89788359,analytic3.89754022/6.28952850,
+F23.96429371/6.38170185,nativeDHR4.05061461/7.18120484.
+Independentgenerictriangleaffines+literalCSV/nativeframequerychecksperID1.13e-12px;
+1,572,864actualsafecorners/min.20157431038/exactboundaries/sharedfloat32A,
+all300/310/332/0/10. Nativeactualnonpositivecorners11506/5271/15158retained,
+localdiagnosticnotglobalclinicalclaim.12initializerrecords: selectedk3/0/3,
+inliers142/144/110,support16/16/13; higherinliersselectk0on7->8despitelowerk3fit.
+AI GPU6RTXA6000,CUDA_VISIBLE_DEVICES6 fromactualSSHlaunch/deviceinventory;
+savedartifactconfigsrecordCUDAbutnotphysicalGPUordinal. No othersjob/portchanged.
+
+Strongadverse: analyticlosesF2on7->8mean/p90,DHRon7->8p90; maxima worseDHR
+on2->3and10->11.7->8worst52.713426px worsensaffine51.551922. Nooutliercure.
+Observedmeanscomplete4.218/13.212/.690s(A/F2/DHR), single serialcallsnotwarmABBA;
+allocatedbaselinepeaks~216/474/67MiB notprocessGPU/RSS. IndependentSolsource/
+artifactreviewclosed, not24hgoalclosed. Mainaccuracyrecipekept, correctedknown
+sourceavailabilityandimageonlyinitializerextensions fullydisclosed. REPORT.md
+nowlivingSELF-CONTAINED definitions/VJP/objective/pipeline/results/limitations,
+notfinalreview; independentmathcheckcorrectedstageacceptancevsbestfullwording.
+
+Research card — ONE detached trial-diagnostic transfer consolidation:
+Question: can avoidable individual GPUscalar->CPU transfers reduce complete
+application time without changing the mathematical optimizer or feasibility?
+Exact claim: at the SAME existingtrialdecision boundary, concatenate ALREADY
+computed detached diagnostics/parts/total/finiteflags into one CPUtransfer,
+unpackidenticalvalues; allobjective tensorarithmetic/reductions/gradientpaths,
+guardpoints/bestmapselection/iterationcounts unchanged. Legacydefaultpreserved.
+No guard isdeferred to a latertrial, no newEcall, no logs/failedtrial discarded.
+Only mainfixed-fine/nonjointanalyticstage_cache recipe initiallysupported;
+unsupported combinations explicitly rejected ratherthan quietlychanged.
+Assumptions: hosttransfer/dispatch overhead is measurable; CUDAwaitingunder
+scalaritems mayinsteadbe genuineGPUwork, so profiledCPUtime is only an upperbound.
+Smallestdecisivetest: CPUliteralvalue/gradient/fulltinytrajectory and deliberate
+NaN/illegalfixturetests, then TWOknownHECC/HEK pairedwarmABBA actualapplications,
+maps/budgets/certificates and within-backendvariation independentlyrecomputed.
+Falsifiers: anydecision/count/certdifference or mapdifference beyondknownrepeat
+scale; speedgainnotbeyondordinarywithinbackenddispersion or regressiononepair.
+If falsified retire EXACTintervention, no nearbybatching/syncpolicyforest.
+Packing/unpack/guardcost insidecompletetime. No claimednewanatomicalgain, neural
+training, registrationnovelty or newalgorithm. PrimaryPyTorchdetach/stack/cpu
+semantics plusactualpriorprofiler; independentAstraapproves boundedengineering.
+
+### T+15.8h bounded range diagnosis and unchanged-optimizer engineering
+
+Independent MIIT range diagnostic: zero targets outside the shared affine
+image polygon among123/107/98available labels. Every distance-to-range
+necessary lower bound is zero; worst7-to8Pt-121lies38.98canvas pixels inside
+the polygon but has52.71px analytic TRE. This excludes ONLY an outside-range
+explanation for that failure, not other boundary/optimization/evidence effects.
+No boundary retune. Existing ABBA comparison runner now also tests detached
+trial diagnostics while holding Inductor priors/frozen machine queries fixed.
+Root14tests31.22s, including14complete tiny CPU applications with bitwise maps
+and identical objective trajectories. Independent core/helper/runner review
+pending before production GPU pilot. Complete timers include pack/unpack cost.

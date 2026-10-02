@@ -66,6 +66,8 @@ def _finite_json(value):
 
 def run(args,*,production=True,canvas_maker=None,affine_extractor=None,
         match_extractor=None,optimizer=None,dhr_runner=None):
+    initializer=getattr(args,"initializer","direct")
+    if initializer not in ("direct","quarter_turns"):raise ValueError("initializer must be direct or quarter_turns")
     if args.device not in ("cpu","cuda") or isinstance(args.threads,bool) or not isinstance(args.threads,int) or args.threads<1:
         raise ValueError("cpu/cuda device and positive integer threads required")
     args=argparse.Namespace(**vars(args))
@@ -73,7 +75,10 @@ def run(args,*,production=True,canvas_maker=None,affine_extractor=None,
     if args.output.exists() and (not args.output.is_dir() or any(args.output.iterdir())):
         raise FileExistsError("new/empty MIIT development output directory required")
     canvas_maker=make_canvas if canvas_maker is None else canvas_maker
-    affine_extractor=extract_affine if affine_extractor is None else affine_extractor
+    if affine_extractor is None:
+        if initializer=="quarter_turns":
+            from tools.coordinated_rotation_initializer import extract as affine_extractor
+        else:affine_extractor=extract_affine
     match_extractor=extract_matches if match_extractor is None else match_extractor
     optimizer=optimize if optimizer is None else optimizer
     dhr_runner=_native_run if dhr_runner is None else dhr_runner
@@ -103,7 +108,8 @@ def run(args,*,production=True,canvas_maker=None,affine_extractor=None,
         prediction_complete=False,annotations_read=False,rows=rows,source_data=str(args.source_data),
         started_utc=datetime.now(timezone.utc).isoformat(),
         cohort_scope="ONE previously used prostate sample; additional-organ/specimen development transfer, not blind independent validation",
-        scale_assumption=SCALE_ASSUMPTION,initializer="positive image-only direct SuperGlue similarity, identical for analytic/F2/native DHR",
+        scale_assumption=SCALE_ASSUMPTION,initializer=initializer,
+        initializer_scope="positive image-only SuperGlue similarity, identical for analytic/F2/native DHR; quarter_turns is a disclosed amended initializer protocol",
         correspondence_scope="frozen image-only raw correspondence DATA; existing point evaluator, frozen raster P1 queries",
         timing_scope="serial complete calls include setup/loading/checks; affine matcher model is rebuilt once per pair; no hidden warmup or equal-runtime claim",
         memory_scope="safe-method existing executable CUDA allocated peaks; native wrapper resets before call and synchronizes/readbacks after call. Allocated peaks include any live baseline allocation, not whole-process resident/RSS or other-process GPU memory")
@@ -127,6 +133,8 @@ def run(args,*,production=True,canvas_maker=None,affine_extractor=None,
             source=affine["rows"][0]
             matrix,offset=_check_input(pair,source,side)
             row["affine_estimation"].update(status="ok",matrix=matrix.tolist(),offset=offset.tolist())
+            row["affine_estimation"].update({key:source[key] for key in
+                ("selected_quarter_turns","matcher_calls","model_build_and_load_seconds") if key in source})
             row["input_status"]="ok"
         except Exception as error:
             row.update(input_status="failed",input_error=f"{type(error).__name__}: {error}")
@@ -204,6 +212,7 @@ def main():
     parser.add_argument("--output",type=Path,required=True)
     parser.add_argument("--device",choices=("cpu","cuda"),default="cuda")
     parser.add_argument("--threads",type=int,default=2)
+    parser.add_argument("--initializer",choices=("direct","quarter_turns"),default="direct")
     print(json.dumps(run(parser.parse_args())["method_success_counts"]))
 
 

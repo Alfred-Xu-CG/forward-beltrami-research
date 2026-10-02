@@ -93,7 +93,8 @@ def test_completed_failures_retained_no_fallback(tmp_path):
     assert all(row["methods"]["common_affine"]["status"]=="failed" for row in result["rows"])
 
 
-def test_successful_all124_p1_and_native_branches_no_double_affine(tmp_path,monkeypatch):
+@pytest.mark.parametrize("missing",[False,True])
+def test_successful_all124_p1_and_native_branches_no_double_affine(tmp_path,monkeypatch,missing):
     from PIL import Image
     import torch
     import tools.coordinated_miit_score as module
@@ -118,19 +119,36 @@ def test_successful_all124_p1_and_native_branches_no_double_affine(tmp_path,monk
         (root/"images").mkdir(parents=True);(root/"landmarks").mkdir()
         Image.new("RGB",(16,16)).save(root/"images"/"image.tif")
         content="label,x,y\n"+"".join(f"id{i},{i%14},{i//14}\n" for i in range(124))
+        if missing and section==3:content=content.replace("id0,0,0\n","id0,inf,inf\n")
+        if missing and section==7:content=content.replace("id1,1,0\n","id1,inf,inf\n")
         (root/"landmarks"/f"{section:02d}.csv").write_text(content)
     for row in value["rows"]:
         row.update(status="ok",layout=row["name"]+"_layout.json",affine="affine.npz")
         (tmp_path/row["layout"]).write_text(json.dumps(current))
         row["methods"]={key:dict(status="ok") for key in ("analytic","f2","dhr")}
     path=tmp_path/"predictions.json";path.write_text(json.dumps(value))
-    result=score(path,tmp_path)
+    result=score(path,tmp_path,allow_missing_inf=missing)
     assert len(calls)==3
     expected=np.linalg.norm(b.astype(float))*512
     for row in result["rows"]:
-        assert row["scored_landmarks"]==124
+        count=123 if missing and row["name"] in ("miit_2_to_3","miit_7_to_8") else 124
+        assert row["scored_landmarks"]==count
+        assert row["nominal_landmarks"]==124 and row["required_available_landmarks"]==count
         for key,record in row["methods"].items():
             assert record["status"]=="ok",record
-            assert len(record["metrics"]["canvas_pixels"]["per_label"])==124
+            assert len(record["metrics"]["canvas_pixels"]["per_label"])==count
             assert record["metrics"]["canvas_pixels"]["mean"]==pytest.approx(expected,rel=2e-6)
     assert all(v["scored_pairs"]==3 for v in result["aggregate"].values())
+
+
+def test_missing_inf_requires_explicit_option_and_retains_nominal_label(tmp_path):
+    path=tmp_path/"points.csv";path.write_text("label,x,y\na,0,0\nb,inf,inf\n")
+    with pytest.raises(ValueError):read_points(path,[100,100],expected_count=2)
+    result=read_points(path,[100,100],expected_count=2,allow_missing_inf=True)
+    assert set(result)=={"a","b"} and np.isposinf(result["b"]).all()
+
+
+@pytest.mark.parametrize("invalid",["inf,0","0,inf","-inf,-inf","nan,nan"])
+def test_missing_inf_option_never_accepts_other_nonfinite_values(tmp_path,invalid):
+    path=tmp_path/"points.csv";path.write_text(f"label,x,y\na,0,0\nb,{invalid}\n")
+    with pytest.raises(ValueError):read_points(path,[100,100],expected_count=2,allow_missing_inf=True)

@@ -28,7 +28,7 @@ METHODS = ("common_affine", "analytic", "f2", "dhr")
 TERMINAL = {"ok", "failed", "skipped"}
 
 
-def read_points(path: Path, wh, *, expected_count=124):
+def read_points(path: Path, wh, *, expected_count=124, allow_missing_inf=False):
     """Require every declared label, with no intersect-and-drop policy."""
     values = {}
     with Path(path).open(encoding="utf-8-sig", newline="") as stream:
@@ -40,7 +40,8 @@ def read_points(path: Path, wh, *, expected_count=124):
             if not label or label in values:
                 raise ValueError("unique nonempty label required")
             xy = np.asarray([float(row["x"]), float(row["y"])])
-            if not np.isfinite(xy).all() or np.any(xy < -.5) or np.any(xy > np.asarray(wh)-.5):
+            missing = bool(allow_missing_inf and np.isposinf(xy).all())
+            if not missing and (not np.isfinite(xy).all() or np.any(xy < -.5) or np.any(xy > np.asarray(wh)-.5)):
                 raise ValueError("finite native-image pixel location required")
             values[label] = xy
     if len(values) != expected_count:
@@ -102,7 +103,7 @@ def load_manifest(path):
     return value,path.parent
 
 
-def score(predictions: Path, source_data: Path):
+def score(predictions: Path, source_data: Path, *, allow_missing_inf=False):
     manifest,directory = load_manifest(predictions)  # MUST precede coordinate access.
     resolve = lambda name: Path(name) if Path(name).is_absolute() else directory/name
     rows = []
@@ -134,18 +135,26 @@ def score(predictions: Path, source_data: Path):
             for key in ("fixed","moving"):
                 section = source[key+"_section"]
                 points[key] = read_points(Path(source_data)/str(section)/"landmarks"/f"{section:02d}.csv",
-                    layout[key]["original_wh"])
+                    layout[key]["original_wh"],allow_missing_inf=allow_missing_inf)
             if set(points["fixed"]) != set(points["moving"]):
                 raise ValueError("all 124 labels must match; no intersection dropping")
-            ids = sorted(points["fixed"])
-            if reference_ids is not None and ids != reference_ids:
+            nominal_ids = sorted(points["fixed"])
+            if reference_ids is not None and nominal_ids != reference_ids:
                 raise ValueError("all selected sections must retain the same 124 labels")
-            reference_ids = ids
+            reference_ids = nominal_ids
+            absent = {key:[label for label in nominal_ids if np.isposinf(points[key][label]).all()]
+                for key in ("fixed","moving")}
+            absent_any = set(absent["fixed"])|set(absent["moving"])
+            ids = [label for label in nominal_ids if label not in absent_any]
+            if not ids: raise ValueError("nonempty available paired annotation set required")
             fixed = np.stack([points["fixed"][label] for label in ids])
             moving = np.stack([points["moving"][label] for label in ids])
             query = original_pixel_to_canvas_unit(fixed,layout["fixed"],512)
             if np.any(query<0) or np.any(query>1): raise ValueError("fixed query outside declared domain")
-            row.update(required_landmarks=124, scored_landmarks=len(ids))
+            row.update(nominal_landmarks=124,required_available_landmarks=len(ids),scored_landmarks=len(ids),
+                unavailable_fixed_labels=absent["fixed"],unavailable_moving_labels=absent["moving"],
+                unavailable_pair_labels=sorted(absent_any),available_pair_labels=ids,
+                availability_scope="annotation-only (+inf,+inf) absence; SAME fixed eligible set for every method, no prediction-based dropping")
             for method,data in prepared.items():
                 try:
                     metadata = {}
@@ -178,7 +187,8 @@ def score(predictions: Path, source_data: Path):
     return dict(scope="three correlated directions from ONE previously used prostate sample; development transfer, not blind/SOTA",
         units="512canvas and original moving native pixels; no physical spacing claim",
         coordinate_convention="CSV native x,y treated as zero-based pixel centers; publisher exact origin unverified",
-        failure_policy="all 124 labels required; failures retained; no all-three aggregate if any failure; no affine fallback",
+        missing_annotation_policy="explicit (+inf,+inf) absence allowed" if allow_missing_inf else "strict all124 finite",
+        failure_policy="all124 nominal IDs required; every available finite pair required for ALL methods; missing labels reported; prediction failures retained; no incomplete all-three aggregate or affine fallback",
         prediction_manifest=str(predictions),rows=rows,aggregate=aggregate)
 
 
@@ -186,9 +196,11 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     for name in ("predictions","source_data","output"):
         parser.add_argument("--"+name.replace("_","-"),type=Path,required=True)
+    parser.add_argument("--allow-missing-inf",action="store_true",
+        help="explicit released MIIT (+inf,+inf) missing-annotation convention; NaN/partial/nonpositive inf still rejected")
     args=parser.parse_args()
     if args.output.exists(): raise FileExistsError("new scoring report required")
-    result=score(args.predictions,args.source_data)
+    result=score(args.predictions,args.source_data,allow_missing_inf=args.allow_missing_inf)
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(result,indent=2,allow_nan=False)+"\n",encoding="utf-8")
     print(json.dumps(result["aggregate"],allow_nan=False))

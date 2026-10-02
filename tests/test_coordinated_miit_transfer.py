@@ -117,6 +117,7 @@ def test_cohort_before_work_frames_relative_paths_and_unknown_physical_scale(tmp
     assert events==["canvas","affine","analytic","f2"]*3
     assert report["prediction_complete"] and report["annotations_read"] is False and report["cohort_size"]==3
     assert report["started_utc"].endswith("+00:00")
+    assert report["initializer"]=="direct"
     assert report["method_success_counts"]==dict(analytic=3,f2=3,dhr=3)
     for row in report["rows"]:
         assert row["map_direction"]=="fixed_canvas_to_moving_canvas"
@@ -199,3 +200,29 @@ def test_native_cuda_peak_reset_sync_readback_scope_mocked_without_gpu(tmp_path,
     report=invoke(args,dhr_runner=native)
     assert events==["sync","reset","native","sync","peak"]*3
     assert all(row["methods"]["dhr"]["wrapper_observed_peak_allocated_bytes"]==123456 for row in report["rows"])
+
+
+def test_quarter_turn_initializer_dispatch_all_three_pairs_same_downstream_recipe(tmp_path,monkeypatch):
+    from tools import coordinated_rotation_initializer as rotation
+    args=assets(tmp_path);args.initializer="quarter_turns";calls=[]
+    def amended(*a,**kw):
+        calls.append(a[0][0][0]);result=affine_extractor(*a,**kw)
+        result["rows"][0].update(selected_quarter_turns=2,matcher_calls=4)
+        return result
+    monkeypatch.setattr(rotation,"extract",amended)
+    report=runner.run(args,production=False,match_extractor=matcher,optimizer=optimizer,dhr_runner=dhr)
+    assert calls==["miit_2_to_3","miit_7_to_8","miit_10_to_11"]
+    assert report["initializer"]=="quarter_turns" and report["prediction_complete"]
+    for row in report["rows"]:
+        assert row["affine_estimation"]["selected_quarter_turns"]==2
+        assert row["affine_estimation"]["matcher_calls"]==4
+        for method in ("analytic","f2"):
+            cfg=row["methods"][method]["configuration"]
+            assert cfg["capture_prefix"]=="none" and cfg["joint_prior_backend"]=="eager"
+            assert cfg["match_p1_sampling"]=="existing" and cfg["image_weight"]==1.
+
+
+def test_unknown_initializer_rejected_before_calls(tmp_path):
+    args=assets(tmp_path);args.initializer="unapproved"
+    with pytest.raises(ValueError,match="initializer"):invoke(args)
+    assert not args.output.exists()

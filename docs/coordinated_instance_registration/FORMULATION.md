@@ -2889,3 +2889,107 @@ out-of-domain labels, terminal prediction gating, frames and failed-denominator
 retention are covered. Root combined runner/scorer suite passes31tests in7.16s;
 independent earlier suite passes30tests in6.49s before the native CUDA timing
 fixture was added. No real landmark coordinates have entered these tests.
+
+### 47.4 Actual initializer amendment and published missing annotations
+
+The original direct initializer succeeds only on7-to8;2-to3 and10-to11 have
+only5and3raw matches, below the existing8-point eligibility. These failures
+are preserved in miit_three_frozen_t15/predictions.json, not excluded.
+Before any manual coordinates or registration TRE were read, a standard
+image-only four-quarter-turn amendment was specified for ALL three pairs.
+Use unchanged matcher settings on torch.rot90 moving views k=0,1,2,3. For
+rotated moving pixel coordinates(xr,yr), convert back to original512frame by
+
+    k0:(xr,yr); k1:(511-yr,xr); k2:(511-xr,511-yr); k3:(yr,511-xr).
+
+This is done BEFORE existing6pxRANSAC and positive-similarity fitting. Fixed
+keypoints stay unchanged; the saved affine is already in the original moving
+frame and must NOT be unrotated again. All four candidates are retained.
+Rank eligible candidates by descending RANSAC inliers, descending occupied
+fixed4-by4bins, ascending final similarity-fit RMSE, ascending k. No manual
+points, downstream loss or TRE choose a candidate. The selected affine is
+common to all methods. This is an INITIALIZER-AMENDED development transfer,
+not unchanged-pipeline confirmation or a new learned matcher.
+
+All three amended initializers and all nine registrations complete. Only then
+does the separate scorer open manual coordinates. The initial requirement
+that all124CSVrows be finite is false for this release: missing coordinates
+are literal(+inf,+inf), while EVERY finite coordinate is inside native bounds.
+No image/point scale correction is justified. The first strict scoring failure
+is retained, and the premature suspicion of out-of-size coordinates was
+explicitly corrected. The [author's metric code](https://raw.githubusercontent.com/mwess/miit/master/miit/utils/metrics.py)
+joins labels and excludes unavailable infinite annotations before computing
+distances. Its loader applies no coordinate rescaling.
+
+An explicit --allow-missing-inf scorer option therefore retains all124nominal
+matching IDs but scores EVERYboth-source-finite pair:123,107,98points, identical
+across all four methods. Missing IDs/counts are reported; prediction failures
+are never removed from that static eligible set. NaN, partial infinity, negative
+infinity, duplicate IDs and finite out-of-bounds coordinates still fail. All
+three direction records remain, with no affine fallback or incomplete all-three
+aggregate. The original strict default and failed report remain unchanged.
+This source-availability correction was specified and independently tested
+BEFORE anatomical values were computed; no maps or registration parameters change.
+
+Root initializer/runner/scorer tests pass56tests in7.65s; independent rotation
+tests39in6.87s. After annotation correction root scorer23tests4.84s, independent
+23tests4.26s. Actual scoring is saved separately as available_landmark_scores.json.
+
+|Method|Equal-pair mean TRE (512px)|Mean pair-p90 TRE (512px)|
+|---|---:|---:|
+|Common affine|4.904193|8.897884|
+|Analytic|3.897540|6.289528|
+|Corrected F2|3.964294|6.381702|
+|Native DHR|4.050615|7.181205|
+
+Native MOVING-pixel equal-pair mean/mean-p90 values are29.371004/53.309124,
+23.318713/37.630117,23.722005/38.189410,24.230672/42.984784 respectively.
+Analytic improves affine mean and p90 in ALL three pairs, but its mean margin
+over native DHR is only.05014px on7-to8 and.04830px on10-to11. F2 improves on
+analytic mean for7-to8 (.01529px) and on p90 for2-to3 and7-to8. Native DHR has
+the best7-to8p90 (4.649195 versus analytic4.932224). Analytic maximum error is
+worse than DHR on2-to3(14.798936vs13.553944) and10-to11(31.640234vs28.963421),
+and exceeds the affine maximum on7-to8(52.713426vs51.551922). These exceptions
+and small differences prevent a universal superiority or outlier-cure claim.
+They are one known sample, not three independent patients or an official result.
+
+Independent generic3-by3 triangle-affine solves, literal CSV and TIFF-frame
+conversions reproduce all per-ID scores within1.1298e-12px, summaries within
+4.8317e-13. All1,572,864safe corners exceed eta, global minimum.20157431038,
+with exact boundaries/reference and shared original float32 positive affines.
+All six safe reports independently confirm300gradients/310trials/332E/0failures/
+10stages. Native evaluation reuses the disclosed full-field helper without a
+second affine; actual native fields have11506/5271/15158nonpositive corners
+and4452/2013/5818affected cells, minima-.281854/-.338458/-.227878. These are
+local saved-field diagnostics, not proof of clinical error or a global certificate.
+
+All12initializer candidates reproduce fixed ranking. Selected k=(3,0,3),
+inliers=(142,144,110), support=(16,16,13); affine determinants1.0387498,
+1.0160773,1.0981732. On7-to8 k3fits lowerRMSE butk0correctly wins higher
+inlier/support ranking. Eight insufficient/four eligible candidates remain.
+
+Analytic minimum ratios by pair are.263465,.369447,.331332; F2 .211470,.205039,
+.201574. Single complete calls (seconds) are analytic4.59356,4.12820,3.93369;
+F2 12.98598,12.03965,14.61095; DHR .77824,.63488,.65706. These are one-call
+application measurements, not paired warm speedup estimates. Analytic allocated
+peaks225849344--227403776B, F2 495687168--497157120B; native observed70539264B.
+Common initializer and raw matcher setup are recorded separately and not silently
+excluded from an overall pipeline claim. Data: miit_three_rotations_t153 actual
+archives/reports. The24hgoal remains active; this is a completed development
+transfer experiment, not the final scientific closure.
+
+### 47.5 Post-hoc affine-range exclusion, without boundary retuning
+
+For an available target p in the moving canvas let Q=A([0,1]^2)+b.
+Every fixed-boundary residual decoder here has image Q. Thus dist(p,Q)
+is a necessary lower bound on its achievable target error. Compute A^{-1}(p-b)
+for membership and, outside Q, the minimum Euclidean distance to its four
+closed line segments (clamped scalar projection onto each segment).
+The independent checker finds zero targets outside Q among123,107,98available
+targets. All these necessary lower bounds are therefore zero. For7-to8Pt-121,
+the inverse-affine coordinate is(0.07552828,0.55965745),38.98010canvas pixels
+inside its nearest polygon edge, while analytic TRE is52.71343pixels.
+The outlier cannot be blamed on this particular target being outside the map
+range. This post-hoc diagnostic does not prove boundary effects absent, that
+the optimizer can reach every interior target under its full energy, or that
+image evidence identifies the correct target. No new boundary branch is opened.
