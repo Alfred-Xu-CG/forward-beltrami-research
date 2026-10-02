@@ -435,3 +435,202 @@ oracle checked all226 labels in native HE→CC10/Histo/kidney: maximum differenc
 was3.287e-5 canvas pixels (.0006362 native pixels), consistent with the scorer's
 float32 field sampling. Saved-initial-only dataset dispatch, helper/scales and
 means also pass. No GPU rerun, label-based selection or new dataset is implied.
+
+## Approved supporting counterfactual: native STANDARD with shared initializer
+
+Research card, 2026-10-02, before implementation. This is a supporting baseline,
+not a new research mechanism and not an unmodified released complete pipeline.
+
+**Question.** How does the released STANDARD nonrigid stage behave when it starts
+from the exact same previously frozen SG affine used by the safe methods, while
+retaining its native images, preprocessing and complete nonrigid configuration?
+The existing STANDARD25 uses its own native initializer. The existing shared
+affine DHR uses reduced512 evidence and five levels of30 steps. Neither answers
+this question. Compare the new run to BOTH of these existing references; do not
+replace the unmodified-initializer STANDARD result or select per-case baselines.
+
+**Exact claim and coordinate conversion.** All maps below act on COLUMN vectors.
+Let p_i denote native zero-based pixel-center coordinates for fixed f or moving m.
+The already saved512 layout defines the affine
+
+    C_i(p_i) = (diag(layout_scale_i)*(p_i + .5*1) + layout_pad_i)/512.
+
+The actual DHR loader/padded/preprocessed frame defines
+
+    N_i(p_i) = 2*diag(1/(r*extent_i))
+                  *(rho_i*(p_i + .5*1) + d_i) - 1,
+
+where extent_i=(Wpre_i,Hpre_i), r is the saved initial_resample_ratio,
+rho_f/rho_m are target/source loader ratios (both1 in this reproduction), and
+d_f=(pad_2[x,left],pad_2[y,top]), d_m=(pad_1[x,left],pad_1[y,top]). The source
+code calls bilinear interpolation with scale_factor=1/r and
+recompute_scale_factor=False, so use this DECLARED r, not a rounded-size ratio.
+The full-resolution loader pads source and target to a common size; validate
+that the resulting preprocessed extents agree rather than assuming it silently.
+
+For the stored original unit-canvas affine H(q)=Aq+b, the normalized DHR affine is
+
+    theta_homogeneous = N_m * inverse(C_m) * H * C_f * inverse(N_f).
+
+Compute this composition in float64 from unchanged stored A,b/layouts, then cast
+the2x3 theta once to float32, matching the installed release. The composition is
+the SAME geometric initializer in real arithmetic; native-frame rounding means
+we must not claim bitwise identical coefficients or zero numerical error after
+the float32 cast. No affine re-estimation, dense-field teacher, matcher rerun,
+annotation access, resizing to our512 canvas, or pixel-content rewrite occurs.
+
+**Assumptions.** Same original source files/native dimensions and EXIF orientation;
+correct saved two-axis integer resize/padding layouts and positive stored affine;
+installed DHR1.0.1 STANDARD. Only a subclass run_initial_registration override
+sets initial_transform, initial_displacement_field and current_displacement_field.
+The existing released runner's device/I/O adaptation is reused. Leave all native
+preprocessing and nonrigid algorithm fields unchanged: initial_resolution4096,
+registration_size4096, eight levels with iterations[100,100,100,100,100,100,100,200],
+NCC window7, diffusion_relative and all released learning rates/alphas. The
+subclass does not alter the installed package or the archived native-init runner.
+
+**What would falsify the implementation claim.** A wrong source/target order,
+half-pixel shift, padded-axis error, use of rounded extent ratios, theta applied
+twice, nonrigid/preset difference, or sampled initializer inconsistent with the
+declared transformed SG affine. Wrong initialization does not become acceptable
+because final TRE looks good.
+
+**Smallest decisive tests.** Non-square synthetic native frames with unequal
+resize scales, odd padding, nontrivial positive affine and r>1; independently
+roundtrip original512 query centers through the converted saved theta and back
+against Aq+b. Check float64 algebra and actual float32 theta separately. Verify
+the generated initial field at its full preprocessed grid against an independent
+analytic affine evaluator. Check native field sampling's expected boundary clamp:
+the native field does not represent the extra512 letterbox or affine extrapolation
+outside its pixel-center domain. Keep this domain distinction explicit; no manual
+evaluation landmark is dropped. Compare every STANDARD algorithm parameter to its
+released counterpart; only device/save/I/O fields are adapted. A tiny injected
+runner checks per-case failure retention, no native matcher call and all25 terminal
+before preparing the two existing scorer manifests. Independent verification of
+conversion and actual output is required before interpreting accuracy.
+
+**Experiment and costs.** Run all25 existing directions with the same fixed source
+ordering and all available labels only after every prediction terminates. Reuse
+the original MIIT/native22 field scorers and exact original data/CSV transforms.
+Keep native field local-corner diagnostics; never repair or exclude folded cases.
+Archive original affine/layout provenance, computed theta, runtime config, final
+full MHA, postprocessing metadata and image-only conversion diagnostics. Do not
+create an artifact-integrity layer or duplicate full initial fields by default.
+Observed existing full STANDARD25 complete-call time is777.7915s, of which
+588.5642s is native initialization and121.0433s is nonrigid. Subtracting only the
+skipped native initializer suggests roughly189.23s before conversion overhead;
+allow5–10minutes serial as an estimate, not a performance guarantee. The prior
+maximum allocation is7,709,164,544bytes and all25 final fields total491,480,185bytes.
+Record supplied-SG initialization as a shared historical cost, not a free new
+algorithm; separately report complete replay and nonrigid costs.
+
+**Hypothesis and interpretation.** A change versus native-init STANDARD measures
+initializer sensitivity under otherwise unchanged DHR native processing. The
+comparison to the safe method matches the initial geometric affine, not image
+resolution, normalization/CLAHE, objective, regularizer, boundary constraints or
+iteration budget. It cannot alone isolate a topology-layer effect, prove global
+optimality, or turn this modified pipeline into the published complete method.
+If the shared initializer hurts DHR, report that result as well; no baseline
+selection by labels. Existing released DHR source/configuration is the prior-work
+reference, and the validated initial/native-field readers above supply the frame
+conventions.
+
+Implementation is `tools/coordinated_dhr_native_shared.py`; the original native
+own-initializer runner and installed DHR package are unchanged. Eleven focused
+tests (new shared-native tests plus original released-runner tests) pass. A tiny
+CPU execution of the actual installed `tc_transform_to_tc_df` through the new
+override checked all5,673 nodes of a synthetic61x93 frame: maximum normalized
+field error3.2444e-7 and maximum original512-canvas error2.3767e-6pixels. Across
+all262,144 accepted512 query centers, analytic float64 conjugacy error was
+3.4577e-13pixels and float32-theta casting error1.4638e-5pixels. This deliberately
+small native-support fixture also exposes large out-of-lattice border-clamp
+error130.551pixels, versus2.37294e-6pixels within support; reporting only the
+inside subset would conceal a real domain difference. These are correctness
+fixtures, not actual25-case registration or accuracy results. The production
+runner reports both domains without dropping queries and stores no second
+full initial field. Independent review and the actual native25 run remain
+separate work; no GPU experiment was launched by this implementation task.
+
+## Native STANDARD shared-initializer counterfactual: actual all25 result
+
+All25 predictions completed on AI GPU5 before local CPU annotation scoring.
+The unchanged native scorers produced25/25 scores for the same2,074 available
+landmarks across own-init STANDARD, shared-init STANDARD and retained fusion300.
+MIIT uses `miit_three_rotations_t153/*_layout.json`: its original dimensions,
+integer resize/padding and exact two-axis scales were checked against all three
+new saved accepted512 layouts before scoring. Existing22 uses the unchanged
+native data-root readers. No label selected an initializer, model or output.
+The saved released STANDARD preset exactly equals both original baseline
+presets; all25 saved preprocessing, nonrigid, loading and saving parameter
+sections also exactly equal their own-init counterparts. The later33-test
+focused native-runner/scorer and refresh-comparison regression collection passes.
+
+Values below are mean-of-direction mean / mean-of-direction p90 errors in the
+same512 moving-canvas pixels, not native pixels or independent-patient inference.
+
+| Development specimen | Native own-init STANDARD | Native shared-init STANDARD | Retained fusion300 |
+|---|---:|---:|---:|
+| MIIT,3 directions |3.672192 /6.432444 |3.712720 /6.260251 |3.534718 /5.858170 |
+| Lung,20 directions |6.046615 /13.914145 |6.240578 /14.626331 |4.471007 /9.342538 |
+| Histo,1 direction |0.712328 /1.618927 |0.712976 /1.523942 |0.842064 /1.580138 |
+| Kidney,1 direction |1.908163 /3.178382 |2.464310 /5.245805 |2.243606 /4.643549 |
+
+Shared initialization worsens mean error in17/25 directions versus native
+own-init (8 improve), p90 in16/25 (9 improve), and worst landmark in16/25.
+Against fusion300 it worsens mean and p90 in21/25 directions (4 improve) and
+worst landmark in17/25. Per-specimen mean regressions versus own-init are
+2/3 MIIT,13/20 lung,1/1 Histo and1/1 kidney. Histo is the important adverse
+comparison for our retained method: native shared-init is better in mean/p90
+and worst error. Own-init native DHR also remains better than fusion300 in
+kidney mean/p90. Do not choose the stronger native initialization per case or
+replace the original baseline. This result says the common SG initializer does
+not improve this native DHR package globally; it is not evidence that its native
+initializer was unfair, or that the safe optimizer is universally superior.
+
+Recorded complete-call sums are777.791515s own-init versus190.383174s shared-init;
+the new batch wall time is190.551014s. Native initial-stage time is588.564189s
+versus0.071818s, native nonrigid time121.043309s versus125.345216s, and preprocessing
+1.967333s versus1.687901s. Shared initialization audits add4.780044s inside its
+complete-call scope. Fusion300's archived optimizer calls total114.162324s, but
+omit its historical affine/SG/MA preparation. Shared-native also omits the
+historical supplied-SG cost; only own-init includes its own native initializer.
+These are measured component scopes, not a cold end-to-end speed comparison.
+Peak allocated memory maxima are7,709,164,544bytes own-init,
+5,677,745,664bytes shared-init and214,255,616bytes fusion300; do not add peaks or
+ignore differing reset/setup scopes.
+
+The actual initializer audit checks61,434,097 preprocessed native nodes and
+all6,553,600 accepted512 query centers. Maximum analytic theta64 conjugacy
+error is2.8422e-13canvas pixels; theta32 casting error1.7922e-5; actual native-node
+field error1.0024e-4; literal sampling within native-node support1.5007e-4.
+There are1,560,510 accepted512 queries outside that native pixel-center domain;
+their literal border-clamped field discrepancy reaches27.725942pixels. This is
+the predicted domain/clamping distinction, not an affine-coordinate conversion
+failure. All queries and all available evaluation labels were retained. The
+same geometric initializer is established; bitwise equal raster evaluation
+through extra512 letterbox pixels is not claimed.
+
+All25 native outputs in BOTH arms contain nonpositive local saved-field cell
+corners. Shared-init has2,039,097/245,494,952 checked corners with minimum ratio
+-1.084299; own-init has1,984,908 with minimum ratio-0.975030. These checks concern
+the native saved bilinear displacement-grid cells, not the safe method's257-grid
+P1 class. Outer-boundary injectivity was not checked, and neither native arm has
+a global-homeomorphism certificate. No fold repair or case exclusion was used.
+Shared initialization still leaves native resolution/preprocessing, NCC,
+diffusion regularization, boundary behavior and900-step optimization different
+from fusion300; this experiment cannot isolate a topology-layer advantage.
+
+Reproduction: existing `coordinated_dhr_released_score` and
+`coordinated_dhr_existing_score` write the new directory's `miit_scores.json`
+and `existing_scores.json`. `check_sources/native_shared_comparison_t27.py`
+checks the exact per-direction landmark-ID sets and writes
+`native_standard_shared25_t27/comparison.json`, including every direction,
+tail regression, initializer audit, phase cost and local topology count.
+The independent checker re-read all25 final MHA fields and original CSVs:
+all2,074 errors agree within5.84e-5canvas pixels (0.0008811native pixels), and
+all245,494,952 corner diagnostics agree exactly. Source A/layouts, native
+dimensions/bytes, padding/resampling frames, configurations and the comparison
+tables also pass. `native_standard_shared25_t27/independent_check.json` records
+this check. The online initial-field audit remains a recorded production audit;
+the independent final-field re-read does not pretend that an unexported initial
+field was separately re-read.

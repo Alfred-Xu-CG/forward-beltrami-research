@@ -1122,3 +1122,270 @@ The independent probe completes its checks in `2.64s` of CPU computation.
 A fresh focused run of the core, application and batch tests passes `12/12`
 in `7.89s` after setting the normal src/tests import paths. No GPU production
 optimization or manual annotation scoring was performed by this precheck.
+
+### Actual omitted-configuration failure and corrected-wrapper check
+
+The first production attempt, `data_metric_all50_t26`, retained 46 successful
+outputs and four explicit pre-optimization failures: both Histo and kidney arms
+encountered the missing optional `mind_order` attribute in the wrapper. This
+was not a metric-solver failure. The preceding synthetic wrapper precheck did
+not exercise these actual legacy configurations; it must not be read as complete
+production-configuration coverage. The failed batch remains unscored.
+
+The independent postrun checker subsequently recomputed the full objective and
+actual saved geometry for all46 successful outputs without opening annotations.
+Maximum total-objective discrepancy was `3.27e-8`; both accepted final axes were
+reconstructed from each saved fixed-axis map, and actual original/contracted
+corner-floor checks passed with the distinct Adam/metric rules above. Both arms
+used identical numerical prefix starts. All PCG iteration caps remained marked
+nonconverged; a finite descent direction and accepted Armijo step do not certify
+linear-solve convergence. Details remain in that batch's
+`independent_geometry_check.json`.
+
+After the wrapper adopted the original optional-field defaults, a separate
+read-only CPU regression loaded the ACTUAL archived Histo and kidney settings,
+their512 images/fused evidence and257 raw prefix maps. For each case, omitted
+`mind_order` and explicit `mind_order='transport'` produced bitwise-identical
+objectives AND full vertex VJPs, without mutating the input configuration. The
+two-case check passed in7.71seconds wall time. It performed no optimization,
+GPU work, annotation access or accuracy-based selection. The corrected complete
+rerun is kept separately as `data_metric_all50_t26r`.
+
+### Corrected timed-metric all50 independent postrun
+
+The corrected collection completed all50 predictions before scoring. Independent
+saved-output review passed for every common240-gradient prefix and both timed
+suffix arms. Literal NumPy P1 interpolation, descriptors, physical point loss,
+ARAP and shape terms reproduce all final full objectives with maximum discrepancy
+`2.74e-8`; point/prior discrepancies are at most `1.12e-16`. All original
+affines, float64 identity perimeters and binary certificates agree. Each final
+map selected the second axis, permitting independent reconstruction of both
+accepted axis-endpoint maps; all100 actual floor checks pass. This does not
+claim independent reconstruction of every unsaved trial map.
+
+Adam's minimum actual corner ratio is `.00610995598`, with192–332suffix
+gradients per pair and7532in total. The metric arm's minimum is `.00985886070`,
+with95–130gradients per pair and2865in total. All100stages stop at their nominal
+time budget, with in-progress iteration overruns explicitly retained. The
+metric trace records2865refreshes,22920descriptor VJPs,30193PCG iterations and
+92backtracks. Of2865PCG solves,2542meet the RECURSIVE residual criterion and323
+hit the20-iteration cap; the largest reported recursive relative residual is
+`.2483896`. Caps remain nonconverged. Every accepted metric trial satisfies the
+recorded strict decrease/Armijo test and the actual reconstructed stage-endpoint
+contracted floors; this is neither stationarity nor a proof of true-residual
+convergence for all finite-precision solves.
+
+Original annotation CSVs and a separate literal P1 evaluator reproduce all4148
+per-label errors across both arms: maximum discrepancy `1.14e-13` canvas pixels
+and `1.76e-12` native-moving pixels. Independent reaggregation confirms all
+per-case deltas, four specimen aggregates, equal-specimen deltas, objective
+records, gradients, elapsed calls and prefix/suffix peak summaries. A reporting
+error that summed per-pair memory peaks was corrected to `total=null`; maxima
+are not additive memory. Prefix cost is92.5803seconds, with110.6925seconds Adam
+suffix calls and110.8216seconds metric suffix calls. Historical preparation is
+additional, and the recorded reset scopes do not certify cold-pipeline peaks.
+
+The metric arm worsens8/25mean,7/25p90 and11/25maximum errors against paired
+Adam, and worsens18/25mean,18/25p90 and16/25maximum errors against frozen300.
+Its equal-specimen mean delta is `+.001962` versus Adam and `+.001518` versus
+frozen300; p90 deltas are `-.136207` and `+.020694`, respectively. Thus its
+smaller p90 deterioration than timed Adam is not a useful improvement over the
+cheaper incumbent. These are four repeatedly viewed development specimens,
+not25independent patients or evidence of generalization.
+
+Reproduction sources are `independent_data_metric_postrun_20261002.py` and
+`independent_data_metric_comparison_20261002.py` in the ordinary check-sources
+folder; their combined result is `data_metric_all50_t26r/independent_check.json`.
+
+## Native STANDARD with supplied SG: bounded independent coordinate check
+
+The column formula `N_m C_m^-1 H C_f N_f^-1` correctly converts the stored
+fixed-to-moving canvas affine into DHR's normalized sampling transform. Source
+review confirms loader scaling precedes common padding and that installed DHR
+uses declared `scale_factor=1/r, recompute_scale_factor=False` during initial
+resampling. The normalized pixel-center affine therefore uses declared r and
+actual preprocessed width/height, not a rounded padded/preprocessed extent ratio.
+
+`independent_native_shared_probe_20261002.py` independently evaluates scalar
+native/canvas/normalized conversions without using the production frame helper.
+It tests odd unequal pads, non-square frames, nontrivial affine/offset, r=1 and
+r=1.82373046875, unequal loader ratios, and off-canvas coordinates. Maximum
+real-arithmetic composition discrepancy is `2.23e-16`. It calls the INSTALLED
+DHR transform-to-field helper and compares every tiny native lattice node to
+the scalar oracle; maximum float32 field discrepancy is `6.29e-7` normalized.
+An actual installed resampler applied to a coordinate ramp verifies its
+nonintegral scale-factor center convention independently.
+
+A separate literal border-bilinear sampler checks all512canvas query centers,
+with native-lattice inside/outside counts kept separate. The off-lattice field
+does not reproduce unrestricted affine extrapolation; large synthetic outside
+errors are expected and explicitly reported, not omitted or misclassified as
+in-domain conversion errors. The float64 conjugacy, float32 coefficient cast,
+and actual sampled field remain separate diagnostics.
+
+The subclass overrides only `run_initial_registration`; it sets the initial
+transform/field and passes that field once to the inherited nonrigid path.
+The released STANDARD preprocessing/nonrigid parameters remain unchanged apart
+from the existing device/save adaptations. Six fresh focused tests pass,
+including an injected failed case retained among25terminal attempts before
+either scorer manifest is written. Existing scorer path/shape/frame fields are
+compatible. No native GPU optimization or anatomical scoring is part of this
+precheck; actual-run conversion/cost metadata still require postrun inspection.
+
+## One MA refresh: bounded independent coordinate and incoming-map check
+
+The point conversion `p=f0(s)` is correct: the original-moving residual is
+`F_Y(q)-F0(s)=A(f_Y(q)-p)`. The affine offset cancels, and neither an inverse
+map nor a second affine application belongs in the point term. The checked
+implementation preserves direct fine P1-ac evaluation and tests original-world
+eligibility after p, not at s. All-raw coordinate/confidence validation occurs
+before finite unit-domain filtering; transformed invalid p fails without clip
+or repair. Confidence and SG observations remain unchanged.
+
+`independent_refreshed_probe_20261002.py` confirms exact torch equality between
+the identity257 rendering and the old affine-prewarp helper on the same CPU
+runtime. A legal nonidentity257fixture is independently evaluated by NumPy P1
+interpolation and a literal border-bilinear sampler of the ORIGINAL raster.
+Maximum intensity discrepancy is `1.29e-7`. A deliberately affine-prewarped
+then deformation-sampled raster differs by `.451734`, so the check distinguishes
+the prohibited double image interpolation. The prescribed float64 P1 followed
+by float32 affine arithmetic is retained; this is not a claim of exact
+real-arithmetic image composition.
+
+For nontrivial affine coupling, unequal confidences, duplicate source points,
+and a target rendered ineligible only after its P1 transform, a hand-built
+barycentric matrix and analytic robust-loss scatter gradient reproduce the
+production point loss to `7.11e-15` and its full vertex VJP to `3.56e-15`.
+The physical residual identity is separately verified. Q1 interpolation is
+not substituted for the stored diagonal-P1 map.
+
+A scoped smooth-objective fixture places an exact minimum at a legal
+NONidentity incoming map. The production optimizer first evaluates that exact
+map, performs its tiny four-gradient schedule, and retains the incoming map
+bitwise with `selected_stage=None`; identity remains only the reference.
+This is a selector regression test, not image-objective or anatomical evidence.
+The ordinary image-based tests also confirm explicit identity versus omitted
+incoming-map behavior bitwise, a legal displaced start, and invalid affine,
+reference, boundary and floor rejection.
+
+Fresh focused refresh/core-batch tests pass8/8in8.31seconds. Source review and
+injected extraction failures confirm all25extractions terminate and the model
+is released before suffix optimization; frozen control still runs for a failed
+refresh, and both scorer manifests are deferred until all50attempts terminate.
+Every arm receives the same declared incumbent, uses only its own complete
+objective for candidate selection and retains the existing independent
+SG/MA normalization. Different refreshed/frozen objective values are not
+cross-arm anatomical evidence. No model inference, GPU optimization or manual
+annotations were used in these bounded prechecks.
+
+### Refresh comparison helper review before real scoring
+
+The bounded independent review of `refreshed_match_comparison_t27.py` found
+no aggregation or cost-scope correction necessary. Eight fresh synthetic tests
+pass. The helper checks all25ordered extraction attempts and all50terminal
+suffixes before opening new score files, the archived full incumbent paths,
+and300new gradients for successful suffixes. Failed extraction/prediction/scoring
+remains in the denominator; the affected full-cohort and equal-specimen values
+become undefined, rather than silently averaging successful cases. Per-case
+mean/p90/maximum deltas, unavailable contrasts and adverse tails are retained.
+
+Only within-functional final-minus-initial objectives are reported. Incumbent
+construction and failed calls remain charged; one new matcher setup is separate
+from extraction calls, and their nested phase times are not added again. The
+required historical initializer/SG work stays explicitly unmeasured where its
+compatible cost is unknown. Per-pair and phase memory peaks are not summed.
+This source/synthetic check does not validate forthcoming actual refresh outputs.
+
+### Native shared-initializer all25 actual-output independent postrun
+
+`independent_native_shared_postrun_20261002.py` rechecks every successful native
+prediction after all25attempts terminated. Original stored affines and exact
+accepted512layouts agree with the retained fusion300 inputs. Native image
+dimensions, orientation and byte counts, loader ratios, odd floor/ceil padding,
+declared initial resample ratio and actual preprocessed extents agree. Every
+saved native configuration matches its own-initializer counterpart except the
+logging path; preprocessing and all900nonrigid iterations remain unchanged.
+
+An independent scalar native/canvas/normalized-coordinate construction verifies
+all25theta64 matrices with maximum coefficient discrepancy `6.67e-16`; stored
+theta32 is exactly their once-cast float32 value. All512query-center conjugacy
+and inside/outside lattice counts are rechecked. Maximum analytic residual is
+`3.22e-13` canvas pixels and the cast-only bound is `1.793e-5` pixels. The actual
+initial GPU field was deliberately NOT exported. Its recorded online all-node
+and sampling diagnostics were inspected; this postrun does not falsely claim
+to re-read an unavailable initial field. The large off-lattice letterbox
+sampling discrepancy remains explicitly distinct from in-domain conversion.
+
+Every actual final MHA was independently read, totaling491,480,185file bytes.
+A separate float64 border-bilinear oracle and ORIGINAL annotation CSVs recompute
+all2074errors with maximum differences `5.832e-5` canvas pixels and `.0008811`
+native-moving pixels from the ordinary float32 scoring path. All ID sets,
+per-label summaries and frozen/own-initializer comparison rows agree.
+
+Independent complete native-grid corner computation exactly reproduces all
+245,494,952diagnostics:2,039,097nonpositive corners, all25cases affected, and
+minimum ratio `-1.0842985846`. These genuine local failures are not repaired,
+excluded or converted into a global-homeomorphism claim. Independent
+reaggregation also verifies cohort values, every adverse-tail list, phase/call
+costs, peak summaries and initialization metadata. Shared initialization worsens
+17/25mean and16/25p90errors versus native own initialization; versus fusion300
+it worsens21/25means and21/25p90s. Thus the supplied-SG initializer does not
+explain away the previously observed native nonrigid disadvantage on these
+development specimens, while this comparison still does not isolate topology,
+objective, evidence resolution or optimization mechanism.
+
+Combined reproduction results are saved in
+`native_standard_shared25_t27/independent_check.json`; the checker supports
+`--comparison-only` for inexpensive reaggregation after its all-field check.
+
+### One-refresh all50 actual-output independent postrun
+
+The complete `refreshed_match_all50_t27` collection passes independent review
+after all25extractions and all50suffix predictions terminate. The saved model
+revision and complete inference configuration exactly match the old MA setup.
+For all66,159retained refreshed matches, an independently written NumPy P1-ac
+evaluator reproduces `p=f0(s)` with ZERO observed discrepancy. All114changes
+between eligibility computed at s and at p are correctly handled using p.
+Raw retained confidence counts/masses, transformed-target multiplicities,
+coverage bins and both independently normalized source weights agree. The
+entire SG prefix, including its coordinates, ineligible rows and normalized
+confidences, is bitwise unchanged from the old fused table; the declared
+effective coefficients remain `.1 P_SG + .1 P_MA`, not an added third term.
+
+Every saved map has the original affine, float64 identity perimeter, valid
+binary certificate and actual corner ratio above .001. Minima are
+`.00404258727` for frozen suffix and `.00328914881` for refreshed suffix.
+Every successful suffix has300NEWgradients,310traced evaluations and332full
+objective calls, with the unchanged17/33/65/129/257raw levels and32/64/128/256/512
+evidence continuation. Reported stage minima match their31candidate trace
+values and final selection matches the minimum of the incoming map and own
+accepted full-objective states. Six frozen suffixes retain the original
+incumbent BITWISE; the other19and all25refreshed outputs select final stage9.
+Unsaved intermediate maps are not falsely described as independently reread.
+
+Literal NumPy descriptor, P1 point, ARAP, shape and OOB calculations verify
+each arm's incoming and final complete OWN functional. Maximum total/image
+discrepancy is `3.542e-8`; point/prior errors are at most `1.12e-16`. Both arms
+start from the exact same full saved Y0 and its unchanged dense/prior terms;
+only refreshed point evidence changes the refreshed initial functional.
+Original CSVs and the separate P1 evaluator reproduce all4148per-label errors
+within `1.16e-13` canvas pixels and `1.63e-12` native-moving pixels. Original,
+frozen-suffix and refreshed-suffix label ID sets are identical.
+
+The independently reaggregated per-case, four-specimen, equal-specimen,
+adverse-tail, cost and timing records all agree. Refresh versus matched frozen
+suffix worsens16/25mean,16/25p90and13/25maximum errors. Equal-specimen deltas
+are `+.0110512` mean and `-.0764623` p90; versus the cheaper fusion300 they are
+`+.0154672` mean and `+.0361343` p90. The p90 gain against an extra-iteration
+control is therefore not an improvement over the retained lower-cost recipe.
+No per-case arm selection, anatomical filtering or fold repair occurred.
+
+Both historical incumbent construction and new suffix calls remain charged.
+One matcher setup is counted separately from25extraction calls; extraction
+phase subtimes are nested, not added again. Actual batch time bounds all
+recorded calls, memory peaks remain nonadditive, and historical unknown costs
+remain null. Reproduction scripts are `independent_refreshed_postrun_20261002.py`
+and `independent_refreshed_comparison_20261002.py`; combined results are in
+`refreshed_match_all50_t27/independent_check.json`. These are instance-registration
+experiments on repeatedly viewed development specimens, not network training
+or held-out neural-layer validation.

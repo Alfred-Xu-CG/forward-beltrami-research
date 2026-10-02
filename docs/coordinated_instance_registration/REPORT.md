@@ -8,6 +8,79 @@ The detailed derivations and experiment definitions are in FORMULATION.md;
 chronology and negative interventions are in PROGRESS.md. This report introduces
 the main objects without requiring knowledge of those earlier discussions.
 
+### Complete native baseline and one refreshed-observation experiment
+
+The full native STANDARD DeeperHistReg baseline has now also been replayed
+with our same image-derived SG similarity, changing ONLY its initializer.
+It keeps native preprocessing, the4096 registration-size setting, NCC,
+diffusion regularization and its released eight-level900-iteration schedule.
+This is a modified-initialization counterfactual, not the untouched published
+pipeline and not an isolated topology-layer ablation.
+
+| Development specimen | Native own initializer mean / p90 | Native shared initializer mean / p90 | Retained fusion300 mean / p90 |
+|---|---:|---:|---:|
+| MIIT /3 | 3.672192 /6.432444 | 3.712720 /6.260251 | 3.534718 /5.858170 |
+| Lung /20 | 6.046615 /13.914145 | 6.240578 /14.626331 | 4.471007 /9.342538 |
+| HistoReg /1 | .712328 /1.618927 | .712976 /1.523942 | .842064 /1.580138 |
+| Kidney /1 | 1.908163 /3.178382 | 2.464310 /5.245805 | 2.243606 /4.643549 |
+
+All25 directions and2,074 same annotation IDs are retained. Independent
+re-reading of every final field and CSV verifies the result. Shared initialization
+worsens17/25 means versus native own initialization. The two native pipelines
+must both remain visible: our method does not universally outperform native
+DeeperHistReg, particularly on HistoReg and the own-init kidney comparison.
+The shared-native calls total190.383s, versus777.792s own-init, primarily because
+the latter includes588.564s of initialization. The historical SG preparation
+is not included in shared-native timing, so this is not a full-pipeline speedup.
+Maximum allocated peaks are5.68GB shared-native and7.71GB own-init, versus
+the retained method's recorded .214GB optimizer scope, which excludes earlier
+feature-setup transients. All25 native fields have some nonpositive local
+corners; these are actual saved-field diagnostics, not a global certificate.
+The current safe257 P1 outputs have a separate boundary-and-corner certificate.
+See BASELINE_PROTOCOL_REVIEW and native_standard_shared25_t27 for details.
+
+The ONE new observation experiment renders the original moving image through
+the retained absolute map F0=A f0+b and applies the SAME frozen MA matcher.
+If it matches fixed coordinate q to warped-image coordinate s, the new aligned
+target is p=f0(s), evaluated in the exact declared fine P1 interpolation.
+The residual for a candidate is A(fY(q)-p); no inverse, double affine, second
+image interpolation or resampled geometric composition is introduced.
+Only the MA table changes. SG, both .1 coefficients and all dense/prior terms
+stay fixed. Both comparison arms start the identical retained fusion300 map
+and receive300 NEW gradients, so extra optimization has an explicit control.
+
+| Development specimen | Frozen-table suffix mean / p90 | Refreshed-table suffix mean / p90 |
+|---|---:|---:|
+| MIIT /3 | 3.540120 /5.893797 | 3.538318 /5.872131 |
+| Lung /20 | 4.482110 /9.329755 | 4.486130 /9.454880 |
+| HistoReg /1 | .849139 /1.587516 | .850989 /1.599316 |
+| Kidney /1 | 2.237691 /5.063714 | 2.277828 /4.642606 |
+
+All25 extractions and50 suffixes complete in229.110s without failure. Refresh
+versus frozen continuation worsens16/25 means,16/25 p90s and13/25 maxima;
+versus the cheaper original fusion300, allfour specimen means worsen. This
+does not justify adopting the refresh globally. No repeated rematching or
+per-case winner selection follows. Matching the incumbent can self-confirm
+its errors; low refreshed loss or many matches are not anatomical accuracy.
+
+Frozen/refreshed suffix calls average4.398/4.433s, ADDITIONAL to the historical
+4.566s incumbent. Refresh extraction averages.234s including table/fusion work,
+plus one1.086s model setup per25-case batch. Extraction peak is1.019GB;
+suffix recorded peaks are at most.215GB, not additive to extraction peaks.
+Historical initialization and SG/old-MA preparation remain required dependencies.
+Full postrun independent verification passes: all50 exports, all4,148 original
+CSV errors, every own objective/selector and all66,159 refreshed targets are
+recomputed. The latter agree exactly with independent NumPy P1 interpolation;
+114 targets change world eligibility after p=f0(s), and are handled correctly.
+The SG prefix remains bitwise unchanged and the effective coefficients remain
+.1+.1. Maximum objective/error discrepancies are3.55e-8 and1.16e-13canvas
+pixels. Minimum saved corner ratios are.00404259 frozen/.00328915 refreshed.
+Six frozen-control maps retain the incumbent exactly; all25 refresh maps select
+their final stage. None of these correctness findings changes the negative
+anatomical conclusion. The integrated44 focused tests also pass.
+The experiment's complete equations are in REFRESHED_MATCH_FORMULATION;
+all scores, failures, costs and maps are in refreshed_match_all50_t27.
+
 ### Same-prefix timed optimizer: lower loss is not a registration breakthrough
 
 This experiment keeps the frozen512 SG+MA objective, affine, images, support,

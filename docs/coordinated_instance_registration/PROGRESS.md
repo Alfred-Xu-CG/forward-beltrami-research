@@ -7,6 +7,30 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### ONE refresh closes without a useful global gain — 2026-10-02 12:59 UTC
+
+All25 extractions and50 suffixes complete successfully in229.110s. Compared
+with the same-incumbent frozen-table suffix, refreshed matching improves the
+MIIT mean by.001802px but worsens lung/Histo/kidney means by.004019/.001850/
+.040137px; p90 changes are mixed. Allfour refreshed specimen means are worse
+than the cheaper original fusion300. Keep the original recipe, all25directions
+and all tails; do not launch rematching/model/weight sweeps. Detailed records
+are `refreshed_match_all50_t27`, with full independent postrun checking ongoing.
+The successful matched-control implementation and inference are not themselves
+an anatomical breakthrough. Frozen/refreshed extra calls average4.398/4.433s;
+refresh adds.234s extraction perpair and1.086s batch setup, beyond the incumbent.
+
+Astra xhigh's archived-trace diagnosis finds22/25 originalfusion cases never
+use a topology scale below1 in any310trials. Timed Adam lowers ARAP in23/25
+but worsens machine-point loss in22/25; the new metric does so in24/25 and
+23/25 respectively. Therefore a generic globally choked topology step is not
+supported as the dominant explanation. A new, separately stated proposal is
+being derived: preserve the incumbent's measured ARAP budget while minimizing
+the unchanged remaining data/shape/OOB terms, using the exact frozen-rotation
+quadratic majorizer. No new coefficient, annotations or new feature model sets
+this budget. It is not yet implemented or successful; the written mathematical
+card precedes implementation and names the Pareto-stationarity limitation.
+
 ### Actual refresh smoke and complete native shared-init run — 2026-10-02 12:51 UTC
 
 Native STANDARD with the supplied shared SG initializer completes all25 calls

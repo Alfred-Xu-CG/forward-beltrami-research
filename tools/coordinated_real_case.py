@@ -301,7 +301,7 @@ def load_registration_evidence(fixed_path,moving_path,image_side,*,preprocessing
     return fixed.to(device=device,dtype=dtype),moving.to(device=device,dtype=dtype),mask,metadata
 
 
-def optimize(args, accepted_stage_callback=None, *, terminal_evidence=None, maximum_stages=None):
+def optimize(args, accepted_stage_callback=None, *, terminal_evidence=None, maximum_stages=None, initial_map=None):
     overall_start = time.perf_counter()
     if maximum_stages is not None and (isinstance(maximum_stages,bool) or not isinstance(maximum_stages,int) or maximum_stages<1):
         raise ValueError('maximum_stages must be None or a positive accepted-stage count')
@@ -502,6 +502,16 @@ def optimize(args, accepted_stage_callback=None, *, terminal_evidence=None, maxi
     reference_corners = q1_corner_determinants(reference.double())
     current = (identity_vertices(args.levels[0],device=device).to(dtype)
                if nested else reference.clone())
+    initial_map_record=None
+    if initial_map is not None:
+        if (args.method!='analytic' or nested or joint or seed_initializer!='identity'
+                or capture_prefix!='none' or fine_patch_cells or filter_steps
+                or terminal_evidence is not None or dtype!=torch.float64
+                or getattr(args,'interpolation','q1')!='p1_ac' or mind_frame!='shared_affine'):
+            raise ValueError('incoming map requires ordinary fixed P1ac shared-affine analytic suffix')
+        from tools.coordinated_registration_start import load_incumbent
+        current,initial_map_record=load_incumbent(initial_map,a,b,args.grid_side,
+            device=device,minimum_jacobian=args.minimum_jacobian)
     if device.type == "cuda":
         torch.cuda.synchronize(device)
     loading_seconds = time.perf_counter()-overall_start
@@ -973,6 +983,10 @@ def optimize(args, accepted_stage_callback=None, *, terminal_evidence=None, maxi
                   terminal_full_total=terminal_full_loss,best_accepted_full_total=full_best_loss,
                   acceptance_objective=("same complete simultaneous multiscale objective at every stage and final selection" if simultaneous else "original complete objective at current image resolution; full-resolution trajectory may not be monotone"),
                   oob="zero padding, fixed denominator, explicit quadratic excess penalty; no query dropping")
+    if initial_map_record is not None:
+        report.update(initial_map=initial_map_record,
+            gradient_count_scope='new suffix gradients only; incoming map construction is an additional recorded dependency',
+            selected_stage_scope='None=incoming absolute map, nonnegative=accepted suffix stage; identity is reference only')
     if maximum_stages is not None:
         report['partial_prefix']=dict(requested_maximum_stages=maximum_stages,accepted_stages=len(stages),
             scope='ordinary optimizer stopped after accepted stages; output still selected by configured selector',

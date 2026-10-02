@@ -1,0 +1,106 @@
+{
+  "device": "cuda",
+  "echo": false,
+  "save_final_images": false,
+  "save_final_displacement_field": true,
+  "case_name": "released_dhr",
+  "logging_path": "/home/ET/zhxu/QC_optimization_research/coordinated_instance_20261001/results/native_standard_shared25_t27/rat_kidney/deeperhistreg.log",
+  "loading_params": {
+    "final_level": 0,
+    "pad_value": 255.0,
+    "loader": "pil",
+    "source_resample_ratio": 1.0,
+    "target_resample_ratio": 1.0
+  },
+  "saving_params": {
+    "saver": "pil",
+    "final_saver": "pil",
+    "save_params": "pil",
+    "extension": ".jpg",
+    "final_extension": ".tiff"
+  },
+  "preprocessing_params": {
+    "preprocessing_function": "basic_preprocessing",
+    "initial_resampling": true,
+    "initial_resolution": 4096,
+    "normalization": true,
+    "convert_to_gray": true,
+    "clahe": true,
+    "save_results": false,
+    "flip_intensity": true
+  },
+  "run_initial_registration": true,
+  "initial_registration_params": {
+    "save_results": false,
+    "initial_registration_function": "multi_feature",
+    "registration_size": 620,
+    "registration_sizes": [
+      150,
+      200,
+      250,
+      300,
+      350,
+      400,
+      450,
+      500
+    ],
+    "transform_type": "rigid",
+    "keypoint_threshold": 0.005,
+    "match_threshold": 0.3,
+    "sinkhorn_iterations": 50,
+    "show": false,
+    "angle_step": 90,
+    "cuda": true,
+    "device": "cuda",
+    "echo": false,
+    "run_sift_ransac": true,
+    "run_superpoint_superglue": true,
+    "run_superpoint_ransac": false
+  },
+  "run_nonrigid_registration": true,
+  "nonrigid_registration_params": {
+    "save_results": false,
+    "nonrigid_registration_function": "instance_optimization_nonrigid_registration",
+    "device": "cuda",
+    "echo": false,
+    "cost_function": "ncc_local",
+    "cost_function_params": {
+      "win_size": 7
+    },
+    "regularization_function": "diffusion_relative",
+    "regularization_function_params": {},
+    "registration_size": 4096,
+    "num_levels": 8,
+    "used_levels": 8,
+    "iterations": [
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      200
+    ],
+    "learning_rates": [
+      0.005,
+      0.0025,
+      0.0025,
+      0.0025,
+      0.0025,
+      0.0025,
+      0.0025,
+      0.0015
+    ],
+    "alphas": [
+      1.5,
+      1.5,
+      1.5,
+      1.5,
+      1.5,
+      1.5,
+      1.5,
+      1.8
+    ]
+  }
+}
