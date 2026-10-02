@@ -26,11 +26,14 @@ def score(predictions,data_root,expected_gradient_steps=300,*,budget_mode='fixed
     path=Path(predictions).resolve()
     if path.is_dir():path=path/"predictions.json"
     manifest=json.loads(path.read_text(encoding="utf-8"))
-    if budget_mode not in ('fixed_gradients','timed_final'):
-        raise ValueError('declare fixed_gradients or timed_final budget mode')
+    if budget_mode not in ('fixed_gradients','timed_final','distortion_cap'):
+        raise ValueError('declare fixed_gradients, timed_final or distortion_cap budget mode')
     if budget_mode=='timed_final' and (manifest.get('budget_mode')!='timed_final'
             or manifest.get('all50_terminal') is not True or manifest.get('seconds_per_axis')!=2.):
         raise ValueError('explicit completed paired timed-final protocol required')
+    if budget_mode=='distortion_cap' and (manifest.get('budget_mode')!='distortion_cap'
+            or manifest.get('all25_terminal') is not True or manifest.get('maximum_gradient_steps')!=300):
+        raise ValueError('explicit completed all25 capped-distortion schedule required')
     native=existing_rows(Path(data_root).resolve())
     records=manifest.get("rows",[])
     if (manifest.get("prediction_complete") is not True or manifest.get("annotations_read") is not False
@@ -54,6 +57,13 @@ def score(predictions,data_root,expected_gradient_steps=300,*,budget_mode='fixed
                 if any(record.get(k)!=report.get(k) for k in ('gradient_steps','prefix_gradient_steps',
                         'suffix_gradient_steps','terminal_budget','failed_trials')):
                     raise ValueError('timed prediction/report accounting mismatch')
+            elif budget_mode=='distortion_cap':
+                from tools.coordinated_distortion_budget_batch import validate_budget
+                report=json.loads((path.parent/record['report']).read_text(encoding='utf-8'))
+                validate_budget(report)
+                if any(record.get(k)!=report.get(k) for k in ('gradient_steps','counts','distortion_budget',
+                        'maximum_gradient_steps','numerical_failure','schedule_complete','initial_map')):
+                    raise ValueError('capped-distortion prediction/report accounting mismatch')
             elif record.get("gradient_steps")!=expected_gradient_steps or record.get("failed_trials")!=0:
                 raise ValueError(f"declared corrected-frame analytic{expected_gradient_steps} output required")
             archive=(path.parent/record["output"]).resolve()
@@ -96,7 +106,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     for key in ("predictions","data-root","output"):parser.add_argument("--"+key,type=Path,required=True)
     parser.add_argument("--expected-gradient-steps",type=int,default=300)
-    parser.add_argument('--budget-mode',choices=('fixed_gradients','timed_final'),default='fixed_gradients')
+    parser.add_argument('--budget-mode',choices=('fixed_gradients','timed_final','distortion_cap'),default='fixed_gradients')
     args=parser.parse_args()
     if args.output.exists():raise FileExistsError(args.output)
     result=score(args.predictions,args.data_root,args.expected_gradient_steps,budget_mode=args.budget_mode)

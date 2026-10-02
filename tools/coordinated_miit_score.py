@@ -87,6 +87,9 @@ def load_manifest(path):
     if value.get("prediction_complete") is not True or value.get("annotations_read") is not False:
         raise ValueError("completed label-free predictions required BEFORE labels")
     timed=value.get('budget_mode')=='timed_final'
+    capped=value.get('budget_mode')=='distortion_cap'
+    if capped and (value.get('all25_terminal') is not True or value.get('maximum_gradient_steps')!=300):
+        raise ValueError('explicit completed all25 capped-distortion schedule required BEFORE labels')
     if timed and (value.get('all50_terminal') is not True or value.get('seconds_per_axis')!=2.
             or value.get('timed_arm') not in ('adam','data_metric')):
         raise ValueError('explicit completed paired timed-final protocol required BEFORE labels')
@@ -105,6 +108,10 @@ def load_manifest(path):
             v.get("status") not in TERMINAL for v in row["methods"].values()):
             raise ValueError("all method attempts must be terminal")
         analytic=row['methods']['analytic']
+        if capped and analytic.get('status')=='ok' and (analytic.get('budget_mode')!='distortion_cap'
+                or analytic.get('maximum_gradient_steps')!=300 or analytic.get('numerical_failure') is not False
+                or analytic.get('schedule_complete') is not True):
+            raise ValueError('successful capped analytic record must match explicit schedule BEFORE labels')
         if timed and analytic.get('status')=='ok':
             budget=analytic.get('terminal_budget',{})
             if (budget.get('protocol')!='timed_final' or budget.get('seconds_per_axis')!=2.
@@ -115,6 +122,15 @@ def load_manifest(path):
 
 def _analytic_map(record,directory,a,b):
     """Only an explicitly declared joint analytic export may change its affine."""
+    if record.get('budget_mode')=='distortion_cap':
+        from tools.coordinated_distortion_budget_batch import validate_budget
+        report_path=Path(record['report'])
+        if not report_path.is_absolute():report_path=directory/report_path
+        report=json.loads(report_path.read_text(encoding='utf-8'))
+        validate_budget(report)
+        if any(record.get(k)!=report.get(k) for k in ('gradient_steps','counts','distortion_budget',
+                'maximum_gradient_steps','numerical_failure','schedule_complete','initial_map')):
+            raise ValueError('capped-distortion prediction/report accounting mismatch')
     if record.get('terminal_budget',{}).get('protocol')=='timed_final':
         from tools.coordinated_data_metric_batch import validate_timed_budget
         report_path=Path(record['report'])

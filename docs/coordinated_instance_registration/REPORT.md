@@ -8,6 +8,64 @@ The detailed derivations and experiment definitions are in FORMULATION.md;
 chronology and negative interventions are in PROGRESS.md. This report introduces
 the main objects without requiring knowledge of those earlier discussions.
 
+### New constrained optimizer: fixed incumbent distortion budget
+
+Let Y0 be the already computed fusion300 vertex map. Let R(Y) be the original
+area-weighted P1 as-rigid-as-possible (ARAP) distortion, and let D(Y) be the
+unchanged image, machine-correspondence, outside-image and corner-shape terms.
+The existing energy is E(Y)=D(Y)+3R(Y). This experiment instead minimizes D
+subject to R(Y)<=B, where B=R(Y0) is measured once. Both this arm and its
+ordinary frozen-table continuation control start exactly the same Y0. There
+are no newly estimated matches, changed coefficients or annotation-derived
+budgets. The scalar constraint prevents increasing total ARAP, but does not
+imply that any anatomical landmark improves.
+
+In one coordinate-direction stage, c denotes a scalar coefficient grid and P
+its zero-boundary bilinear prolongation to the fixed257-by257 vertex grid.
+Write g=gradient_c D and r=gradient_c R. Let M=P^T P/(257^2) be the physical
+displacement mass matrix and K the prolongated unweighted Dirichlet stiffness.
+At the current map, frozen closest proper rotations give the rigorous bound
+R(Y+P d e)<=R(Y)+r^T d+d^T K d/2. The proposed coefficient change solves
+
+    minimize_d g^T d + d^T M d/(2 tau)
+    subject to r^T d + d^T K d/2 <= B-R(Y).
+
+Here e is the horizontal or vertical unit vector and tau normalizes the
+unconstrained mass-gradient step to the existing physical RMS step length.
+Because M and K share an exact sine-transform basis, the solution for a dual
+multiplier mu>=0 is d=-(M/tau+mu K)^(-1)(g+mu r), computed by transforms and
+pointwise division, not a dense inverse. A scalar bracket/bisection enforces
+the quadratic budget. The real map then undergoes the declared corner-margin
+step restriction and actual D/R acceptance checks. Full definitions, boundary
+conventions, formulas for both spectra, failure cases and proof are in the
+fixed-distortion section of OPTIMIZER_REDESIGN.md. This is per-instance
+optimization; differentiation through its entire iterative solve is not claimed.
+
+| Development specimen | Original fusion300 mean / p90 | Ordinary extra300 mean / p90 | Fixed-budget extra<=300 mean / p90 |
+|---|---:|---:|---:|
+| MIIT /3 directions | 3.534718 /5.858170 | 3.540120 /5.893797 | 3.537662 /5.861197 |
+| Lung /20 directions | 4.471007 /9.342538 | 4.482110 /9.329755 | 4.473645 /9.354164 |
+| HistoReg /1 direction | .842064 /1.580138 | .849139 /1.587516 | .841506 /1.559078 |
+| Kidney /1 direction | 2.243606 /4.643549 | 2.237691 /5.063714 | 2.179386 /4.648365 |
+
+All25 attempts succeed and retain all2,074 available evaluation landmarks.
+The new arm improves14/25 means over the cheaper incumbent, but worsens11;
+kidney's maximum error rises from8.970583 to9.405735. The tiny equal-specimen
+mean benefit is dominated by that one specimen, and is not a generalization
+claim. Keep fusion300 as the global retained recipe rather than choosing an
+arm from each case's labels. This also does not establish convergence to the
+constrained optimum:35/250 stages stop at finite line-search exhaustion.
+
+There are7,307 actual outer steps and14,614 objective-part VJPs in total,
+with215 stages using their30-step budget. Extra complete calls average9.009s;
+adding the required archived incumbent gives13.575s, before historical
+initializer/matcher costs. Complete new-call allocated peaks are182.1–184.6MB.
+The ordinary extra300 arm averages4.398s with a different historical peak
+measurement scope. Independent reconstruction passes saved geometry, caps,
+D/E and all original CSV errors; minimum saved normalized corner is.0154922,
+and scoring agrees within1.12e-13 canvas pixels. The numerical mechanism
+works as specified; a substantial real-registration breakthrough is not shown.
+
 ### Complete native baseline and one refreshed-observation experiment
 
 The full native STANDARD DeeperHistReg baseline has now also been replayed

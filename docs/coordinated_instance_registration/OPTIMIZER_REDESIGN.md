@@ -1121,3 +1121,291 @@ selection, not held-out evidence,25patients, clinical validation or a general
 anatomical guarantee. The next joint-pose candidate remains a separate change
 of map/prior and awaits its fixed schedule, implementation authorization and
 independent checks; the fusion result does not establish that candidate.
+
+## Conditional next mechanism: incumbent-distortion-budget continuation
+
+Decision card after corrected t26r, 2026-10-02. This is the ONE proposed next
+optimizer package after closure of the separately approved single MA refresh;
+it does not change that frozen refresh protocol. The coordinator approved the
+principle subject to this mathematical/implementation check. No weight/model/
+resolution sweep or new network is part of it. Anatomical usefulness is UNKNOWN.
+
+### Evidence and the exact question
+
+A read-only decomposition of the original `match_fusion_all50_t23/fusion` and
+corrected `data_metric_all50_t26r` saved endpoints gives:
+
+| Same25pair means, timed minus original300 | Delta full E | Delta image | Delta weighted ARAP3 | Delta weighted fused points |
+|---|---:|---:|---:|---:|
+| Timed Adam | -.00170144091 | -.00106592655 | -.00070056001 | +.00006605857 |
+| Timed data metric | -.00107102834 | -.00023193359 | -.00087118757 | +.00003362197 |
+
+Remaining differences are the small shape/OOB terms. Weighted ARAP falls on
+23/25 Adam and24/25 metric endpoints, while fused-point loss rises on22/25 and
+23/25 respectively. These are observed component tradeoffs, NOT proof that a
+point table is anatomically correct or that ARAP is intrinsically unsuitable.
+They explain why reduced total E can reward smoothing while relinquishing
+some of the correspondence fit that helped the retained fusion recipe.
+
+In22/25 original fusion runs, ALL310 recorded trial safety scales are exactly1;
+only he-to-ki67, ki67-to-he and kidney contain contracted trials. In the timed
+metric trace,245/2865 proposed steps have alpha_max<1/.99, all on the first
+two of those directions. Generic global scalar safety choking is therefore
+not supported as the common bottleneck. These observations do not rule out
+other topological path restrictions. The earlier finite-search seed also had
+all48 construction scales1, but small raw motions and negligible final gain;
+that tests one regularized coarse search, not absence of a better distant basin.
+
+Question: can the solver REDISTRIBUTE the incumbent's already attained ARAP
+distortion to improve the existing data fit, instead of being paid3units of
+objective decrease for every unit of distortion it removes? No additional
+distortion allowance is inferred from landmarks or an arbitrary new coefficient.
+This is a constrained optimization question, not a claim that more distortion,
+a different prior, or more iterations automatically improves anatomy.
+
+The labelled capacity witness proves the class can fit the selected centers;
+its larger ARAP only describes that particular witness. It does not prove that
+every accurate map requires a larger distortion budget. Conversely, the new
+budget below cannot recover a map that truly needs R>B. A successful numerical
+step or lower data loss is not anatomical success.
+
+### Global problem and invariant budget
+
+Use the ORIGINAL retained frozen-pose512 SG+MA fusion300 map Y_inc and original
+frozen images, affine, support and point tables. Do not select an incumbent or
+point table from later anatomical comparisons. On the actual current runtime,
+evaluate B=R(Y_inc) ONCE with the original fine P1-ac ARAP implementation; do
+not substitute a rounded historical JSON energy. Keep this scalar B fixed
+through all axes, levels and stage stops of this suffix. Unused budget carries
+forward; it is never reset to current R, inflated by a tolerance, or increased
+to force progress.
+
+For each existing image level s, assemble directly
+
+\[
+D_s(Y)=I_s(Y)+O_s(Y)+10^{-4}C(Y)+.2P_{\rm fused}(Y),
+\qquad E_s(Y)=D_s(Y)+3R(Y).
+\]
+
+The actual fused term is still .1SG+.1MA with separate normalized masses and
+512/8 point units. No descriptor, mask, OOB, shape or point term changes. D is
+assembled from its parts, NOT by numerical subtraction of3R from E. The new
+declared full-resolution problem is
+
+\[
+\min_Y D_{512}(Y)\quad\text{subject to }R(Y)\le B,
+\quad Y|_{\partial}=X|_{\partial},\quad Q_k(Y)>.001\;\text{for every corner}.
+\]
+
+This replaces a fixed distortion PRICE by a fixed, incumbent-derived distortion
+BUDGET. It is not another value of the ARAP weight. Nevertheless KKT multipliers
+act as local adaptive prices; this formulation is not an automatic escape from
+the old Pareto frontier. In particular if g_D=-3g_R at a cap-active feasible
+stationary point, the direction derived below can be exactly zero. It does not
+cure wrong correspondences or an anatomically misaligned data functional.
+
+If the selected result has D512<=D512(Y_inc) and R<=B, then in REAL arithmetic
+its original E512 is also <=E512(Y_inc). This is a Pareto improvement relative
+to that incumbent, not proof of global optimization or lower TRE. Report the
+original production E as well; this identity is not permission to overlook
+actual rounded discrepancies. If B=0, no larger budget is silently invented.
+
+### Exact scalar-fiber ARAP majorizer
+
+During a stage freeze its incoming fine table Y_a, use one axis e, and write
+Y(c)=Y_a+(P_l c)e. P_l is the existing zero-boundary bilinear RAW prolongation
+to the SAME fine257 grid. It is not coarse P1 evaluation or map resampling.
+At a current legal Y(c), compute separate AD gradients
+
+\[
+g=\nabla_c D_s(Y(c)),\qquad r=\nabla_c R(Y(c)).
+\]
+
+Production R=.5 mean_faces ||J-R_star(J)||_F^2, on the batch-one uniform unit
+square. At positive P1 determinants, the closest PROPER rotation is unique
+and the existing trace/skew formula is smooth. Freezing these CURRENT rotations
+gives a quadratic that touches R in value and gradient. With the verified
+UNWEIGHTED K_l=P_l^T K_fine P_l, its exact-real bound is
+
+\[
+R(Y(c+d))\le R(Y(c))+r^T d+\tfrac12 d^T K_l d.
+\]
+
+K_fine is the scalar five-point Dirichlet stiffness (diagonal4/cardinal-1);
+there is NO extra3,2,cell-area or mass factor in this bound. The candidate is
+still evaluated with fresh optimal rotations, not the frozen-rotation surrogate.
+This majorizer is a sufficient cap test and can be conservative; it does not
+linearize the nonlinear ARAP constraint as if its Hessian were exactly K.
+
+The instance optimizer is not differentiated through. Keep D and R connected
+to the current coefficient tensor for their TWO VJPs, then treat the current
+gradient, spectra, multiplier search and accepted history as numerical solver
+state. Image AD choices at L1/pixel knots are direction models, not guarantees
+of classical descent or convergence of the nonsmooth full problem.
+
+### Physical metric, exact diagonalization and one scalar multiplier
+
+Use the fine-nodal RMS metric M_l=P_l^T P_l/N_f, where N_f=fine_side^2 includes
+the zero perimeter. Thus d^T M_l d=mean_fine_vertices |P_l d|^2. This is a
+physical displacement metric, NOT an ARAP-only preconditioner. Retain the
+original level's physical learning-rate value ell_l as the unconstrained
+proposal RMS; in the present edge-calibrated recipe these are
+.004/.002/.001/.0005/.00025. No per-case calibration or rate sweep follows.
+
+For nonzero finite g, set tau=ell_l/sqrt(g^T M_l^{-1}g). Solve the convex QCQP
+
+\[
+\min_d g^T d+\frac{1}{2\tau}d^T M_l d
+\quad\text{s.t. }r^T d+\tfrac12d^T K_l d\le h:=B-R(Y(c)).
+\]
+
+The current actual cap requires h>=0, so d=0 is feasible. K_l and M_l are
+positive definite on the zero-boundary interior. A nonzero EXACT minimizer
+therefore has g^T d<0 because its model objective is no greater than that at0.
+The unconstrained d(0)=-tau M_l^{-1}g has exactly RMS ell_l in real arithmetic.
+
+Both matrices diagonalize in the SAME orthonormal tensor DST-I basis already
+used by DirichletGalerkinStiffness. For integer refinement t=(fine_side-1)/
+(coefficient_side-1), theta_i=pi*i/(coefficient_side-1), define
+
+\[
+a_i=(2-2\cos\theta_i)/t,\quad
+b_i=((2t^2+1)+(t^2-1)\cos\theta_i)/(3t),
+\]
+\[
+k_{ij}=a_i b_j+b_i a_j,\qquad m_{ij}=b_i b_j/N_f.
+\]
+
+These are the EXACT Galerkin stiffness and prolongation-mass eigenvalues on
+the aligned square grids, not a lumped approximation. Reject unsupported
+nonaligned grids. Do not form a dense matrix, image Jacobian, CG solve or
+sampler second derivative. Transform g and r once per outer iteration. The
+multiplier candidate and constraint residual are
+
+\[
+\widehat d_{ij}(\mu)=-\frac{\widehat g_{ij}+\mu\widehat r_{ij}}
+ {m_{ij}/\tau+\mu k_{ij}},\quad
+\psi(\mu)=r^T d(\mu)+\tfrac12d(\mu)^TK_l d(\mu)-h.
+\]
+
+At mu=0, use d if psi<=0. Otherwise psi is nonincreasing: differentiating the
+stationarity equation gives psi'=-v^T(M/tau+mu*K)^{-1}v<=0, with v=r+K*d.
+As mu tends to infinity, d tends to -K^{-1}r and psi tends to
+-.5*r^T*K^{-1}r-h. Thus a finite feasible bracket exists unless h=0 and r=0
+(or the zero gradient case already handled). For h=0 AND r=0, the quadratic
+feasible set is exactly{0}; return a zero-ellipsoid retained-map stop instead
+of searching for an infinite multiplier.
+
+Prescribed finite search: after the mu=0 test, probe mu=3*2^k for k=0,...,31,
+stopping at the first COMPUTED finite psi<=0. The3 is merely a bracket seed,
+not a new objective coefficient. Keep an infeasible lower/feasible upper
+bracket; bisect at most32times, or stop if the midpoint equals an endpoint.
+Return the FEASIBLE upper endpoint. Count all probes. If no finite feasible
+upper endpoint exists within the32positive probes, report numerical dual-
+bracket failure; do not silently return the infeasible lower point, increase B,
+change solver, or call this proof of mathematical infeasibility.
+
+The returned finite-precision root is approximate. Record mu, bracket bounds,
+psi, probe/bisection counts and whether the cap was active. A finite nonzero
+direction must additionally pass the actual g^T d<0 test; a feasible upper
+approximation does not inherit exact KKT optimality automatically. Zero or
+finite non-descent directions stop that stage without a stationarity claim.
+
+### Actual acceptance, budgets and retained-map stopping
+
+Keep stage anchor Y_a and its floor fixed:
+Q_floor=.001+.05*(Q(Y_a)-.001). At current c, compute the actual corner slack
+above this floor and the exact scalar-direction corner increments along P_l d.
+Let alpha_max be their minimum slack/negative-increment ratio, infinity when
+there are no adverse increments. Start alpha=.99*min(1,alpha_max), requiring
+finite positive alpha. This ALWAYS contracts the feasible quadratic proposal,
+even when corners do not limit it. An infinite UNBOUNDED alpha_max is permitted.
+For q(d)=r^T*d+.5*d^T*K*d<=h, this gives
+q(alpha*d)<=alpha*h-.5*alpha*(1-alpha)*d^T*K*d, creating exact-real budget
+slack for every nonzero direction. Actual rounded R<=B remains necessary.
+
+Every candidate is Y_a+P_l(c+alpha*d)e, not an increment compounded onto a
+rounded previous trial. There are at most13trial attempts (initial plus12
+halvings). Require ALL of: unchanged actual perimeter; finite actual geometry;
+actual Q>Q_floor; the actual original ARAP R_candidate<=B with NO budget
+inflation; D_candidate<=D_current+1e-4*alpha*g^T d; and the additional strict
+computed D_candidate<D_current. Halving preserves the convex majorizer cap
+in real arithmetic because0 and d are feasible; fresh actual R still decides.
+
+Finite geometry/floor, cap or Armijo rejection simply halves alpha and is a
+rejected trial, not an experiment failure. ANY nonfinite candidate coordinates,
+corners, D or R is an immediate numerical failure, retaining the last legal map
+only as an explicitly labelled failure artifact. Nonfinite current gradients,
+spectra/directions, current R>B, invalid current/output geometry, and exhausted
+dual bracketing are also numerical failures. Do not continue a failed attempt
+as though it were a successful registration.
+
+Each stage has a strict positive integer maximum_gradients=30, NOT an obligation
+to take30no-op iterations. Finite zero-data-gradient, zero-ellipsoid, finite
+non-descent direction, or finite line-search exhaustion are legitimate
+ALGORITHMIC retained-map stops: numerically valid output, incomplete gradient
+budget, no certified stationarity. The wrapper continues the next scheduled
+axis/level from that legal map. Unused stage gradient budgets are not moved,
+filled with no-ops, or added as cycles. A numerical failure is distinct and
+marks the case attempt failed. All stop reasons and actual work remain visible.
+
+### Core interface and one bounded application comparison
+
+The isolated core interface is:
+
+```text
+optimize_distortion_budget_fiber(
+    anchor, objective_parts, *, coefficient_side, direction,
+    distortion_budget=B, physical_rms_step=ell_l, maximum_gradients=30,
+    minimum_jacobian=.001, theta=.95, fraction=.99,
+    armijo=1e-4, max_backtracks=12)
+
+objective_parts(Y) -> (D_scalar, parts)
+parts["strain"] = differentiable original R_scalar
+```
+
+The wrapper builds D directly from original Evidence parts; other parts are
+diagnostics and may include the original E. The core obtains g with graph
+retention and r with a separate VJP. Result fields: vertices, coefficients,
+initial_objective/final_objective (D), initial_distortion/final_distortion,
+distortion_budget, trace, counts, stop_reason, minimum_contracted_slack and
+numerical_failure(bool). At minimum count gradient_steps (outer iterations),
+data_vjps, distortion_vjps, objective_evaluations (callback calls), trial_attempts
+(including geometry-only candidates), trial_evaluations (candidate callbacks),
+accepted_steps, backtracks, rejected_trials (finite rejects), dual_evaluations,
+dual_bracket_probes, dual_bisections and numerical_failures. Do not use an old
+"exactly300/failed_trials==0" gate to misclassify valid retained-map stops.
+
+First tiny independent checks: explicit P^TP and P^TKP versus both DST spectra
+including boundaries; literal frozen-rotation majorization on legal nonidentity
+P1 maps; separate AD gradients; inactive and active multiplier solutions versus
+a small independent constrained solution; zero-slack/zero-r, near-Pareto,
+bracket/nonfinite failures, finite rejected trials, strict rounded ARAP budget,
+fixed corner floor/perimeter, and early-stop status/count conservation. Default
+optimizer behavior and the already frozen refresh formulation are unchanged.
+
+Then apply to ALL25 original fusion300 incumbents using unchanged frozen SG+MA
+points. Use the original five coefficient/image levels, x/y order and at most
+30outer iterations each: MAXIMUM300, with actual two-VJP counts reported. Each
+stage uses its own D_s; final selection minimizes full512 D among the incoming
+incumbent and accepted stage endpoints satisfying R<=B. No label selection or
+discarded failure is allowed. Finish all attempts before scoring.
+
+The already completed refresh experiment's FROZEN-TABLE300 suffix is the exact
+same-incumbent/input/schedule control and may be reused after configuration
+agreement is checked. It selects by its original E, while the constrained arm
+selects by its own D; this is a comparison of objective/optimizer/selection
+PACKAGES with the same nominal maximum-gradient schedule, not equal completed
+work, equal wall time or an isolated metric ablation. Report actual counts and
+incremental/required total costs, including incumbent preparation. Original
+fusion300 remains the cheaper reference. No matching refresh is included here.
+
+The question is answered by complete data/cap progress AND anatomy/cost, not
+just a new lower loss. If the method mainly stops near g_D=-3g_R, report the
+observed local Pareto limitation; do not promise global stationarity or relax
+the budget. If it improves D under the cap without useful TRE, this further
+limits the present evidence/selection recipe. After this ONE decisive attempt,
+the defensible next generalization question requires new independently grouped,
+labelled real specimens under a fixed comparison protocol, not more selection
+among near-neighbor settings on the same four development specimens. No new
+specimen result or formal SOTA claim is established by this card.

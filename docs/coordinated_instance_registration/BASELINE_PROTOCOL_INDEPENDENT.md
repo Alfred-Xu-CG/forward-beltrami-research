@@ -1389,3 +1389,138 @@ and `independent_refreshed_comparison_20261002.py`; combined results are in
 `refreshed_match_all50_t27/independent_check.json`. These are instance-registration
 experiments on repeatedly viewed development specimens, not network training
 or held-out neural-layer validation.
+
+### Incumbent-distortion-budget card: independent mathematical check
+
+Read the complete `OPTIMIZER_REDESIGN.md` card beginning with "Conditional next
+mechanism: incumbent-distortion-budget continuation", including the revised
+`alpha=.99*min(1,alpha_max)` rule. The scalar-fiber majorizer, full-node RMS
+metric, common DST diagonalization, multiplier monotonicity and finite-bracket
+existence exception are correct under the stated batch-one, aligned-grid,
+unit-direction and positive-P1 hypotheses. The cap-active `h=0,r=0` case is
+indeed the singleton feasible set; it must not enter an infinite multiplier
+search. The always-contracted proposal provides exact-real quadratic slack,
+but does not replace the strict rounded actual ARAP-budget check.
+
+Independent probe `independent_distortion_budget_probe_20261002.py` assembles
+full-node tensor-hat prolongation and the literal five-point interior matrix
+without the production prolongation or spectral constructor. Five grid pairs
+`(5,3),(7,4),(9,3),(9,5),(5,5)` cover refinement1/2/4 and odd/even interior
+sizes. Stiffness/spectral errors are at most `1.78e-15`; mass/spectral errors
+are at most `2.78e-17`, using `fine_side**2`, including the zero perimeter.
+Actual prolongation agrees with the hand-built full-node matrix.
+
+A separate literal source-triangle-inverse evaluator and NumPy SVD proper
+rotations give the frozen ARAP Hessian equal to UNWEIGHTED K within `2.78e-16`.
+Value/gradient touching holds, with gradient discrepancy at most `1.50e-16`.
+All40 nonidentity-map perturbations satisfy the stated nonlinear majorizer;
+the literal frozen quadratic identity differs by at most `3.77e-18`. No
+additional factor3,2,cell-area or inverse-mass belongs in that Hessian.
+
+Dense multiplier solves independently compared with SciPy SLSQP constrained
+solutions pass inactive, zero-slack active, positive-slack active, zero-r and
+near-Pareto cases; model minima differ by at most `3.01e-13`. Inactive physical
+RMS is `.004` to rounding. The singleton case returns zero. These checks verify
+the formula, not the forthcoming production solver or anatomical usefulness;
+production core/wrapper and actual-run checks remain separate.
+
+The same independent probe additionally verifies the actual wrapper's direct D
+value and complete vertex VJP against separately summed non-ARAP Evidence parts
+(both bitwise equal); `D+3R` differs from the original total only by `5.55e-17`
+operation-order rounding. A clearly synthetic, scoped solver fixture verifies
+one fixed runtime cap across stages with decreasing actual R, continued
+execution after legal early stops, actual4 rather than nominal120 gradients,
+unchanged physical-rate schedule, full-D best-endpoint retention, ordinary
+callback-count aggregation, and immediate schedule termination with an explicit
+failure label after a reported numerical failure. It is a wrapper semantics
+test, not experimental accuracy or production-core evidence. The inherited
+preprocessing metadata incorrectly described only one original512 affine
+preparation; the author was asked to clarify that this pyramid independently
+prepares each area-reduced raw raster once. The actual computations already do
+that and do not double-warp moving data.
+
+The production core is now independently checked, not just its card. Nine
+active/inactive/zero-r/near-Pareto directions agree with the separate dense
+solver to `4.12e-18`. An actual six-gradient legal-map run passes literal NumPy
+corner floors, the original-anchor reconstruction, strict computed data/Armijo
+decrease and actual fixed R cap. Deliberately finite no-descent callbacks cause
+13 rejected trials and12 backtracks followed by a valid retained-map stop;
+a nonfinite trial causes one immediate numerical failure and no backtracking.
+A returned ARAP value only ONE binary64 ulp above B is rejected on all13
+attempts: there is no hidden cap tolerance. Zero-budget identity stops after
+one real outer iteration rather than reporting30 completed gradients.
+
+Review caught a diagnostic mismatch in exhausted dual bracketing: the record's
+lower multiplier was the final positive probe but its residual was still the
+initial mu0 residual. The author changed it to the final probe residual; the
+accepted trajectory is unaffected. Both this correction and the pyramid
+metadata correction were reread in the saved files. A fresh combined run of
+core, wrapper and batch tests passes35 tests. The first test invocation lacked
+the local `src` import path; rerunning with that path fixed test collection,
+without modifying source or dependencies.
+
+The batch and both scoring adapters were read through their ordinary map
+validation paths. They require the complete25-attempt denominator before
+scoring, preserve failed attempts, compare actual cap-mode accounting with the
+saved report, and no longer require an artificial300 completed gradients for
+the capped arm. The archived frozen-table control still requires its actual300
+gradients and the exact same incumbent/configuration. These are implementation
+prechecks only; no new real-case accuracy claim is made before the full run.
+
+The downloaded actual257-grid MIIT2-to-3 cap smoke subsequently passes the new
+label-free `independent_distortion_budget_postrun_20261002.py --smoke` audit.
+Literal original/saved endpoint ARAP agrees within `4.34e-19`; complete D/E
+within `1.38e-8` from independently implemented float32 image sampling. Saved
+binary geometry, exact identity perimeter/original affine and literal minimum
+corner ratio `.27053576924` pass. The296 recorded outer steps,294 accepted
+steps,560 candidate callbacks,266 finite rejections and264 backtracks reconcile
+exactly, including two valid line-search-exhausted stages. All296 directions
+have active dual caps (maximum recorded multiplier `3.53899608`). The saved
+endpoint R is `.003418679633662371`, strictly below its fixed runtime budget
+`.0034189056020324637`; D changes `.23861893719244703` to `.23777583429492904`.
+Only incoming/final maps were independently reevaluated. Intermediate trial
+maps and spectral vectors were not exported, so their audit is explicitly
+record arithmetic/acceptance consistency, not an independent map reevaluation.
+No evaluation labels were read for this smoke check.
+
+### Actual all25 distortion-budget outputs: independent post-run PASS
+
+After every attempt terminated and ordinary scoring was authorized, all25
+saved float64 maps pass independent original-affine, exact identity-perimeter,
+binary-certificate and literal-corner checks. Minimum saved normalized corner
+determinant is `.01549217378489276`. Both incoming and final full R/D/E are
+recomputed with the independent NumPy triangle/sampler/descriptor formulas;
+maximum R discrepancy is `3.47e-18`, D/E `3.459e-8`. Every output has strictly
+lower independently recomputed R than its incumbent and satisfies its exact
+reported runtime cap; no budget inflation or tolerance acceptance occurred.
+All25 select endpoint9 by their own full D. D improvements range `.000622414`
+to `.001723179`; R decreases range `1.846e-7` to `5.694e-5`.
+
+All2074 original-CSV errors are recomputed using the separate literal P1
+evaluator: maximum discrepancy `1.118e-13` canvas pixels and `1.475e-12` native
+moving pixels. Full25 denominators and the exact same anatomical ID sets are
+preserved, with no failures. Recorded intermediate checks have the limited
+scope stated above. They reconcile7307 outer gradients,7307 data VJPs and7307
+ARAP VJPs;7272 accepted steps;13581 candidate callbacks;6309 finite rejections;
+6274 backtracks;250448 dual evaluations. Including300 wrapper callbacks gives
+21188 objective evaluations. There are215 budget-ended stages and35 legitimate
+line-search-exhausted stages, with zero numerical failures. Actual per-case
+gradients are278--300; unused work is not reported as completed. All7307 dual
+proposals have active caps; this does not imply constrained stationarity.
+
+Independent reaggregation verifies every case/cohort/regression/objective/cost
+entry of `comparison.json`. Versus original fusion300, equal-specimen mean/p90
+deltas are `-.0147991/-.000397950` canvas pixels, with11/25 means,10/25 p90s and
+13/25 maxima worse. The small aggregate mean gain is dominated by kidney
+(`-.0642202`), whose maximum worsens `.435152`; MIIT and lung aggregate means
+and p90s both worsen. Against the same-incumbent frozen-table300 suffix, deltas
+are `-.0192151/-.112995`, with9/25 means,11/25 p90s and13/25 maxima worse.
+Suffix calls total225.223s; adding the required historical incumbent calls gives
+339.386s, versus224.106s for incumbent plus frozen suffix. Maximum allocated
+suffix memory is184566272 bytes; peaks remain nonadditive and old preparation
+costs are not silently counted as free. This is a modest development tradeoff,
+not a held-out, neural-training or general anatomical improvement claim.
+
+Reproduction: `independent_distortion_budget_postrun_20261002.py --scores` and
+`independent_distortion_budget_comparison_20261002.py`. Combined output is
+`distortion_budget_all25_t28/independent_check.json`.

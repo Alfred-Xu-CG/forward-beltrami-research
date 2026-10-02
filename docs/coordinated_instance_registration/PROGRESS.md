@@ -7,6 +7,52 @@ Branch codex/coordinated-instance-registration; base 4ca9f09.
 
 ## Initial facts
 
+### Fixed incumbent distortion budget: complete all25 result — 2026-10-02 13:34 UTC
+
+Process disclosure: root read verification-before-completion once for this
+Git milestone because the active environment requires it, despite the user's
+no-installed-skills preference. The action is limited to the already relevant
+fresh affected-suite/evidence/diff check, not a new audit framework. This is
+additional to the two previously disclosed systematic-debugging reads.
+
+The new constrained optimizer is implemented and all25 real cases finish without
+numerical failure. It minimizes the directly assembled original data/shape/OOB
+terms D, subject to R(Y)<=R(Y_incumbent), rather than minimizing D+3R. The cap
+is the actual runtime ARAP of the same retained fusion300 map and is never
+increased. A frozen-proper-rotation quadratic majorizer, exact tensor-product
+DST mass/stiffness spectra and one nonnegative dual scalar produce each raw
+direction; actual four-corner feasibility, actual R and D Armijo tests still
+govern acceptance. This is an objective/optimizer/selection package comparison,
+not a matrix-only or equal-total-work claim. Full derivation and limitations are
+in the appended fixed-distortion card in OPTIMIZER_REDESIGN.md.
+
+Mean/p90 canvas-pixel errors are MIIT3.537662/5.861197,
+lung4.473645/9.354164, Histo.841506/1.559078 and kidney2.179386/4.648365.
+Against fusion300, MIIT/lung means worsen by.002944/.002638, Histo improves
+.000558, and kidney improves.064220 while its maximum worsens8.970583 to
+9.405735. Of25 pair means14 improve and11 worsen; no case-selected recipe is
+adopted. Against the same-incumbent frozen-table300-step suffix,16/25 means
+improve, but tails remain mixed. This is a valid new constrained optimizer,
+not a demonstrated global anatomical gain.
+
+Actual work is7,307 outer steps, with TWO VJPs each, not a claimed7,500-step
+run. The250 stages have215 budget stops and35 finite line-search exhaustion
+stops. Extra calls average9.009s, beyond the required4.566s incumbent; recorded
+incumbent-plus-suffix calls average13.575s. The new complete-call allocated
+peak is182.1–184.6MB; do not add peaks or equate differently scoped historical
+memory measurements. Independent postrun reconstruction passes all25 saved
+maps, all2,074 original CSV errors, actual caps and trace accounting; maximum
+canvas scoring discrepancy1.12e-13px, R discrepancy3.47e-18, D/E discrepancy
+3.46e-8 from float32 images. Minimum actual normalized corner is.0154922.
+Intermediate trial geometry is record-consistency evidence, not reread unsaved
+maps. Sources: distortion_budget_all25_t28 and its independent_check.json.
+
+Decision: retain the cheaper global fusion300 recipe, preserve this constrained
+mechanism and its adverse cases, and ask Astra xhigh for one genuinely distinct
+remaining bottleneck rather than repeating cap/weight sweeps. In parallel,
+bounded author-source reconnaissance asks whether an additional independent
+labelled specimen is actually available; no private access or account action.
+
 ### ONE refresh closes without a useful global gain — 2026-10-02 12:59 UTC
 
 All25 extractions and50 suffixes complete successfully in229.110s. Compared
