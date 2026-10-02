@@ -2443,3 +2443,35 @@ Falsifier/stop: after the one fixed budget, failure to fit is inconclusive;
 do not infer impossibility or sweep mesh, boundary, weights or optimizer budgets.
 Prior work: the repository's analytic coordinated update and P1 evaluation;
 this is a diagnostic application, not a new registration or approximation theorem.
+
+The one actual capacity witness succeeds: ALL 107 errors are <=.026773 canvas
+pixels, mean .015168, p90 .021693, with final minimum corner ratio .0130772.
+Counts are 300 gradients / 310 trials / 322 oracle loss calls / zero failures.
+Fit time is 2.8979 seconds; this is explicitly manual-label fitting, NOT
+image-only registration. Original E1 rises .379627 to .589959; most of this
+particular witness's cost increase is its cumulative ARAP distortion. It does
+not prove every accurate map has that cost or that a regularizer must be changed.
+
+Research card — ONE matched analytic versus corrected-F2 oracle comparison:
+Question R2: removing correspondence ambiguity, do coordinated updates realize
+this large actual sparse motion more efficiently than the existing F2 mechanism?
+Freeze the original 7-to-8 incoming analytic map, original affine, ALL 107
+available centers, squared oracle loss, 257-square P1-ac, fixed boundary and
+eta=.001. Analytic uses five coefficient levels x/y, 30 gradients per stage;
+F2 uses the ORIGINAL two five-level cycles, 30 vector gradients per stage,
+patch_cells=8, accepted_gain=1 and floor reserve=.95. Both total 300 gradients
+and 310 trials; parameter counts and internal geometry passes differ and must
+be reported, not hidden as equal mechanisms. No priors in fitting; original E1
+is evaluated only afterward. This is a NEW controlled R2 question after the
+successful capacity fit, not a continuation or retuning of that fit.
+Measure first CERTIFIED accepted stage with maximum error <=1 canvas pixel,
+final all-ID mean/p90/max, actual gradient/loss/decoder-pass counts and costs.
+Use one warm-up each then one fixed ABBA block (analytic,F2,F2,analytic), retaining
+every output. No rate, patch, budget, objective or label subset sweep. Timings
+are descriptive paired measurements on one known task, not general GPU statistics.
+Decision: reaching the same threshold at lower cost, or reaching it when the
+control does not within budget, supports a task-specific motion-efficiency
+advantage; F2 matching/beating analytic narrows that claim. Either outcome
+does NOT improve production image registration or justify an image-loss change.
+Falsifier/stop: finish this ONE paired block and stop regardless of result;
+no oracle map becomes a production initializer, training teacher or inference score.

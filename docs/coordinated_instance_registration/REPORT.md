@@ -396,3 +396,30 @@ P1 class and exact safe operator, starting from the archived original map.
 It tests simultaneous sparse representational capacity, which individual
 affine-range inclusion cannot establish. Its map may not be used as production
 initialization or a training teacher. The 24-hour goal remains active.
+
+### 7.3 A rigorous forward-expressivity statement and an actual capacity witness
+
+The earlier theoretical claim assumed a legal vertex-motion path existed.
+For strictly positive FOUR-corner tables with a fixed rectangular boundary,
+that assumption can now be proved: represent a target by positive directed
+four-neighbor mean-value weights, suppress the graph's four degree-two corners
+to apply the appropriate weak-convex-boundary Tutte theorem, and restore those
+corners with explicit area calculations. Interpolating positive weights gives
+a continuous path in the same four-corner class. A sufficiently fine finite
+partition can be realized exactly by alternating full-nodal x/y forward updates.
+This is an EXISTENCE bridge to classical convex-drawing/morphing theory, not
+an online linear solve. It does NOT give a bounded depth or prove connectivity
+above the preset `.001` floor. Full definitions and proof are in
+[THEORY_FORWARD_EXPRESSIVITY.md](THEORY_FORWARD_EXPRESSIVITY.md).
+
+Separately, the one actual 7-to-8 label-oracle fit succeeds at the IMPLEMENTED
+floor: all 107 centers have error <=.026773 canvas pixels, mean .015168,
+p90 .021693, with minimum corner ratio .0130772 and the original boundary/affine.
+It uses 300 additional gradients after the archived image registration, not a
+new image-only inference result. The original E1 rises .379627 to .589959;
+87.18% of this particular cost increase is weighted ARAP. That does not prove
+every accurate map must be costly or justify a prior change. Independent
+recomputation confirms the map, all point errors and objective decomposition.
+See [ORACLE_CAPACITY.md](ORACLE_CAPACITY.md) for its complete inputs, equations,
+units, budget, timing and interpretation. A separately predeclared matched F2
+oracle control now tests motion efficiency; no oracle map enters production.
